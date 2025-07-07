@@ -10,7 +10,7 @@ async function cloudinaryUpload(file) {
     formData.append("file", file);
     formData.append("upload_preset", unsignedUploadPreset);
 
-    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/upload`, {
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${djgzggzoy}/upload`, {
       method: "POST",
       body: formData,
     });
