@@ -68,21 +68,22 @@ window.ilerleAdim1 = async function () {
       localStorage.setItem("aktifTalebeUID", uid);
     }
 
-// 🔄 Adım 2: Fotoğraf varsa Storage'a yükle
+// 🔄 Adım 2: Fotoğraf varsa Cloudinary'e yükle
 if (fotoInput && fotoInput.files.length > 0) {
   const file = fotoInput.files[0];
-  const storageRef = firebase.storage().ref().child(`talebeler/${uid}.jpg`);
 
-  await storageRef.put(file);
+  try {
+    const downloadURL = await cloudinaryUpload(file);
 
-  // 🔑 Doğru ve erişilebilir linki al
-  const downloadURL = await storageRef.getDownloadURL();
-
-  // 🔁 Firestore'a bu linki kaydet
-  await firebase.firestore().collection("talebeler").doc(uid).update({
-    fotograf: downloadURL
-  });
+    await firebase.firestore().collection("talebeler").doc(uid).update({
+      fotograf: downloadURL
+    });
+  } catch (uploadErr) {
+    console.error("Fotoğraf yükleme hatası:", uploadErr);
+    toastGoster("Fotoğraf yüklenemedi ama diğer bilgiler kaydedildi.");
+  }
 }
+
 
 
     toastGoster("1. adım başarıyla kaydedildi. Sıradaki aşamaya geçiliyor...");

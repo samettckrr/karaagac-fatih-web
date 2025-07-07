@@ -1,17 +1,16 @@
 // Firebase Uygulamasını Başlat - Firebase 9.22.2 (compat)
 const firebaseConfig = {
-  apiKey: "AIzaSyA_hIufeRPDcHLV1RGtBakVJRHcPZVVN4M",
-  authDomain: "karaagacdaimi.firebaseapp.com",
-  projectId: "karaagacdaimi",
-  storageBucket: "karaagacdaimi.firebasestorage.app",
-  messagingSenderId: "1010440261347",
-  appId: "1:1010440261347:web:60f2ccbcb64f5551dd3fd6"
+  apiKey: "AIzaSyDyzADuLzkszFMTnfKwiWgsVnY7CxDngv0",
+  authDomain: "karaagacfthdaimi.firebaseapp.com",
+  projectId: "karaagacfthdaimi",
+  storageBucket: "karaagacfthdaimi.appspot.com",
+  messagingSenderId: "688702235131",
+  appId: "1:688702235131:web:1ad367ea6fb5136e83ab5e"
 };
 
 // Uygulamayı başlat
 firebase.initializeApp(firebaseConfig);
 
 // Firestore, Auth, Storage değişkenleri
-const auth = firebase.auth();
-const db = firebase.firestore();
-const storage = firebase.storage();
+window.auth = firebase.auth();
+window.db = firebase.firestore();
