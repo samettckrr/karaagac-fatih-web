@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Adres Bilgileri - Talebe Kayıt</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="../css/form.css" />
+  <style>
+    .toast-bildirim {
+      display: none;
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #2d6a4f;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 15px;
+      z-index: 9999;
+    }
+    .toast-bildirim.hata {
+      background-color: #c0392b;
+    }
+  </style>
+</head>
+<body>
+
+<div class="kayıt-karti">
+  <div class="kart-baslik">
+    <h2>📝 Yeni Talebe Kaydı</h2>
+    <p>3. Aşama – Adres Bilgileri</p>
+  </div>
+
+  <div class="form-alani">
+    <label for="adresIl">İl</label>
+    <select id="adresIl" onchange="ilceYukle()">
+      <option value="">Seçiniz...</option>
+      <option value="istanbul">İstanbul</option>
+      <option value="ankara">Ankara</option>
+    </select>
+
+    <label for="adresIlce">İlçe</label>
+    <select id="adresIlce" onchange="mahalleYukle()">
+      <option value="">Seçiniz...</option>
+    </select>
+
+    <label for="adresMahalle">Mahalle</label>
+    <select id="adresMahalle">
+      <option value="">Seçiniz...</option>
+    </select>
+
+    <label for="adresAcik">Açık Adres</label>
+    <input type="text" id="adresAcik" placeholder="Karaağaç Mahallesi..." />
+  </div>
+
+  <div class="ilerleme-paneli">
+    <button type="button" class="geri-buton" onclick="geriGelAdim2()">◀ Geri</button>
+    <div class="form-asama-gostergesi">Adım 3 / 6</div>
+    <button type="button" class="ileri-buton" onclick="ilerleAdim3()">İlerle ▶</button>
+  </div>
+</div>
+
+<div id="toast" class="toast-bildirim"></div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyA_hIufeRPDcHLV1RGtBakVJRHcPZVVN4M",
+    authDomain: "karaagacdaimi.firebaseapp.com",
+    projectId: "karaagacdaimi",
+    storageBucket: "karaagacdaimi.appspot.com",
+    messagingSenderId: "1010440261347",
+    appId: "1:1010440261347:web:60f2ccbcb64f5551dd3fd6"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  const adresVeri = {
+    istanbul: {
+      umraniye: ["Karaağaç", "Tatlısu"],
+      fatih: ["Balat", "Aksaray"]
+    },
+    ankara: {
+      kecioren: ["Etlik", "Bağlum"],
+      cankaya: ["Kızılay", "Yıldız"]
+    }
+  };
+
+  function ilceYukle() {
+    const il = document.getElementById("adresIl").value;
+    const ilceSelect = document.getElementById("adresIlce");
+    const mahalleSelect = document.getElementById("adresMahalle");
+
+    ilceSelect.innerHTML = '<option value="">Seçiniz...</option>';
+    mahalleSelect.innerHTML = '<option value="">Seçiniz...</option>';
+
+    if (adresVeri[il]) {
+      Object.keys(adresVeri[il]).forEach(ilce => {
+        const opt = document.createElement("option");
+        opt.value = ilce;
+        opt.textContent = ilce;
+        ilceSelect.appendChild(opt);
+      });
+    }
+  }
+
+  function mahalleYukle() {
+    const il = document.getElementById("adresIl").value;
+    const ilce = document.getElementById("adresIlce").value;
+    const mahalleSelect = document.getElementById("adresMahalle");
+
+    mahalleSelect.innerHTML = '<option value="">Seçiniz...</option>';
+
+    if (adresVeri[il] && adresVeri[il][ilce]) {
+      adresVeri[il][ilce].forEach(mahalle => {
+        const opt = document.createElement("option");
+        opt.value = mahalle;
+        opt.textContent = mahalle;
+        mahalleSelect.appendChild(opt);
+      });
+    }
+  }
+
+  function geriGelAdim2() {
+    window.location.href = "talebe-kayit-adim2.html";
+  }
+
+  function ilerleAdim3() {
+    const uid = localStorage.getItem("aktifTalebeUID");
+    if (!uid) return toastGoster("Talebe ID bulunamadı", "hata");
+
+    const il = document.getElementById("adresIl").value;
+    const ilce = document.getElementById("adresIlce").value;
+    const mahalle = document.getElementById("adresMahalle").value;
+    const acikAdres = document.getElementById("adresAcik").value.trim();
+
+    if (!il || !ilce || !mahalle) {
+      return toastGoster("Lütfen il, ilçe ve mahalle seçiniz.", "hata");
+    }
+
+    const veri = {
+      adresBilgisi: {
+        il,
+        ilce,
+        mahalle,
+        acikAdres
+      }
+    };
+
+    db.collection("talebeler").doc(uid).set(veri, { merge: true })
+      .then(() => {
+        toastGoster("3. adım başarıyla kaydedildi. Sıradaki aşamaya geçiliyor...");
+        setTimeout(() => {
+          window.location.href = "talebe-kayit-adim4.html";
+        }, 1500);
+      })
+      .catch(err => {
+        console.error(err);
+        toastGoster("Hata: " + err.message, "hata");
+      });
+  }
+
+  function toastGoster(mesaj, tur = "basari") {
+    const toast = document.getElementById("toast");
+    toast.textContent = mesaj;
+    toast.className = "toast-bildirim " + tur;
+    toast.style.display = "block";
+    setTimeout(() => {
+      toast.style.display = "none";
+    }, 3000);
+  }
+</script>
+
+</body>
+</html>
