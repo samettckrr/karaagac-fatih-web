@@ -18,3 +18,5 @@ window.cloudinaryUpload = async function (file) {
   const data = await response.json();
   return data.secure_url;
 };
+
+window.cloudinaryUpload = cloudinaryUpload;
