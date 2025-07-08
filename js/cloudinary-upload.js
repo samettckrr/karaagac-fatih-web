@@ -19,4 +19,3 @@ window.cloudinaryUpload = async function (file) {
   return data.secure_url;
 };
 
-window.cloudinaryUpload = cloudinaryUpload;

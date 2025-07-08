@@ -60,12 +60,20 @@ window.ilerleAdim1 = async function () {
 
 // 🔄 Adım 1: Önce veriyi kaydet veya güncelle
 
-    if (uid) {
-      await firebase.firestore().collection("talebeler").doc(uid).update(veri);
-    } else {
+
+    if (!uid) {
+      // UID yoksa yeni kayıt oluştur
       const docRef = await firebase.firestore().collection("talebeler").add(veri);
       uid = docRef.id;
       localStorage.setItem("aktifTalebeUID", uid);
+    } else {
+      // UID varsa ama belge yoksa set ile oluştur, varsa update
+      const doc = await firebase.firestore().collection("talebeler").doc(uid).get();
+      if (!doc.exists) {
+        await firebase.firestore().collection("talebeler").doc(uid).set(veri);
+      } else {
+        await firebase.firestore().collection("talebeler").doc(uid).update(veri);
+      }
     }
 
 // 🔄 Adım 2: Fotoğraf varsa Cloudinary'e yükle
@@ -83,8 +91,6 @@ if (fotoInput && fotoInput.files.length > 0) {
     toastGoster("Fotoğraf yüklenemedi ama diğer bilgiler kaydedildi.");
   }
 }
-
-
 
     toastGoster("1. adım başarıyla kaydedildi. Sıradaki aşamaya geçiliyor...");
 
