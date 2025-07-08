@@ -90,17 +90,17 @@ function paneliYukle(panelAdi) {
   if (panelAdi === "talebe") {
     kartlar = [
       { baslik: "Talebe Listesi", ikon: "📋", link: "talebe-liste.html" },
-      { baslik: "Takrir Durumu", ikon: "📗", link: "takrir.html" },
-      { baslik: "İzin Giriş/Çıkış", ikon: "🛫", link: "izin.html" },
-      { baslik: "Ezber Takibi", ikon: "📈", link: "ezber.html" }
+      { baslik: "Takrir Durumu", ikon: "📗", link: "talebe/ezber-takibi.html" },
+      { baslik: "İzin Giriş/Çıkış", ikon: "🛫", link: "talebe/izin-giriscikis.html" },
+      { baslik: "Ezber Takibi", ikon: "📈", link: "talebe/ezber-takibi.html" }
     ];
   } else if (panelAdi === "personel") {
     kartlar = [
-      { baslik: "Nöbet Çizelgesi", ikon: "📅", link: "nobet.html" },
-      { baslik: "Aylık Performans", ikon: "📊", link: "performans.html" },
-      { baslik: "Bağış Hedefi", ikon: "🎯", link: "hedef.html" },
-      { baslik: "Alacak Takibi", ikon: "💰", link: "alacak.html" },
-      { baslik: "Temizlik Kontrolü", ikon: "🧹", link: "temizlik.html" }
+      { baslik: "Nöbet Çizelgesi", ikon: "📅", link: "personel/nobet.html" },
+      { baslik: "Personel Aylık Performans", ikon: "📊", link: "personel/aylik-performans.html" },
+      { baslik: "Bağış Hedefi", ikon: "🎯", link: "personel/bagis-hedefi.html" },
+      { baslik: "Alacak Takibi", ikon: "💰", link: "personel/alacak-takibi.html" },
+      { baslik: "Temizlik Kontrolü", ikon: "🧹", link: "personel/temizlik-kontrolu.html" }
     ];
   } else if (panelAdi === "nehari") {
     kartlar = [
@@ -109,9 +109,9 @@ function paneliYukle(panelAdi) {
     ];
   } else if (panelAdi === "diger") {
     kartlar = [
-      { baslik: "Genel Muhasebe", ikon: "📑", link: "muhasebe.html" },
-      { baslik: "Kullanıcı Yönetimi", ikon: "🛠️", link: "kullanici.html" },
-      { baslik: "Sistem Ayarları", ikon: "⚙️", link: "ayarlar.html" }
+      { baslik: "İçeriği Daha Sonra Paylaşılacaktır", ikon: "📑", link: "diger/genel-muhasebe.html" },
+      { baslik: "Kullanıcı Yönetimi", ikon: "🛠️", link: "diger/kullanici-yonetimi.html" },
+      { baslik: "Sistem Ayarları", ikon: "⚙️", link: "diger/sistem-ayarlari.html" }
     ];
   }
 

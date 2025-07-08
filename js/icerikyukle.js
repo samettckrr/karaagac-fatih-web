@@ -6,14 +6,7 @@ function icerikYukle(icerik) {
 
   if (icerik === 'liste') {
     // Talebe listesi
-    fetch("talebe-liste.html")
-      .then(res => res.text())
-      .then(html => {
-        icerikPaneli.innerHTML = html;
-        const script = document.createElement("script");
-        script.src = "js/talebe-liste.js";
-        document.body.appendChild(script);
-      });
+    fetch("calisma-karti.html")
   }
 
   else if (icerik === 'kayit') {
@@ -59,13 +52,6 @@ function icerikYukle(icerik) {
   else if (icerik === 'okul') {
     // Okul bilgileri
     fetch("parcalar/talebe-okul.html")
-      .then(res => res.text())
-      .then(html => {
-        icerikPaneli.innerHTML = html;
-        const script = document.createElement("script");
-        script.src = "js/talebe-okul.js";
-        document.body.appendChild(script);
-      });
   }
 
   else {

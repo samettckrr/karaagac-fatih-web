@@ -81,7 +81,7 @@ if (fotoInput && fotoInput.files.length > 0) {
   const file = fotoInput.files[0];
 
   try {
-    const downloadURL = await cloudinaryUpload(file);
+const downloadURL = await window.cloudinaryUpload(file);
 
     await firebase.firestore().collection("talebeler").doc(uid).update({
       fotograf: downloadURL
