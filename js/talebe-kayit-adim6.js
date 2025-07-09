@@ -30,7 +30,6 @@ function geriVeriYukleAdim6() {
 }
 
 function ilerleAdim6() {
-  console.log("ilerleAdim6 fonksiyonu çağrıldı");
   
   const uid = localStorage.getItem("aktifTalebeUID");
   if (!uid) return toastGoster("Talebe ID bulunamadı", "hata");

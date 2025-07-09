@@ -15,8 +15,8 @@ function ilerleAdim4() {
       anneDurum: document.getElementById("anneDurum").value,
       anneMeslek: document.getElementById("anneMeslek").value.trim(),
       maddiDurum: document.getElementById("maddiDurum").value,
-      kardesSayisi: document.getElementById("kardesSayisi").value,
-      kurstakiKardesSayisi: document.getElementById("kurstakiKardesSayisi").value
+      kardesSayisi: parseInt(document.getElementById("kardesSayisi").value),
+      kurstakiKardesSayisi: parseInt(document.getElementById("kurstakiKardesSayisi").value)
     }
   };
 

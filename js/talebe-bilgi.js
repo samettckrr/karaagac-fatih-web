@@ -42,6 +42,9 @@ kart.innerHTML = `
           localStorage.setItem("aktifTalebeUID", uid);
           document.getElementById("talebeModal").style.display = "flex";
           document.body.style.overflow = "hidden";
+          const icerik = document.getElementById("modalIcerik");
+          if (!icerik) return;
+          icerik.innerHTML = ""; // eski içeriği temizle
           if (typeof yukleModalIcerik === "function") {
             yukleModalIcerik();
           }

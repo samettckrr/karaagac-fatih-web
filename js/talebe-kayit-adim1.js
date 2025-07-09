@@ -6,7 +6,6 @@ window.ilerleAdim1 = async function () {
   const durum = document.getElementById("durum").value;
   const mezhep = document.getElementById("mezhep").value;
   const kanGrubu = document.getElementById("kanGrubu").value;
-  const fotoInput = document.getElementById("fotoInput");
 
   let tc = "", memleket = "", ikametVarMi = "", kimlikBitis = "", ulke = "";
 
@@ -30,7 +29,7 @@ window.ilerleAdim1 = async function () {
   }
 
   // Ortak zorunlu alanlar kontrolü
-  if (!kimlikAd || !kullAd || !dogumTarihi || !fotoInput || !kurs || !durum || !mezhep || !kanGrubu) {
+  if (!kimlikAd || !kullAd || !dogumTarihi || !kurs || !durum || !mezhep || !kanGrubu) {
     toastGoster("Lütfen tüm alanları doldurunuz.");
     return;
   }
@@ -76,22 +75,6 @@ window.ilerleAdim1 = async function () {
       }
     }
 
-// 🔄 Adım 2: Fotoğraf varsa Cloudinary'e yükle
-if (fotoInput && fotoInput.files.length > 0) {
-  const file = fotoInput.files[0];
-
-  try {
-const downloadURL = await window.cloudinaryUpload(file);
-
-    await firebase.firestore().collection("talebeler").doc(uid).update({
-      fotograf: downloadURL
-    });
-  } catch (uploadErr) {
-    console.error("Fotoğraf yükleme hatası:", uploadErr);
-    toastGoster("Fotoğraf yüklenemedi ama diğer bilgiler kaydedildi.");
-  }
-}
-
     toastGoster("1. adım başarıyla kaydedildi. Sıradaki aşamaya geçiliyor...");
 
     setTimeout(() => {
@@ -128,7 +111,7 @@ function geriVeriYukleAdim1() {
       document.getElementById("durum").value = data.durum || "";
       document.getElementById("mezhep").value = data.mezhep || "";
       document.getElementById("kanGrubu").value = data.kanGrubu || "";
-      document.getElementById("fotoInput").value = data.fotoInput || "";
+      // document.getElementById("fotoInput").value = data.fotoInput || "";
 
       if (data.durum === "ensar") {
         document.getElementById("tc").value = data.tc || "";

@@ -22,13 +22,32 @@ async function yukleModalIcerik() {
   const doc = await firebase.firestore().collection("talebeler").doc(uid).get();
   if (!doc.exists) return alert("Talebe kaydı bulunamadı.");
   const d = doc.data();
+  const tipi = d.tipi || '-'; // ensar veya muhacir olduğunu belirler
+
+    console.log("📄 Talebe Verisi:", d); // 👈 buraya ekle
 
   const icerik = document.getElementById("modalIcerik");
   if (!icerik) return;
 
-  const foto = d.fotograf || `https://ui-avatars.com/api/?name=${(d.kullAd || "Talebe").replace(/\s+/g, '+')}&background=random`;
-  const vazifeler = (d.vazifeCheckboxGrup || []).concat(d.digerInput || []).join(", ");
-  const mezhepBtns = ["Hanefi", "Şafi", "Maliki", "Hanbeli"]
+    // ALT NESNELERİ PARÇALA
+  const adres = d.adresBilgisi || {};
+  const aile = d.aileBilgisi || {};
+  const okul = d.okulBilgisi || {};
+  const saglik = d.saglikBilgisi || {};
+  const vazife = d.vazifeBilgisi || {};
+
+  const kimlikAd = d.kimlikAd || "-";
+  const durum = d.durum || "-";
+  const dogumTarihi = d.dogumTarihi || "-";
+  const kanGrubu = d.kanGrubu || "-";
+  const memleketIl = tipi === "ensar" ? (d.memleket || "-") : "-";
+  const memleketUlke = tipi === "muhacir" ? (d.memleket || "-") : "-";
+  const ikametDurumu = tipi === "muhacir" ? (d.ikametVarYok || d.ikametDurumu || "-") : "-";
+  const tcKimlik = tipi === "ensar" ? (d.tc || "-") : "-";
+
+const foto = d.fotograf || `https://ui-avatars.com/api/?name=${encodeURIComponent(d.kullAd || "Talebe")}&background=random`;
+const vazifeler = (vazife.vazifeler || []).join(", ");
+const mezhepBtns = ["Hanefi", "Şafi", "Maliki", "Hanbeli"]
     .map(m => `<div class="mezhep-btn${d.mezhep === m ? ' aktif' : ''}">${m}</div>`).join("");
 
   icerik.innerHTML = `
@@ -63,68 +82,71 @@ async function yukleModalIcerik() {
             <h1>KARAAĞAÇ FATİH DAİMİ TEKÂMÜLALTI</h1>
             <h2>2025-2026 Eğitim Yılı | 6. Devre</h2>
           </div>
-          <div class="baslik-sag">
-            <img src="${foto}" alt="Fotoğraf">
-          </div>
+          <div class="baslik-sag"><img src="${foto}" alt="Fotoğraf"></div>
         </div>
 
         <div class="isim">${d.kullAd || '-'}</div>
         <div class="tek-satir"><label>Geldiği Kurs:</label><span>${d.kurs || '-'}</span></div>
 
         <div class="bolum-baslik"><div class="bolum-harf">A</div>TALEBE BİLGİLERİ</div>
-        <div class="row">
-          <div class="etiketli"><label>Kimlikteki Adı</label><div class="kutu">${d.kimlikAd || '-'}</div></div>
-          <div class="etiketli"><label>Durum</label><div class="kutu">${d.durum || '-'}</div></div>
+                <div class="row">
+          <div class="etiketli"><label>Kimlikteki Adı</label><div class="kutu">${kimlikAd}</div></div>
+          <div class="etiketli"><label>Durum</label><div class="kutu">${durum}</div></div>
         </div>
         <div class="row">
-          <div class="etiketli"><label>Doğum Tarihi</label><div class="kutu">${d.dogumTarihi || '-'}</div></div>
-          <div class="etiketli"><label>TC Kimlik</label><div class="kutu">${d.tc || '-'}</div></div>
+          <div class="etiketli"><label>Doğum Tarihi</label><div class="kutu">${dogumTarihi}</div></div>
+          <div class="etiketli"><label>Kan Grubu</label><div class="kutu">${kanGrubu}</div></div>
         </div>
         <div class="row">
-          <div class="etiketli"><label>Memleket</label><div class="kutu">${d.memleket || '-'}</div></div>
-          <div class="etiketli"><label>Kan Grubu</label><div class="kutu">${d.kanGrubu || '-'}</div></div>
+          <div class="etiketli"><label>Memleket (İl)</label><div class="kutu">${memleketIl}</div></div>
+          <div class="etiketli"><label>Memleket (Ülke)</label><div class="kutu">${memleketUlke}</div></div>
+        </div>
+        <div class="row">
+          <div class="etiketli"><label>İkamet Durumu</label><div class="kutu">${ikametDurumu}</div></div>
+          <div class="etiketli"><label>TC Kimlik</label><div class="kutu">${tcKimlik}</div></div>
         </div>
         <div class="etiketli"><label>Mezhep</label><div class="mezhep-btnlar">${mezhepBtns}</div></div>
 
         <div class="bolum-baslik"><div class="bolum-harf">B</div>OKUL BİLGİLERİ</div>
         <div class="row">
-          <div class="etiketli"><label>Öğrenim Seviyesi</label><div class="kutu">${d.ogrenimSeviyesi || '-'}</div></div>
-          <div class="etiketli"><label>Mezuniyet Durumu</label><div class="kutu">${d.mezuniyetDurumu || '-'}</div></div>
-          <div class="etiketli"><label>Eğitim Türü</label><div class="kutu">${d.egitimTuru || '-'}</div></div>
-        </div>
+        <div class="etiketli"><label>Öğrenim Seviyesi</label><div class="kutu">${okul.ogrenimSeviyesi || '-'}</div></div>
+        <div class="etiketli"><label>Mezuniyet Durumu</label><div class="kutu">${okul.mezuniyetDurumu || '-'}</div></div>
+        <div class="etiketli"><label>Eğitim Türü</label><div class="kutu">${okul.egitimTuru || '-'}</div></div>
+      </div>
 
-        <div class="bolum-baslik"><div class="bolum-harf">C</div>ADRES BİLGİLERİ</div>
-        <div class="row"><div class="etiketli"><label>İl / İlçe / Mahalle</label><div class="kutu">${d.adresIl || '-'}/${d.adresIlce || '-'}/${d.adresMahalle || '-'}</div></div></div>
-        <div class="row"><div class="etiketli"><label>Açık Adres</label><div class="kutu">${d.adresAcik || '-'}</div></div></div>
+      <div class="bolum-baslik"><div class="bolum-harf">C</div>ADRES BİLGİLERİ</div>
+      <div class="row"><div class="etiketli"><label>İl / İlçe / Mahalle</label><div class="kutu">${adres.il || '-'}/${adres.ilce || '-'}/${adres.mahalle || '-'}</div></div></div>
+      <div class="row"><div class="etiketli"><label>Açık Adres</label><div class="kutu">${adres.acikAdres || adres.adresAcik || '-'}</div></div></div>
 
         <div class="bolum-baslik"><div class="bolum-harf">D</div>AİLE BİLGİLERİ</div>
         <div class="row">
-          <div class="etiketli"><label>Baba</label>
-            <div class="kutu">${d.babaAd || '-'}</div>
-            <div class="kutu">${d.babaTel || '-'}</div>
-            <div class="kutu">${d.babaMeslek || '-'}</div>
-            <div class="kutu">${d.babaDurum || '-'}</div>
-          </div>
-          <div class="etiketli"><label>Anne</label>
-            <div class="kutu">${d.anneAd || '-'}</div>
-            <div class="kutu">${d.anneTel || '-'}</div>
-            <div class="kutu">${d.anneMeslek || '-'}</div>
-            <div class="kutu">${d.anneDurum || '-'}</div>
-          </div>
+        <div class="etiketli"><label>Baba</label>
+          <div class="kutu">${aile.babaAd || '-'}</div>
+          <div class="kutu">${aile.babaTel || '-'}</div>
+          <div class="kutu">${aile.babaMeslek || '-'}</div>
+          <div class="kutu">${aile.babaDurum || '-'}</div>
         </div>
+        <div class="etiketli"><label>Anne</label>
+          <div class="kutu">${aile.anneAd || '-'}</div>
+          <div class="kutu">${aile.anneTel || '-'}</div>
+          <div class="kutu">${aile.anneMeslek || '-'}</div>
+          <div class="kutu">${aile.anneDurum || '-'}</div>
+        </div>
+      </div>
         <div class="row">
-          <div class="etiketli"><label>Maddi Durum</label><div class="kutu">${d.maddiDurum || '-'}</div></div>
-          <div class="etiketli"><label>Kursta Okuyan</label><div class="kutu">${d.kurstakiKardesSayisi || '-'}</div></div>
-          <div class="etiketli"><label>Kardeş Sayısı</label><div class="kutu">${d.kardesSayisi || '-'}</div></div>
-        </div>
+        <div class="etiketli"><label>Maddi Durum</label><div class="kutu">${aile.maddiDurum || '-'}</div></div>
+        <div class="etiketli"><label>Kursta Okuyan</label><div class="kutu">${aile.kurstakiKardesSayisi || '-'}</div></div>
+        <div class="etiketli"><label>Kardeş Sayısı</label><div class="kutu">${aile.kardesSayisi || '-'}</div></div>
+      </div>
 
         <div class="bolum-baslik"><div class="bolum-harf">E</div>SAĞLIK BİLGİLERİ</div>
-        <div class="row"><div class="etiketli"><label>Not</label><div class="kutu">${d.rahatsizlik || '-'}</div></div></div>
+      <div class="row"><div class="etiketli"><label>Not</label><div class="kutu">${saglik.rahatsizlik || '-'}</div></div></div>
 
-        <div class="bolum-baslik"><div class="bolum-harf">F</div>VAZİFE BİLGİLERİ</div>
-        <div class="row"><div class="etiketli"><label>Vazifeler</label><div class="kutu">${vazifeler || '-'}</div></div></div>
-        <div class="row"><div class="etiketli"><label>Cuma Namazı Kıldırabilir</label><div class="kutu">${d.cumaKilabilir || '-'}</div></div></div>
-      </div>
+       <div class="bolum-baslik"><div class="bolum-harf">F</div>VAZİFE BİLGİLERİ</div>
+      <div class="row"><div class="etiketli"><label>Vazifeler</label><div class="kutu">${vazifeler || '-'}</div></div></div>
+      <div class="row"><div class="etiketli"><label>Cuma Namazı Kıldırabilir</label><div class="kutu">${vazife.cumaKilabilir || '-'}</div></div></div>
+    </div>
+
 
       <div class="modal-footer">
         <button onclick="modalKapat()">Kapat</button>
@@ -134,7 +156,7 @@ async function yukleModalIcerik() {
   `;
 }
 
-// talebe-modal.js içine en alta ekle:
+// Modal kapatma
 window.modalKapat = function () {
   const modal = document.getElementById("talebeModal");
   if (modal) {
@@ -143,6 +165,7 @@ window.modalKapat = function () {
   }
 }
 
+// PDF çıktısı alma
 window.pdfCiktisiAl = function () {
   const el = document.getElementById("pdfAlani");
   html2pdf().from(el).save("talebe.pdf");

@@ -1,53 +1,3 @@
-// İl - İlçe - Mahalle veri yapısı (anahtarlar küçük harfle)
-const adresVeri = {
-  istanbul: {
-    umraniye: ["Karaağaç", "Huzur", "Tatlısu"],
-    buyukcekmece: ["Pınartepe", "Kumburgaz", "Mimaroba"]
-  },
-  ankara: {
-    kecioren: ["Etlik", "Bağlum", "Şentepe"],
-    cankaya: ["Kızılay", "Bahçelievler", "Yıldız"]
-  }
-};
-
-// İlçe listesini güncelle
-function ilceYukle() {
-  const il = document.getElementById("adresIl").value;
-  const ilceSelect = document.getElementById("adresIlce");
-  const mahalleSelect = document.getElementById("adresMahalle");
-
-  ilceSelect.innerHTML = `<option value="">Seçiniz...</option>`;
-  mahalleSelect.innerHTML = `<option value="">Seçiniz...</option>`;
-
-  if (il && adresVeri[il]) {
-    Object.keys(adresVeri[il]).forEach(ilceKey => {
-      const option = document.createElement("option");
-      option.value = ilceKey;
-      option.textContent = ilceKey.charAt(0).toUpperCase() + ilceKey.slice(1);
-      ilceSelect.appendChild(option);
-    });
-  }
-}
-
-// Mahalle listesini güncelle
-function mahalleYukle() {
-  const il = document.getElementById("adresIl").value;
-  const ilce = document.getElementById("adresIlce").value;
-  const mahalleSelect = document.getElementById("adresMahalle");
-
-  mahalleSelect.innerHTML = `<option value="">Seçiniz...</option>`;
-
-  if (il && ilce && adresVeri[il] && adresVeri[il][ilce]) {
-    adresVeri[il][ilce].forEach(mahalle => {
-      const option = document.createElement("option");
-      option.value = mahalle;
-      option.textContent = mahalle;
-      mahalleSelect.appendChild(option);
-    });
-  }
-}
-
-// Geri dön
 function geriGelAdim2() {
   fetch("parcalar/talebe-kayit-adim2.html")
     .then(res => res.text())
@@ -59,7 +9,6 @@ function geriGelAdim2() {
     });
 }
 
-// İleri butonu işlemi
 function ilerleAdim3() {
   const uid = localStorage.getItem("aktifTalebeUID");
   if (!uid) {
@@ -67,19 +16,17 @@ function ilerleAdim3() {
     return;
   }
 
-  const il = document.getElementById("adresIl").value;
-  const ilce = document.getElementById("adresIlce").value;
-  const mahalle = document.getElementById("adresMahalle").value;
+  const il = document.getElementById("adresIl").value.trim();
+  const ilce = document.getElementById("adresIlce").value.trim();
+  const mahalle = document.getElementById("adresMahalle").value.trim();
   const acikAdres = document.getElementById("adresAcik").value.trim();
 
+  if (!il || !ilce || !mahalle) {
+    return toastGoster("Lütfen il, ilçe ve mahalle alanlarını doldurunuz.", "hata");
+  }
 
   const veri = {
-    adresBilgisi: {
-      adresIl: il,
-      adresIlce: ilce,
-      adresMahalle: mahalle,
-      adresAcik: acikAdres
-    },
+    adresBilgisi: { il, ilce, mahalle, acikAdres },
     guncelleme: firebase.firestore.FieldValue.serverTimestamp()
   };
 
@@ -103,7 +50,6 @@ function ilerleAdim3() {
     });
 }
 
-// Toast fonksiyonu
 function toastGoster(mesaj, tur = "basari") {
   const toast = document.getElementById("toast");
   toast.textContent = mesaj;

@@ -1,17 +1,13 @@
-// pdf-cikti.js
-
 function pdfCiktisiAl() {
-  const el = document.getElementById("pdfAlani");
-  html2pdf().from(el).save("talebe-bilgisi.pdf");
-
+  const element = document.getElementById("pdfAlani");
   if (!element) {
     alert("PDF alanı bulunamadı!");
     return;
   }
 
   const opt = {
-    margin:       [0.5, 0.5, 0.5, 0.5], // üst, sol, alt, sağ
-    filename:     'talebe-bilgi-formu.pdf',
+    margin:       [0.5, 0.5, 0.5, 0.5],
+    filename:     'talebe-bilgisi.pdf',
     image:        { type: 'jpeg', quality: 0.98 },
     html2canvas:  {
       scale: 2,
@@ -28,6 +24,5 @@ function pdfCiktisiAl() {
     }
   };
 
-  // PDF oluştur
   html2pdf().set(opt).from(element).save();
 }
