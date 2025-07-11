@@ -21,10 +21,6 @@ function ilerleAdim3() {
   const mahalle = document.getElementById("adresMahalle").value.trim();
   const acikAdres = document.getElementById("adresAcik").value.trim();
 
-  if (!il || !ilce || !mahalle) {
-    return toastGoster("Lütfen il, ilçe ve mahalle alanlarını doldurunuz.", "hata");
-  }
-
   const veri = {
     adresBilgisi: { il, ilce, mahalle, acikAdres },
     guncelleme: firebase.firestore.FieldValue.serverTimestamp()

@@ -40,10 +40,10 @@ async function yukleModalIcerik() {
   const durum = d.durum || "-";
   const dogumTarihi = d.dogumTarihi || "-";
   const kanGrubu = d.kanGrubu || "-";
-  const memleketIl = tipi === "ensar" ? (d.memleket || "-") : "-";
-  const memleketUlke = tipi === "muhacir" ? (d.memleket || "-") : "-";
-  const ikametDurumu = tipi === "muhacir" ? (d.ikametVarYok || d.ikametDurumu || "-") : "-";
-  const tcKimlik = tipi === "ensar" ? (d.tc || "-") : "-";
+  const memleketIl = d.memleket || "-";
+  const memleketUlke = d.ulke || "-";
+  const ikametDurumu = d.ikamet || "-";
+  const tcKimlik = d.tc || "-";
 
 const foto = d.fotograf || `https://ui-avatars.com/api/?name=${encodeURIComponent(d.kullAd || "Talebe")}&background=random`;
 const vazifeler = (vazife.vazifeler || []).join(", ");
@@ -102,8 +102,8 @@ const mezhepBtns = ["Hanefi", "Şafi", "Maliki", "Hanbeli"]
           <div class="etiketli"><label>Memleket (Ülke)</label><div class="kutu">${memleketUlke}</div></div>
         </div>
         <div class="row">
-          <div class="etiketli"><label>İkamet Durumu</label><div class="kutu">${ikametDurumu}</div></div>
           <div class="etiketli"><label>TC Kimlik</label><div class="kutu">${tcKimlik}</div></div>
+          <div class="etiketli"><label>İkamet Durumu</label><div class="kutu">${ikametDurumu}</div></div>
         </div>
         <div class="etiketli"><label>Mezhep</label><div class="mezhep-btnlar">${mezhepBtns}</div></div>
 
@@ -135,16 +135,16 @@ const mezhepBtns = ["Hanefi", "Şafi", "Maliki", "Hanbeli"]
       </div>
         <div class="row">
         <div class="etiketli"><label>Maddi Durum</label><div class="kutu">${aile.maddiDurum || '-'}</div></div>
-        <div class="etiketli"><label>Kursta Okuyan</label><div class="kutu">${aile.kurstakiKardesSayisi || '-'}</div></div>
-        <div class="etiketli"><label>Kardeş Sayısı</label><div class="kutu">${aile.kardesSayisi || '-'}</div></div>
+        <div class="etiketli"><label>Kursta Okuyan "Kend.Hariç"</label><div class="kutu">${aile.kurstakiKardesSayisi || '-'}</div></div>
+        <div class="etiketli"><label>Kardeş Sayısı "Kend.Dahil"</label><div class="kutu">${aile.kardesSayisi || '-'}</div></div>
       </div>
 
         <div class="bolum-baslik"><div class="bolum-harf">E</div>SAĞLIK BİLGİLERİ</div>
       <div class="row"><div class="etiketli"><label>Not</label><div class="kutu">${saglik.rahatsizlik || '-'}</div></div></div>
 
        <div class="bolum-baslik"><div class="bolum-harf">F</div>VAZİFE BİLGİLERİ</div>
-      <div class="row"><div class="etiketli"><label>Vazifeler</label><div class="kutu">${vazifeler || '-'}</div></div></div>
-      <div class="row"><div class="etiketli"><label>Cuma Namazı Kıldırabilir</label><div class="kutu">${vazife.cumaKilabilir || '-'}</div></div></div>
+      <div class="row"><div class="etiketli"><label>Vazifeleri</label><div class="kutu">${vazifeler || '-'}</div></div></div>
+      <div class="row"><div class="etiketli"><label>Cuma Namazı Kıldırabilir Mi?</label><div class="kutu">${vazife.cumaKilabilir || '-'}</div></div></div>
     </div>
 
 

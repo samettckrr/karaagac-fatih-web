@@ -8,7 +8,7 @@ function pdfCiktisiAl() {
   const opt = {
     margin:       [0.5, 0.5, 0.5, 0.5],
     filename:     'talebe-bilgisi.pdf',
-    image:        { type: 'jpeg', quality: 0.98 },
+    image:        { type: 'png', quality: 0.98 },
     html2canvas:  {
       scale: 2,
       useCORS: true,

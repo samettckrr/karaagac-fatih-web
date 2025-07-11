@@ -29,7 +29,7 @@ window.ilerleAdim1 = async function () {
   }
 
   // Ortak zorunlu alanlar kontrolü
-  if (!kimlikAd || !kullAd || !dogumTarihi || !kurs || !durum || !mezhep || !kanGrubu) {
+  if (!kimlikAd || !kullAd || !dogumTarihi || !kurs || !durum || !mezhep) {
     toastGoster("Lütfen tüm alanları doldurunuz.");
     return;
   }
