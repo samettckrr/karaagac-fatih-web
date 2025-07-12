@@ -24,8 +24,8 @@ function talebeBilgiFormuYukle() {
         const uid = doc.id;
 
         toplam++;
-        if (data.durum === "ensar") ensar++;
-        else if (data.durum === "muhacir") muhacir++;
+        if (data.durum === "Ensar") ensar++;
+        else if (data.durum === "Muhacir") muhacir++;
 
 const kart = document.createElement("div");
 kart.classList.add("talebe-kart");

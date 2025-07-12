@@ -39,6 +39,11 @@ async function yukleModalIcerik() {
   const kimlikAd = d.kimlikAd || "-";
   const durum = d.durum || "-";
   const dogumTarihi = d.dogumTarihi || "-";
+  let dogumTarihiGoster = dogumTarihi;
+if (dogumTarihi && dogumTarihi.includes("-")) {
+  const [yil, ay, gun] = dogumTarihi.split("-");
+  dogumTarihiGoster = `${gun}.${ay}.${yil}`;
+}
   const kanGrubu = d.kanGrubu || "-";
   const memleketIl = d.memleket || "-";
   const memleketUlke = d.ulke || "-";
@@ -94,7 +99,7 @@ const mezhepBtns = ["Hanefi", "Şafi", "Maliki", "Hanbeli"]
           <div class="etiketli"><label>Durum</label><div class="kutu">${durum}</div></div>
         </div>
         <div class="row">
-          <div class="etiketli"><label>Doğum Tarihi</label><div class="kutu">${dogumTarihi}</div></div>
+          <div class="etiketli"><label>Doğum Tarihi</label><div class="kutu">${dogumTarihiGoster}</div></div>
           <div class="etiketli"><label>Kan Grubu</label><div class="kutu">${kanGrubu}</div></div>
         </div>
         <div class="row">
