@@ -98,7 +98,7 @@ function paneliYukle(panelAdi) {
     kartlar = [
       { baslik: "Nöbet Çizelgesi", ikon: "📅", link: "personel/nobet.html" },
       { baslik: "Personel Aylık Performans", ikon: "📊", link: "personel/aylik-performans.html" },
-      { baslik: "Bağış Hedefi", ikon: "🎯", link: "personel/bagis-hedefi.html" },
+      { baslik: "Hedefler", ikon: "🎯", link: "diger/grafik/muhasebe-grafik.html" },
       { baslik: "Alacak Takibi", ikon: "💰", link: "personel/alacak-takibi.html" },
       { baslik: "Temizlik Kontrolü", ikon: "🧹", link: "personel/temizlik-kontrolu.html" }
     ];
@@ -111,7 +111,8 @@ function paneliYukle(panelAdi) {
     kartlar = [
       { baslik: "İçeriği Daha Sonra Paylaşılacaktır", ikon: "📑", link: "diger/genel-muhasebe.html" },
       { baslik: "Kullanıcı Yönetimi", ikon: "🛠️", link: "diger/kullanici-yonetimi.html" },
-      { baslik: "Sistem Ayarları", ikon: "⚙️", link: "diger/sistem-ayarlari.html" }
+      { baslik: "Sistem Ayarları", ikon: "⚙️", link: "diger/sistem-ayarlari.html" },
+      { baslik: "Form Girişi" , ikon: "📝" , link: "diger/muhasebe-form.html"},
     ];
   }
 
