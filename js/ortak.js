@@ -107,12 +107,18 @@ function paneliYukle(panelAdi) {
       { baslik: "Yemek Listesi", ikon: "🍽️", link: "yemek.html" },
       { baslik: "İkram Raporu", ikon: "☕", link: "ikram.html" }
     ];
+
+  } else if (panelAdi === "kermes") {
+    kartlar = [
+      { baslik: "Kermes" , ikon: "🏪", link: "kermes/kermes.html"},
+    ];  
   } else if (panelAdi === "diger") {
     kartlar = [
       { baslik: "İçeriği Daha Sonra Paylaşılacaktır", ikon: "📑", link: "diger/genel-muhasebe.html" },
       { baslik: "Kullanıcı Yönetimi", ikon: "🛠️", link: "diger/kullanici-yonetimi.html" },
       { baslik: "Sistem Ayarları", ikon: "⚙️", link: "diger/sistem-ayarlari.html" },
       { baslik: "Form Girişi" , ikon: "📝" , link: "diger/muhasebe-form.html"},
+      { baslik: "Menü Yönetim Paneli" , ikon: "📋" , link: "kermes/menu.html"}, 
     ];
   }
 
