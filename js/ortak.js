@@ -100,17 +100,19 @@ function paneliYukle(panelAdi) {
       { baslik: "Personel Aylık Performans", ikon: "📊", link: "personel/aylik-performans.html" },
       { baslik: "Hedefler", ikon: "🎯", link: "diger/grafik/muhasebe-grafik.html" },
       { baslik: "Alacak Takibi", ikon: "💰", link: "personel/alacak-takibi.html" },
-      { baslik: "Temizlik Kontrolü", ikon: "🧹", link: "personel/temizlik-kontrolu.html" }
+      { baslik: "Temizlik Kontrolü", ikon: "🧹", link: "personel/temizlik-kontrolu.html" },
     ];
   } else if (panelAdi === "nehari") {
     kartlar = [
-      { baslik: "Yemek Listesi", ikon: "🍽️", link: "yemek.html" },
-      { baslik: "İkram Raporu", ikon: "☕", link: "ikram.html" }
+      { baslik: "Talebe Listesi", ikon: "📋", link: "calisma-karti.html" },
+      { baslik: "Diğer", ikon: "📗", link: "calisma-karti.html" },
+      { baslik: "Diğer", ikon: "📗", link: "calisma-karti.html"},
     ];
 
   } else if (panelAdi === "kermes") {
     kartlar = [
-      { baslik: "Kermes" , ikon: "🏪", link: "kermes/kermes.html"},
+      { baslik: "Kermes" , ikon: "🍽️🍢", link: "kermes/kermes.html"},
+      { baslik: "Rapor" , ikon: "📝", link: "calisma-karti.html"},
     ];  
   } else if (panelAdi === "diger") {
     kartlar = [
