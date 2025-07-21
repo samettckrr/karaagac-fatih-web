@@ -92,9 +92,10 @@ function paneliYukle(panelAdi) {
       { baslik: "Talebe Listesi", ikon: "📋", link: "talebe-liste.html" },
       { baslik: "Takrir Durumu", ikon: "📗", link: "talebe/ezber-takibi.html" },
       { baslik: "İzin Giriş/Çıkış", ikon: "🛫", link: "talebe/izin-giriscikis.html" },
-      { baslik: "Ezber Takibi", ikon: "📈", link: "talebe/ezber-takibi.html" }
+      { baslik: "Ezber Takibi", ikon: "📈", link: "talebe/ezber-takibi.html" },
+      { baslik: "Aidat ve Kitap Ücretleri", ikon: "📥", link: "talebe/aidat-kitap.html" },
     ];
-  } else if (panelAdi === "personel") {
+  } else if (panelAdi === "personel") { 
     kartlar = [
       { baslik: "Nöbet Çizelgesi", ikon: "📅", link: "personel/nobet.html" },
       { baslik: "Personel Aylık Performans", ikon: "📊", link: "personel/aylik-performans.html" },
@@ -111,7 +112,7 @@ function paneliYukle(panelAdi) {
 
   } else if (panelAdi === "kermes") {
     kartlar = [
-      { baslik: "Kermes" , ikon: "🍽️🍢", link: "kermes/kermes.html"},
+      { baslik: "Kermes" , ikon: "🍽️ 🍢", link: "kermes/kermes.html"},
       { baslik: "Rapor" , ikon: "📝", link: "calisma-karti.html"},
     ];  
   } else if (panelAdi === "diger") {
@@ -121,6 +122,13 @@ function paneliYukle(panelAdi) {
       { baslik: "Sistem Ayarları", ikon: "⚙️", link: "diger/sistem-ayarlari.html" },
       { baslik: "Form Girişi" , ikon: "📝" , link: "diger/muhasebe-form.html"},
       { baslik: "Menü Yönetim Paneli" , ikon: "📋" , link: "kermes/menu.html"}, 
+    ];
+  } else if (panelAdi === "admin") {
+    kartlar = [
+      { baslik: "Kullanıcılar" , ikon: "👥", link: "admin/kullanici-listesi.html"},
+      { baslik: "Giriş Kayıtları" , ikon: "🧾", link: "admin/giris-kayitlari.html"},
+      { baslik: "Erişim Talepleri", ikon: "🔐", link: "admin/erisimler.html"},
+      { baslik: "Bildirim/Görev Sistemi", ikon: "🔔", link: "admin/bildirim-gorev.html"},
     ];
   }
 

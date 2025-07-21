@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Kullanıcı Listesi</title>
+  <link rel="stylesheet" href="../css/stiller.css" />
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f4f6f9;
+      margin: 0;
+    }
+    header {
+      background-color: #324960;
+      color: white;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .header-left {
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .header-right button {
+      margin: 5px;
+      background-color: #4a637d;
+      border: none;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .container {
+      padding: 20px;
+    }
+    .butonlar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .butonlar button {
+      background-color: #2d6a4f;
+      color: white;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 15px;
+      cursor: pointer;
+    }
+    .butonlar button:hover {
+      background-color: #225c3f;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background-color: white;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    th, td {
+      padding: 12px 10px;
+      border-bottom: 1px solid #ddd;
+      text-align: left;
+      font-size: 15px;
+    }
+    th {
+      background-color: #e3e3e3;
+    }
+    .aktif { color: green; font-weight: bold; }
+    .pasif { color: red; font-weight: bold; }
+    .aksiyon-btn {
+      cursor: pointer;
+      color: #007bff;
+      margin-right: 10px;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      th, td {
+        font-size: 13px;
+        padding: 10px 6px;
+      }
+      .butonlar {
+        flex-direction: column;
+      }
+      .header-left {
+        margin-bottom: 10px;
+      }
+    }
+
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0; top: 0;
+      width: 100%; height: 100%;
+      background-color: rgba(0,0,0,0.5);
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-icerik {
+      background: white;
+      padding: 20px 30px;
+      border-radius: 10px;
+      width: 100%;
+      max-width: 500px;
+    }
+    .modal input, .modal select {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    .modal .kapat-btn {
+      background-color: #ccc;
+      margin-top: 15px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">Karaağaç Panel > Kullanıcı Yönetimi</div>
+  <div class="header-right">
+    <button onclick="window.history.back()">🔙 Geri Dön</button>
+    <button onclick="firebase.auth().signOut()">🚪 Çıkış Yap</button>
+  </div>
+</header>
+
+<div class="container">
+  <div class="butonlar">
+    <button onclick="modalAc('ekle')">➕ Kullanıcı Ekle</button>
+    <button onclick="modalAc('yetki')">🔐 Yetki Düzenle</button>
+    <button onclick="modalAc('durum')">♻️ Toplu Durum</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Ad Soyad</th>
+        <th>Email</th>
+        <th>Rol</th>
+        <th>Durum</th>
+        <th>İşlem</th>
+      </tr>
+    </thead>
+    <tbody id="kullaniciListe">
+      <!-- Dinamik içerik -->
+    </tbody>
+  </table>
+</div>
+
+<!-- 3 Farklı Modal: Kullanıcı Ekle, Yetki Düzenle, Toplu Durum -->
+<div class="modal" id="modalGenel">
+  <div class="modal-icerik" id="modalIcerik">
+    <!-- İçerik JS ile yüklenecek -->
+  </div>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="../js/firebase/firebase-init.js"></script>
+    
+<script>
+  const modal = document.getElementById("modalGenel");
+  const modalIcerik = document.getElementById("modalIcerik");
+
+  // Modal Aç
+  function modalAc(tip) {
+    modal.style.display = "flex";
+
+    if (tip === "ekle") {
+      modalIcerik.innerHTML = `
+        <h3>Yeni Kullanıcı Ekle</h3>
+        <input type="text" id="adSoyad" placeholder="Ad Soyad">
+        <input type="email" id="email" placeholder="Email">
+        <input type="text" id="rol" placeholder="Rol (admin, personel)">
+        <select id="durum">
+          <option value="aktif">Aktif</option>
+          <option value="pasif">Pasif</option>
+        </select>
+        <button onclick="kullaniciKaydet()">Kaydet</button>
+        <button class="kapat-btn" onclick="modalKapat()">Kapat</button>
+      `;
+    }
+
+    else if (tip === "yetki") {
+      modalIcerik.innerHTML = `
+        <h3>Yetki Düzenleme (placeholder)</h3>
+        <p>Bu alan ileride aktif edilecek. Kullanıcıya özel sayfa yetkileri atanacak.</p>
+        <button class="kapat-btn" onclick="modalKapat()">Kapat</button>
+      `;
+    }
+
+    else if (tip === "durum") {
+      modalIcerik.innerHTML = `
+        <h3>Toplu Durum Güncelle</h3>
+        <select id="yeniDurum">
+          <option value="aktif">Tümünü Aktif Yap</option>
+          <option value="pasif">Tümünü Pasif Yap</option>
+        </select>
+        <button onclick="topluDurumGuncelle()">Uygula</button>
+        <button class="kapat-btn" onclick="modalKapat()">Kapat</button>
+      `;
+    }
+  }
+
+  function modalKapat() {
+    modal.style.display = "none";
+  }
+
+  async function kullaniciKaydet() {
+    const adSoyad = document.getElementById("adSoyad").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const rol = document.getElementById("rol").value.trim();
+    const durum = document.getElementById("durum").value;
+
+    if (!adSoyad || !email || !rol) {
+      alert("Tüm alanlar zorunlu!");
+      return;
+    }
+
+    try {
+      await db.collection("kullanicilar").add({
+        adSoyad, email, rol, durum,
+        olusturma: new Date()
+      });
+      alert("Kullanıcı başarıyla eklendi.");
+      modalKapat();
+      listeYukle();
+    } catch (e) {
+      alert("Hata: " + e.message);
+    }
+  }
+
+  async function listeYukle() {
+    const tbody = document.getElementById("kullaniciListe");
+    tbody.innerHTML = "";
+
+    const snap = await db.collection("kullanicilar").orderBy("adSoyad").get();
+    snap.forEach(doc => {
+      const data = doc.data();
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${data.adSoyad}</td>
+        <td>${data.email}</td>
+        <td>${data.rol}</td>
+        <td class="${data.durum === 'aktif' ? 'aktif' : 'pasif'}">${data.durum}</td>
+        <td>
+          <span class="aksiyon-btn" onclick="alert('Düzenleme gelecektir')">✏️</span>
+          <span class="aksiyon-btn" onclick="kullaniciSil('${doc.id}')">🗑️</span>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function kullaniciSil(id) {
+    if (confirm("Bu kullanıcıyı silmek istediğinize emin misiniz?")) {
+      await db.collection("kullanicilar").doc(id).delete();
+      listeYukle();
+    }
+  }
+
+  async function topluDurumGuncelle() {
+    const yeniDurum = document.getElementById("yeniDurum").value;
+
+    const snap = await db.collection("kullanicilar").get();
+    const batch = db.batch();
+
+    snap.forEach(doc => {
+      const ref = db.collection("kullanicilar").doc(doc.id);
+      batch.update(ref, { durum: yeniDurum });
+    });
+
+    await batch.commit();
+    alert("Toplu durum güncellendi.");
+    modalKapat();
+    listeYukle();
+  }
+
+  firebase.auth().onAuthStateChanged(user => {
+    if (!user) {
+      location.href = "../index.html";
+    } else {
+      listeYukle();
+    }
+  });
+</script>
+
+</body>
+</html>
