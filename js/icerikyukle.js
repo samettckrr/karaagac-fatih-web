@@ -24,7 +24,7 @@ function icerikYukle(icerik) {
 
   else if (icerik === 'bilgi') {
     // Talebe bilgi formu + modal
-    fetch("talebe-bilgi-formu.html")
+    fetch("talebe/talebe-bilgi-formu.html")
       .then(res => res.text())
       .then(html => {
         icerikPaneli.innerHTML = html;

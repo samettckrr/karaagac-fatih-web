@@ -44,7 +44,57 @@ document.addEventListener("DOMContentLoaded", () => {
 // =========================
 
 function baslatPanel() {
-  console.log("Panel yüklendi"); // Giriş kontrolü burada yapılabilir
+  firebase.auth().onAuthStateChanged(async (user) => {
+    if (!user) {
+      window.location.href = "index.html";
+      return;
+    }
+
+    const uid = user.uid;
+
+    try {
+      const doc = await firebase.firestore().collection("kullanicilar").doc(uid).get();
+      const veri = doc.data();
+
+      if (!veri) {
+        alert("Kullanıcı bilgisi bulunamadı.");
+        logout();
+        return;
+      }
+
+      const yetkiler = veri.yetkiler || [];
+
+      // Tüm panel id'lerini eşleştir
+      const panelIdMap = {
+        "Talebe": "yanTalebe",
+        "Personel": "yanPersonel",
+        "Nehari": "yanNehari",
+        "Kermes": "yanKermes",
+        "Diğer": "yanAyarlar",
+        "Kontrol Paneli": "yanAdmin",
+        "Muhasebe": "yanMuhasebe",
+      };
+
+      // Önce tüm panelleri gizle
+      Object.values(panelIdMap).forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = "none";
+      });
+
+      // Yetkisi olanları göster
+      yetkiler.forEach(yetki => {
+        const el = document.getElementById(panelIdMap[yetki]);
+        if (el) el.style.display = "block";
+      });
+
+        // En sonda paneli görünür yap
+      document.getElementById("yanPanel").style.visibility = "visible";
+
+    } catch (err) {
+      console.error("Yetki kontrol hatası:", err.message);
+      logout();
+    }
+  });
 }
 
 function logout() {
@@ -89,7 +139,7 @@ function paneliYukle(panelAdi) {
 
   if (panelAdi === "talebe") {
     kartlar = [
-      { baslik: "Talebe Listesi", ikon: "📋", link: "talebe-liste.html" },
+      { baslik: "Talebe Kayıt ve Bilgi", ikon: "📋", link: "talebe-liste.html" },
       { baslik: "Takrir Durumu", ikon: "📗", link: "talebe/ezber-takibi.html" },
       { baslik: "İzin Giriş/Çıkış", ikon: "🛫", link: "talebe/izin-giriscikis.html" },
       { baslik: "Ezber Takibi", ikon: "📈", link: "talebe/ezber-takibi.html" },
@@ -99,7 +149,7 @@ function paneliYukle(panelAdi) {
     kartlar = [
       { baslik: "Nöbet Çizelgesi", ikon: "📅", link: "personel/nobet.html" },
       { baslik: "Personel Aylık Performans", ikon: "📊", link: "personel/aylik-performans.html" },
-      { baslik: "Hedefler", ikon: "🎯", link: "diger/grafik/muhasebe-grafik.html" },
+      { baslik: "Hedefler", ikon: "🎯", link: "personel/hedef-grafik.html" },
       { baslik: "Alacak Takibi", ikon: "💰", link: "personel/alacak-takibi.html" },
       { baslik: "Temizlik Kontrolü", ikon: "🧹", link: "personel/temizlik-kontrolu.html" },
     ];
@@ -109,22 +159,26 @@ function paneliYukle(panelAdi) {
       { baslik: "Diğer", ikon: "📗", link: "calisma-karti.html" },
       { baslik: "Diğer", ikon: "📗", link: "calisma-karti.html"},
     ];
-
   } else if (panelAdi === "kermes") {
     kartlar = [
       { baslik: "Kermes" , ikon: "🍽️ 🍢", link: "kermes/kermes.html"},
-      { baslik: "Rapor" , ikon: "📝", link: "calisma-karti.html"},
+      { baslik: "Menü Yönetim Paneli" , ikon: "📋" , link: "kermes/menu.html"}, 
     ];  
-  } else if (panelAdi === "diger") {
+  } else if (panelAdi === "ayarlar") {
     kartlar = [
-      { baslik: "İçeriği Daha Sonra Paylaşılacaktır", ikon: "📑", link: "diger/genel-muhasebe.html" },
       { baslik: "Kullanıcı Yönetimi", ikon: "🛠️", link: "diger/kullanici-yonetimi.html" },
       { baslik: "Sistem Ayarları", ikon: "⚙️", link: "diger/sistem-ayarlari.html" },
-      { baslik: "Form Girişi" , ikon: "📝" , link: "diger/muhasebe-form.html"},
-      { baslik: "Menü Yönetim Paneli" , ikon: "📋" , link: "kermes/menu.html"}, 
     ];
+  } else if (panelAdi === "muhasebe") {
+    kartlar = [
+      { baslik: "FORM -Hedef ve Veri Girişi-" , ikon: "🍽️ 🍢", link: "muhasebe/muhasebe-form.html"},
+      { baslik: "Kermes Raporu" , ikon: "📝", link: "calisma-karti.html"},
+      { baslik: "Aylık Giderler" , ikon: "", link: "calisma-karti.html"},
+      { baslik: "İçeriği Daha Sonra Paylaşılacaktır", ikon: "📑", link: "muhasebe/genel-muhasebe.html" },
+    ];  
   } else if (panelAdi === "admin") {
     kartlar = [
+      { baslik: "Kullanıcı Ekle" , ikon: "", link: "admin/kullanici-ekle.html"},
       { baslik: "Kullanıcılar" , ikon: "👥", link: "admin/kullanici-listesi.html"},
       { baslik: "Giriş Kayıtları" , ikon: "🧾", link: "admin/giris-kayitlari.html"},
       { baslik: "Erişim Talepleri", ikon: "🔐", link: "admin/erisimler.html"},
@@ -182,12 +236,12 @@ function icerikYukle(icerik) {
 
   else if (icerik === 'bilgi') {
     // Bilgi formu
-    fetch("talebe-bilgi-formu.html")
+    fetch("talebe/talebe-bilgi-formu.html")
       .then(res => res.text())
       .then(html => {
         icerikPaneli.innerHTML = html;
         const script = document.createElement("script");
-        script.src = "/js/talebe-bilgi.js";
+        script.src = "js/talebe-bilgi.js";
         document.body.appendChild(script);
       });
   }

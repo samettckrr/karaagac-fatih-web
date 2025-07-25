@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Muhasebe Grafik</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="../../js/firebase/firebase-init.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f4f6f9;
+      margin: 0;
+      padding: 0;
+    }
+
+    .ust-logo {
+      text-align: center;
+      padding: 20px 10px 10px;
+    }
+
+    .ust-logo h1 {
+      font-size: 28px;
+      color: #1c2c40;
+      margin: 0;
+    }
+
+    .ust-logo h2 {
+      font-size: 14px;
+      color: #3c3c3c;
+      font-style: italic;
+      margin-top: 4px;
+    }
+
+    .kart-kutu {
+      background: white;
+      border-radius: 12px;
+      max-width: 960px;
+      margin: 20px auto;
+      padding: 25px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.08);
+    }
+
+    .secim-paneli {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 10px;
+    }
+
+    .secim-kutu {
+      flex: 1;
+      min-width: 220px;
+    }
+
+    .secim-kutu label {
+      font-weight: bold;
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    select {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 15px;
+    }
+
+    .guncelleme-bilgi {
+      font-size: 14px;
+      color: #555;
+      text-align: right;
+      flex: 1 1 100%;
+    }
+
+    .tablo-kapsayici {
+      overflow-x: auto;
+      margin-top: 20px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: right;
+    }
+
+    th, td {
+      padding: 8px 10px;
+      border: 1px solid #ddd;
+      white-space: normal;
+      word-wrap: break-word;
+      text-align: center;
+    }
+
+    th {
+      background-color: #f2f2f2;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    td:first-child {
+      text-align: left;
+      height: 35px; /* veya 60px gibi istediğin değeri yaz */
+    }
+
+    td:last-child {
+      font-weight: bold;
+      color: white;
+    }
+
+    .toplam-kutular {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-top: 25px;
+      justify-content: space-between;
+    }
+
+    .toplam-kutular p {
+      flex: 1;
+      background-color: #f8f9f9;
+      border-left: 5px solid #0ea14b;
+      padding: 10px 15px;
+      font-weight: bold;
+      margin: 0;
+      border-radius: 6px;
+    }
+
+    @media screen and (max-width: 600px) {
+      .secim-paneli {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="ust-logo">
+    <h1>KARAAĞAÇ FATİH</h1>
+    <h2>Daimi Tekâmülaltı</h2>
+  </div>
+
+  <div class="kart-kutu">
+    <div class="secim-paneli">
+      <div class="secim-kutu">
+        <label for="kategoriSecimi">Kategori Seçiniz:</label>
+        <select id="kategoriSecimi" onchange="kategoriDegisti()">
+          <option value="Kitap Kampanyası">Kitap Kampanyası</option>
+          <option value="Muhacir Hediye">Muhacir Hediye/İhtiyaç</option>
+          <option value="Talebeye İkram">Talebeye İkram</option>
+        </select>
+      </div>
+
+      <div class="secim-kutu">
+        <label for="filtreSecimi">Filtrele:</label>
+        <select id="filtreSecimi" onchange="filtreUygula()">
+          <option value="oran-azalan" selected>Ulaşma Nispeti (Azalan)</option>
+          <option value="oran-artan">Ulaşma Nispeti (Artan)</option>
+          <option value="personel-az">Personel (A → Z)</option>
+          <option value="personel-za">Personel (Z → A)</option>
+          <option value="hedef-artan">Hedef (Artan)</option>
+          <option value="hedef-azalan">Hedef (Azalan)</option>
+          <option value="temin-artan">Temin (Artan)</option>
+          <option value="temin-azalan">Temin (Azalan)</option>
+        </select>
+      </div>
+
+      <div class="guncelleme-bilgi">
+        🕒 Son Güncelleme: <span id="guncellemeZamani">yükleniyor...</span>
+      </div>
+    </div>
+
+    <div class="tablo-kapsayici">
+      <table id="hedefTablosu">
+        <thead>
+          <tr>
+            <th>Personel</th>
+            <th>Hedef (₺)</th>
+            <th>Temin Edilen (₺)</th>
+            <th>Ulaşma Nispeti (%)</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="toplam-kutular">
+      <p>Toplam Hedef: <span id="toplamHedef">₺0</span></p>
+      <p>Toplam Temin: <span id="toplamTemin">₺0</span></p>
+      <p>Genel Ulaşma Oranı: <span id="toplamOran">%0</span></p>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const db = firebase.firestore();
+      const kategoriSecimi = document.getElementById("kategoriSecimi");
+      const tabloBody = document.querySelector("#hedefTablosu tbody");
+      const toplamHedefEl = document.getElementById("toplamHedef");
+      const toplamTeminEl = document.getElementById("toplamTemin");
+      const toplamOranEl = document.getElementById("toplamOran");
+      let veriTablosu = [];
+
+      window.kategoriDegisti = async function () {
+        const kategori = kategoriSecimi.value;
+        const hedeflerSnap = await db.collection("hedefler").where("kategori", "==", kategori).get();
+        const verilerSnap = await db.collection("veriler").where("kategori", "==", kategori).get();
+
+        const hedefMap = {};
+        const teminMap = {};
+
+        hedeflerSnap.forEach(doc => {
+          const { personel, hedef } = doc.data();
+          hedefMap[personel] = hedef;
+        });
+
+        verilerSnap.forEach(doc => {
+          const { personel, miktar } = doc.data();
+          if (!teminMap[personel]) teminMap[personel] = 0;
+          teminMap[personel] += miktar;
+        });
+
+        let toplamHedef = 0;
+        let toplamTemin = 0;
+        const tabloDizi = [];
+
+        Object.keys(hedefMap).forEach(personel => {
+          const hedef = hedefMap[personel] || 0;
+          const temin = teminMap[personel] || 0;
+          const oran = hedef > 0 ? Math.round((temin / hedef) * 100) : 0;
+
+          toplamHedef += hedef;
+          toplamTemin += temin;
+
+          tabloDizi.push({ personel, hedef, temin, oran });
+        });
+
+        veriTablosu = tabloDizi;
+        filtreUygula();
+
+        toplamHedefEl.textContent = `₺${toplamHedef.toLocaleString("tr-TR")}`;
+        toplamTeminEl.textContent = `₺${toplamTemin.toLocaleString("tr-TR")}`;
+        toplamOranEl.textContent = toplamHedef > 0 ? `%${Math.round((toplamTemin / toplamHedef) * 100)}` : "%0";
+
+        const now = new Date();
+        const str = now.toLocaleDateString("tr-TR") + " - " + now.toLocaleTimeString("tr-TR");
+        document.getElementById("guncellemeZamani").textContent = str;
+      };
+
+      function tabloyuYenidenYaz(veriler) {
+        tabloBody.innerHTML = "";
+        veriler.forEach(p => {
+          const tr = document.createElement("tr");
+
+          const td1 = document.createElement("td");
+          td1.textContent = p.personel;
+
+          const td2 = document.createElement("td");
+          td2.textContent = `${p.hedef.toLocaleString("tr-TR")} ₺`;
+
+          const td3 = document.createElement("td");
+          td3.textContent = `${p.temin.toLocaleString("tr-TR")} ₺`;
+
+          const td4 = document.createElement("td");
+          td4.textContent = `${p.oran}%`;
+          td4.style.backgroundColor = oranRengi(p.oran);
+
+          tr.append(td1, td2, td3, td4);
+          tabloBody.appendChild(tr);
+        });
+      }
+
+      function oranRengi(oran) {
+        if (oran <= 30) return '#e74c3c';
+        if (oran <= 60) return '#f39c12';
+        if (oran <= 100) return '#27ae60';
+        return '#145a32';
+      }
+
+      window.filtreUygula = function () {
+        const secim = document.getElementById("filtreSecimi").value;
+        let dizi = [...veriTablosu];
+
+        switch (secim) {
+          case "personel-az": dizi.sort((a, b) => a.personel.localeCompare(b.personel)); break;
+          case "personel-za": dizi.sort((a, b) => b.personel.localeCompare(a.personel)); break;
+          case "hedef-artan": dizi.sort((a, b) => a.hedef - b.hedef); break;
+          case "hedef-azalan": dizi.sort((a, b) => b.hedef - a.hedef); break;
+          case "temin-artan": dizi.sort((a, b) => a.temin - b.temin); break;
+          case "temin-azalan": dizi.sort((a, b) => b.temin - a.temin); break;
+          case "oran-artan": dizi.sort((a, b) => a.oran - b.oran); break;
+          case "oran-azalan":
+          default: dizi.sort((a, b) => b.oran - a.oran); break;
+        }
+
+        tabloyuYenidenYaz(dizi);
+      };
+
+      kategoriDegisti(); // Sayfa ilk yüklendiğinde çalışır
+    });
+  </script>
+</body>
+</html>
