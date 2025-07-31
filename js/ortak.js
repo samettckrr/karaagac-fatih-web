@@ -139,10 +139,11 @@ function paneliYukle(panelAdi) {
 
   if (panelAdi === "talebe") {
     kartlar = [
-      { baslik: "Talebe Kayıt ve Bilgi", ikon: "📋", link: "talebe-liste.html" },
+      { baslik: "Kayıt Et", ikon: "", link: "parcalar/talebe-kayit.html"},
+      { baslik: "Talebe Bilgi", ikon: "📋", link: "talebe/talebe-bilgi-formu.html" },
+      { baslik: "Talebe Listesi", ikon: "", link: "calisma-karti.html"},
       { baslik: "Takrir Durumu", ikon: "📗", link: "talebe/ezber-takibi.html" },
       { baslik: "İzin Giriş/Çıkış", ikon: "🛫", link: "talebe/izin-giriscikis.html" },
-      { baslik: "Ezber Takibi", ikon: "📈", link: "talebe/ezber-takibi.html" },
       { baslik: "Aidat ve Kitap Ücretleri", ikon: "📥", link: "talebe/aidat-kitap.html" },
     ];
   } else if (panelAdi === "personel") { 
