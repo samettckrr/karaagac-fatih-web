@@ -2,8 +2,8 @@ document.addEventListener("DOMContentLoaded", function () {
   const db = firebase.firestore();
 
   const personeller = [
-    "Muhsin Çelik", "Faruk Nafiz Özgan", "Burak Serin", "Samet Çakır",
-    "Kerem Kocaoğlu", "Serhan Durak", "Mahmut Solmaz", "Mehmet Taha Keskin"
+    "Muhsin Çelik", "Faruk Nafiz Özgan", "İbrahim Ay", "Samet Çakır",
+    "Kerem Kocaoğlu", "Serhan Durak", "Mahmut Solmaz", "Mehmet Taha Keskin","Ahmetali Emre Şahin"
   ];
 
   const islemSelect = document.getElementById("islemTuru");
