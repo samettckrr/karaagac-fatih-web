@@ -143,7 +143,7 @@ function paneliYukle(panelAdi) {
       { baslik: "Talebe Bilgi", ikon: "📋", link: "talebe/talebe-bilgi-formu.html" },
       { baslik: "Talebe Listesi", ikon: "", link: "calisma-karti.html"},
       { baslik: "Takrir Durumu", ikon: "📗", link: "talebe/ezber-takibi.html" },
-      { baslik: "İzin Giriş/Çıkış", ikon: "🛫", link: "talebe/izin-giriscikis.html" },
+      { baslik: "İzin Dönüş Takibi", ikon: "🛫", link: "talebe/izin-takibi.html" },
       { baslik: "Aidat ve Kitap Ücretleri", ikon: "📥", link: "talebe/aidat-kitap.html" },
     ];
   } else if (panelAdi === "personel") { 
