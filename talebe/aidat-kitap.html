@@ -5,22 +5,167 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Karaağaç Fatih 6. Devre Aidat ve Kitap Ücret Takip Çizelgesi</title>
   <link rel="icon" href="../img/logo.png" type="image/png" />
-  <link rel="stylesheet" href="../talebe/aidat-kitap.css" />
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f4f6f9;
+      margin: 0;
+      padding: 0;
+    }
+    h1 {
+      text-align: center;
+      padding: 20px;
+      color: #324960;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    thead {
+      background: #324960;
+      color: white;
+    }
+    th, td {
+      text-align: center;
+      padding: 12px;
+      border-bottom: 1px solid #ddd;
+      cursor: pointer;
+    }
+    tr:hover { background: #f1f1f1; }
+
+    .odendi {
+      background-color: #d4edda !important;
+      color: #155724;
+      font-weight: 600;
+    }
+    .borclu {
+      color: #c0392b;
+      font-weight: 600;
+    }
+    .tamamlandi {
+      background-color: #b6f0c3 !important;
+      font-weight: 600;
+    }
+
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0; top: 0;
+      width: 100%; height: 100%;
+      background-color: rgba(0,0,0,0.5);
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-icerik {
+      background: white;
+      padding: 20px;
+      width: 500px;
+      max-height: 90%;
+      overflow-y: auto;
+      border-radius: 8px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.3);
+      animation: acilis 0.3s ease;
+    }
+    @keyframes acilis {
+      from { transform: scale(0.8); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .modal-baslik {
+      font-size: 20px;
+      margin-bottom: 10px;
+      color: #324960;
+    }
+    .modal-kapat {
+      float: right;
+      cursor: pointer;
+      font-size: 22px;
+      color: #c0392b;
+    }
+    .odeme-kaydi {
+      border-bottom: 1px solid #ddd;
+      padding: 8px 0;
+      font-size: 14px;
+    }
+    .odeme-kaydi strong {
+      color: #324960;
+    }
+
+    /* Form alanı */
+    .tahsilat-formu {
+      margin-top: 15px;
+      padding-top: 10px;
+      border-top: 1px solid #ddd;
+    }
+    .tahsilat-formu label {
+      display: block;
+      font-size: 14px;
+      margin: 6px 0 2px;
+    }
+    .tahsilat-formu select, .tahsilat-formu input {
+      width: 100%;
+      padding: 6px;
+      margin-bottom: 6px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+    .tahsilat-formu button {
+      width: 100%;
+      padding: 8px;
+      background: #324960;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .tahsilat-formu button:hover {
+      background: #223044;
+    }
+
+    /* Alt kartlar */
+    .ozet-kartlar {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 20px;
+    }
+    .ozet-kart {
+      flex: 1;
+      margin: 0 10px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      text-align: center;
+      padding: 15px;
+      font-weight: bold;
+      color: #324960;
+      font-size: 18px;
+    }
+    #kalanAidat { background: #eaf4ff; color: #1565c0; }
+    #kalanKitap { background: #fff4e5; color: #ef6c00; }
+    #toplamBorc { background: #ffebee; color: #c62828; }
+
+  </style>
+
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
   <script src="../js/firebase/firebase-init.js"></script>
-  <script defer src="../talebe/aidat-kitap.js"></script>
 </head>
 <body>
   <div class="container">
-    <!-- Başlık ve Buton -->
-    <header>
-      <h1>Karaağaç Fatih 6. Devre Aidat ve Kitap Ücret Takip Çizelgesi</h1>
-      <button id="veriGirisiBtn">Veri Girişi</button>
-    </header>
+    <h1>Karaağaç Fatih 6. Devre Aidat ve Kitap Ücret Takip Çizelgesi</h1>
 
-    <!-- Tablo -->
     <div class="kart">
       <table>
         <thead>
@@ -33,82 +178,192 @@
             <th class="borc">Toplam Borç</th>
           </tr>
         </thead>
-        <tbody id="talebeTablosu">
-          <!-- Talebeler buraya manuel eklendi -->
-          <!-- Her satır güncel olarak sıfırlanmış durumda -->
-          <tr><td>Abdülkadir Çetin</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td></tr>
-          <tr><td>Ahmet Tunahan Avşar</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td></tr>
-          <tr><td>Arif Emre Anlaş</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td></tr>
-          <tr><td>Bilal Karkaş</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td></tr>
-          <tr><td>Efe Kul</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td></tr>
-          <tr><td>Eyyüb Berat Aydınyılmaz</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td></tr>
-          <tr><td>Hacı Hasan Demirkıyık</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td></tr>
-          <tr><td>İsmail Arslan</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td></tr>
-          <tr><td>Mehmet Akif Hanedar</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td></tr>
-          <tr><td>Mustafa Gülsoy</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td></tr>
-          <tr><td>Mustafa Melikhan Ateş</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td></tr>
-          <tr><td>Selman Tekbıyık</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td></tr>
-          <tr><td>Turhan Gökmen</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td></tr>
-          <tr><td>Yusuf Erözcan</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td></tr>
-          <tr><td>Zülkifl Kerem Özdemir</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td><td>0 ₺</td></tr>
-        </tbody>
+        <tbody id="talebeTablosu"></tbody>
       </table>
+    </div>
+
+    <!-- Alt Kartlar -->
+    <div class="ozet-kartlar">
+      <div class="ozet-kart" id="kalanAidat">Kalan Aidat Borcu: 0 ₺</div>
+      <div class="ozet-kart" id="kalanKitap">Kalan Kitap Borcu: 0 ₺</div>
+      <div class="ozet-kart" id="toplamBorc">Toplam Kalan Borç: 0 ₺</div>
     </div>
   </div>
 
-  <!-- Modal: Veri Girişi -->
-  <div id="veriGirisiModal" class="modal">
+  <!-- Modal: Detay + Tahsilat -->
+  <div class="modal" id="detayModal">
     <div class="modal-icerik">
-      <span class="kapat" id="kapatModal">&times;</span>
-      <h2>Veri Girişi</h2>
-      <form id="veriFormu">
-        <label for="islemTuru">1. İşlem Türü:</label>
-        <select id="islemTuru" required>
-          <option value="Aidat">Aidat Girişi</option>
-          <option value="Kitap">Kitap Ücreti Girişi</option>
+      <span class="modal-kapat" onclick="modalKapat()">&times;</span>
+      <div class="modal-baslik" id="modalBaslik">Talebe Detay</div>
+      <div id="odemeDetaylari"></div>
+
+      <div class="tahsilat-formu">
+        <h3>Yeni Tahsilat Ekle</h3>
+        <label>İşlem Türü:</label>
+        <select id="islemTuru">
+          <option value="Aidat">Aidat</option>
+          <option value="Kitap">Kitap</option>
         </select>
 
-        <label for="talebeSec">2. Talebe Seçiniz:</label>
-        <select id="talebeSec" required>
-          <option disabled selected>Talebe Seçiniz</option>
-          <option>Abdülkadir Çetin</option>
-          <option>Ahmet Tunahan Avşar</option>
-          <option>Arif Emre Anlaş</option>
-          <option>Bilal Karkaş</option>
-          <option>Efe Kul</option>
-          <option>Eyyüb Berat Aydınyılmaz</option>
-          <option>Hacı Hasan Demirkıyık</option>
-          <option>İsmail Arslan</option>
-          <option>Mehmet Akif Hanedar</option>
-          <option>Mustafa Gülsoy</option>
-          <option>Mustafa Melikhan Ateş</option>
-          <option>Selman Tekbıyık</option>
-          <option>Turhan Gökmen</option>
-          <option>Yusuf Erözcan</option>
-          <option>Zülkifl Kerem Özdemir</option>
-        </select>
+        <label>Miktar (₺):</label>
+        <input type="number" id="tahsilatMiktar" min="0" />
 
-        <label for="paraMiktari">3. Para Miktarı:</label>
-        <input type="number" id="paraMiktari" required min="0" />
-
-        <label for="odemeYontemi">4. Ödeme Yöntemi:</label>
-        <select id="odemeYontemi" required>
+        <label>Ödeme Yöntemi:</label>
+        <select id="odemeYontemi">
           <option value="Nakit">Nakit</option>
           <option value="Banka">Banka</option>
         </select>
 
-        <button type="submit">Kaydet</button>
-      </form>
+        <button onclick="tahsilatEkle()">Kaydet</button>
+      </div>
     </div>
   </div>
 
-  <!-- Modal: Onay ve Önizleme -->
-  <div id="onayModal" class="modal">
-    <div class="modal-icerik">
-      <h2>Giriş Onayı</h2>
-      <div id="onIzlemeAlani"></div>
-      <button id="sonKaydetBtn">Veriyi Kaydet</button>
-    </div>
-  </div>
+<script>
+  const db = firebase.firestore();
+  const tabloGovde = document.getElementById("talebeTablosu");
+  const modal = document.getElementById("detayModal");
+  const modalBaslik = document.getElementById("modalBaslik");
+  const odemeDetaylari = document.getElementById("odemeDetaylari");
+
+  const kalanAidatDiv = document.getElementById("kalanAidat");
+  const kalanKitapDiv = document.getElementById("kalanKitap");
+  const toplamBorcDiv = document.getElementById("toplamBorc");
+
+    function formatTL(miktar){
+    return new Intl.NumberFormat('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2}).format(miktar) + " ₺";
+  }
+
+  let aktifIsim = null;
+  let tahsilatlar = {};
+
+  async function tabloyuYenile() {
+    tabloGovde.innerHTML = "";
+
+    const borclarSnap = await db.collection("talebe_borclar").get();
+    const borclar = {};
+    borclarSnap.forEach(doc => {
+      const data = doc.data();
+      borclar[data.isim] = {
+        toplamAidat: data.toplamAidat || 0,
+        toplamKitap: data.toplamKitap || 0,
+        aidatOdendi: 0,
+        kitapOdendi: 0
+      };
+    });
+
+    const tahsilatlarSnap = await db.collection("aidat_kitap").get();
+    tahsilatlar = {};
+    tahsilatlarSnap.forEach(doc => {
+      const data = doc.data();
+      if(!borclar[data.isim]) return;
+      if(data.islemTuru === "Aidat") borclar[data.isim].aidatOdendi += data.miktar;
+      if(data.islemTuru === "Kitap") borclar[data.isim].kitapOdendi += data.miktar;
+
+      if(!tahsilatlar[data.isim]) tahsilatlar[data.isim] = [];
+      tahsilatlar[data.isim].push(data);
+    });
+
+    let toplamKalanAidat = 0;
+    let toplamKalanKitap = 0;
+
+  Object.keys(borclar).sort((a,b)=>a.localeCompare(b,'tr')).forEach(isim => {
+      const t = borclar[isim];
+      const kalanAidat = Math.max(0, t.toplamAidat - t.aidatOdendi);
+      const kalanKitap = Math.max(0, t.toplamKitap - t.kitapOdendi);
+      const toplamBorc = kalanAidat + kalanKitap;
+
+      toplamKalanAidat += kalanAidat;
+      toplamKalanKitap += kalanKitap;
+
+      const satir = document.createElement("tr");
+      satir.innerHTML = `
+        <td>${isim}</td>
+        <td>${formatTL(t.aidatOdendi)}</td>
+        <td>${formatTL(kalanAidat)}</td>
+        <td>${formatTL(t.kitapOdendi)}</td>
+        <td>${formatTL(kalanKitap)}</td>
+        <td>${formatTL(toplamBorc)}</td>
+      `;
+
+if(toplamBorc === 0){
+  satir.classList.add("tamamlandi"); // tüm satır yeşil
+} else {
+  if(kalanAidat === 0){
+    satir.children[1].classList.add("odendi");
+    satir.children[2].classList.add("odendi");
+  }
+  if(kalanKitap === 0){
+    satir.children[3].classList.add("odendi");
+    satir.children[4].classList.add("odendi");
+  }
+  satir.children[5].classList.add("borclu"); // toplam borç kırmızı
+}
+
+      satir.addEventListener("click", () => modalAc(isim));
+      tabloGovde.appendChild(satir);
+    });
+
+    // Alt kartları güncelle
+    kalanAidatDiv.textContent = `Kalan Aidat Borcu: ${formatTL(toplamKalanAidat)}`;
+    kalanKitapDiv.textContent = `Kalan Kitap Borcu: ${formatTL(toplamKalanKitap)}`;
+    toplamBorcDiv.textContent = `Toplam Kalan Borç: ${formatTL(toplamKalanAidat + toplamKalanKitap)}`;
+  }
+
+  function modalAc(isim){
+    aktifIsim = isim;
+    modalBaslik.innerText = isim + " - Ödeme Detayları";
+    odemeDetaylari.innerHTML = "";
+    const kayitlar = tahsilatlar[isim] || [];
+    if(kayitlar.length === 0){
+      odemeDetaylari.innerHTML = "<p>Bu talebe için hiç ödeme yapılmamış.</p>";
+    } else {
+      kayitlar
+        .sort((a,b)=> new Date(b.tarih) - new Date(a.tarih))
+        .forEach(k => {
+          const div = document.createElement("div");
+          div.className = "odeme-kaydi";
+          div.innerHTML = `
+            <strong>${k.islemTuru}</strong> - ${k.miktar} ₺ 
+            (${k.odemeYontemi || "Bilinmiyor"}) 
+            <br><small>${new Date(k.tarih).toLocaleDateString("tr-TR")} ${new Date(k.tarih).toLocaleTimeString("tr-TR")}</small>
+          `;
+          odemeDetaylari.appendChild(div);
+        });
+    }
+    modal.style.display = "flex";
+  }
+
+  function modalKapat(){
+    modal.style.display = "none";
+  }
+
+  window.onclick = (e) => {
+    if(e.target == modal) modalKapat();
+  };
+
+  async function tahsilatEkle(){
+    const tur = document.getElementById("islemTuru").value;
+    const miktar = parseFloat(document.getElementById("tahsilatMiktar").value);
+    const odemeYontemi = document.getElementById("odemeYontemi").value;
+
+    if(!aktifIsim || !miktar) return alert("Tüm alanları doldurun!");
+
+    await db.collection("aidat_kitap").add({
+      isim: aktifIsim,
+      islemTuru: tur,
+      miktar,
+      odemeYontemi,
+      tarih: new Date().toISOString()
+    });
+
+    document.getElementById("tahsilatMiktar").value = "";
+    alert("✅ Tahsilat kaydedildi.");
+    tabloyuYenile();
+    modalAc(aktifIsim);
+  }
+
+  tabloyuYenile();
+</script>
 </body>
 </html>

@@ -174,6 +174,7 @@ function paneliYukle(panelAdi) {
     kartlar = [
       { baslik: "Aylık Personel Ödemeleri" , ikon: "👥", link:"muhasebe/aylik-personel-odemeleri.html"},
       { baslik: "Hedef ve Veri Girişi" , ikon: "📝", link: "muhasebe/muhasebe-form.html"},
+      { baslik: "Aidat-Kitap Veri Girişi" , ikon: "📝", link: "muhasebe/aidat-kitap-giris.html"},
       { baslik: "Kermes Raporu" , ikon: "🍽️", link: "calisma-karti.html"},
       { baslik: "Aylık Giderler" , ikon: "", link: "calisma-karti.html"},
       { baslik: "İçeriği Daha Sonra Paylaşılacaktır", ikon: "📑", link: "muhasebe/genel-muhasebe.html" },

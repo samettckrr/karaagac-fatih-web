@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aidat & Kitap Giriş</title>
+  <link rel="icon" href="../img/logo.png" type="image/png" />
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f4f6f9;
+      margin: 0;
+      padding: 0;
+    }
+    h1,h2 {
+      text-align: center;
+      color: #324960;
+    }
+    .container {
+      max-width: 900px;
+      margin: 20px auto;
+      padding: 20px;
+    }
+    .card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      margin-bottom: 30px;
+      padding: 20px;
+    }
+    label {
+      display: block;
+      margin: 12px 0 4px;
+      font-weight: 600;
+    }
+    select, input {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 12px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      font-size: 15px;
+    }
+    button {
+      background: #324960;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      font-size: 15px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover { background: #293b52; }
+
+    .preview {
+      background: #f0f4f8;
+      border: 1px solid #ddd;
+      padding: 12px;
+      border-radius: 6px;
+      margin: 10px 0;
+      font-size: 14px;
+    }
+
+    .toast {
+      display: none;
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #27ae60;
+      color: white;
+      padding: 12px 25px;
+      border-radius: 5px;
+      z-index: 999;
+      animation: fadein 0.5s, fadeout 0.5s 2.5s;
+    }
+    .toast.hata { background: #c0392b; }
+
+    @keyframes fadein { from {opacity:0;} to {opacity:1;} }
+    @keyframes fadeout { from {opacity:1;} to {opacity:0;} }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📘 Aidat & Kitap Giriş Paneli</h1>
+
+    <!-- Talebe Kayıt -->
+    <div class="card">
+      <h2>1️⃣ Talebe Borç Tanımlama</h2>
+      <label>Talebe Adı</label>
+      <input type="text" id="talebeAd" placeholder="Örn: Mehmet Yılmaz" />
+
+      <label>Umumi Aidat Miktarı (₺)</label>
+      <input type="number" id="aidatTutar" placeholder="Örn: 7500" />
+
+      <label>Aidat İndirimi</label>
+      <select id="aidatIndirim">
+        <option value="0">İndirim Yok (0%)</option>
+        <option value="0.25">Kardeş (%25)</option>
+        <option value="0.5">Personel (%50)</option>
+        <option value="1">Muhacir (%100)</option>
+      </select>
+
+      <label>Umumi Kitap Ücreti (₺)</label>
+      <input type="number" id="kitapTutar" placeholder="Örn: 2250" />
+
+      <label>Kitap İndirimi</label>
+      <select id="kitapIndirim">
+        <option value="0">İndirim Yok</option>
+        <option value="custom">İndirim Var (Rakam Girilecek)</option>
+      </select>
+
+      <input type="number" id="kitapIndirimMiktar" placeholder="Kitap indirimi (₺)" style="display:none;"/>
+
+      <div class="preview" id="kayitPreview">💡 Önizleme burada gözükecek</div>
+
+      <button onclick="talebeKaydet()">Kaydet</button>
+    </div>
+
+    <!-- Tahsilat -->
+    <div class="card">
+      <h2>2️⃣ Tahsilat (Ödeme Girişi)</h2>
+      <label>Talebe Adı</label>
+      <input type="text" id="odemeTalebe" placeholder="Örn: Mehmet Yılmaz" />
+
+      <label>İşlem Türü</label>
+      <select id="odemeTuru">
+        <option value="Aidat">Aidat</option>
+        <option value="Kitap">Kitap</option>
+      </select>
+
+      <label>Tahsil Edilen Miktar (₺)</label>
+      <input type="number" id="odemeMiktar" />
+
+      <label>Ödeme Yöntemi</label>
+      <select id="odemeYontemi">
+        <option value="Nakit">Nakit</option>
+        <option value="Banka">Banka</option>
+      </select>
+
+      <div class="preview" id="odemePreview">💡 Önizleme burada gözükecek</div>
+
+      <button onclick="odemeKaydet()">Kaydet</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="../js/firebase/firebase-init.js"></script>
+
+  <script>
+    const db = firebase.firestore();
+    const toast = document.getElementById('toast');
+
+    // Kitap indirim inputunu göster/gizle
+    document.getElementById('kitapIndirim').addEventListener('change', (e)=>{
+      document.getElementById('kitapIndirimMiktar').style.display = e.target.value==='custom' ? 'block':'none';
+    });
+
+    // Önizleme sürekli güncellensin
+    document.querySelectorAll('#talebeAd,#aidatTutar,#aidatIndirim,#kitapTutar,#kitapIndirim,#kitapIndirimMiktar')
+      .forEach(el=>el.addEventListener('input', kayitPreviewGuncelle));
+
+    document.querySelectorAll('#odemeTalebe,#odemeTuru,#odemeMiktar,#odemeYontemi')
+      .forEach(el=>el.addEventListener('input', odemePreviewGuncelle));
+
+    function kayitPreviewGuncelle(){
+      const ad = document.getElementById('talebeAd').value;
+      const aidat = parseFloat(document.getElementById('aidatTutar').value||0);
+      const aidatInd = parseFloat(document.getElementById('aidatIndirim').value||0);
+      const kitap = parseFloat(document.getElementById('kitapTutar').value||0);
+      const kitapIndSec = document.getElementById('kitapIndirim').value;
+      const kitapIndMiktar = parseFloat(document.getElementById('kitapIndirimMiktar').value||0);
+
+      const aidatOdenecek = aidat - (aidat * aidatInd);
+      const kitapOdenecek = kitapIndSec==='custom' ? kitap - kitapIndMiktar : kitap;
+
+      document.getElementById('kayitPreview').innerText = 
+        `${ad || '—'} isimli talebenin toplam borcu: ${aidatOdenecek+kitapOdenecek} ₺
+(Aidat: ${aidatOdenecek} ₺, Kitap: ${kitapOdenecek} ₺)`;
+    }
+
+    function odemePreviewGuncelle(){
+      const ad = document.getElementById('odemeTalebe').value;
+      const tur = document.getElementById('odemeTuru').value;
+      const miktar = document.getElementById('odemeMiktar').value;
+      const yontem = document.getElementById('odemeYontemi').value;
+      document.getElementById('odemePreview').innerText = 
+        `${ad || '—'} isimli talebeden ${miktar||0} ₺ ${tur} tahsil edildi (${yontem})`;
+    }
+
+    function talebeKaydet(){
+      const ad = document.getElementById('talebeAd').value;
+      const aidat = parseFloat(document.getElementById('aidatTutar').value||0);
+      const aidatInd = parseFloat(document.getElementById('aidatIndirim').value||0);
+      const kitap = parseFloat(document.getElementById('kitapTutar').value||0);
+      const kitapIndSec = document.getElementById('kitapIndirim').value;
+      const kitapIndMiktar = parseFloat(document.getElementById('kitapIndirimMiktar').value||0);
+
+      const aidatOdenecek = aidat - (aidat * aidatInd);
+      const kitapOdenecek = kitapIndSec==='custom' ? kitap - kitapIndMiktar : kitap;
+
+      db.collection('talebe_borclar').add({
+        isim: ad,
+        toplamAidat: aidatOdenecek,
+        toplamKitap: kitapOdenecek,
+        tarih: new Date().toISOString()
+      }).then(()=>{
+        showToast('✅ Talebe kaydı başarıyla oluşturuldu.');
+        document.getElementById('talebeAd').value='';
+        document.getElementById('aidatTutar').value='';
+        document.getElementById('kitapTutar').value='';
+        kayitPreviewGuncelle();
+      });
+    }
+
+    function odemeKaydet(){
+      const ad = document.getElementById('odemeTalebe').value;
+      const tur = document.getElementById('odemeTuru').value;
+      const miktar = parseFloat(document.getElementById('odemeMiktar').value||0);
+      const yontem = document.getElementById('odemeYontemi').value;
+
+      db.collection('aidat_kitap').add({
+        isim: ad,
+        islemTuru: tur,
+        miktar: miktar,
+        odemeYontemi: yontem,
+        tarih: new Date().toISOString()
+      }).then(()=>{
+        showToast('💰 Tahsilat başarıyla kaydedildi.');
+        document.getElementById('odemeTalebe').value='';
+        document.getElementById('odemeMiktar').value='';
+        odemePreviewGuncelle();
+      });
+    }
+
+    function showToast(msg, hata=false){
+      toast.textContent = msg;
+      toast.classList.toggle('hata',hata);
+      toast.style.display='block';
+      setTimeout(()=>toast.style.display='none',3000);
+    }
+  </script>
+</body>
+</html>
