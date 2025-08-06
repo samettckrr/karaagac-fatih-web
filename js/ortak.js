@@ -152,7 +152,7 @@ function paneliYukle(panelAdi) {
       { baslik: "Personel Aylık Performans", ikon: "📊", link: "personel/aylik-performans.html" },
       { baslik: "Hedefler", ikon: "🎯", link: "personel/hedef-grafik.html" },
       { baslik: "Alacak Takibi", ikon: "💰", link: "personel/alacak-takibi.html" },
-      { baslik: "Temizlik Kontrolü", ikon: "🧹", link: "personel/temizlik-kontrolu.html" },
+      { baslik: "Temizlik Kontrolü", ikon: "🧹", link: "personel/temizlik/temizlik-kontrolu.html" },
     ];
   } else if (panelAdi === "nehari") {
     kartlar = [

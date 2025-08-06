@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>2. Kat Temizlik Formu</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="../temizlik.css">
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="../temizlik.js"></script>
+</head>
+<body>
+  <header>
+    <h2>🧽 2. Kat Temizlik Kontrol Formu</h2>
+    <button onclick="window.location.href='../temizlik/temizlik-kontrol.html'">Geri Dön</button>
+  </header>
+
+  <form id="temizlikForm">
+    <div class="bilgi-kutu">
+      <label><strong>Tarih:</strong> <span id="tarih"></span></label><br>
+      <label><strong>Saat:</strong> <span id="saat"></span></label><br>
+      <label><strong>Sorumlu:</strong> <span id="kullaniciEmail"></span></label>
+    </div>
+
+    <div class="mahal-listesi" id="mahalListesi">
+      <!-- Mahaller buraya JS ile eklenecek -->
+    </div>
+
+    <button type="submit">Kaydet</button>
+  </form>
+
+  <div id="bildirim" class="toast">Kayıt başarılı!</div>
+
+  <script>
+    const mahaller = [
+      "Balkon", "Kantin", "Revir", "Lavabo",
+      "Lokal", "Tezgah", "Asansör İçi", "Yangın Holü"
+    ];
+
+    const tarihEl = document.getElementById("tarih");
+    const saatEl = document.getElementById("saat");
+    const kullaniciEl = document.getElementById("kullaniciEmail");
+    const mahalContainer = document.getElementById("mahalListesi");
+
+    const now = new Date();
+    tarihEl.innerText = now.toLocaleDateString();
+    saatEl.innerText = now.toLocaleTimeString();
+
+    firebase.auth().onAuthStateChanged(user => {
+      if (!user) return window.location.href = "../index.html";
+      const email = user.email;
+      kullaniciEl.innerText = email;
+
+      // Eğer bu formu sadece 2. kat hocası görebilsin diyorsan şunu ekle:
+      if (!email.includes("2kat")) {
+        alert("Bu form sadece 2. Kat sorumlusu tarafından doldurulabilir.");
+        window.location.href = "../temizlik/temizlik-kontrol.html";
+      }
+
+      // Mahaller oluşturuluyor
+      mahaller.forEach(mahal => {
+        const el = document.createElement("div");
+        el.className = "mahal-kutu";
+        el.innerHTML = `
+          <h4>${mahal}</h4>
+          <label>Temiz mi? 
+            <select name="${mahal}_temiz">
+              <option value="Evet">Evet</option>
+              <option value="Hayır">Hayır</option>
+            </select>
+          </label>
+          <label>Puan (1–5): 
+            <input type="number" name="${mahal}_puan" min="1" max="5" required>
+          </label>
+          <label>Açıklama (opsiyonel): 
+            <input type="text" name="${mahal}_aciklama">
+          </label>
+        `;
+        mahalContainer.appendChild(el);
+      });
+    });
+
+    // Form kaydet
+    document.getElementById("temizlikForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const user = firebase.auth().currentUser;
+      if (!user) return;
+
+      const data = {
+        kat: "2. Kat",
+        sorumlu: user.email,
+        tarih: new Date().toLocaleDateString(),
+        saat: new Date().toLocaleTimeString(),
+        mahaller: {}
+      };
+
+      mahaller.forEach(mahal => {
+        data.mahaller[mahal] = {
+          temiz: document.querySelector(`[name="${mahal}_temiz"]`).value,
+          puan: parseInt(document.querySelector(`[name="${mahal}_puan"]`).value),
+          aciklama: document.querySelector(`[name="${mahal}_aciklama"]`).value || "-"
+        };
+      });
+
+      try {
+        await firebase.firestore().collection("temizlik_kontrol").add(data);
+        const bildirim = document.getElementById("bildirim");
+        bildirim.style.display = "block";
+        setTimeout(() => bildirim.style.display = "none", 3000);
+        e.target.reset();
+      } catch (err) {
+        alert("Hata oluştu: " + err.message);
+      }
+    });
+  </script>
+
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f4f6f9;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      background: #2c3e50;
+      color: white;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    form {
+      padding: 20px;
+    }
+
+    .bilgi-kutu {
+      background: #eef2f7;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .mahal-kutu {
+      background: white;
+      border-left: 5px solid #2c3e50;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+
+    .mahal-kutu h4 {
+      margin-bottom: 10px;
+    }
+
+    label {
+      display: block;
+      margin: 6px 0;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 4px;
+      box-sizing: border-box;
+    }
+
+    button {
+      background: #2c3e50;
+      color: white;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+
+    button:hover {
+      background: #34495e;
+    }
+
+    .toast {
+      display: none;
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #27ae60;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+  </style>
+</body>
+</html>
