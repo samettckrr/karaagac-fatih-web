@@ -24,22 +24,22 @@ firebase.auth().onAuthStateChanged(user => {
 function yonlendir(kod) {
   switch (kod) {
     case "2kat":
-      window.location.href = "formlar/2kat-temizlik-formu.html";
+      window.location.href = "katlar/lokal.html";
       break;
     case "1kat":
-      window.location.href = "formlar/1kat-temizlik-formu.html";
+      window.location.href = "katlar/etüt.html";
       break;
     case "giris":
-      window.location.href = "formlar/giris-kat-temizlik.html";
+      window.location.href = "katlar/giris.html";
       break;
     case "eksi1":
-      window.location.href = "formlar/eksi1-kat-temizlik.html";
+      window.location.href = "katlar/yatakhane.html";
       break;
     case "eksi2":
-      window.location.href = "formlar/eksi2-kat-temizlik.html";
+      window.location.href = "katlar/yemekhane.html";
       break;
     case "bahce":
-      window.location.href = "formlar/bahce-temizlik.html";
+      window.location.href = "katlar/bahce.html";
       break;
     case "genel":
       window.location.href = "formlar/genel-kontrol.html";

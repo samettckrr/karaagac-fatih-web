@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dosya Yükleme ve Gösterme</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://unpkg.com/html2pdf.js@0.9.2/dist/html2pdf.bundle.min.js"></script>
+  <script src="js/firebase/firebase-init.js"></script>
+  <style>
+    body { font-family: sans-serif; margin: 40px; background: #f4f6f9; }
+    #sonuc img { margin-top: 10px; border: 1px solid #ccc; }
+    button { margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+  <h2>📤 Dosya Yükle</h2>
+  <input type="file" id="dosyaSec" />
+  <button onclick="dosyaYukle()">Yükle</button>
+
+  <h3>📁 Kayıtlı Dosya:</h3>
+  <div id="sonuc">Yüklenmiş bir dosya henüz gösterilmiyor.</div>
+
+  <button onclick="pdfOlustur()">📄 PDF Oluştur</button>
+
+  <script>
+    // ✅ Cloudinary ayarların
+    const cloudName = "djggzgzoy";
+    const uploadPreset = "talebe_yukleme";
+
+    // 👤 Örnek UID (giriş yapılmışsa auth.currentUser.uid kullanılmalı)
+    const aktifTalebeUID = "testtalebe123";
+
+    async function dosyaYukle() {
+      const file = document.getElementById("dosyaSec").files[0];
+      if (!file) return alert("Lütfen dosya seç");
+
+      const url = `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`;
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", uploadPreset);
+
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          body: formData
+        });
+        const data = await res.json();
+
+        if (data.secure_url) {
+          const secureUrl = data.secure_url;
+
+          // Firestore'a kayıt
+          await db.collection("talebeler").doc(aktifTalebeUID).set({
+            belgeUrl: secureUrl
+          }, { merge: true });
+
+          // Göster
+          document.getElementById("sonuc").innerHTML = `
+            <a href="${secureUrl}" target="_blank">Dosyayı Aç</a><br>
+            <img src="${secureUrl}" width="200" />
+          `;
+        } else {
+          document.getElementById("sonuc").innerHTML = `<p style="color:red;">❌ ${data.error?.message || "Bilinmeyen hata"}</p>`;
+        }
+      } catch (err) {
+        console.error("❌ Hata:", err);
+        alert("Yükleme başarısız: " + err.message);
+      }
+    }
+
+    // 🔄 Sayfa yüklendiğinde varsa Firestore’dan veriyi çek
+    window.onload = async () => {
+      const belgeRef = await db.collection("talebeler").doc(aktifTalebeUID).get();
+      const url = belgeRef.data()?.belgeUrl;
+      if (url) {
+        document.getElementById("sonuc").innerHTML = `
+          <a href="${url}" target="_blank">Dosyayı Aç</a><br>
+          <img src="${url}" width="200" />
+        `;
+      }
+    };
+
+    // 📄 PDF çıktısı
+    async function pdfOlustur() {
+      const belgeRef = await db.collection("talebeler").doc(aktifTalebeUID).get();
+      const url = belgeRef.data()?.belgeUrl;
+      const içerik = document.createElement("div");
+      içerik.innerHTML = `
+        <h3>Talebe Dosyası</h3>
+        <img src="${url}" width="400" />
+      `;
+      html2pdf().from(içerik).save("Talebe-Dosya.pdf");
+    }
+  </script>
+</body>
+</html>
