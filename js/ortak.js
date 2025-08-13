@@ -173,6 +173,7 @@ function paneliYukle(panelAdi) {
   } else if (panelAdi === "muhasebe") {
     kartlar = [
       { baslik: "Aylık Personel Ödemeleri" , ikon: "👥", link:"muhasebe/aylik-personel-odemeleri.html"},
+      { baslik: "Alacak Tahsilatı" , ikon: "📝", link:"personel/rapor-personel.html"},
       { baslik: "Hedef ve Veri Girişi" , ikon: "📝", link: "muhasebe/muhasebe-form.html"},
       { baslik: "Aidat-Kitap Veri Girişi" , ikon: "📝", link: "muhasebe/aidat-kitap-giris.html"},
       { baslik: "Kermes Raporu" , ikon: "🍽️", link: "calisma-karti.html"},
