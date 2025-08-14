@@ -151,7 +151,7 @@ function paneliYukle(panelAdi) {
       { baslik: "Nöbet Çizelgesi", ikon: "📅", link: "personel/nobet.html" },
       { baslik: "Personel Aylık Performans", ikon: "📊", link: "personel/aylik-performans.html" },
       { baslik: "Hedefler", ikon: "🎯", link: "personel/hedef-grafik.html" },
-      { baslik: "Alacak Takibi", ikon: "💰", link: "personel/alacak-takibi.html" },
+      { baslik: "Alacak Takibi", ikon: "💰", link: "personel/rapor-personel.html" },
       { baslik: "Temizlik Kontrolü", ikon: "🧹", link: "personel/temizlik/temizlik-kontrolu.html" },
     ];
   } else if (panelAdi === "nehari") {
@@ -173,7 +173,7 @@ function paneliYukle(panelAdi) {
   } else if (panelAdi === "muhasebe") {
     kartlar = [
       { baslik: "Aylık Personel Ödemeleri" , ikon: "👥", link:"muhasebe/aylik-personel-odemeleri.html"},
-      { baslik: "Alacak Tahsilatı" , ikon: "📝", link:"personel/rapor-personel.html"},
+      { baslik: "Alacak Tahsilatı" , ikon: "📝", link:"personel/alacak-takibi.html"},
       { baslik: "Hedef ve Veri Girişi" , ikon: "📝", link: "muhasebe/muhasebe-form.html"},
       { baslik: "Aidat-Kitap Veri Girişi" , ikon: "📝", link: "muhasebe/aidat-kitap-giris.html"},
       { baslik: "Kermes Raporu" , ikon: "🍽️", link: "calisma-karti.html"},
