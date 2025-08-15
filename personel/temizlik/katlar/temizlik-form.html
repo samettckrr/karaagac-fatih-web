@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Temizlik Formu</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Firebase (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="../../../js/firebase/firebase-init.js"></script>
+
+  <style>
+    :root{
+      --bg:#f4f6f9; --card:#fff; --text:#2c3e50; --muted:#6b7a8f;
+      --accent:#2d6a4f; --accent2:#324960; --warn:#c0392b; --line:#e7edf3;
+      --shadow:0 6px 18px rgba(28,39,60,.08); --radius:14px
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,Arial,sans-serif}
+
+    header{position:sticky;top:0;z-index:50;background:var(--card);box-shadow:var(--shadow);
+      padding:14px 18px;display:flex;align-items:center;justify-content:space-between}
+    header h1{font-size:18px;margin:0}
+    .badge{font-size:12px;background:#eef5ff;color:#264a7c;padding:4px 10px;border-radius:999px;border:1px solid #d8e6ff}
+    .btn{background:var(--accent2);color:#fff;border:none;border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer;box-shadow:var(--shadow)}
+    .btn.outline{background:#fff;color:var(--accent2);border:1px solid var(--accent2)}
+    .btn.sm{padding:6px 10px;font-size:12px;border-radius:8px}
+    .btn.ghost{background:#fff;color:#2c3e50;border:1px dashed #b9c4d3}
+
+    .wrap{max-width:1100px;margin:22px auto;padding:0 14px}
+    .topbar{
+      background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);
+      padding:14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between
+    }
+    .chip{display:inline-flex;align-items:center;gap:8px;background:#f7fafc;border:1px solid var(--line);padding:6px 10px;border-radius:999px;font-size:12px}
+    .muted{color:var(--muted)} .good{color:var(--accent)} .bad{color:var(--warn)}
+
+    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;margin-top:14px}
+    .card h3{margin:0 0 6px 0;font-size:13px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+    .stats{display:flex;gap:12px;flex-wrap:wrap}
+    .stat{background:#fbfcfe;border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;min-width:150px}
+    .stat .label{font-size:12px;color:var(--muted)} .stat .val{font-size:22px;font-weight:800}
+
+    /* Masaüstü tablo */
+    .table-wrap{margin-top:14px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:auto}
+    table{width:100%;border-collapse:separate;border-spacing:0}
+    thead th{position:sticky;top:0;background:#fbfcfe;border-bottom:1px solid var(--line);font-size:13px;text-align:left;padding:12px;color:var(--muted)}
+    tbody td{padding:10px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:top}
+    tbody tr:hover{background:#fafcff}
+    .switch{display:inline-flex;align-items:center;gap:8px}
+    .switch input{transform:scale(1.1)}
+    .puan{width:100px}
+    .aciklama{min-width:220px;max-width:100%;height:38px;resize:vertical}
+
+    /* Mobil kart formu */
+    .cards-wrap{display:none;margin-top:14px}
+    .mcard{
+      background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);
+      padding:12px;display:flex;flex-direction:column;gap:10px
+    }
+    .mcard .title{font-weight:800}
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .row .grow{flex:1}
+    .row input[type="number"]{width:120px}
+    .row textarea{width:100%;min-height:52px;resize:vertical}
+    .input, select{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--text)}
+    .input[readonly]{background:#fbfcfe}
+
+    .footer-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:12px}
+    .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#2d6a4f;color:#fff;padding:10px 14px;border-radius:10px;display:none;z-index:1000;box-shadow:var(--shadow);font-weight:600}
+    .toast.err{background:#c0392b}
+
+    /* Modal ortak */
+    .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;z-index:2000;align-items:center;justify-content:center;padding:14px}
+    .modal{background:#fff;border-radius:16px;box-shadow:var(--shadow);max-width:720px;width:100%;padding:18px}
+    .modal h3{margin:0 0 10px 0}
+    .modal .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+    .modal .table{width:100%;border-collapse:collapse}
+    .modal .table th,.modal .table td{border-bottom:1px solid #eef2f7;padding:8px;text-align:left;font-size:14px}
+
+    /* Breakpoints */
+    @media (max-width:760px){
+      .table-wrap{display:none}
+      .cards-wrap{display:grid;gap:12px}
+      .footer-actions{flex-direction:column}
+      .btn{width:100%}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div style="display:flex;gap:12px;align-items:center">
+      <h1>Temizlik Formu</h1>
+      <span id="userBadge" class="badge">—</span>
+    </div>
+    <button id="btnSignOut" class="btn outline sm">Çıkış</button>
+  </header>
+
+  <div class="wrap">
+    <!-- Üst Bilgi -->
+    <div class="topbar">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <span id="todayChip" class="chip">📅 Bugün: —</span>
+        <span class="chip">🕙 Temizlik Saati: 10:00–12:00</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button id="btnDetayGor" class="btn ghost">Detay Gör</button>
+      </div>
+    </div>
+
+    <!-- Özet -->
+    <div class="card">
+      <h3>Özet</h3>
+      <div class="stats">
+        <div class="stat"><span class="label">Toplam Mahal</span><span class="val" id="statToplam">—</span></div>
+        <div class="stat"><span class="label">Bu Tarihte Kaydı Olan</span><span class="val" id="statDoldurulan">—</span></div>
+        <div class="stat"><span class="label">Ortalama (0–100)</span><span class="val good" id="statOrtalama">—</span></div>
+        <div class="stat"><span class="label">0 Puan</span><span class="val bad" id="statSifir">—</span></div>
+      </div>
+    </div>
+
+    <!-- Masaüstü: Tablo -->
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="min-width:180px">Mahal</th>
+            <th style="min-width:180px">Talebe</th>
+            <th style="min-width:120px">Temiz mi?</th>
+            <th style="min-width:110px">Puan (1–10)</th>
+            <th style="min-width:260px">Açıklama</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyForm">
+          <tr><td colspan="5" class="muted" style="padding:14px">Mahaller yüklenecek…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Mobil: Kart Form -->
+    <div id="cardsWrap" class="cards-wrap"></div>
+
+    <div class="footer-actions">
+      <button id="btnKaydet" class="btn">Kaydet</button>
+      <button id="btnTemizle" class="btn outline">Formu Sıfırla</button>
+    </div>
+  </div>
+
+  <!-- Kayıt sonrası modal -->
+  <div id="modalAfterBackdrop" class="backdrop">
+    <div class="modal">
+      <h3>Katınızda malzeme eksiği veya teknik eksik var mı?</h3>
+      <p class="muted">Kaydınız alındı. İsterseniz eksik bildirebilirsiniz.</p>
+      <div class="actions">
+        <button id="mNo" class="btn outline">Hayır, Ana Sayfa</button>
+        <button id="mYes" class="btn">Evet, Eksik Bildir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detay Gör modal (geçmiş tarih) -->
+  <div id="modalDetayBackdrop" class="backdrop">
+    <div class="modal">
+      <h3>Geçmiş Kayıt Detayı</h3>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+        <label class="muted">Tarih:</label>
+        <input id="hisDate" type="date" class="input" />
+        <button id="btnHisGetir" class="btn">Getir</button>
+        <span id="hisSummary" class="muted"></span>
+      </div>
+      <div id="hisContent" class="muted">Bir tarih seçiniz.</div>
+      <div class="actions">
+        <button id="btnHisClose" class="btn outline">Kapat</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+  (function(){
+    const db = window.db;
+    const auth = firebase.auth();
+
+    /* -------- Utils -------- */
+    function showToast(msg, err=false){ const t=document.getElementById('toast'); t.textContent=msg; t.className='toast'+(err?' err':''); t.style.display='block'; setTimeout(()=>t.style.display='none',2200); }
+    function todayStr(){ const now=new Date(); const tz=new Date(now.toLocaleString('en-US',{timeZone:'Europe/Istanbul'})); const y=tz.getFullYear(), m=String(tz.getMonth()+1).padStart(2,'0'), d=String(tz.getDate()).padStart(2,'0'); return `${y}-${m}-${d}`; }
+    function yesterdayStr(){ const t=new Date(); t.setDate(t.getDate()-1); const y=t.getFullYear(), m=String(t.getMonth()+1).padStart(2,'0'), d=String(t.getDate()).padStart(2,'0'); return `${y}-${m}-${d}`; }
+    function clamp(n,min,max){ n=Number(n)||0; if(n<min)n=min; if(n>max)n=max; return n; }
+    function clamp10(n){ return clamp(n,1,10); }
+    function to100(from10){ const n=Number(from10)||0; return Math.round((n/10)*100); }
+    function from100(to100v){ const n=Number(to100v)||0; return clamp10(Math.round(n/10)); }
+    function trSort(a,b){ return a.localeCompare(b,'tr'); }
+    function trNormalize(s=''){ const map={'İ':'i','I':'i','ı':'i','Ş':'s','ş':'s','Ğ':'g','ğ':'g','Ü':'u','ü':'u','Ö':'o','ö':'o','Ç':'c','ç':'c'}; return String(s).replace(/[İIıŞşĞğÜüÖöÇç]/g,m=>map[m]||m).toLowerCase().replace(/\s+/g,' ').replace(/[\s._–—-]+/g,'-').trim(); }
+
+    async function findDocIdSmart(katCandidate){
+      const want = trNormalize(katCandidate);
+      const snap = await db.collection('temizlik_katlari').get();
+      let exact=null, norm=null;
+      snap.forEach(doc=>{ if(doc.id===katCandidate) exact=doc.id; if(trNormalize(doc.id)===want) norm=doc.id; });
+      return exact || norm || katCandidate;
+    }
+
+    function pickMahallerField(data){
+      if(!data) return [];
+      if(Array.isArray(data.mahaller)) return data.mahaller;
+      for(const k of Object.keys(data)){ const v=data[k]; if(Array.isArray(v) && v.length && v.every(x=> typeof x==='string')) return v; }
+      if(data.mahaller && typeof data.mahaller==='object') return Object.keys(data.mahaller);
+      return [];
+    }
+
+    /* -------- Elements -------- */
+    const userBadge=document.getElementById('userBadge');
+    const todayChip=document.getElementById('todayChip');
+
+    const tbodyForm=document.getElementById('tbodyForm');
+    const cardsWrap=document.getElementById('cardsWrap');
+
+    const statToplam=document.getElementById('statToplam');
+    const statDoldurulan=document.getElementById('statDoldurulan');
+    const statOrtalama=document.getElementById('statOrtalama');
+    const statSifir=document.getElementById('statSifir');
+
+    const modalAfter=document.getElementById('modalAfterBackdrop');
+    const modalDetay=document.getElementById('modalDetayBackdrop');
+    const hisDate=document.getElementById('hisDate');
+    const hisSummary=document.getElementById('hisSummary');
+    const hisContent=document.getElementById('hisContent');
+
+    todayChip.textContent = `📅 Bugün: ${todayStr()}`;
+    hisDate.max = todayStr();
+    hisDate.value = todayStr();
+
+    const usp = new URLSearchParams(location.search);
+    let ACTIVE_DOC_ID = usp.get('doc') || usp.get('kat') || '2.Kat - Lokal'; // fallback
+    let EXISTING_MAP = {};
+    let LAST_ITEMS = [];
+
+    /* -------- Firestore loaders -------- */
+    async function loadMahallerFromTemizlikKatlari(docId){
+      let ds = await db.collection('temizlik_katlari').doc(docId).get();
+      if(!ds.exists){ const fixed=await findDocIdSmart(docId); if(fixed!==docId){ docId=fixed; ds=await db.collection('temizlik_katlari').doc(docId).get(); } }
+      if(!ds.exists){ return {docId, items:[]}; }
+      const list = pickMahallerField(ds.data()||{});
+      const items = list.map(m=> typeof m==='string'? m.trim(): String(m?.mahal||'').trim()).filter(Boolean).sort(trSort).map(mahal=>({mahal, talebe:''}));
+      return {docId, items};
+    }
+
+    // kayıtlı veriler
+    async function fetchExistingMap(katDocId, tarih){
+      const snap = await db.collection('temizlik_kontrol').doc(katDocId).collection(tarih).get();
+      const map={}; snap.forEach(doc=> map[doc.id]=doc.data()||{});
+      return map;
+    }
+
+    // talebe kaynakları
+    async function talebeFromMahallerSubcol(katDocId, mahal){
+      try{ const ds=await db.collection('temizlik_listesi').doc(katDocId).collection('mahaller').doc(mahal).get(); if(ds.exists){ return (ds.data()||{}).talebe||''; } }catch(e){}
+      return '';
+    }
+    async function talebeFromMahalAsSubcollection(katDocId, mahal){
+      try{ const snap=await db.collection('temizlik_listesi').doc(katDocId).collection(mahal).get(); if(!snap.empty){ let chosen=null; snap.forEach(d=>{ const v=d.data()||{}; if(v.aktif) chosen=d; }); chosen=chosen||snap.docs[0]; const v=chosen.data()||{}; return v.talebe||v.ad||chosen.id||''; } }catch(e){}
+      return '';
+    }
+    async function talebeFromDocMap(katDocId, mahal){
+      try{ const ds=await db.collection('temizlik_listesi').doc(katDocId).get(); if(ds.exists){ const data=ds.data()||{}; if(data.mahaller){ const v=data.mahaller[mahal]; if(v) return (typeof v==='object')?(v.talebe||''):String(v||''); } const v=data[mahal]; if(v) return (typeof v==='object')?(v.talebe||''):String(v||''); } }catch(e){}
+      return '';
+    }
+    async function enrichWithTalebe(katDocId, items){
+      return Promise.all(items.map(async it=>{
+        let talebe = await talebeFromMahallerSubcol(katDocId, it.mahal);
+        if(!talebe) talebe = await talebeFromMahalAsSubcollection(katDocId, it.mahal);
+        if(!talebe) talebe = await talebeFromDocMap(katDocId, it.mahal);
+        return {...it, talebe};
+      }));
+    }
+
+    async function loadAll(){
+      // 1) list
+      let {docId, items} = await loadMahallerFromTemizlikKatlari(ACTIVE_DOC_ID);
+      if(!items.length && trNormalize(ACTIVE_DOC_ID).includes('bahce')){
+        const alt = ACTIVE_DOC_ID.includes('ç')||ACTIVE_DOC_ID.includes('Ç') ? ACTIVE_DOC_ID.replace(/ç/gi,'c') : ACTIVE_DOC_ID.replace(/c/gi,'ç');
+        ({docId, items} = await loadMahallerFromTemizlikKatlari(alt));
+      }
+      if(!items.length){
+        tbodyForm.innerHTML=`<tr><td colspan="5" class="muted" style="padding:14px">Mahal listesi yok (doc: ${docId}).</td></tr>`;
+        cardsWrap.innerHTML=''; EXISTING_MAP={}; LAST_ITEMS=[]; updateStats(); return;
+      }
+
+      // 2) bugünün kayıtları özet için
+      const t = todayStr();
+      EXISTING_MAP = await fetchExistingMap(docId, t);
+
+      // 3) talebe
+      items = await enrichWithTalebe(docId, items);
+
+      // 4) defaultlar: Temiz = HAYIR, puan boş (1–10), explanation boş
+      items = items.map(it=>{
+        const ex = EXISTING_MAP[it.mahal];
+        if(ex){
+          const temiz = typeof ex.temiz==='boolean'? !!ex.temiz : false;
+          const p10 = (ex.puan10!=null)? clamp10(ex.puan10) : ((ex.puan!=null)? clamp10(from100(ex.puan)) : (temiz?10:1));
+          return { mahal:it.mahal, talebe:ex.talebe||it.talebe||'', temiz, puan10: temiz? p10 : 1, aciklama: ex.aciklama||'' };
+        }else{
+          return { mahal:it.mahal, talebe:it.talebe||'', temiz:false, puan10:1, aciklama:'' };
+        }
+      });
+
+      ACTIVE_DOC_ID = docId;
+      LAST_ITEMS = items;
+
+      renderTable(items);
+      renderCards(items);
+      updateStats();
+    }
+
+    /* -------- Renderers -------- */
+    function renderTable(items){
+      const rows = items.map((it,idx)=>`
+        <tr data-idx="${idx}">
+          <td><strong>${it.mahal}</strong></td>
+          <td><input type="text" class="input" value="${(it.talebe||'')}" data-field="talebe" readonly /></td>
+          <td>
+            <label class="switch">
+              <input type="checkbox" data-field="temiz" ${it.temiz?'checked':''} />
+              <span>Evet</span>
+            </label>
+          </td>
+          <td>
+            <input type="number" min="1" max="10" class="input puan" data-field="puan10" placeholder="1-10"
+                   value="${it.temiz? it.puan10 : ''}" ${it.temiz? '' : 'disabled'} />
+          </td>
+          <td><textarea class="input aciklama" data-field="aciklama" placeholder="Açıklama (opsiyonel)">${it.aciklama||''}</textarea></td>
+        </tr>
+      `).join('');
+      tbodyForm.innerHTML = rows;
+
+      // events
+      tbodyForm.querySelectorAll('[data-field="temiz"]').forEach(chk=>{
+        chk.addEventListener('change', e=>{
+          const tr=e.target.closest('tr'); const idx=tr.dataset.idx;
+          const p=tr.querySelector('[data-field="puan10"]');
+          if(e.target.checked){ p.disabled=false; if(!p.value) p.value=10; }
+          else { p.disabled=true; p.value=''; }
+          syncTableToCard(idx); updateStats();
+        });
+      });
+      tbodyForm.querySelectorAll('[data-field="puan10"]').forEach(inp=>{
+        inp.addEventListener('input', e=>{
+          e.target.value = e.target.value? clamp10(e.target.value) : '';
+          const idx=e.target.closest('tr').dataset.idx; syncTableToCard(idx); updateStats();
+        });
+      });
+      tbodyForm.querySelectorAll('[data-field="aciklama"]').forEach(inp=>{
+        inp.addEventListener('input', e=>{
+          syncTableToCard(e.target.closest('tr').dataset.idx);
+        });
+      });
+    }
+
+    function renderCards(items){
+      // order: Mahal → Talebe → Temiz → Puan → Açıklama
+      const html = items.map((it,idx)=>`
+        <div class="mcard" data-idx="${idx}">
+          <div class="title">🧹 ${it.mahal}</div>
+          <div class="row">
+            <span class="muted">Talebe:</span>
+            <input class="input grow" data-field="talebe-m" value="${it.talebe||''}" readonly />
+          </div>
+          <div class="row">
+            <label class="switch">
+              <input type="checkbox" data-field="temiz-m" ${it.temiz?'checked':''} />
+              <span>Temiz</span>
+            </label>
+          </div>
+          <div class="row">
+            <input type="number" min="1" max="10" class="input" data-field="puan10-m" placeholder="1-10"
+                   value="${it.temiz? it.puan10 : ''}" ${it.temiz? '' : 'disabled'} />
+          </div>
+          <div class="row">
+            <textarea class="input" data-field="aciklama-m" placeholder="Açıklama (opsiyonel)">${it.aciklama||''}</textarea>
+          </div>
+        </div>
+      `).join('');
+      cardsWrap.innerHTML = html;
+
+      // events
+      cardsWrap.querySelectorAll('[data-field="temiz-m"]').forEach(chk=>{
+        chk.addEventListener('change', e=>{
+          const card=e.target.closest('.mcard'); const idx=card.dataset.idx;
+          const p=card.querySelector('[data-field="puan10-m"]');
+          if(e.target.checked){ p.disabled=false; if(!p.value) p.value=10; }
+          else { p.disabled=true; p.value=''; }
+          syncCardToTable(idx); updateStats();
+        });
+      });
+      cardsWrap.querySelectorAll('[data-field="puan10-m"]').forEach(inp=>{
+        inp.addEventListener('input', e=>{
+          e.target.value = e.target.value? clamp10(e.target.value) : '';
+          const idx=e.target.closest('.mcard').dataset.idx; syncCardToTable(idx); updateStats();
+        });
+      });
+      cardsWrap.querySelectorAll('[data-field="aciklama-m"]').forEach(inp=>{
+        inp.addEventListener('input', e=>{
+          syncCardToTable(e.target.closest('.mcard').dataset.idx);
+        });
+      });
+    }
+
+    function syncCardToTable(idx){
+      const card=cardsWrap.querySelector(`.mcard[data-idx="${idx}"]`);
+      const tr=tbodyForm.querySelector(`tr[data-idx="${idx}"]`);
+      if(!card||!tr) return;
+      const temiz=card.querySelector('[data-field="temiz-m"]').checked;
+      const p10=card.querySelector('[data-field="puan10-m"]').value;
+      tr.querySelector('[data-field="temiz"]').checked = temiz;
+      tr.querySelector('[data-field="puan10"]').disabled = !temiz;
+      tr.querySelector('[data-field="puan10"]').value = temiz? p10 : '';
+      tr.querySelector('[data-field="aciklama"]').value = card.querySelector('[data-field="aciklama-m"]').value;
+    }
+    function syncTableToCard(idx){
+      const tr=tbodyForm.querySelector(`tr[data-idx="${idx}"]`);
+      const card=cardsWrap.querySelector(`.mcard[data-idx="${idx}"]`);
+      if(!tr||!card) return;
+      const temiz=tr.querySelector('[data-field="temiz"]').checked;
+      const p10=tr.querySelector('[data-field="puan10"]').value;
+      card.querySelector('[data-field="temiz-m"]').checked = temiz;
+      card.querySelector('[data-field="puan10-m"]').disabled = !temiz;
+      card.querySelector('[data-field="puan10-m"]').value = temiz? p10 : '';
+      card.querySelector('[data-field="aciklama-m"]').value = tr.querySelector('[data-field="aciklama"]').value;
+    }
+
+    /* -------- Read & Stats -------- */
+    function readRows(){
+      return Array.from(tbodyForm.querySelectorAll('tr[data-idx]')).map(tr=>{
+        const mahal = tr.children[0].innerText.trim();
+        const talebe = tr.querySelector('[data-field="talebe"]').value.trim();
+        const temiz  = tr.querySelector('[data-field="temiz"]').checked;
+        const p10raw = tr.querySelector('[data-field="puan10"]').value;
+        const puan10 = temiz ? clamp10(p10raw || 10) : 0;
+        const aciklama = tr.querySelector('[data-field="aciklama"]').value.trim();
+        return { mahal, talebe, temiz, puan10, puan: to100(puan10), aciklama };
+      });
+    }
+
+    function updateStats(){
+      const items = readRows();
+      const toplam = items.length;
+      const puanlar100 = items.map(x=> Number(x.puan)||0);
+      const ort = puanlar100.length? Math.round((puanlar100.reduce((a,b)=>a+b,0)/puanlar100.length)*10)/10 : 0;
+      const sifir = items.filter(x=> Number(x.puan)===0).length;
+      const doldurulan = Object.keys(EXISTING_MAP).length;
+
+      statToplam.textContent = toplam||0;
+      statDoldurulan.textContent = doldurulan||0;
+      statOrtalama.textContent = ort;
+      statSifir.textContent = sifir||0;
+    }
+
+    /* -------- Save + Modals -------- */
+    async function saveAll(){
+      const user = auth.currentUser; if(!user){ showToast('Oturum yok', true); return; }
+      const tarih = todayStr();
+      const items = readRows(); if(!items.length){ showToast('Kayıt yapılacak mahal yok', true); return; }
+
+      // Temiz=true ise puan10 zorunlu
+      for(const it of items){
+        if(it.temiz && (!isFinite(it.puan10) || it.puan10<1 || it.puan10>10)){
+          showToast(`${it.mahal}: 1-10 puanı giriniz`, true); return;
+        }
+      }
+
+      const batch = db.batch();
+      const col = db.collection('temizlik_kontrol').doc(ACTIVE_DOC_ID).collection(tarih);
+      const now = new Date();
+      items.forEach(it=>{
+        batch.set(col.doc(it.mahal), {
+          talebe: it.talebe || "",
+          temiz: !!it.temiz,
+          puan10: Number(it.puan10)||0,
+          puan: Number(it.puan)||0,            // 0–100 ölçek (yekün)
+          aciklama: it.aciklama || "",
+          kaydeden_uid: user.uid,
+          kayit_zamani: now
+        }, { merge: true });
+      });
+
+      try{
+        await batch.commit();
+        EXISTING_MAP = await fetchExistingMap(ACTIVE_DOC_ID, tarih);
+        updateStats();
+        modalAfter.style.display='flex';
+      }catch(e){ console.error(e); showToast('Kayıt hatası', true); }
+    }
+
+    // Detay modalını getir
+    async function loadHistory(dateStr){
+      hisContent.textContent = 'Yükleniyor…';
+      const snap = await db.collection('temizlik_kontrol').doc(ACTIVE_DOC_ID).collection(dateStr).get();
+      if(snap.empty){ hisContent.textContent = 'Bu tarihte kayıt yok.'; hisSummary.textContent=''; return; }
+      const rows=[]; let sum=0, n=0;
+      snap.forEach(doc=>{ const d=doc.data()||{}; const p = (d.puan!=null)? d.puan : to100(d.puan10||0); rows.push({mahal:doc.id, talebe:d.talebe||'', puan:p, ack:d.aciklama||''}); sum+=Number(p)||0; n++; });
+      const ort = Math.round((sum/n)*10)/10;
+      hisSummary.textContent = `Kayıt: ${n} • Ortalama: ${ort}`;
+      const tbl = `
+        <table class="table">
+          <thead><tr><th>Mahal</th><th>Talebe</th><th>Puan (0–100)</th><th>Açıklama</th></tr></thead>
+          <tbody>
+            ${rows.map(r=>`<tr><td>${r.mahal}</td><td>${r.talebe}</td><td>${r.puan}</td><td>${r.ack}</td></tr>`).join('')}
+          </tbody>
+        </table>`;
+      hisContent.innerHTML = tbl;
+    }
+
+    /* -------- Events -------- */
+    document.getElementById('btnKaydet').addEventListener('click', saveAll);
+    document.getElementById('btnTemizle').addEventListener('click', ()=>{
+      Array.from(tbodyForm.querySelectorAll('tr[data-idx]')).forEach(tr=>{
+        tr.querySelector('[data-field="temiz"]').checked = false;
+        const p=tr.querySelector('[data-field="puan10"]'); p.disabled=true; p.value='';
+        tr.querySelector('[data-field="aciklama"]').value='';
+        syncTableToCard(tr.dataset.idx);
+      }); updateStats();
+    });
+
+    // Kayıt sonrası modal
+    document.getElementById('mNo').addEventListener('click', ()=>{
+      modalAfter.style.display='none';
+      window.location.href = `../temizlik-kontrolu.html`;
+    });
+    document.getElementById('mYes').addEventListener('click', ()=>{
+      modalAfter.style.display='none';
+      window.location.href = `eksik-bildir.html?kat=${encodeURIComponent(ACTIVE_DOC_ID)}&tarih=${encodeURIComponent(todayStr())}`;
+    });
+
+    modalAfter.addEventListener('click', e=>{ if(e.target===modalAfter) modalAfter.style.display='none'; });
+
+    // Detay Gör modal
+    document.getElementById('btnDetayGor').addEventListener('click', ()=>{
+      modalDetay.style.display='flex';
+      hisSummary.textContent=''; hisContent.textContent='Bir tarih seçiniz.';
+    });
+    document.getElementById('btnHisGetir').addEventListener('click', ()=>{
+      const d=hisDate.value; if(!d){ showToast('Tarih seçin', true); return; }
+    if(d > todayStr()){              // sadece GELECEĞİ engelle
+    showToast('Gelecek tarih seçilemez', true);
+    return;
+    }      
+    loadHistory(d);
+    });
+    document.getElementById('btnHisClose').addEventListener('click', ()=> modalDetay.style.display='none');
+    modalDetay.addEventListener('click', e=>{ if(e.target===modalDetay) modalDetay.style.display='none'; });
+
+    // Auth + init
+    document.getElementById('btnSignOut').onclick = async ()=>{ try{ await auth.signOut(); }catch(e){} };
+    auth.onAuthStateChanged(user=>{
+      if(!user){ window.location.href='../../index.html'; return; }
+      userBadge.textContent = user.email || '—';
+    });
+
+    // İlk yükleme
+    (async ()=>{ await loadAll(); })();
+  })();
+  </script>
+</body>
+</html>

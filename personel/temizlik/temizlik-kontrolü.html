@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Temizlik Kontrol | Ana Sayfa</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Firebase compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="../../js/firebase/firebase-init.js"></script>
+
+  <style>
+    :root{
+      --bg:#f4f6f9; --card:#ffffff; --text:#2c3e50; --muted:#6b7a8f;
+      --accent:#2d6a4f; --accent-2:#324960; --warn:#c0392b; --line:#e7edf3;
+      --chip:#eef5ff; --chip-text:#264a7c; --shadow:0 6px 18px rgba(28,39,60,.08);
+      --radius:14px;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    header{
+      position:sticky;top:0;z-index:50;background:var(--card);
+      box-shadow:var(--shadow);padding:14px 18px;display:flex;align-items:center;justify-content:space-between
+    }
+    header .left{display:flex;gap:12px;align-items:center}
+    header h1{font-size:18px;margin:0}
+    header .badge{font-size:12px;background:var(--chip);color:var(--chip-text);padding:4px 10px;border-radius:999px;border:1px solid #d8e6ff}
+    .btn{background:var(--accent-2);color:#fff;border:none;border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer;box-shadow:var(--shadow)}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .btn.outline{background:#fff;color:var(--accent-2);border:1px solid var(--accent-2)}
+    .wrap{max-width:1100px;margin:22px auto;padding:0 14px}
+    .filters{
+      background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);
+      padding:14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between
+    }
+    .filters .group{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .input, select{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:200px;color:var(--text)}
+    .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:14px}
+    .card{
+      background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px
+    }
+    .card h3{margin:0 0 6px 0;font-size:13px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+    .card .value{font-size:26px;font-weight:800}
+    .card .sub{font-size:12px;color:var(--muted)}
+    .value.good{color:var(--accent)}
+    .value.bad{color:var(--warn)}
+    .table-wrap{
+      margin-top:14px;background:var(--card);border:1px solid var(--line);
+      border-radius:var(--radius);box-shadow:var(--shadow);overflow:auto
+    }
+    table{width:100%;border-collapse:separate;border-spacing:0}
+    thead th{
+      position:sticky;top:0;background:#fbfcfe;border-bottom:1px solid var(--line);
+      font-size:13px;text-align:left;padding:12px;color:var(--muted)
+    }
+    tbody td{padding:12px;border-bottom:1px solid var(--line);font-size:14px}
+    tbody tr:hover{background:#fafcff}
+    .chip{display:inline-flex;align-items:center;gap:8px;background:#f7fafc;border:1px solid var(--line);padding:6px 10px;border-radius:999px;font-size:12px}
+    .progress{width:100%;height:10px;background:#eef2f7;border-radius:999px;overflow:hidden;border:1px solid #e5ecf6}
+    .progress > span{display:block;height:100%;background:linear-gradient(90deg,#4f8df5,#65d1b5);width:0%}
+    .row-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+    /* MOBİL KART GÖRÜNÜMÜ */
+    .cards-list{display:none;margin-top:14px}
+    .kcat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px}
+    .kcat h4{margin:0 0 8px 0}
+    .krow{display:flex;justify-content:space-between;gap:10px;margin:6px 0}
+    .krow .lbl{color:var(--muted);font-size:12px}
+    .kbar{margin-top:8px}
+    .kbar .progress{height:12px}
+
+    /* Mobile breakpoints */
+    @media (max-width:900px){ .cards{grid-template-columns:repeat(2,1fr)} }
+    @media (max-width:680px){
+      .cards{grid-template-columns:1fr}
+      .input,select{min-width:unset;width:100%}
+      .filters{gap:12px}
+      .filters .group{width:100%;justify-content:space-between}
+      .row-actions{width:100%}
+      .btn{width:100%}
+      /* kart görünümü aktif, tablo gizli */
+      .table-wrap{display:none}
+      .cards-list{display:block}
+    }
+
+    .toast{
+      position:fixed;left:50%;bottom:24px;transform:translateX(-50%);
+      background:#2d6a4f;color:#fff;padding:10px 14px;border-radius:10px;display:none;z-index:1000;box-shadow:var(--shadow);font-weight:600
+    }
+    .toast.err{background:#c0392b}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="left">
+      <h1>Temizlik Kontrol</h1>
+      <span class="badge">Ana Sayfa</span>
+    </div>
+    <button id="btnSignOut" class="btn outline">Çıkış Yap</button>
+  </header>
+
+  <div class="wrap">
+    <!-- Filtre Şeridi -->
+    <div class="filters">
+      <div class="group">
+        <label for="dateInput" class="muted" style="font-weight:600;">Tarih:</label>
+        <input id="dateInput" type="date" class="input" />
+        <label for="katSelect" class="muted" style="font-weight:600;">Kat:</label>
+        <select id="katSelect">
+          <option value="ALL">Tümü</option>
+          <option value="2.Kat - Lokal">2.Kat - Lokal</option>
+          <option value="1.Kat - Etüt">1.Kat - Etüt</option>
+          <option value="0 - Giriş Kat">0 - Giriş Kat</option>
+          <option value="-1.Kat - Yatakhane">-1.Kat - Yatakhane</option>
+          <option value="-2.Kat - Yemekhane">-2.Kat - Yemekhane</option>
+          <option value="Bahçe">Bahçe</option>
+        </select>
+      </div>
+      <div class="group">
+        <button id="btnYenile" class="btn">Yenile</button>
+        <button id="btnBugun" class="btn outline">Bugün</button>
+      </div>
+    </div>
+
+    <!-- KPI Kartları -->
+    <div class="cards">
+      <div class="card">
+        <h3>Toplam Mahaller</h3>
+        <div class="value" id="kpiToplamMahaller">—</div>
+        <div class="sub">Liste + Kayıtlara göre</div>
+      </div>
+      <div class="card">
+        <h3>Doldurulan Kayıt</h3>
+        <div class="value" id="kpiDoldurulan">—</div>
+        <div class="sub">Tarih bazlı</div>
+      </div>
+      <div class="card">
+        <h3>Ortalama Puan</h3>
+        <div class="value good" id="kpiOrtalama">—</div>
+        <div class="sub">0–100</div>
+      </div>
+      <div class="card">
+        <h3>Uyarı/Eksik</h3>
+        <div class="value bad" id="kpiUyari">—</div>
+        <div class="sub">Eksik mahal & 0 puan</div>
+      </div>
+    </div>
+
+    <!-- Masaüstü: Tablo -->
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="min-width:160px;">Kat</th>
+            <th style="min-width:180px;">Mahaller (kayıtlı / toplam)</th>
+            <th style="min-width:200px;">Kapsama</th>
+            <th style="min-width:140px;">Ortalama Puan</th>
+            <th style="min-width:300px;">İşlemler</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyKats">
+          <tr><td colspan="5" class="muted" style="padding:14px">Veri yükleniyor…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Mobil: Kart Liste -->
+    <div id="cardsKats" class="cards-list">
+      <!-- JS ile doldurulacak -->
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+  (function(){
+    const db = window.db; // firebase-init.js içinde
+    const auth = firebase.auth();
+
+    function todayStr(){
+      const now = new Date();
+      const tzDate = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Istanbul' }));
+      const y = tzDate.getFullYear();
+      const m = String(tzDate.getMonth()+1).padStart(2,'0');
+      const d = String(tzDate.getDate()).padStart(2,'0');
+      return `${y}-${m}-${d}`;
+    }
+    function showToast(msg, err=false){
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'toast' + (err ? ' err' : '');
+      t.style.display = 'block';
+      setTimeout(()=> t.style.display='none', 2400);
+    }
+    function pct(n){ return isFinite(n) ? (Math.round(n*1000)/10)+'%' : '—'; }
+    function avg(arr){
+      if(!arr || !arr.length) return 0;
+      const v = arr.reduce((a,b)=>a+(Number(b)||0),0) / arr.length;
+      return Math.round(v*10)/10;
+    }
+    function clamp100(n){ n = Number(n)||0; if(n<0) n=0; if(n>100) n=100; return n; }
+
+    const KATLAR = [
+      "2.Kat - Lokal","1.Kat - Etüt","0 - Giriş Kat","-1.Kat - Yatakhane","-2.Kat - Yemekhane","Bahçe"
+    ];
+
+    async function fetchMahallerFromListesi(kat){
+      // Öncelik: sub-collection
+      try{
+        const colRef = db.collection('temizlik_listesi').doc(kat).collection('mahaller');
+        const snap = await colRef.get();
+        if(!snap.empty){ return snap.size; }
+      }catch(e){ /* ignore */ }
+
+      // Alternatif: tek dokümanda map
+      try{
+        const snap = await db.collection('temizlik_listesi').doc(kat).get();
+        if(snap.exists){
+          const data = snap.data()||{};
+          return Object.keys(data).length || null;
+        }
+      }catch(e){ /* ignore */ }
+      return null;
+    }
+
+    async function fetchKayitlar(kat, tarih){
+      const snap = await db.collection('temizlik_kontrol').doc(kat).collection(tarih).get();
+      const items = [];
+      snap.forEach(doc=>{
+        const d = doc.data()||{};
+        items.push({
+          mahal: doc.id,
+          talebe: d.talebe || "",
+          puan: clamp100(d.puan),
+          aciklama: d.aciklama || ""
+        });
+      });
+      return items;
+    }
+
+    async function katOzet(kat, tarih){
+      const [kayitlar, toplamFromList] = await Promise.all([
+        fetchKayitlar(kat, tarih),
+        fetchMahallerFromListesi(kat)
+      ]);
+      const kayitli = kayitlar.length;
+      const toplamMahaller = toplamFromList || Math.max(kayitli, 0);
+      const puanlar = kayitlar.map(k=> clamp100(k.puan||0));
+      const ort = avg(puanlar);
+      const kapsama = toplamMahaller ? (kayitli/ toplamMahaller) : 0;
+      const uyari = kayitlar.filter(k=> (Number(k.puan)||0)===0).length + Math.max(0,(toplamMahaller-kayitli));
+      return { kat, toplamMahaller, kayitli, kapsama, ortalama: ort, uyari };
+    }
+
+    async function tumKatlarOzet(tarih, sadeceKat=null){
+      const kats = sadeceKat && sadeceKat!=='ALL' ? [sadeceKat] : KATLAR;
+      const results = await Promise.all(kats.map(k=> katOzet(k, tarih)));
+      return results;
+    }
+
+    const dateInput = document.getElementById('dateInput');
+    const katSelect = document.getElementById('katSelect');
+    const tbodyKats = document.getElementById('tbodyKats');
+    const cardsKats = document.getElementById('cardsKats');
+    const kpiToplamMahaller = document.getElementById('kpiToplamMahaller');
+    const kpiDoldurulan = document.getElementById('kpiDoldurulan');
+    const kpiOrtalama = document.getElementById('kpiOrtalama');
+    const kpiUyari = document.getElementById('kpiUyari');
+
+    function setLoading(){
+      tbodyKats.innerHTML = `<tr><td colspan="5" class="muted" style="padding:14px">Veri yükleniyor…</td></tr>`;
+      cardsKats.innerHTML = `<div class="kcat"><div class="muted">Veri yükleniyor…</div></div>`;
+      kpiToplamMahaller.textContent = '—';
+      kpiDoldurulan.textContent = '—';
+      kpiOrtalama.textContent = '—';
+      kpiUyari.textContent = '—';
+    }
+
+    function renderDesktopTable(rows, tarih){
+      if(!rows || !rows.length){
+        tbodyKats.innerHTML = `<tr><td colspan="5" class="muted" style="padding:14px">Kayıt bulunamadı.</td></tr>`;
+        return;
+      }
+      const html = rows.map(r=>{
+        const prog = Math.round((r.kapsama||0)*100);
+        const avgTxt = isFinite(r.ortalama) ? (Math.round(r.ortalama*10)/10).toString() : '—';
+        const dstr = encodeURIComponent(tarih);
+        const linkHref = `katlar/temizlik-form.html?d=${dstr}&kat=${encodeURIComponent(r.kat)}&doc=${encodeURIComponent(r.kat)}`;
+        return `
+          <tr>
+            <td><span class="chip">🧹 ${r.kat}</span></td>
+            <td><span class="chip">${r.kayitli} / ${r.toplamMahaller}</span></td>
+            <td>
+              <div class="progress" aria-label="Kapsama">
+                <span style="width:${prog}%"></span>
+              </div>
+              <div class="muted" style="margin-top:6px;">${prog}%</div>
+            </td>
+            <td><strong>${avgTxt}</strong></td>
+            <td class="row-actions">
+              <a class="btn" href="${linkHref}">Formu Aç</a>
+              <button class="btn outline" onclick="window.__detay('${r.kat}','${tarih}')">Detay</button>
+              <button class="btn outline" style="background:#fff;border:1px dashed #b9c4d3;color:#2c3e50" onclick="window.__eksik('${r.kat}','${tarih}')">Eksik Bildir</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+      tbodyKats.innerHTML = html;
+    }
+
+    function renderMobileCards(rows, tarih){
+      if(!rows || !rows.length){
+        cardsKats.innerHTML = `<div class="kcat"><div class="muted">Kayıt bulunamadı.</div></div>`;
+        return;
+      }
+      const html = rows.map(r=>{
+        const prog = Math.round((r.kapsama||0)*100);
+        const avgTxt = isFinite(r.ortalama) ? (Math.round(r.ortalama*10)/10).toString() : '—';
+        const dstr = encodeURIComponent(tarih);
+        const linkHref = `katlar/temizlik-form.html?d=${dstr}&kat=${encodeURIComponent(r.kat)}`;
+        return `
+          <div class="kcat">
+            <h4>🧹 ${r.kat}</h4>
+            <div class="krow"><span class="lbl">Mahaller:</span><strong>${r.kayitli} / ${r.toplamMahaller}</strong></div>
+            <div class="krow"><span class="lbl">Ortalama:</span><strong>${avgTxt}</strong></div>
+            <div class="kbar">
+              <div class="progress"><span style="width:${prog}%"></span></div>
+              <div class="muted" style="margin-top:6px;">Kapsama: ${prog}%</div>
+            </div>
+            <div class="row-actions" style="margin-top:10px">
+              <a class="btn" href="${linkHref}">Formu Aç</a>
+              <button class="btn outline" onclick="window.__detay('${r.kat}','${tarih}')">Detay</button>
+              <button class="btn outline" style="background:#fff;border:1px dashed #b9c4d3;color:#2c3e50" onclick="window.__eksik('${r.kat}','${tarih}')">Eksik Bildir</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+      cardsKats.innerHTML = html;
+    }
+
+    function renderKPIs(rows){
+      const toplamMah = rows.reduce((a,b)=> a + (Number(b.toplamMahaller)||0), 0);
+      const doldurulan = rows.reduce((a,b)=> a + (Number(b.kayitli)||0), 0);
+      const ort = avg(rows.map(r=> Number(r.ortalama)||0)) || 0;
+      const uyari = rows.reduce((a,b)=> a + (Number(b.uyari)||0), 0);
+
+      kpiToplamMahaller.textContent = toplamMah || 0;
+      kpiDoldurulan.textContent = doldurulan || 0;
+      kpiOrtalama.textContent = Math.round(ort*10)/10;
+      kpiUyari.textContent = uyari || 0;
+    }
+
+    async function loadData(){
+      const tarih = dateInput.value || todayStr();
+      const kat = katSelect.value || 'ALL';
+      try{
+        setLoading();
+        const rows = await tumKatlarOzet(tarih, kat);
+        rows.sort((a,b)=> (b.kapsama - a.kapsama) || (b.ortalama - a.ortalama));
+        renderDesktopTable(rows, tarih);
+        renderMobileCards(rows, tarih);
+        renderKPIs(rows);
+      }catch(e){
+        console.error(e);
+        tbodyKats.innerHTML = `<tr><td colspan="5" class="muted" style="padding:14px">Veri yüklenirken hata oluştu.</td></tr>`;
+        cardsKats.innerHTML = `<div class="kcat"><div class="muted">Veri yüklenirken hata oluştu.</div></div>`;
+        showToast('Yükleme hatası', true);
+      }
+    }
+
+    // Detay butonu (hızlı toast)
+    window.__detay = async function(kat, tarih){
+      try{
+        const items = await fetchKayitlar(kat, tarih);
+        if(!items.length){ showToast(`${kat} - Kayıt yok`, true); return; }
+        const ort = avg(items.map(i=> clamp100(i.puan||0)));
+        showToast(`${kat}: Ortalama ${Math.round(ort)} / ${items.length} kayıt`);
+      }catch(e){ showToast('Detay alınamadı', true); }
+    }
+
+    // Eksik Bildir (stub) — sonra içerik/akışını netleştiririz
+    window.__eksik = function(kat, tarih){
+      // Burada bir modal açabiliriz; şimdilik hızlı kayıt içeren bir yönlendirme/placeholder:
+      console.log('Eksik bildir tıklandı:', {kat, tarih});
+      showToast(`Eksik Bildir → ${kat} (${tarih})`);
+      // İleride: erisim_talepleri benzeri "eksik_bildirim" koleksiyonu + modal form
+    }
+
+    // Auth kontrol
+    auth.onAuthStateChanged(user=>{
+      if(!user){
+        window.location.href='../../index.html';
+      }
+    });
+    document.getElementById('btnSignOut').onclick = async ()=>{
+      try{ await auth.signOut(); }catch(e){ console.warn(e); }
+    };
+
+    // UI events
+    document.getElementById('btnYenile').addEventListener('click', loadData);
+    document.getElementById('btnBugun').addEventListener('click', ()=>{
+      dateInput.value = todayStr(); loadData();
+    });
+    katSelect.addEventListener('change', loadData);
+    dateInput.addEventListener('change', loadData);
+
+    // init
+    dateInput.value = todayStr();
+    loadData();
+  })();
+  </script>
+</body>
+</html>
