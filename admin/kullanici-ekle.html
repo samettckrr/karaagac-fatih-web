@@ -4,305 +4,284 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Kullanıcı & Yetki Yönetimi</title>
+<link rel="icon" type="image/png" href="../img/logo.png" />
+
+<!-- ====== TEMA (panel.html ile aynı) ====== -->
+<style>
+  :root{
+    --appbar-h:56px;
+    --radius:14px; --shadow:0 12px 28px rgba(0,0,0,.14);
+    --bg:#0f172a; --bg2:#0b1324;
+    --grad1:#0ea5e922; --grad2:#22d3ee22;
+    --card:rgba(15,23,42,.92); --stroke:rgba(148,163,184,.18);
+    --text:#e5e7eb; --muted:#9aa4b2;
+    --brand:#38bdf8; --brand2:#0ea5e9;
+    --pill:#0b1220; --pill-hover:#101a2b;
+    --link:#c7e9ff; --surface:rgba(2,6,23,.08);
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#eef6ff; --bg2:#f7fbff;
+      --card:rgba(255,255,255,.95); --stroke:rgba(15,23,42,.12);
+      --text:#0b1220; --muted:#4b5563; --brand:#0ea5e9; --brand2:#0284c7;
+      --pill:#f5f8ff; --pill-hover:#e9f2ff; --link:#0b5ea8; --surface:#eef3ff;
+    }
+  }
+  html[data-theme="dark"]{ --bg:#0f172a; --bg2:#0b1324; --card:rgba(15,23,42,.92); --stroke:rgba(148,163,184,.18); --text:#e5e7eb; --muted:#9aa4b2; --brand:#38bdf8; --brand2:#0ea5e9; --pill:#0b1220; --pill-hover:#101a2b; --link:#c7e9ff; --surface:rgba(2,6,23,.08); }
+  html[data-theme="light"]{ --bg:#eef6ff; --bg2:#f7fbff; --card:rgba(255,255,255,.95); --stroke:rgba(15,23,42,.12); --text:#0b1220; --muted:#4b5563; --brand:#0ea5e9; --brand2:#0284c7; --pill:#f5f8ff; --pill-hover:#e9f2ff; --link:#0b5ea8; --surface:#eef3ff; }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; color:var(--text);
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Arial;
+    background:
+      radial-gradient(900px 680px at 12% 8%, var(--grad1), transparent 45%),
+      radial-gradient(800px 640px at 88% 92%, var(--grad2), transparent 50%),
+      linear-gradient(140deg, var(--bg), var(--bg2) 60%);
+    overflow-x:hidden;
+  }
+  a{color:var(--link); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* APPBAR */
+  .appbar{position:sticky; top:0; z-index:60; height:var(--appbar-h); background:var(--card); backdrop-filter:blur(10px); border-bottom:1px solid var(--stroke); display:flex; align-items:center; gap:12px; padding:0 12px}
+  .brand{display:flex; align-items:center; gap:10px; cursor:pointer}
+  .brand img{width:24px; height:24px}
+  .brand span{font-weight:900; letter-spacing:.02em}
+  .nav-center{margin:0 auto; height:100%}
+  .nav-list{display:flex; gap:22px; align-items:center; height:100%; list-style:none; margin:0; padding:0}
+  .nav-item{position:relative; height:100%}
+  .nav-btn{height:100%; display:flex; align-items:center; gap:6px; font-weight:600; cursor:pointer}
+  .nav-btn:hover{color:var(--brand)}
+  .caret{font-size:12px; opacity:.6}
+  .dropdown{position:absolute; top:100%; left:0; min-width:240px; background:var(--card); border:1px solid var(--stroke); border-radius:10px; box-shadow:var(--shadow); padding:8px; display:none}
+  .dropdown a{display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px}
+  .dropdown a:hover{background:var(--surface)}
+  .nav-item.open .dropdown{display:block}
+  .nav-right{display:flex; gap:8px; align-items:center}
+  .btn{border:1px solid var(--stroke); background:var(--card); color:var(--text); border-radius:999px; padding:8px 12px; cursor:pointer}
+  .hamb{display:none}
+  @media (max-width:1024px){ .nav-center{display:none} .hamb{display:inline-flex} }
+
+  /* DRAWER */
+  .drawer{position:fixed; top:var(--appbar-h); right:0; bottom:0; left:30%; transform:translateX(100%); transition:transform .25s ease; background:var(--card); border-left:1px solid var(--stroke); z-index:70; overflow:auto; -webkit-overflow-scrolling:touch; padding:12px}
+  .drawer.open{transform:translateX(0)}
+  .drawer .panel-title{margin:14px 4px 6px; font-weight:800; color:var(--muted); font-size:13px}
+  .drawer a{display:block; padding:10px; border-radius:10px; border:1px solid var(--stroke); margin:6px 0; background:var(--pill)}
+  .drawer a:hover{background:var(--pill-hover)}
+
+  /* LAYOUT */
+  .container{max-width:1200px; margin:0 auto; padding:16px}
+  .grid{display:grid; gap:14px; grid-template-columns:repeat(12, minmax(0,1fr))}
+  .col-8{grid-column:span 8}
+  .col-4{grid-column:span 4}
+  @media (max-width:980px){ .col-8,.col-4{grid-column:span 12} }
+
+  .card{background:var(--card); border:1px solid var(--stroke); border-radius:var(--radius); box-shadow:var(--shadow); padding:14px}
+  .card h3{margin:0 0 10px; font-size:16px}
+  .mini{display:flex; gap:8px; flex-wrap:wrap}
+  .pill{padding:6px 10px; border-radius:999px; border:1px solid var(--stroke); background:var(--pill); font-size:12px}
+
+  /* FORM */
+  label{font-weight:700; display:block; margin:10px 0 6px}
+  input,select,textarea{width:100%; padding:11px 12px; border:1px solid var(--stroke); border-radius:12px; background:transparent; color:var(--text); outline:none}
+  input:focus,select:focus,textarea:focus{box-shadow:0 0 0 4px rgba(56,189,248,.18); border-color:var(--brand)}
+  .row{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:900px){.row{grid-template-columns:1fr}}
+
+  /* PERM TREE */
+  .perm-group{border:1px dashed var(--stroke); border-radius:12px; padding:12px; margin:12px 0; background:var(--surface)}
+  .perm-head{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:8px}
+  .perm-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:8px}
+  .perm-item{display:flex; align-items:center; gap:8px; background:var(--pill); border:1px solid var(--stroke); border-radius:999px; padding:8px 10px}
+  .perm-item input{width:18px;height:18px}
+
+  /* TABLE & CARDS */
+  .table{width:100%; border-collapse:collapse}
+  .table th,.table td{border-bottom:1px solid var(--stroke); padding:10px 8px; text-align:left; vertical-align:middle}
+  .gridcards{display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px}
+  .ucard{background:var(--card); border:1px solid var(--stroke); border-radius:12px; padding:12px}
+
+  /* MODAL */
+  .modal-back{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:120;backdrop-filter:blur(2px)}
+  .modal{width:min(900px,96vw);max-height:92vh;background:var(--card);border:1px solid var(--stroke);border-radius:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden}
+  .modal .hd{padding:12px 14px;border-bottom:1px solid var(--stroke);font-weight:800}
+  .modal .bd{padding:14px;overflow:auto;-webkit-overflow-scrolling:touch}
+  .modal .ft{padding:12px 14px;border-top:1px solid var(--stroke);display:flex;gap:8px;justify-content:flex-end}
+  @media(max-width:700px){ .modal{width:100vw;height:100dvh;max-height:100dvh;border-radius:0} }
+
+  /* RIGHT SUMMARY */
+  .summary{position:sticky; top:calc(var(--appbar-h) + 14px)}
+
+  /* TOAST */
+  .toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:rgba(2,6,23,.95); color:#fff; border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:10px 12px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:200}
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+</style>
 
 <!-- Firebase compat -->
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 <script src="../js/firebase/firebase-init.js"></script>
-
-<!-- EmailJS (opsiyonel) -->
-<script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
-<script>try{ emailjs.init("GjWsgfl8BKUh13JhS"); }catch(e){}</script>
-
-<style>
-:root{
-  --bg:#f4f6f9; --card:#ffffff; --text:#2c3e50; --muted:#778ca3;
-  --accent:#2c3e50; --accent-2:#324960; --ok:#27ae60; --warn:#f39c12; --bad:#c0392b;
-  --stroke:#e5eaef; --chip:#ecf0f1; --shadow:0 10px 25px rgba(0,0,0,.08);
-  --primary:#2d6a4f; --primary-2:#1b4332;
-}
-*{box-sizing:border-box}
-body{margin:0; font-family:'Segoe UI',system-ui,Arial; background:var(--bg); color:#333}
-
-/* HEADER */
-header{position:sticky;top:0;z-index:10;background:linear-gradient(90deg,var(--accent),var(--accent-2));
-  color:#fff;padding:14px 18px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow)}
-.brand{font-weight:800}
-.grow{flex:1}
-.badge{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);padding:6px 10px;border-radius:999px;font-size:12px}
-.btn{border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:#fff;padding:8px 12px;border-radius:10px;font-weight:600;cursor:pointer}
-.btn:hover{background:rgba(255,255,255,.2)}
-.wrap{max-width:1200px;margin:20px auto;padding:0 16px}
-
-/* TABS */
-.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
-.tab{background:#fff;border:1px solid var(--stroke);padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:700;color:#223}
-.tab.active{background:var(--primary);color:#fff;border-color:transparent}
-.view{display:none}
-.view.active{display:block}
-
-/* CARDS */
-.card{background:#fff;border:1px solid var(--stroke);border-radius:14px;box-shadow:var(--shadow);margin-bottom:16px}
-.card .hd{padding:14px 16px;border-bottom:1px solid var(--stroke);display:flex;justify-content:space-between;align-items:center}
-.card .bd{padding:16px}
-.chip{background:var(--chip);border-radius:999px;padding:6px 10px;font-size:12px;color:#444;border:1px solid #dde6ee}
-
-/* FORMS */
-label{font-weight:700;color:var(--text);display:block;margin-top:12px}
-input,select,textarea{width:100%;padding:11px 12px;margin-top:7px;border:1px solid #cfd7df;border-radius:10px;outline:none;background:#fff}
-input:focus,select:focus,textarea:focus{border-color:#9bb5cc;box-shadow:0 0 0 4px rgba(46,134,222,.08)}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-@media(max-width:900px){.row,.row-3{grid-template-columns:1fr}}
-
-.actions{display:flex;gap:8px;flex-wrap:wrap}
-.btn-primary{background:var(--primary);color:#fff;border:none;padding:10px 14px;border-radius:10px;font-weight:800;cursor:pointer}
-.btn-primary:hover{background:var(--primary-2)}
-.btn-ghost{background:#fff;border:1px solid #cfd7df;color:#223;padding:10px 14px;border-radius:10px;font-weight:700;cursor:pointer}
-
-.hint{font-size:12px;color:var(--muted);margin-top:6px}
-.hint.err{color:var(--bad)}
-.pw-wrap{position:relative}
-.pw-eye{position:absolute;right:10px;top:50%;translate:0 -50%;background:transparent;border:none;cursor:pointer;color:#666;font-size:14px}
-.meter{margin-top:8px;height:8px;background:#e9eef3;border-radius:6px;overflow:hidden}
-.meter>span{display:block;height:100%;width:0%}
-.m-weak{background:var(--bad)} .m-mid{background:var(--warn)} .m-strong{background:var(--ok)}
-.pw-label{font-size:12px;margin-top:6px;color:#666;font-weight:600}
-
-/* PERMISSION TREE */
-.group{border:1px dashed var(--stroke);border-radius:12px;padding:12px;margin-top:12px;background:#fcfdff}
-.group .g-hd{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}
-.group h4{margin:0;color:#1f2d3d}
-.g-actions{display:flex;gap:8px}
-.g-btn{border:1px solid #cfd7df;background:#fff;color:#334;padding:6px 10px;border-radius:8px;font-size:12px;cursor:pointer}
-.yetkiler{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-@media(max-width:700px){.yetkiler{grid-template-columns:1fr}}
-.yetki-item{border:2px solid transparent;background:#f3f6fa;border-radius:12px;padding:10px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:.12s}
-.yetki-item:hover{background:#eaf1f8}
-.yetki-item input{transform:scale(1.2);cursor:pointer}
-.yetki-item.checked{background:#e9fbf1;border-color:#d0f1dc}
-
-/* TABLE */
-.table{width:100%;border-collapse:collapse}
-.table th,.table td{border-bottom:1px solid var(--stroke);padding:10px 8px;text-align:left}
-.table th{font-size:13px;color:#556}
-.table td{font-size:14px}
-.tag{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid #e2e8ef;background:#f7fafc;font-size:12px}
-
-/* MODALS / TOAST */
-.modal-back{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:50}
-.modal{width:min(640px,92vw);background:#fff;border-radius:14px;border:1px solid var(--stroke);box-shadow:var(--shadow)}
-.modal .hd{padding:14px 16px;border-bottom:1px solid var(--stroke);font-weight:800}
-.modal .bd{padding:16px}
-.modal .ft{padding:14px 16px;border-top:1px solid var(--stroke);display:flex;gap:8px;justify-content:flex-end}
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:10px 14px;border-radius:10px;display:none;z-index:60}
-.toast.ok{background:var(--primary)} .toast.err{background:var(--bad)} .toast.warn{background:var(--warn)}
-.overlay{position:fixed;inset:0;background:rgba(255,255,255,.8);display:none;z-index:40;align-items:center;justify-content:center;font-weight:800;color:#1f2d3d}
-
-/* DENY */
-.deny{display:none;max-width:900px;margin:24px auto;background:#fff;border:1px solid var(--stroke);border-radius:14px;padding:24px;box-shadow:var(--shadow)}
-</style>
 </head>
 <body>
-<header>
-  <div class="brand">Karaağaç Fatih</div>
-  <div class="grow"></div>
-  <div class="badge" id="adminMail">—</div>
-  <button class="btn" id="btnPanel">Panele Dön</button>
-  <button class="btn" id="btnCikis">Çıkış Yap</button>
-</header>
 
-<div class="wrap">
-  <div class="deny" id="denyBox">
-    <h2>Erişim Engellendi</h2>
-    <p>Bu sayfa yalnızca <b>Admin / Sistem Ayarları</b> yetkisine sahip kullanıcılar tarafından kullanılabilir.</p>
+<!-- ====== APPBAR ====== -->
+<div class="appbar">
+  <div class="brand" onclick="location.href='../panel.html'">
+    <img src="../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
   </div>
-
-  <div id="mainArea">
-    <div class="tabs">
-      <div class="tab active" data-tab="ekle">1. Kullanıcı Ekle</div>
-      <div class="tab" data-tab="manifest">2. Yetki Ekle (Sayfa Manifesti)</div>
-      <div class="tab" data-tab="liste">3. Kullanıcılar</div>
-    </div>
-
-    <!-- TAB 1: KULLANICI EKLE -->
-    <div class="view active" id="view-ekle">
-      <div class="card">
-        <div class="hd"><h3>Kullanıcı Ekle</h3><span class="chip">Secondary app ile güvenli ekleme</span></div>
-        <div class="bd">
-          <form id="frmAdd">
-            <div class="row">
-              <div>
-                <label>Ad Soyad</label>
-                <input id="adSoyad" placeholder="Samet ÇAKIR" required>
-              </div>
-              <div>
-                <label>Rol</label>
-                <select id="rol" required>
-                  <option value="" disabled selected>Rol seçiniz</option>
-                  <option value="admin">admin</option>
-                  <option value="personel">personel</option>
-                  <option value="ziyaret">ziyaret</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="row">
-              <div>
-                <label>Görev</label>
-                <input id="gorev" placeholder="Müdür, Temizlik Sorumlusu..." required>
-              </div>
-              <div>
-                <label>E-posta <small style="font-weight:400;color:#7b8;">(@gmail.com önerilir)</small></label>
-                <input id="email" type="email" placeholder="ornek@gmail.com" required>
-                <div id="emailHint" class="hint"></div>
-              </div>
-            </div>
-
-            <div class="row">
-              <div class="pw-wrap">
-                <label>Geçici Şifre</label>
-                <input id="sifre" type="password" placeholder="Geçici şifre" required>
-                <button type="button" class="pw-eye" id="togglePw">👁</button>
-                <div class="meter"><span id="meterBar"></span></div>
-                <div class="pw-label" id="pwLabel">Güç: —</div>
-              </div>
-              <div>
-                <label>&nbsp;</label>
-                <div class="actions" style="margin-top:7px">
-                  <button type="button" class="btn-ghost" id="btnPwGen">Rastgele Oluştur</button>
-                  <label style="display:flex;align-items:center;gap:6px">
-                    <input type="checkbox" id="chkEmailNotify" checked> E-posta bildirimi gönder
-                  </label>
-                </div>
-                <div class="hint">Kaydın ardından <b>şifre sıfırlama e-postası</b> gönderilir.</div>
-              </div>
-            </div>
-
-            <label style="margin-top:12px">Yetkiler (Manifestten yüklenir)</label>
-            <div id="permTreeAdd"><div class="hint">Manifest boşsa “Yetki Ekle” sekmesinden panel ve sayfalar ekleyin.</div></div>
-
-            <div class="actions" style="margin-top:14px">
-              <button type="button" class="btn-ghost" id="btnPreview">Önizle</button>
-              <button class="btn-primary" id="btnSubmit">Kullanıcıyı Kaydet</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <!-- TAB 2: MANIFEST (YETKİ EKLE) -->
-    <div class="view" id="view-manifest">
-      <div class="card">
-        <div class="hd"><h3>Panel Oluştur</h3><span class="chip">sayfa_manifesti</span></div>
-        <div class="bd">
-          <form id="frmPanel">
-            <div class="row">
-              <div>
-                <label>Panel Anahtar (ör: Talebe)</label>
-                <input id="p_key" placeholder="Talebe" required>
-              </div>
-              <div>
-                <label>Panel Başlık</label>
-                <input id="p_title" placeholder="Talebe Paneli" required>
-              </div>
-            </div>
-            <div class="row">
-              <div>
-                <label>Sıra</label>
-                <input id="p_order" type="number" value="1">
-              </div>
-              <div style="display:flex;align-items:flex-end">
-                <button class="btn-primary" id="btnPanelSave">Paneli Kaydet/Güncelle</button>
-              </div>
-            </div>
-            <div class="hint">Aynı anahtarla tekrar kaydedersen güncelleme yapar.</div>
-          </form>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="hd"><h3>Sayfa Ekle</h3><span class="chip">panel altına</span></div>
-        <div class="bd">
-          <form id="frmPage">
-            <div class="row">
-              <div>
-                <label>Panel Seç</label>
-                <select id="s_panel" required></select>
-              </div>
-              <div>
-                <label>Sayfa Başlık</label>
-                <input id="s_title" placeholder="Talebe Listesi" required>
-              </div>
-            </div>
-            <div class="row">
-              <div>
-                <label>Path (site içi yol)</label>
-                <input id="s_path" placeholder="talebe/talebe-liste.html" required>
-              </div>
-              <div>
-                <label>Sıra</label>
-                <input id="s_order" type="number" value="1">
-              </div>
-            </div>
-            <div class="actions" style="margin-top:8px">
-              <button class="btn-primary" id="btnPageAdd">Sayfayı Ekle</button>
-              <button type="button" class="btn-ghost" id="btnScanInfo">Otomatik liste ister misin?</button>
-            </div>
-            <div class="hint">* Otomatik liste için Netlify build aşamasında küçük bir “manifest” JSON üretilebilir. İstersen sonraki adımda eklerim.</div>
-          </form>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="hd"><h3>Mevcut Manifest</h3><span class="chip">Canlı</span></div>
-        <div class="bd" id="manifestList"><div class="hint">Panel ve sayfalar burada listelenir.</div></div>
-      </div>
-    </div>
-
-    <!-- TAB 3: KULLANICILAR -->
-    <div class="view" id="view-liste">
-      <div class="card">
-        <div class="hd"><h3>Kullanıcılar</h3>
-          <div class="actions">
-            <input id="sch" placeholder="Ara (ad, e-posta, görev)" style="min-width:220px">
-            <select id="fltRol">
-              <option value="">Rol (tümü)</option>
-              <option>admin</option><option>personel</option><option>ziyaret</option>
-            </select>
-            <select id="fltDurum">
-              <option value="">Durum (tümü)</option>
-              <option value="true">Aktif</option>
-              <option value="false">Pasif</option>
-            </select>
-            <button class="btn-ghost" id="btnRef">Yenile</button>
-          </div>
-        </div>
-        <div class="bd" style="overflow:auto">
-          <table class="table" id="tblUsers">
-            <thead>
-              <tr>
-                <th>Ad Soyad</th><th>E-posta</th><th>Rol</th><th>Görev</th><th>Durum</th><th>Yetki</th><th>Eklenme</th><th>İşlem</th>
-              </tr>
-            </thead>
-            <tbody id="rowsUsers"><tr><td colspan="8" class="hint">Veri bekleniyor…</td></tr></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+  <nav class="nav-center"><ul class="nav-list" id="navMain"></ul></nav>
+  <div class="nav-right">
+    <button class="btn hamb" id="hamburger" title="Menü">☰</button>
+    <button class="btn" id="themeToggle" title="Tema: Açık/Koyu/Otomatik">🌗 <span id="themeLabel">Auto</span></button>
+    <button class="btn" id="btnLogout">Çıkış Yap</button>
   </div>
 </div>
+<aside class="drawer" id="drawer"></aside>
+
+<!-- ====== CONTENT ====== -->
+<main class="container">
+  <div class="grid">
+    <!-- SOL -->
+    <section class="col-8">
+      <div class="card">
+        <div class="mini" style="gap:6px">
+          <button class="btn" id="tabAdd">Kullanıcı Ekle</button>
+          <button class="btn" id="tabMan">Yetki (Manifest)</button>
+          <button class="btn" id="tabList">Kullanıcılar</button>
+          <span class="pill">👤 <b id="meMail">—</b></span>
+        </div>
+      </div>
+
+      <!-- EKLE -->
+      <section id="viewAdd" class="card">
+        <h3>Kullanıcı Ekle</h3>
+        <form id="frmAdd" style="margin-top:8px">
+          <div class="row">
+            <div><label>Ad Soyad</label><input id="adSoyad" required></div>
+            <div>
+              <label>Rol</label>
+              <select id="rol" required>
+                <option value="" disabled selected>Seçiniz</option>
+                <option>admin</option><option>personel</option><option>ziyaret</option>
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <div><label>Görev</label><input id="gorev" required></div>
+            <div>
+              <label>E-posta</label>
+              <input id="email" type="email" required>
+              <div id="emailHint" style="margin-top:6px;font-size:12px;color:var(--muted)">—</div>
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label>Geçici Şifre</label>
+              <div class="mini" style="align-items:center">
+                <input id="sifre" type="password" placeholder="••••••••" style="flex:1">
+                <button type="button" class="btn" id="togglePw">👁</button>
+                <button type="button" class="btn" id="btnPwGen">Rastgele</button>
+                <label class="mini" style="align-items:center"><input type="checkbox" id="chkEmailNotify" checked> <span style="font-size:12px;color:var(--muted)">E-posta bildir</span></label>
+              </div>
+              <div style="margin-top:8px;height:8px;background:var(--surface);border-radius:6px;overflow:hidden"><span id="meterBar" style="display:block;height:100%;width:0%"></span></div>
+              <div id="pwLabel" style="margin-top:6px;font-size:12px;color:var(--muted)">Güç: —</div>
+            </div>
+            <div class="mini" style="align-items:center"><span class="pill">Kayıttan sonra şifre sıfırlama e-postası gider.</span></div>
+          </div>
+
+          <label style="margin-top:8px">Yetkiler</label>
+          <div id="permTreeAdd"><div class="pill">Manifest boşsa “Yetki (Manifest)” sekmesinden ekleyin.</div></div>
+
+          <div class="mini" style="margin-top:12px">
+            <button type="button" class="btn" id="btnPreview">Önizle</button>
+            <button class="btn" id="btnSubmit">Kaydet</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- MANIFEST -->
+      <section id="viewMan" class="card" style="display:none">
+        <h3>Yetki (Manifest)</h3>
+        <form id="frmPanel" style="margin-top:8px">
+          <div class="row">
+            <div><label>Panel Anahtar</label><input id="p_key" placeholder="Talebe" required></div>
+            <div><label>Panel Başlık</label><input id="p_title" placeholder="Talebe Paneli" required></div>
+          </div>
+          <div class="row">
+            <div><label>Sıra</label><input id="p_order" type="number" value="1"></div>
+            <div class="mini" style="align-items:end">
+              <button class="btn" id="btnPanelSave">Kaydet/Güncelle</button>
+              <button type="button" class="btn" id="btnQuickPanels">Hızlı Panel Seti</button>
+            </div>
+          </div>
+        </form>
+
+        <div style="height:12px"></div>
+        <form id="frmPage">
+          <div class="row">
+            <div><label>Panel Seç</label><select id="s_panel" required></select></div>
+            <div><label>Sayfa Başlık</label><input id="s_title" required></div>
+          </div>
+          <div class="row">
+            <div><label>Path</label><input id="s_path" placeholder="talebe/talebe-liste.html" required></div>
+            <div><label>Sıra</label><input id="s_order" type="number" value="1"></div>
+          </div>
+          <div class="mini"><button class="btn" id="btnPageAdd">Ekle</button></div>
+        </form>
+
+        <div style="height:12px"></div>
+        <div class="card" style="padding:12px">
+          <h3>Mevcut Manifest</h3>
+          <div id="manifestList" style="margin-top:6px"><div class="pill">Panel ve sayfalar burada listelenir.</div></div>
+        </div>
+      </section>
+
+      <!-- LİSTE -->
+      <section id="viewList" class="card" style="display:none">
+        <h3 style="display:flex;justify-content:space-between;align-items:center"><span>Kullanıcılar</span><span class="mini"><button class="btn" id="btnTable">Tablo</button><button class="btn" id="btnCards">Kart</button></span></h3>
+        <div class="mini" style="margin-bottom:10px;flex-wrap:wrap">
+          <input id="sch" placeholder="Ara (ad, e-posta, görev)" style="min-width:220px">
+          <select id="fltRol"><option value="">Rol (tümü)</option><option>admin</option><option>personel</option><option>ziyaret</option></select>
+          <select id="fltDurum"><option value="">Durum (tümü)</option><option value="true">Aktif</option><option value="false">Pasif</option></select>
+          <button class="btn" id="btnRef">Yenile</button>
+        </div>
+
+        <div id="usersTableWrap" style="overflow:auto">
+          <table class="table">
+            <thead><tr><th>Ad Soyad</th><th>E-posta</th><th>Rol</th><th>Görev</th><th>Durum</th><th>Yetki</th><th>Eklenme</th><th>İşlem</th></tr></thead>
+            <tbody id="rowsUsers"><tr><td colspan="8" class="pill">Veri bekleniyor…</td></tr></tbody>
+          </table>
+        </div>
+        <div id="usersCardsWrap" class="gridcards" style="display:none"></div>
+      </section>
+    </section>
+
+    <!-- SAĞ -->
+    <aside class="col-4">
+      <div class="card summary">
+        <h3>Özet</h3>
+        <div class="mini" style="flex-direction:column; gap:10px; margin-top:8px">
+          <div class="kpi"><div><div class="val" id="kpiUsers">—</div><div class="sub">Toplam Kullanıcı</div></div><div>👥</div></div>
+          <div class="kpi"><div><div class="val" id="kpiActive">—</div><div class="sub">Aktif</div></div><div>✅</div></div>
+          <div class="kpi"><div><div class="val" id="kpiPassive">—</div><div class="sub">Pasif</div></div><div>⛔</div></div>
+          <div class="kpi"><div><div class="val" id="kpiPanels">—</div><div class="sub">Panel</div></div><div>📦</div></div>
+          <div class="kpi"><div><div class="val" id="kpiPages">—</div><div class="sub">Sayfa</div></div><div>🧩</div></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
 
 <!-- ÖNİZLEME MODAL -->
 <div class="modal-back" id="mPrev">
   <div class="modal">
     <div class="hd">Kayıt Önizleme</div>
     <div class="bd" id="prevContent"></div>
-    <div class="ft">
-      <button class="btn-ghost" id="btnPrevClose">Vazgeç</button>
-      <button class="btn-primary" id="btnPrevOk">Onayla & Kaydet</button>
-    </div>
+    <div class="ft"><button class="btn" id="btnPrevClose">Vazgeç</button><button class="btn" id="btnPrevOk">Onayla & Kaydet</button></div>
   </div>
 </div>
 
@@ -313,285 +292,256 @@ input:focus,select:focus,textarea:focus{border-color:#9bb5cc;box-shadow:0 0 0 4p
     <div class="bd">
       <form id="frmEdit">
         <input type="hidden" id="e_uid">
-        <div class="row">
-          <div><label>Ad Soyad</label><input id="e_ad"></div>
-          <div><label>Rol</label>
-            <select id="e_rol"><option>admin</option><option>personel</option><option>ziyaret</option></select>
-          </div>
-        </div>
-        <div class="row">
-          <div><label>Görev</label><input id="e_gorev"></div>
-          <div><label>E-posta</label><input id="e_mail" type="email" disabled></div>
-        </div>
+        <div class="row"><div><label>Ad Soyad</label><input id="e_ad"></div><div><label>Rol</label><select id="e_rol"><option>admin</option><option>personel</option><option>ziyaret</option></select></div></div>
+        <div class="row"><div><label>Görev</label><input id="e_gorev"></div><div><label>E-posta</label><input id="e_mail" type="email" disabled></div></div>
         <label style="margin-top:10px">Yetkiler</label>
         <div id="permTreeEdit"></div>
-        <div class="row">
-          <div><label><input type="checkbox" id="e_aktif"> Aktif</label></div>
-        </div>
+        <div class="row"><div><label><input type="checkbox" id="e_aktif"> Aktif</label></div></div>
       </form>
     </div>
-    <div class="ft">
-      <button class="btn-ghost" id="btnEditClose">Kapat</button>
-      <button class="btn-primary" id="btnEditSave">Kaydet</button>
-    </div>
+    <div class="ft"><button class="btn" id="btnEditClose">Kapat</button><button class="btn" id="btnEditSave">Kaydet</button></div>
   </div>
 </div>
 
-<!-- TOAST & OVERLAY -->
-<div class="toast" id="toast"></div>
-<div class="overlay" id="overlay">İşlem yapılıyor…</div>
-
+<!-- ====== JS ====== -->
 <script>
-const auth = firebase.auth();
-const db = firebase.firestore();
+/* ===== Tema ===== */
+(function(){
+  const root=document.documentElement, btn=document.getElementById('themeToggle');
+  const sysDark=()=>window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;
+  function apply(mode){
+    localStorage.setItem('kf_theme',mode);
+    const eff=(mode==='auto')?(sysDark()?'dark':'light'):mode;
+    root.setAttribute('data-theme',eff);
+    const txt=mode[0].toUpperCase()+mode.slice(1);
+    btn.innerHTML=(mode==='dark'?'🌙':mode==='light'?'☀️':'🌗')+' <span id="themeLabel">'+txt+'</span>';
+  }
+  apply(localStorage.getItem('kf_theme')||'auto');
+  btn.addEventListener('click',()=>{const cur=localStorage.getItem('kf_theme')||'auto'; apply(cur==='dark'?'light':(cur==='light'?'auto':'dark'));});
+  if(window.matchMedia){ const m=window.matchMedia('(prefers-color-scheme: dark)'); m.addEventListener?.('change',()=>{ if((localStorage.getItem('kf_theme')||'auto')==='auto') apply('auto'); }); }
+})();
 
-const $ = s => document.querySelector(s);
-const $$ = s => Array.from(document.querySelectorAll(s));
-function toast(msg,type="ok",ms=2200){ const el=$("#toast"); el.textContent=msg; el.className=`toast ${type}`; el.style.display="block"; setTimeout(()=>el.style.display="none",ms); }
-const overlay=$("#overlay"), showOverlay=(b=true)=>overlay.style.display=b?"flex":"none";
+/* ===== Shortcuts ===== */
+const db=firebase.firestore(), auth=firebase.auth();
+const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
+function toast(msg){const t=$("#toast"); t.textContent=msg; t.classList.add('show'); clearTimeout(window.__to); window.__to=setTimeout(()=>t.classList.remove('show'),2200);}
 
-$("#btnPanel").onclick=()=>location.href="panel.html";
-$("#btnCikis").onclick=async()=>{ try{await auth.signOut();location.href="index.html"}catch(e){} };
+/* ===== Appbar actions ===== */
+$("#btnLogout").onclick=()=>auth.signOut().then(()=>location.href='../index.html');
 
-let ME=null, ME_DATA=null;
-let manifest = {}; // {panelKey: {title,order,pages:[{key,title,path,order}]}}
-let unsubUsers=null, USERS=[];
+/* ===== Nav (manifest path i aynen kullan) ===== */
+let CURRENT_ALLOW=new Set(), CURRENT_DENY=new Set();
+const PANEL_ICON={'Admin':'🎛️','Talebe':'📘','Personel':'👤','Muhasebe':'💰','Kermes':'🏪','Nehari':'🕌','Sistem Ayarları':'⚙️'};
+const norm = s => String(s||'').trim().toLowerCase();
 
-/* --- TAB switching --- */
-$$(".tab").forEach(t=>t.onclick=()=>{
-  $$(".tab").forEach(x=>x.classList.remove("active"));
-  t.classList.add("active");
-  const key=t.dataset.tab;
-  $$(".view").forEach(v=>v.classList.remove("active"));
-  $("#view-"+key).classList.add("active");
-});
-
-/* --- Auth / Access Control --- */
-auth.onAuthStateChanged(async u=>{
-  if(!u){ location.href="index.html"; return; }
-  $("#adminMail").textContent = u.email || "—";
-  ME=u;
+async function fetchPanels(allowSet, denySet){
+  const out=[];
   try{
-    const doc=await db.collection("kullanicilar").doc(u.uid).get();
-    ME_DATA = doc.exists?doc.data():{};
-    const isAdmin = (ME_DATA?.rol==="admin");
-    const hasAyar = (ME_DATA?.yetkiler||[]).includes("Sistem Ayarları") || (ME_DATA?.yetkiler||[]).some(k=>k.startsWith("Sistem"));
-    if(!(isAdmin || hasAyar)){
-      $("#mainArea").style.display="none";
-      $("#denyBox").style.display="block";
-      await db.collection("kullanici_log").add({uid:u.uid,email:u.email,islem:"erisim-red",sayfa:"kullanici-ekle.html",zaman:firebase.firestore.FieldValue.serverTimestamp()});
-      return;
-    }
-    // Manifest dinle
-    listenManifest();
-    // Kullanıcıları getir
-    listenUsers();
-  }catch(e){ console.warn(e); }
-});
-
-/* --- Manifest listeners --- */
-function listenManifest(){
-  db.collection("sayfa_manifesti").orderBy("order","asc").onSnapshot(snap=>{
-    const m={};
-    snap.forEach(d=>{
-      const v=d.data()||{};
-      m[d.id]={title: v.title||d.id, order: v.order||0, pages: Array.isArray(v.pages)? v.pages.sort((a,b)=>(a.order||0)-(b.order||0)) : []};
+    const snap=await db.collection('sayfa_manifesti').get();
+    snap.forEach(doc=>{
+      const d=doc.data()||{}, id=doc.id;
+      const title=d.title||id;
+      const panelGrant = allowSet.has(norm(id)) || allowSet.has(norm(title));
+      let pages = Array.isArray(d.pages) ? d.pages : [];
+      pages = pages.filter(pg=>{
+        const keyNorm = norm(pg.key || pg.title || '');
+        const pageGrant = allowSet.has(keyNorm);
+        const denied    = denySet.has(keyNorm);
+        return !denied && (panelGrant || pageGrant);
+      }).map(pg=>({
+        title: pg.title || pg.key || 'Sayfa',
+        url:   pg.path  || '#',
+        key:   pg.key   || pg.title || '',
+        order: typeof pg.order==='number'? pg.order : 9999
+      })).sort((a,b)=>a.order-b.order);
+      if(!pages.length) return;
+      out.push({id, title, order: typeof d.order==='number'? d.order : 9999, pages});
     });
-    manifest=m;
-    renderPermTrees(); // add/edit tabındaki ağaçları güncelle
-    renderManifestAdmin(); // manifest sekmesi listesi
-    fillPanelSelect(); // sayfa ekle panel selecti
+    out.sort((a,b)=>a.order-b.order);
+  }catch(e){ console.error(e); toast('Menü yüklenemedi'); }
+  return out;
+}
+function renderNav(panels){
+  const ul=$("#navMain"), drawer=$("#drawer");
+  ul.innerHTML=''; drawer.innerHTML='';
+  if(!panels.length){
+    ul.innerHTML='<li class="nav-item"><div class="nav-btn">Hiç panel yok</div></li>';
+    drawer.innerHTML='<div style="color:var(--muted);padding:8px">Hiç panel yok</div>';
+    return;
+  }
+  panels.forEach(p=>{
+    const li=document.createElement('li'); li.className='nav-item';
+    li.innerHTML=`<div class="nav-btn">${p.title} <span class="caret">▾</span></div>`;
+    const dd=document.createElement('div'); dd.className='dropdown';
+    (p.pages||[]).forEach(pg=>{
+      const a=document.createElement('a');
+      a.href=pg.url; a.textContent=pg.title;
+      a.dataset.key=pg.key||pg.title; a.dataset.panel=p.id; a.dataset.panelTitle=p.title;
+      dd.appendChild(a);
+    });
+    li.appendChild(dd);
+    li.querySelector('.nav-btn').addEventListener('click',(e)=>{
+      e.stopPropagation();
+      ul.querySelectorAll('.nav-item').forEach(x=>{ if(x!==li) x.classList.remove('open'); });
+      li.classList.toggle('open');
+    });
+    ul.appendChild(li);
+  });
+  panels.forEach(p=>{
+    const h=document.createElement('div'); h.className='panel-title'; h.textContent=p.title; drawer.appendChild(h);
+    (p.pages||[]).forEach(pg=>{
+      const a=document.createElement('a'); a.href=pg.url; a.textContent=pg.title;
+      a.dataset.key=pg.key||pg.title; a.dataset.panel=p.id; a.dataset.panelTitle=p.title;
+      drawer.appendChild(a);
+    });
   });
 }
-function renderPermTree(targetId, selected=[]){
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('a[data-key]'); if (!a) return;
+  const key = norm(a.dataset.key), pnl = norm(a.dataset.panel||''), pnlTitle=norm(a.dataset.panelTitle||'');
+  if (CURRENT_DENY.has(key)) { e.preventDefault(); toast('Bu sayfa için yetkiniz yok.'); return; }
+  const allowed = CURRENT_ALLOW.has(key) || CURRENT_ALLOW.has(pnl) || CURRENT_ALLOW.has(pnlTitle);
+  if (!allowed) { e.preventDefault(); toast('Bu sayfa için yetkiniz yok.'); }
+});
+(function(){ const hamb=$("#hamburger"), drawer=$("#drawer"); if(!hamb) return; hamb.addEventListener('click',()=>drawer.classList.toggle('open')); document.addEventListener('click',(e)=>{ if(!drawer.contains(e.target) && !hamb.contains(e.target)) drawer.classList.remove('open'); }); })();
+
+/* ===== Tabs ===== */
+$("#tabAdd").onclick=()=>{ $("#viewAdd").style.display="block"; $("#viewMan").style.display="none"; $("#viewList").style.display="none"; };
+$("#tabMan").onclick=()=>{ $("#viewAdd").style.display="none"; $("#viewMan").style.display="block"; $("#viewList").style.display="none"; };
+$("#tabList").onclick=()=>{ $("#viewAdd").style.display="none"; $("#viewMan").style.display="none"; $("#viewList").style.display="block"; };
+
+/* ===== Manifest & Permission Trees ===== */
+let manifest={};
+
+function renderPermTree(targetSel, selected=[]){
   const wrap=document.createElement("div");
-  Object.keys(manifest).sort((a,b)=> (manifest[a].order||0)-(manifest[b].order||0)).forEach(panelKey=>{
-    const grp=document.createElement("div"); grp.className="group"; grp.dataset.group=panelKey;
-    grp.innerHTML = `
-      <div class="g-hd">
-        <h4>${manifest[panelKey].title} <span class="chip">${panelKey}</span></h4>
-        <div class="g-actions">
-          <button type="button" class="g-btn" data-gsel="${panelKey}">Hepsini Seç</button>
-          <button type="button" class="g-btn" data-gclr="${panelKey}">Kaldır</button>
-        </div>
+  const selectedSet=new Set((selected||[]).map(s=>String(s).trim()));
+  Object.keys(manifest).sort((a,b)=>(manifest[a].order||0)-(manifest[b].order||0)).forEach(panelKey=>{
+    const grp=document.createElement("div"); grp.className="perm-group"; grp.dataset.group=panelKey;
+    grp.innerHTML=`
+      <div class="perm-head">
+        <div><b>${manifest[panelKey].title}</b> <span class="pill">${panelKey}</span></div>
+        <span class="mini">
+          <button type="button" class="btn" data-gsel="${panelKey}">Hepsi</button>
+          <button type="button" class="btn" data-gclr="${panelKey}">Temizle</button>
+        </span>
       </div>
-      <div class="yetkiler">
-        ${manifest[panelKey].pages.map(p=>{
+      <div class="perm-grid">
+        ${(manifest[panelKey].pages||[]).map(p=>{
           const val=p.key || `${panelKey}: ${p.title}`;
-          const checked = selected.includes(val) ? 'checked' : '';
-          return `<label class="yetki-item"><input type="checkbox" value="${val}" ${checked}/> ${p.title}</label>`;
+          const chk=selectedSet.has(val)?'checked':'';
+          return `<label class="perm-item"><input type="checkbox" value="${val}" ${chk}> <span>${p.title}</span></label>`;
         }).join('')}
-      </div>
-    `;
+      </div>`;
     wrap.appendChild(grp);
   });
-  const target=$(targetId);
-  target.innerHTML=""; target.appendChild(wrap);
+  const target=$(targetSel); target.innerHTML=''; target.appendChild(wrap);
 
-  // style toggle
-  target.querySelectorAll(".yetki-item input").forEach(i=>{
-    const card=i.closest(".yetki-item");
-    if(i.checked) card.classList.add("checked");
-    i.addEventListener("change",()=>{ card.classList.toggle("checked", i.checked); });
-  });
-  target.addEventListener("click",(e)=>{
-    const w=e.target.closest(".yetki-item"); if(w && !e.target.matches('input')){ const cb=w.querySelector('input'); cb.checked=!cb.checked; w.classList.toggle("checked",cb.checked); }
-  });
+  // Grup butonları
   target.querySelectorAll("[data-gsel]").forEach(btn=>{
-    btn.onclick=()=>{ const g=btn.dataset.gsel; target.querySelectorAll(`.group[data-group="${g}"] input`).forEach(c=>{c.checked=true;c.closest(".yetki-item").classList.add("checked")}); };
+    btn.onclick=()=>{ const g=btn.dataset.gsel; target.querySelectorAll(`.perm-group[data-group="${g}"] input`).forEach(c=>c.checked=true); };
   });
   target.querySelectorAll("[data-gclr]").forEach(btn=>{
-    btn.onclick=()=>{ const g=btn.dataset.gclr; target.querySelectorAll(`.group[data-group="${g}"] input`).forEach(c=>{c.checked=false;c.closest(".yetki-item").classList.remove("checked")}); };
+    btn.onclick=()=>{ const g=btn.dataset.gclr; target.querySelectorAll(`.perm-group[data-group="${g}"] input`).forEach(c=>c.checked=false); };
   });
 }
-function renderPermTrees(){
-  renderPermTree("#permTreeAdd");
-  if($("#permTreeEdit").children.length) renderPermTree("#permTreeEdit", getChecked("#permTreeEdit")); // edit açıkken güncelleme
-}
-function getChecked(rootSelector){
-  return Array.from(document.querySelectorAll(`${rootSelector} .yetki-item input:checked`)).map(i=>i.value);
-}
+const getChecked = root => Array.from(document.querySelectorAll(`${root} input[type=checkbox]:checked`)).map(i=>i.value);
 
-/* --- Manifest Admin UI --- */
 function fillPanelSelect(){
-  const sel=$("#s_panel");
-  const keys=Object.keys(manifest).sort((a,b)=> (manifest[a].order||0)-(manifest[b].order||0));
+  const sel=$("#s_panel"); const keys=Object.keys(manifest).sort((a,b)=> (manifest[a].order||0)-(manifest[b].order||0));
   sel.innerHTML = keys.map(k=>`<option value="${k}">${manifest[k].title} (${k})</option>`).join('');
 }
 function renderManifestAdmin(){
   const box=$("#manifestList");
-  if(!Object.keys(manifest).length){ box.innerHTML='<div class="hint">Henüz panel yok.</div>'; return; }
+  if(!Object.keys(manifest).length){ box.innerHTML='<div class="pill">Henüz panel yok.</div>'; return; }
   box.innerHTML="";
   Object.keys(manifest).sort((a,b)=> (manifest[a].order||0)-(manifest[b].order||0)).forEach(k=>{
-    const it=document.createElement("div"); it.className="group";
-    const p=manifest[k];
-    it.innerHTML=`
-      <div class="g-hd">
-        <h4>${p.title} <span class="chip">${k}</span></h4>
-        <div class="g-actions">
-          <button class="g-btn" data-del-panel="${k}">Paneli Sil</button>
-        </div>
-      </div>
-      <div>
-        ${(p.pages||[]).length? "" : '<div class="hint">Sayfa yok.</div>'}
-        ${(p.pages||[]).map(pg=>`
-          <div class="yetki-item" style="justify-content:space-between">
-            <div style="display:flex;align-items:center;gap:8px">
-              <span class="tag">${pg.order||0}</span> <b>${pg.title}</b> <span class="hint">${pg.path||''}</span>
-            </div>
-            <div>
-              <button class="g-btn" data-edit-page='${JSON.stringify({panel:k,key:pg.key||`${k}: ${pg.title}`}).replace(/'/g,"&apos;")}'>Düzenle</button>
-              <button class="g-btn" data-del-page='${JSON.stringify({panel:k,key:pg.key||`${k}: ${pg.title}`}).replace(/'/g,"&apos;")}'>Sil</button>
-            </div>
-          </div>`).join('')}
-      </div>
-    `;
+    const p=manifest[k]; const it=document.createElement("div"); it.className="perm-group";
+    it.innerHTML=`<div class="perm-head"><div><b>${p.title}</b> <span class="pill">${k}</span></div><button class="btn" data-del-panel="${k}">Paneli Sil</button></div>
+      ${(p.pages||[]).map(pg=>`
+        <div class="mini" style="justify-content:space-between;border:1px solid var(--stroke);border-radius:10px;padding:8px;background:var(--surface);margin-bottom:6px">
+          <div><b>${pg.title}</b> <span class="pill" style="margin-left:6px">${pg.path||''}</span></div>
+          <span class="mini">
+            <button class="btn" data-edit-page='${JSON.stringify({panel:k,key:pg.key||`${k}: ${pg.title}`}).replace(/'/g,"&apos;")}'>Düzenle</button>
+            <button class="btn" data-del-page='${JSON.stringify({panel:k,key:pg.key||`${k}: ${pg.title}`}).replace(/'/g,"&apos;")}'>Sil</button>
+          </span>
+        </div>`).join('') || '<div class="pill">Sayfa yok.</div>'}`;
     box.appendChild(it);
   });
 
-  // delete panel
   box.querySelectorAll("[data-del-panel]").forEach(b=>{
-    b.onclick=async()=>{
-      const k=b.dataset.delPanel;
-      if(!confirm(`${k} panelini silmek istediğine emin misin? (geri alınamaz)`)) return;
-      await db.collection("sayfa_manifesti").doc(k).delete();
-      await db.collection("kullanici_log").add({islem:"panel_sil",panel:k,yapanEmail:ME?.email,zaman:firebase.firestore.FieldValue.serverTimestamp()});
-      toast("Panel silindi","warn");
-    };
+    b.onclick=async()=>{ if(!confirm("Panel silinsin mi?")) return; await db.collection("sayfa_manifesti").doc(b.dataset.delPanel).delete(); toast("Panel silindi"); };
   });
-  // delete page
   box.querySelectorAll("[data-del-page]").forEach(b=>{
-    b.onclick=async()=>{
-      const d=JSON.parse(b.dataset.delPage);
-      const doc=await db.collection("sayfa_manifesti").doc(d.panel).get();
-      if(!doc.exists) return;
-      const v=doc.data();
-      const arr=(v.pages||[]).filter(x=>(x.key||`${d.panel}: ${x.title}`)!==d.key);
-      await db.collection("sayfa_manifesti").doc(d.panel).update({pages:arr});
-      await db.collection("kullanici_log").add({islem:"sayfa_sil",panel:d.panel,key:d.key,yapanEmail:ME?.email,zaman:firebase.firestore.FieldValue.serverTimestamp()});
-      toast("Sayfa silindi","warn");
+    b.onclick=async()=>{ const d=JSON.parse(b.dataset.delPage);
+      const ref=db.collection("sayfa_manifesti").doc(d.panel); const doc=await ref.get(); if(!doc.exists) return;
+      const v=doc.data(); const arr=(v.pages||[]).filter(x=>(x.key||`${d.panel}: ${x.title}`)!==d.key);
+      await ref.update({pages:arr}); toast("Sayfa silindi");
     };
   });
-  // edit page (hızlı doldurma)
   box.querySelectorAll("[data-edit-page]").forEach(b=>{
-    b.onclick=async()=>{
-      const d=JSON.parse(b.dataset.editPage);
+    b.onclick=async()=>{ const d=JSON.parse(b.dataset.editPage);
       $("#s_panel").value=d.panel;
-      const doc=await db.collection("sayfa_manifesti").doc(d.panel).get();
-      if(!doc.exists) return;
+      const doc=await db.collection("sayfa_manifesti").doc(d.panel).get(); if(!doc.exists) return;
       const pg=(doc.data().pages||[]).find(x=>(x.key||`${d.panel}: ${x.title}`)===d.key);
-      if(pg){
-        $("#s_title").value=pg.title||"";
-        $("#s_path").value=pg.path||"";
-        $("#s_order").value=pg.order||0;
-      }
-      toast("Alanlar dolduruldu","ok");
+      if(pg){ $("#s_title").value=pg.title||""; $("#s_path").value=pg.path||""; $("#s_order").value=pg.order||0; }
+      toast("Alanlar dolduruldu");
     };
   });
 }
 
-/* --- Manifest actions --- */
+/* ===== Manifest actions ===== */
 $("#btnPanelSave").onclick=async(e)=>{
   e.preventDefault();
-  const key=$("#p_key").value.trim(); const title=$("#p_title").value.trim(); const order=parseInt($("#p_order").value||"0");
-  if(!key||!title){ toast("Panel anahtar ve başlık gerekli","err"); return; }
-  await db.collection("sayfa_manifesti").doc(key).set({title,order, pages: manifest[key]?.pages||[]});
-  await db.collection("kullanici_log").add({islem:"panel_kaydet",panel:key,title,order,yapanEmail:ME?.email,zaman:firebase.firestore.FieldValue.serverTimestamp()});
-  toast("Panel kaydedildi");
-  $("#frmPanel").reset();
+  const key=$("#p_key").value.trim(), title=$("#p_title").value.trim(), order=parseInt($("#p_order").value||"0");
+  if(!key||!title){ toast("Panel anahtar/başlık gerekli"); return; }
+  await db.collection("sayfa_manifesti").doc(key).set({title,order}, {merge:true});
+  $("#frmPanel").reset(); toast("Panel kaydedildi");
+};
+$("#btnQuickPanels").onclick=async()=>{
+  if(!confirm("Standart paneller eklensin mi?")) return;
+  const panels=[{key:"Admin",title:"Admin Paneli",order:5},{key:"Talebe",title:"Talebe Paneli",order:10},{key:"Personel",title:"Personel Paneli",order:20},{key:"Nehari",title:"Nehari Paneli",order:30},{key:"Kermes",title:"Kermes Paneli",order:40},{key:"Muhasebe",title:"Muhasebe Paneli",order:50},{key:"Sistem Ayarları",title:"Sistem Ayarları",order:60},];
+  const batch=db.batch(); panels.forEach(p=> batch.set(db.collection("sayfa_manifesti").doc(p.key), {title:p.title, order:p.order}, {merge:true}));
+  await batch.commit(); toast("Paneller eklendi");
 };
 $("#btnPageAdd").onclick=async(e)=>{
   e.preventDefault();
-  const panel=$("#s_panel").value, title=$("#s_title").value.trim(), path=$("#s_path").value.trim(), order=parseInt($("#s_order").value||"0");
-  if(!panel||!title||!path){ toast("Panel, başlık ve path zorunlu","err"); return; }
-  const doc=await db.collection("sayfa_manifesti").doc(panel).get();
-  if(!doc.exists){ toast("Önce panel oluştur","err"); return; }
-  const data=doc.data(); const key = `${panel}: ${title}`;
-  const arr = (data.pages||[]).filter(x=>(x.key||`${panel}: ${x.title}`)!==key);
-  arr.push({key,title,path,order});
-  await db.collection("sayfa_manifesti").doc(panel).update({pages:arr});
-  await db.collection("kullanici_log").add({islem:"sayfa_ekle",panel:panel,key,title,path,order,yapanEmail:ME?.email,zaman:firebase.firestore.FieldValue.serverTimestamp()});
-  toast("Sayfa eklendi");
-  $("#frmPage").reset(); fillPanelSelect();
+  const panel=$("#s_panel").value, title=$("#s_title").value.trim(), path=$("#s_path").value.trim(), order=parseInt($("#s_order").value||"9999");
+  if(!panel||!title||!path){ toast("Panel, başlık ve path zorunlu"); return; }
+  const ref=db.collection("sayfa_manifesti").doc(panel); const snap=await ref.get();
+  const cur=snap.exists? (snap.data()||{}):{pages:[]};
+  const key=`${panel}: ${title}`;
+  const map=new Map((cur.pages||[]).map(p=>[(p.key||`${panel}: ${p.title}`), p]));
+  map.set(key,{key,title,path,order});
+  const merged=[...map.values()].sort((a,b)=>(a.order||0)-(b.order||0) || String(a.title).localeCompare(String(b.title),"tr"));
+  await ref.set({pages:merged},{merge:true});
+  $("#frmPage").reset(); fillPanelSelect(); toast("Sayfa eklendi");
 };
-$("#btnScanInfo").onclick=()=>alert("Otomatik dosya tarama, Netlify build sırasında bir script ile /data/sayfalar.json üretip burada yüklemekle yapılır. İstersen sonraki adımda scripti yazayım.");
 
-/* --- Permission tree helpers (Add/Edit) already above --- */
-
-/* --- Kullanıcı Ekle --- */
-// Email validasyonu (hafif)
-const emailInput=$("#email"), emailHint=$("#emailHint");
-emailInput.addEventListener("input", ()=> {
-  const v=emailInput.value.trim();
-  if(!v){ emailHint.textContent=""; emailHint.className="hint"; return; }
-  const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-  emailHint.textContent = ok? "✔️ geçerli e-posta gibi görünüyor" : "⚠️ e-posta geçersiz görünüyor";
-  emailHint.className = "hint"+(ok?"":" err");
-});
-// şifre göstergeleri
+/* ===== Password meter ===== */
 const pw=$("#sifre"), meterBar=$("#meterBar"), pwLabel=$("#pwLabel");
 function scorePw(p){ let s=0; if(p.length>=8) s++; if(/[A-Z]/.test(p)) s++; if(/[0-9]/.test(p)) s++; if(/[^A-Za-z0-9]/.test(p)) s++; return s; }
-function renderMeter(){ const s=scorePw(pw.value); let w=0,c="",t="—";
-  if(s<=1){w=25;c="m-weak";t="Zayıf";} else if(s<=3){w=60;c="m-mid";t="İyi";} else {w=100;c="m-strong";t="Güçlü";}
-  meterBar.style.width=w+"%"; meterBar.className=c; pwLabel.textContent="Güç: "+t; }
+function renderMeter(){ const s=scorePw(pw.value); let w=0,c="#ef4444",t="Zayıf"; if(s<=1){w=25}else if(s<=3){w=60;c="#f59e0b";t="İyi"} else {w=100;c="#22c55e";t="Güçlü"} meterBar.style.width=w+"%"; meterBar.style.background=c; pwLabel.textContent="Güç: "+t; }
 pw.addEventListener("input",renderMeter); renderMeter();
 $("#togglePw").onclick=()=>{ pw.type = pw.type==="password" ? "text" : "password"; };
-$("#btnPwGen").onclick=()=>{ const rnd=(len)=>Array.from(crypto.getRandomValues(new Uint32Array(len))).map(n=>"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+"[n%74]).join("");
-  pw.value=rnd(12); renderMeter(); toast("Rastgele şifre oluşturuldu"); };
+$("#btnPwGen").onclick=()=>{ const chars="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+"; const rnd=(len)=>Array.from(crypto.getRandomValues(new Uint32Array(len))).map(n=>chars[n%chars.length]).join(""); pw.value=rnd(12); renderMeter(); toast("Rastgele şifre oluşturuldu"); };
+$("#email").addEventListener("input",()=>{ const v=$("#email").value.trim(); $("#emailHint").textContent = v? (/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(v) ? "✔️ geçerli görünüyor" : "⚠️ geçersiz e-posta") : "—"; });
 
-// Önizleme
-const mPrev=$("#mPrev"); $("#btnPreview").onclick=()=>{
-  const yetkiler=getChecked("#permTreeAdd"); const html=`
+/* ===== Önizleme & Ekle ===== */
+const mPrev=$("#mPrev");
+$("#btnPreview").onclick=()=>{ const yetkiler=getChecked("#permTreeAdd");
+  $("#prevContent").innerHTML=`<div class="mini" style="flex-direction:column;gap:6px">
     <div><b>Ad Soyad:</b> ${$("#adSoyad").value||"-"}</div>
     <div><b>Rol:</b> ${$("#rol").value||"-"}</div>
     <div><b>Görev:</b> ${$("#gorev").value||"-"}</div>
     <div><b>E-posta:</b> ${$("#email").value||"-"}</div>
-    <div style="margin-top:8px"><b>Yetkiler:</b> ${yetkiler.length? yetkiler.join(", "):"—"}</div>`;
-  $("#prevContent").innerHTML=html; mPrev.style.display="flex";
+    <div><b>Yetkiler:</b> ${yetkiler.length? yetkiler.join(", "):"—"}</div>
+  </div>`;
+  mPrev.style.display='flex';
 };
-$("#btnPrevClose").onclick=()=> mPrev.style.display="none";
+$("#btnPrevClose").onclick=()=> mPrev.style.display='none';
+$("#frmAdd").addEventListener("submit",(e)=>{ e.preventDefault(); $("#btnPreview").click(); });
 
-/* Secondary app ile kullanıcı oluşturma (admin oturumu düşmez) */
 async function createUserSecondary(email,password){
   const cfg=firebase.app().options;
   let sec=firebase.apps.find(a=>a.name==="Secondary");
@@ -602,137 +552,137 @@ async function createUserSecondary(email,password){
   try{ await sec.delete(); }catch(e){}
   return cred;
 }
-
-$("#frmAdd").addEventListener("submit", async (e)=>{
-  e.preventDefault();
-  $("#btnPreview").click();
-  $("#btnPrevOk").onclick = async ()=>{
-    mPrev.style.display="none";
-    await doSaveAdd();
-  };
-});
-
-async function doSaveAdd(){
-  const adSoyad=$("#adSoyad").value.trim();
-  const email=$("#email").value.trim();
-  const sifre=$("#sifre").value;
-  const rol=$("#rol").value;
-  const gorev=$("#gorev").value.trim();
+$("#btnPrevOk").onclick=async()=>{
+  mPrev.style.display='none';
+  const adSoyad=$("#adSoyad").value.trim(), email=$("#email").value.trim(), sifre=$("#sifre").value, rol=$("#rol").value, gorev=$("#gorev").value.trim();
   const yetkiler=getChecked("#permTreeAdd");
-  const emailNotify=$("#chkEmailNotify").checked;
-
-  if(!adSoyad||!email||!sifre||!rol||!gorev){ toast("Zorunlu alanları doldurun","err"); return; }
-
-  showOverlay(true);
+  if(!adSoyad||!email||!sifre||!rol||!gorev){ toast("Zorunlu alanlar boş"); return; }
   try{
-    const cred=await createUserSecondary(email,sifre);
-    const uid=cred.user.uid;
+    const cred=await createUserSecondary(email,sifre); const uid=cred.user.uid;
     await db.collection("kullanicilar").doc(uid).set({
       adSoyad,email,rol,gorev,yetkiler,aktif:true,
-      olusturanUid:ME?.uid||null, olusturanEmail:ME?.email||null,
       eklenmeTarihi: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    await db.collection("kullanici_log").add({
-      islem:"kullanici_eklendi", hedefUid:uid, hedefEmail:email, rol,gorev,yetkiler,
-      yapanUid:ME?.uid||null, yapanEmail:ME?.email||null, zaman:firebase.firestore.FieldValue.serverTimestamp()
-    });
-    if(emailNotify && window.emailjs){
-      try{ await emailjs.send("service_9mh0tev","template_28b31ka",{to_email:email,kullanici_rol:rol,kullanici_gorev:gorev,kullanici_yetkiler:yetkiler.join(", ")});}catch(e){}
-    }
-    $("#frmAdd").reset(); renderMeter(); renderPermTree("#permTreeAdd"); toast("Kullanıcı eklendi","ok");
-  }catch(err){
-    let msg="Hata: "+(err?.message||err);
-    if(String(err?.code).includes("auth/email-already-in-use")) msg="Bu e-posta zaten kayıtlı.";
-    if(String(err?.code).includes("auth/invalid-email")) msg="E-posta geçersiz.";
-    if(String(err?.code).includes("auth/weak-password")) msg="Şifre çok zayıf.";
-    toast(msg,"err",3200);
-  }finally{ showOverlay(false); }
-}
+    },{merge:true});
+    $("#frmAdd").reset(); renderMeter(); renderPermTree("#permTreeAdd");
+    toast("Kullanıcı eklendi");
+  }catch(err){ toast("Hata: "+(err?.message||err)); }
+};
 
-/* --- Kullanıcı Listesi --- */
+/* ===== Kullanıcılar ===== */
+let USERS=[]; let unsubUsers=null;
+function normalizeYetkiler(v){ if(Array.isArray(v)) return v.map(s=>String(s).trim()).filter(Boolean); if(typeof v==='string') return v.split(/[,\n;]+/).map(s=>s.trim()).filter(Boolean); return []; }
+
 function listenUsers(){
   if(unsubUsers) unsubUsers();
   unsubUsers = db.collection("kullanicilar").orderBy("eklenmeTarihi","desc").onSnapshot(snap=>{
     USERS = snap.docs.map(d=>({uid:d.id, ...d.data()}));
-    renderUsers();
+    renderKPIs(); renderUsers();
   });
 }
+function renderKPIs(){
+  const total=USERS.length, active=USERS.filter(u=>u.aktif!==false).length, passive=total-active;
+  $("#kpiUsers").textContent=total; $("#kpiActive").textContent=active; $("#kpiPassive").textContent=passive;
+  $("#kpiPanels").textContent=Object.keys(manifest).length;
+  $("#kpiPages").textContent=Object.values(manifest).reduce((s,p)=>s+(p.pages?.length||0),0);
+}
+$("#btnTable").onclick=()=>{ $("#usersCardsWrap").style.display="none"; $("#usersTableWrap").style.display="block"; };
+$("#btnCards").onclick=()=>{ $("#usersCardsWrap").style.display="grid"; $("#usersTableWrap").style.display="none"; };
+$("#sch").oninput=renderUsers; $("#fltRol").onchange=renderUsers; $("#fltDurum").onchange=renderUsers; $("#btnRef").onclick=renderUsers;
+
+function bindListButtons(scope){
+  scope.querySelectorAll("[data-edit]").forEach(b=> b.onclick=()=> openEdit(b.dataset.edit));
+  scope.querySelectorAll("[data-reset]").forEach(b=> b.onclick=()=> resetPass(b.dataset.reset));
+  scope.querySelectorAll("[data-toggle]").forEach(b=> b.onclick=()=> toggleActive(JSON.parse(b.dataset.toggle)));
+  scope.querySelectorAll("[data-softdel]").forEach(b=> b.onclick=()=> softDelete(b.dataset.softdel));
+}
 function renderUsers(){
-  const q=$("#sch").value.toLowerCase().trim();
-  const fr=$("#fltRol").value; const fd=$("#fltDurum").value;
-  const rows=$("#rowsUsers"); rows.innerHTML="";
+  const q=$("#sch").value.toLowerCase().trim(), fr=$("#fltRol").value, fd=$("#fltDurum").value;
   let list=USERS.slice();
   if(q) list=list.filter(x=>(x.adSoyad||"").toLowerCase().includes(q) || (x.email||"").toLowerCase().includes(q) || (x.gorev||"").toLowerCase().includes(q));
   if(fr) list=list.filter(x=> (x.rol||"")===fr);
   if(fd!=="") list=list.filter(x=> String(!!x.aktif)===fd);
-  if(!list.length){ rows.innerHTML='<tr><td colspan="8" class="hint">Kayıt bulunamadı.</td></tr>'; return; }
-  list.forEach(u=>{
-    const tr=document.createElement("tr");
-    const d=u.eklenmeTarihi?.toDate? u.eklenmeTarihi.toDate() : null;
-    tr.innerHTML=`
-      <td><b>${u.adSoyad||"-"}</b></td>
-      <td>${u.email||"-"}</td>
-      <td>${u.rol||"-"}</td>
-      <td>${u.gorev||"-"}</td>
-      <td>${u.aktif? '<span class="tag">Aktif</span>':'<span class="tag">Pasif</span>'}</td>
-      <td>${(u.yetkiler||[]).length}</td>
-      <td>${d? d.toLocaleDateString():"-"}</td>
-      <td>
-        <button class="btn-ghost" data-edit="${u.uid}">Düzenle</button>
-        <button class="btn-ghost" data-reset="${u.email}">Şifre Sıfırla</button>
-        <button class="btn-ghost" data-toggle='${JSON.stringify({uid:u.uid,aktif:!!u.aktif}).replace(/'/g,"&apos;")}'>${u.aktif? "Pasifle":"Aktifle"}</button>
-        <button class="btn-ghost" data-softdel="${u.uid}">Sil (soft)</button>
-      </td>`;
-    rows.appendChild(tr);
-  });
 
-  // bağla
-  rows.querySelectorAll("[data-edit]").forEach(b=> b.onclick=()=> openEdit(b.dataset.edit));
-  rows.querySelectorAll("[data-reset]").forEach(b=> b.onclick=()=> resetPass(b.dataset.reset));
-  rows.querySelectorAll("[data-toggle]").forEach(b=> b.onclick=()=> toggleActive(JSON.parse(b.dataset.toggle)));
-  rows.querySelectorAll("[data-softdel]").forEach(b=> b.onclick=()=> softDelete(b.dataset.softdel));
-}
-$("#sch").oninput=renderUsers; $("#fltRol").onchange=renderUsers; $("#fltDurum").onchange=renderUsers; $("#btnRef").onclick=renderUsers;
-
-async function resetPass(email){
-  if(!confirm(`${email} için şifre sıfırlama e-postası gönderilsin mi?`)) return;
-  try{ await auth.sendPasswordResetEmail(email); toast("Sıfırlama e-postası gönderildi"); }
-  catch(e){ toast("Gönderilemedi: "+(e?.message||e),"err"); }
-}
-async function toggleActive(d){
-  await db.collection("kullanicilar").doc(d.uid).update({aktif: !d.aktif});
-  await db.collection("kullanici_log").add({islem:"kullanici_"+(d.aktif?"pasif":"aktif"),hedefUid:d.uid,yapanEmail:ME?.email,zaman:firebase.firestore.FieldValue.serverTimestamp()});
-  toast("Durum güncellendi");
-}
-async function softDelete(uid){
-  if(!confirm("Bu kullanıcı soft-silinecek (aktif=false, silindi=true). Onaylıyor musun?")) return;
-  await db.collection("kullanicilar").doc(uid).update({aktif:false, silindi:true});
-  await db.collection("kullanici_log").add({islem:"kullanici_soft_del",hedefUid:uid,yapanEmail:ME?.email,zaman:firebase.firestore.FieldValue.serverTimestamp()});
-  toast("Soft silindi","warn");
+  const rows=$("#rowsUsers"); const wrap=$("#usersCardsWrap");
+  rows.innerHTML=""; wrap.innerHTML="";
+  if($("#usersTableWrap").style.display!=="none"){
+    if(!list.length){ rows.innerHTML='<tr><td colspan="8" class="pill">Kayıt yok</td></tr>'; return; }
+    list.forEach(u=>{
+      const d=u.eklenmeTarihi?.toDate? u.eklenmeTarihi.toDate() : null;
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td><b>${u.adSoyad||"-"}</b></td><td>${u.email||"-"}</td><td>${u.rol||"-"}</td><td>${u.gorev||"-"}</td>
+        <td>${u.aktif? '<span class="pill">Aktif</span>':'<span class="pill">Pasif</span>'}</td>
+        <td>${(u.yetkiler||[]).length}</td><td>${d? d.toLocaleDateString():"-"}</td>
+        <td class="mini"><button class="btn" data-edit="${u.uid}">Düzenle</button><button class="btn" data-reset="${u.email}">Şifre</button>
+        <button class="btn" data-toggle='${JSON.stringify({uid:u.uid,aktif:!!u.aktif}).replace(/'/g,"&apos;")}' >${u.aktif? "Pasifle":"Aktifle"}</button>
+        <button class="btn" data-softdel="${u.uid}">Soft Sil</button></td>`;
+      rows.appendChild(tr);
+    });
+    bindListButtons(rows);
+  }else{
+    if(!list.length){ wrap.innerHTML='<div class="pill">Kayıt yok</div>'; return; }
+    list.forEach(u=>{
+      const d=u.eklenmeTarihi?.toDate? u.eklenmeTarihi.toDate() : null;
+      const card=document.createElement('div'); card.className='ucard';
+      card.innerHTML=`<div style="display:flex;justify-content:space-between;gap:8px"><div><div style="font-weight:800">${u.adSoyad||"-"}</div><div style="font-size:12px;color:var(--muted)">${u.email||"-"} · ${u.rol||"-"} · ${u.gorev||"-"}</div></div><div>${u.aktif? '<span class="pill">Aktif</span>':'<span class="pill">Pasif</span>'}</div></div>
+        <div class="mini" style="margin-top:8px"><button class="btn" data-edit="${u.uid}">Düzenle</button><button class="btn" data-reset="${u.email}">Şifre</button>
+        <button class="btn" data-toggle='${JSON.stringify({uid:u.uid,aktif:!!u.aktif}).replace(/'/g,"&apos;")}' >${u.aktif? "Pasifle":"Aktifle"}</button>
+        <button class="btn" data-softdel="${u.uid}">Soft Sil</button></div>`;
+      wrap.appendChild(card);
+    });
+    bindListButtons(wrap);
+  }
 }
 
-/* --- Düzenleme --- */
+/* Düzenleme */
 const mEdit=$("#mEdit");
 async function openEdit(uid){
-  const doc=await db.collection("kullanicilar").doc(uid).get();
-  if(!doc.exists){ toast("Kullanıcı bulunamadı","err"); return; }
+  const doc=await db.collection("kullanicilar").doc(uid).get(); if(!doc.exists){ toast("Kullanıcı bulunamadı"); return; }
   const u={uid:doc.id, ...doc.data()};
   $("#e_uid").value=u.uid; $("#e_ad").value=u.adSoyad||""; $("#e_rol").value=u.rol||"personel"; $("#e_gorev").value=u.gorev||""; $("#e_mail").value=u.email||""; $("#e_aktif").checked=!!u.aktif;
   renderPermTree("#permTreeEdit", u.yetkiler||[]);
-  mEdit.style.display="flex";
+  mEdit.style.display='flex';
 }
-$("#btnEditClose").onclick=()=> mEdit.style.display="none";
+$("#btnEditClose").onclick=()=> mEdit.style.display='none';
 $("#btnEditSave").onclick=async()=>{
-  const uid=$("#e_uid").value; const ad=$("#e_ad").value.trim(); const rol=$("#e_rol").value; const gorev=$("#e_gorev").value.trim(); const aktif=$("#e_aktif").checked; const yetkiler=getChecked("#permTreeEdit");
-  if(!ad||!rol){ toast("Ad ve rol zorunlu","err"); return; }
-  await db.collection("kullanicilar").doc(uid).update({adSoyad:ad, rol, gorev, aktif, yetkiler});
-  await db.collection("kullanici_log").add({islem:"kullanici_guncelle",hedefUid:uid,rol,gorev,aktif,yetkiSay:yetkiler.length,yapanEmail:ME?.email,zaman:firebase.firestore.FieldValue.serverTimestamp()});
-  mEdit.style.display="none"; toast("Güncellendi");
+  const uid=$("#e_uid").value; const ad=$("#e_ad").value.trim(); const rol=$("#e_rol").value; const gorev=$("#e_gorev").value.trim(); const aktif=$("#e_aktif").checked; const yetkiler=normalizeYetkiler(getChecked("#permTreeEdit"));
+  if(!ad||!rol){ toast("Ad ve rol zorunlu"); return; }
+  await db.collection("kullanicilar").doc(uid).set({adSoyad:ad, rol, gorev, aktif, yetkiler},{merge:true});
+  mEdit.style.display='none'; toast("Güncellendi");
 };
 
-/* --- Modal dışına tıkla kapat --- */
-[mPrev,mEdit].forEach(m=> m.addEventListener("click",e=>{ if(e.target===m) m.style.display="none"; }));
+/* Reset/Toggle/Delete */
+async function resetPass(email){ try{ await auth.sendPasswordResetEmail(email); toast("Sıfırlama e-postası gönderildi"); }catch(e){ toast("Gönderilemedi: "+(e?.message||e)); } }
+async function toggleActive(d){ await db.collection("kullanicilar").doc(d.uid).set({aktif: !d.aktif},{merge:true}); toast("Durum güncellendi"); }
+async function softDelete(uid){ if(!confirm("Bu kullanıcı soft-silinecek (aktif=false, silindi=true). Onaylıyor musun?")) return; await db.collection("kullanicilar").doc(uid).set({aktif:false, silindi:true},{merge:true}); toast("Soft silindi"); }
 
+/* ===== Manifest listener ===== */
+function listenManifest(){
+  db.collection("sayfa_manifesti").orderBy("order","asc").onSnapshot(snap=>{
+    const m={};
+    snap.forEach(d=>{
+      const v=d.data()||{};
+      m[d.id]={title:v.title||d.id, order:v.order||0, pages:Array.isArray(v.pages)? v.pages.sort((a,b)=>(a.order||0)-(b.order||0)) : []};
+    });
+    manifest=m;
+    fillPanelSelect(); renderPermTree("#permTreeAdd"); if($("#permTreeEdit").children.length) renderPermTree("#permTreeEdit", getChecked("#permTreeEdit")); renderManifestAdmin(); renderKPIs();
+  });
+}
+
+/* ===== Auth + Yetki + Menü ===== */
+try{ firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL); }catch(e){}
+auth.onAuthStateChanged(async (user)=>{
+  if(!user){ setTimeout(()=>{ if(!auth.currentUser) location.replace('../index.html'); },150); return; }
+  $("#meMail").textContent=user.email||"—";
+  try{
+    const uSnap=await db.collection('kullanicilar').doc(user.uid).get();
+    const data=uSnap.exists? uSnap.data():{};
+    const rawPerms=Array.isArray(data.yetkiler)? data.yetkiler:[];
+    CURRENT_ALLOW=new Set(rawPerms.filter(s=>!String(s).trim().startsWith('-') && !String(s).trim().startsWith('!')).map(norm));
+    CURRENT_DENY=new Set(rawPerms.filter(s=>String(s).trim().startsWith('-')||String(s).trim().startsWith('!')).map(s=>norm(String(s).replace(/^[-!]\\s*/,''))));
+    const panels=await fetchPanels(CURRENT_ALLOW,CURRENT_DENY); renderNav(panels);
+    listenManifest(); listenUsers();
+  }catch(e){ console.error(e); toast('Veriler yüklenirken hata'); }
+});
 </script>
 </body>
 </html>
