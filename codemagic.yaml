@@ -9,25 +9,28 @@ workflows:
         BUNDLE_ID: com.kfd.panel
 
     scripts:
-      # Bağımlılıklar
       - npm ci
 
-      # iOS platformu yoksa oluştur
       - |
           if [ ! -d "ios" ]; then
             npx cap add ios
           fi
 
-      # Web asset'leri ve pluginleri senkronize et
       - npx cap sync ios
 
-      # Pods
       - |
           cd ios/App
           pod install
           cd ../../
 
-      # --- Otomatik imzalama (ENV'leri açıkça geçir) ---
+      # ENV KONTROL – boşsa hemen dur
+      - |
+          echo "ENV sanity check:"
+          test -n "$APP_STORE_CONNECT_ISSUER_ID" && echo "✔ ISSUER_ID OK" || (echo "✖ ISSUER_ID MISSING"; exit 1)
+          test -n "$APP_STORE_CONNECT_KEY_IDENTIFIER" && echo "✔ KEY_ID OK" || (echo "✖ KEY_ID MISSING"; exit 1)
+          if [ -z "$APP_STORE_CONNECT_PRIVATE_KEY" ]; then echo "✖ PRIVATE_KEY MISSING"; exit 1; else echo "✔ PRIVATE_KEY looks set"; fi
+
+      # Otomatik imzalama (argümanları açıkça geçiriyoruz)
       - keychain initialize
       - |
           app-store-connect fetch-signing-files \
@@ -40,7 +43,6 @@ workflows:
       - keychain add-certificates
       - xcode-project use-profiles
 
-      # IPA üret (imzalı)
       - xcode-project build-ipa --workspace ios/App/App.xcworkspace --scheme App --export-options-plist exportOptions.plist
 
     artifacts:
