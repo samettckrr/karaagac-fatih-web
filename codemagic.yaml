@@ -1,0 +1,45 @@
+workflows:
+  ios-capacitor:
+    name: iOS Capacitor Build
+    max_build_duration: 60
+    environment:
+      node: 20
+      cocoapods: default
+      vars:
+        BUNDLE_ID: com.kfd.panel
+    scripts:
+      - npm ci
+
+      # iOS platformu yoksa oluştur
+      - |
+          if [ ! -d "ios" ]; then
+            npx cap add ios
+          fi
+
+      # Web asset'leri ve pluginleri senkronize et
+      - npx cap sync ios
+
+      # CocoaPods
+      - |
+          cd ios/App
+          pod install
+          cd ../../
+
+      # --- Otomatik imzalama ---
+      - keychain initialize
+      - app-store-connect fetch-signing-files --type IOS_APP_STORE --bundle-id $BUNDLE_ID --create
+      - keychain add-certificates
+      - xcode-project use-profiles
+
+      # IPA oluştur (imzalı)
+      - xcode-project build-ipa --workspace ios/App/App.xcworkspace --scheme App --export-options-plist exportOptions.plist
+
+    artifacts:
+      - build/*.ipa
+
+    publishing:
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        submit_to_testflight: true
