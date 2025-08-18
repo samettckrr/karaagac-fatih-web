@@ -6,30 +6,33 @@ workflows:
       node: 20
       cocoapods: default
     scripts:
-      # Versiyon bilgisini log'a yaz
-      - echo "Node: $(node -v)  NPM: $(npm -v)"
+      - |
+          echo "Node version:"
+          node -v
+          echo "NPM version:"
+          npm -v
 
-      # NPM bağımlılıkları
       - npm ci
 
-      # iOS platformu yoksa oluştur (Podfile bu adımda gelir)
+      # iOS platformu yoksa oluştur (Podfile burada gelir)
       - |
-        if [ ! -d "ios" ]; then
-          npx cap add ios
-        fi
+          if [ ! -d "ios" ]; then
+            npx cap add ios
+          fi
 
-      # Web dosyalarını ve pluginleri iOS projesine senkronize et
+      # Web dosyaları ve pluginleri iOS projesine senkronize et
       - npx cap sync ios
 
-      # Pod kurulumunu ios/App klasöründe yap
+      # CocoaPods
       - |
-        cd ios/App
-        pod install
+          cd ios/App
+          pod repo update
+          pod install
 
-      # Arşivleme (workspace tam yolu ile)
+      # Arşiv (workspace'e tam yol verdik)
       - xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Release -archivePath $CM_BUILD_DIR/build/App.xcarchive archive
 
-      # IPA oluşturup dışa aktar (repo kökündeki exportOptions.plist'i kullan)
+      # IPA oluştur ve dışa aktar (repo kökündeki exportOptions.plist kullanılır)
       - xcodebuild -exportArchive -archivePath $CM_BUILD_DIR/build/App.xcarchive -exportOptionsPlist exportOptions.plist -exportPath $CM_BUILD_DIR/build
 
     artifacts:
