@@ -3,15 +3,17 @@ workflows:
     name: iOS Capacitor Build
     max_build_duration: 60
     environment:
-      node: 20            # <-- 18 yerine 20 (veya 22) yap
+      node: 20
       cocoapods: default
     scripts:
-      - node -v && npm -v # versiyonu log’a yazdır (debug için)
+      - node -v && npm -v
       - npm ci
       - npx cap sync ios
+      # (Geçici debug istersen şu 3 satır path'i doğrular)
+      # - ls -la ios
+      # - ls -la ios/App
+      # - ls -la ios/App/App
       - cd ios/App
-      - /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.0.0" App/Info.plist
-      - /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $CM_BUILD_NUMBER" App/Info.plist
       - pod install
       - xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -archivePath $CM_BUILD_DIR/build/App.xcarchive archive
       - xcodebuild -exportArchive -archivePath $CM_BUILD_DIR/build/App.xcarchive -exportOptionsPlist ../../exportOptions.plist -exportPath $CM_BUILD_DIR/build
