@@ -1,0 +1,25 @@
+workflows:
+  ios-capacitor:
+    name: iOS Capacitor Build
+    max_build_duration: 60
+    environment:
+      node: 18
+      cocoapods: default
+    scripts:
+      - npm ci
+      - npx cap sync ios
+      - cd ios/App
+      # Versiyon numarası zorunluluklarını otomatiğe bağla:
+      - /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.0.0" App/Info.plist
+      - /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $CM_BUILD_NUMBER" App/Info.plist
+      - pod install
+      - xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -archivePath $CM_BUILD_DIR/build/App.xcarchive archive
+      - xcodebuild -exportArchive -archivePath $CM_BUILD_DIR/build/App.xcarchive -exportOptionsPlist ../../exportOptions.plist -exportPath $CM_BUILD_DIR/build
+    artifacts:
+      - build/*.ipa
+    publishing:
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_API_KEY
+        key_id: $APP_STORE_CONNECT_KEY_ID
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        submit_to_testflight: true
