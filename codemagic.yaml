@@ -9,31 +9,38 @@ workflows:
         BUNDLE_ID: com.kfd.panel
 
     scripts:
-      # 1) Bağımlılıklar
+      # Bağımlılıklar
       - npm ci
 
-      # 2) iOS platformu yoksa oluştur
+      # iOS platformu yoksa oluştur
       - |
           if [ ! -d "ios" ]; then
             npx cap add ios
           fi
 
-      # 3) Web asset'leri ve pluginleri iOS projesine senkronize et
+      # Web asset'leri ve pluginleri senkronize et
       - npx cap sync ios
 
-      # 4) CocoaPods kur
+      # Pods
       - |
           cd ios/App
           pod install
           cd ../../
 
-      # 5) Otomatik imzalama (Codemagic CLI)
+      # --- Otomatik imzalama (ENV'leri açıkça geçir) ---
       - keychain initialize
-      - app-store-connect fetch-signing-files --type IOS_APP_STORE --create "$BUNDLE_ID"
+      - |
+          app-store-connect fetch-signing-files \
+            --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
+            --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
+            --private-key "$APP_STORE_CONNECT_PRIVATE_KEY" \
+            --type IOS_APP_STORE \
+            --create \
+            "$BUNDLE_ID"
       - keychain add-certificates
       - xcode-project use-profiles
 
-      # 6) IPA üret (exportOptions.plist repo kökünde)
+      # IPA üret (imzalı)
       - xcode-project build-ipa --workspace ios/App/App.xcworkspace --scheme App --export-options-plist exportOptions.plist
 
     artifacts:
