@@ -8,12 +8,14 @@ workflows:
     scripts:
       - node -v && npm -v
       - npm ci
+      # iOS platformu yoksa oluştur (Podfile burada gelir)
+      - if [ ! -d ios ]; then npx cap add ios; fi
+      # (varsa sorun değil; add yoksa sync tek başına yeterli olmayabilir)
       - npx cap sync ios
-      # (Geçici debug istersen şu 3 satır path'i doğrular)
-      # - ls -la ios
-      # - ls -la ios/App
-      # - ls -la ios/App/App
       - cd ios/App
+      # Podfile gerçekten var mı kontrol et (debug için listeler)
+      - ls -la
+      - if [ ! -f Podfile ]; then echo "ERROR: Podfile missing in ios/App"; exit 1; fi
       - pod install
       - xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -archivePath $CM_BUILD_DIR/build/App.xcarchive archive
       - xcodebuild -exportArchive -archivePath $CM_BUILD_DIR/build/App.xcarchive -exportOptionsPlist ../../exportOptions.plist -exportPath $CM_BUILD_DIR/build
