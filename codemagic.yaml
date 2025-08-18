@@ -6,21 +6,35 @@ workflows:
       node: 20
       cocoapods: default
     scripts:
-      - node -v && npm -v
+      # Versiyon bilgisini log'a yaz
+      - echo "Node: $(node -v)  NPM: $(npm -v)"
+
+      # NPM bağımlılıkları
       - npm ci
-      # iOS platformu yoksa oluştur (Podfile burada gelir)
-      - if [ ! -d ios ]; then npx cap add ios; fi
-      # (varsa sorun değil; add yoksa sync tek başına yeterli olmayabilir)
+
+      # iOS platformu yoksa oluştur (Podfile bu adımda gelir)
+      - |
+        if [ ! -d "ios" ]; then
+          npx cap add ios
+        fi
+
+      # Web dosyalarını ve pluginleri iOS projesine senkronize et
       - npx cap sync ios
-      - cd ios/App
-      # Podfile gerçekten var mı kontrol et (debug için listeler)
-      - ls -la
-      - if [ ! -f Podfile ]; then echo "ERROR: Podfile missing in ios/App"; exit 1; fi
-      - pod install
-      - xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -archivePath $CM_BUILD_DIR/build/App.xcarchive archive
-      - xcodebuild -exportArchive -archivePath $CM_BUILD_DIR/build/App.xcarchive -exportOptionsPlist ../../exportOptions.plist -exportPath $CM_BUILD_DIR/build
+
+      # Pod kurulumunu ios/App klasöründe yap
+      - |
+        cd ios/App
+        pod install
+
+      # Arşivleme (workspace tam yolu ile)
+      - xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Release -archivePath $CM_BUILD_DIR/build/App.xcarchive archive
+
+      # IPA oluşturup dışa aktar (repo kökündeki exportOptions.plist'i kullan)
+      - xcodebuild -exportArchive -archivePath $CM_BUILD_DIR/build/App.xcarchive -exportOptionsPlist exportOptions.plist -exportPath $CM_BUILD_DIR/build
+
     artifacts:
       - build/*.ipa
+
     publishing:
       app_store_connect:
         api_key: $APP_STORE_CONNECT_API_KEY
