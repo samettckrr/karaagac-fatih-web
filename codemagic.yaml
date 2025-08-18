@@ -7,31 +7,33 @@ workflows:
       cocoapods: default
       vars:
         BUNDLE_ID: com.kfd.panel
+
     scripts:
+      # 1) Bağımlılıklar
       - npm ci
 
-      # iOS platformu yoksa oluştur
+      # 2) iOS platformu yoksa oluştur
       - |
           if [ ! -d "ios" ]; then
             npx cap add ios
           fi
 
-      # Web asset'leri ve pluginleri senkronize et
+      # 3) Web asset'leri ve pluginleri iOS projesine senkronize et
       - npx cap sync ios
 
-      # CocoaPods
+      # 4) CocoaPods kur
       - |
           cd ios/App
           pod install
           cd ../../
 
-      # --- Otomatik imzalama ---
+      # 5) Otomatik imzalama (Codemagic CLI)
       - keychain initialize
-      - app-store-connect fetch-signing-files --type IOS_APP_STORE --bundle-id $BUNDLE_ID --create
+      - app-store-connect fetch-signing-files --type IOS_APP_STORE --create "$BUNDLE_ID"
       - keychain add-certificates
       - xcode-project use-profiles
 
-      # IPA oluştur (imzalı)
+      # 6) IPA üret (exportOptions.plist repo kökünde)
       - xcode-project build-ipa --workspace ios/App/App.xcworkspace --scheme App --export-options-plist exportOptions.plist
 
     artifacts:
