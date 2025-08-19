@@ -11,10 +11,10 @@ workflows:
         TEAM_ID: W3Z5SH3P38
         BUNDLE_ID: com.kfd.panel
         APP_STORE_APP_ID: "6751201247"
-        # Apple API değerleri ENV'den gelecek:
+        # Aşağıdakiler ENV'de tanımlı olmalı (Application env. variables):
         # APP_STORE_CONNECT_ISSUER_ID
         # APP_STORE_CONNECT_KEY_IDENTIFIER
-        # APP_STORE_CONNECT_PRIVATE_KEY
+        # APP_STORE_CONNECT_PRIVATE_KEY  (Multiline, BEGIN/END dahil)
 
     triggering:
       events: [push]
@@ -35,10 +35,12 @@ workflows:
       - name: Install deps
         script: npm ci || npm install
 
-      - name: Web build
+      - name: Web build (dist-app üret)
         script: |
           npm run build || true
-          [ -d "dist-app" ] || echo "⚠️ dist-app eksik; webDir ile build çıktısını eşitleyin."
+          if [ ! -d "dist-app" ]; then
+            echo "⚠️ dist-app bulunamadı. capacitor.config.json'daki webDir ile build çıktısını eşitleyin."
+          fi
 
       - name: Capacitor sync
         script: npx cap sync ios
@@ -50,7 +52,7 @@ workflows:
           pod install
           cd ../..
 
-      - name: ExportOptions.plist
+      - name: ExportOptions.plist (app-store)
         script: |
           cat > ios/ExportOptions.plist <<'PLIST'
           <?xml version="1.0" encoding="UTF-8"?>
@@ -65,7 +67,7 @@ workflows:
           </plist>
           PLIST
 
-      - name: Apple signing files (automatic)
+      - name: Fetch signing files (automatic)
         script: |
           set -eo pipefail
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
@@ -84,7 +86,7 @@ workflows:
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> $CM_ENV
           echo "Using BUILD_NUMBER=$BUILD_NUMBER"
 
-      - name: Build IPA
+      - name: Build archive & IPA
         script: |
           set -eo pipefail
           cd ios/App
@@ -100,27 +102,28 @@ workflows:
             -exportOptionsPlist ../ExportOptions.plist | xcpretty
           cd ../..
 
-        scripts:
-          - name: Show IPA
-            script: find build/ios -name "*.ipa" -print
+      - name: Show IPA
+        script: find build/ios -name "*.ipa" -print
 
-          - name: Upload to TestFlight (API Key ile)
-            script: |
-              set -eo pipefail
-              mkdir -p $HOME/.appstoreconnect/private_keys
-              KEYFILE="$HOME/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_IDENTIFIER}.p8"
-              printf "%s" "$APP_STORE_CONNECT_PRIVATE_KEY" > "$KEYFILE"
+      - name: Upload to TestFlight (API Key)
+        script: |
+          set -eo pipefail
+          mkdir -p $HOME/.appstoreconnect/private_keys
+          KEYFILE="$HOME/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_IDENTIFIER}.p8"
+          printf "%s" "$APP_STORE_CONNECT_PRIVATE_KEY" > "$KEYFILE"
 
-              IPA_PATH=$(find "$CM_BUILD_DIR/build/ios" -name "*.ipa" | head -n 1)
-              echo "IPA: $IPA_PATH"
+          IPA_PATH=$(find "$CM_BUILD_DIR/build/ios" -name "*.ipa" | head -n 1)
+          if [ -z "$IPA_PATH" ]; then
+            echo "IPA bulunamadı"; exit 1
+          fi
 
-              xcrun altool --upload-app \
-                -f "$IPA_PATH" \
-                -t ios \
-                --apiKey "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
-                --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID" \
-                --verbose
+          xcrun altool --upload-app \
+            -f "$IPA_PATH" \
+            -t ios \
+            --apiKey "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
+            --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID" \
+            --verbose
 
-        artifacts:
-          - "build/ios/*.ipa"
-          - "build/App.xcarchive"
+    artifacts:
+      - "build/ios/*.ipa"
+      - "build/App.xcarchive"
