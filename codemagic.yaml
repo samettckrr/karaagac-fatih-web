@@ -1,56 +1,125 @@
 workflows:
-  ios-capacitor:
-    name: iOS Capacitor Build
+  ios_capacitor_testflight:
+    name: iOS • Capacitor • TestFlight
     max_build_duration: 60
+
     environment:
-      node: 20
+      xcode: 15.4
+      node: 18
       cocoapods: default
       vars:
+        # Sabitlerin
+        TEAM_ID: W3Z5SH3P38
         BUNDLE_ID: com.kfd.panel
+        APP_STORE_APP_ID: 6751201247
+
+        # --- Apple API Key bilgilerini BURAYA yapıştır ---
+        APP_STORE_CONNECT_ISSUER_ID: e5838a54-e0d7-4d54-9071-15c39c7ab252         # App Store Connect -> Users and Access -> Keys sayfasındaki Issuer ID
+        APP_STORE_CONNECT_KEY_IDENTIFIER: NP6QZ9PAT5        # Aktif Key ID (sende NP6QZ9PAT5 görünüyordu)
+        APP_STORE_CONNECT_PRIVATE_KEY: |                         # .p8 dosyasının TAM içeriği (çok satırlı!)
+                    -----BEGIN PRIVATE KEY-----
+        MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgvzbjTZxSJf6roZmq
+        CYAUGE+QC0uU/gdwBK72v+igGEygCgYIKoZIzj0DAQehRANCAARGbTkVc3/oHOhT
+        K/M+CQnpJIE3P4sgYdZFHmqaxGTr7KRJRzHRAtTjEWYuzmvm8Z/Tfiu5dsro14jD
+        Ol89nM/G
+        -----END PRIVATE KEY-----
+
+    triggering:
+      events: [push]
+      branch_patterns:
+        - pattern: "main"
+          include: true
+          source: true
 
     scripts:
-      - npm ci
-
-      - |
-          if [ ! -d "ios" ]; then
-            npx cap add ios
-          fi
-
-      - npx cap sync ios
-
-      - |
-          cd ios/App
-          pod install
-          cd ../../
-
-      # ENV KONTROL – boşsa hemen dur
-      - |
+      - name: ENV sanity check
+        script: |
+          set -eo pipefail
           echo "ENV sanity check:"
-          test -n "$APP_STORE_CONNECT_ISSUER_ID" && echo "✔ ISSUER_ID OK" || (echo "✖ ISSUER_ID MISSING"; exit 1)
-          test -n "$APP_STORE_CONNECT_KEY_IDENTIFIER" && echo "✔ KEY_ID OK" || (echo "✖ KEY_ID MISSING"; exit 1)
-          if [ -z "$APP_STORE_CONNECT_PRIVATE_KEY" ]; then echo "✖ PRIVATE_KEY MISSING"; exit 1; else echo "✔ PRIVATE_KEY looks set"; fi
+          [ -n "$APP_STORE_CONNECT_ISSUER_ID" ] && echo "✓ ISSUER_ID OK" || (echo "✗ ISSUER_ID MISSING"; exit 1)
+          [ -n "$APP_STORE_CONNECT_KEY_IDENTIFIER" ] && echo "✓ KEY_ID OK ($APP_STORE_CONNECT_KEY_IDENTIFIER)" || (echo "✗ KEY_ID MISSING"; exit 1)
+          if [ -z "$APP_STORE_CONNECT_PRIVATE_KEY" ]; then echo "✗ PRIVATE_KEY MISSING"; exit 1; else echo "✓ PRIVATE_KEY set"; fi
 
-      # Otomatik imzalama (argümanları açıkça geçiriyoruz)
-      - keychain initialize
-      - |
-          app-store-connect fetch-signing-files \
+      - name: Install deps
+        script: npm ci || npm install
+
+      - name: Web build
+        script: |
+          npm run build || true
+          [ -d "dist-app" ] || echo "⚠️ dist-app klasörü yok; capacitor.config.json'daki webDir ile build çıktısını eşitleyin."
+
+      - name: Capacitor sync
+        script: npx cap sync ios
+
+      - name: Cocoapods
+        script: |
+          cd ios/App
+          pod repo update
+          pod install
+          cd ../..
+
+      - name: ExportOptions.plist (app-store)
+        script: |
+          cat > ios/ExportOptions.plist <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>compileBitcode</key><false/>
+            <key>uploadSymbols</key><true/>
+          </dict>
+          </plist>
+          PLIST
+
+      - name: Apple signing files (automatic)
+        script: |
+          set -eo pipefail
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE --create \
             --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
             --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
             --private-key "$APP_STORE_CONNECT_PRIVATE_KEY" \
-            --type IOS_APP_STORE \
-            --create \
-            "$BUNDLE_ID"
-      - keychain add-certificates
-      - xcode-project use-profiles
+            --save-to ./certs
+          keychain initialize
+          keychain add-certificates --certificate ./certs/certificate.p12 --certificate-password ""
+          xcode-project use-profiles
 
-      - xcode-project build-ipa --workspace ios/App/App.xcworkspace --scheme App --export-options-plist exportOptions.plist
+      - name: Unique build number
+        script: |
+          export BUILD_NUMBER=$(date +%Y%m%d%H%M)
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> $CM_ENV
+          echo "Using BUILD_NUMBER=$BUILD_NUMBER"
+
+      - name: Build IPA
+        script: |
+          set -eo pipefail
+          cd ios/App
+          xcodebuild -workspace App.xcworkspace \
+            -scheme App -configuration Release \
+            -archivePath $CM_BUILD_DIR/build/App.xcarchive \
+            DEVELOPMENT_TEAM=$TEAM_ID \
+            PRODUCT_BUNDLE_IDENTIFIER=$BUNDLE_ID \
+            clean archive | xcpretty
+          xcodebuild -exportArchive \
+            -archivePath $CM_BUILD_DIR/build/App.xcarchive \
+            -exportPath $CM_BUILD_DIR/build/ios \
+            -exportOptionsPlist ../ExportOptions.plist | xcpretty
+          cd ../..
+
+      - name: Show IPA
+        script: find build/ios -name "*.ipa" -print
 
     artifacts:
-      - build/*.ipa
+      - build/ios/*.ipa
+      - build/App.xcarchive
 
     publishing:
       app_store_connect:
-        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        api_key:
+          issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+          key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+          private_key: $APP_STORE_CONNECT_PRIVATE_KEY
         submit_to_testflight: true
+        app_id: $APP_STORE_APP_ID
