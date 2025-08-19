@@ -100,29 +100,27 @@ workflows:
             -exportOptionsPlist ../ExportOptions.plist | xcpretty
           cd ../..
 
-      - name: Show IPA
-        script: find build/ios -name "*.ipa" -print
+        scripts:
+          - name: Show IPA
+            script: find build/ios -name "*.ipa" -print
 
-    artifacts:
-      - build/ios/*.ipa
-      - build/App.xcarchive
+          - name: Upload to TestFlight (API Key ile)
+            script: |
+              set -eo pipefail
+              mkdir -p $HOME/.appstoreconnect/private_keys
+              KEYFILE="$HOME/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_IDENTIFIER}.p8"
+              printf "%s" "$APP_STORE_CONNECT_PRIVATE_KEY" > "$KEYFILE"
 
-      - name: Upload to TestFlight (API Key ile)
-        script: |
-          set -eo pipefail
-          # p8 anahtarını Apple Transporter'ın beklediği dizine kaydet
-          mkdir -p $HOME/.appstoreconnect/private_keys
-          KEYFILE="$HOME/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_IDENTIFIER}.p8"
-          printf "%s" "$APP_STORE_CONNECT_PRIVATE_KEY" > "$KEYFILE"
+              IPA_PATH=$(find "$CM_BUILD_DIR/build/ios" -name "*.ipa" | head -n 1)
+              echo "IPA: $IPA_PATH"
 
-          # IPA dosyasını bul
-          IPA_PATH=$(find "$CM_BUILD_DIR/build/ios" -name "*.ipa" | head -n 1)
-          echo "IPA: $IPA_PATH"
+              xcrun altool --upload-app \
+                -f "$IPA_PATH" \
+                -t ios \
+                --apiKey "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
+                --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID" \
+                --verbose
 
-          # iTMSTransporter/ALTool ile yükle (API Key & Issuer ID)
-          xcrun altool --upload-app \
-            -f "$IPA_PATH" \
-            -t ios \
-            --apiKey "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
-            --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID" \
-            --verbose
+        artifacts:
+          - "build/ios/*.ipa"
+          - "build/App.xcarchive"
