@@ -1,17 +1,19 @@
 workflows:
-  ios_capacitor_testflight:
-    name: "iOS • Capacitor • TestFlight"
+  ios_capacitor_store:
+    name: "iOS • Capacitor • App Store"
     instance_type: mac_mini_m2
 
     environment:
       node: 18
       xcode: 15.4
+      cocoapods: default
       vars:
+        # Projene göre doğru yolu ve şemayı kontrol et:
         XCODE_WORKSPACE: "ios/App/App.xcworkspace"
         XCODE_SCHEME: "App"
 
     scripts:
-      - name: Decode private key
+      - name: Decode private key (from B64 to PEM)
         script: |
           if [ -z "$APP_STORE_CONNECT_PRIVATE_KEY_B64" ]; then
             echo "✗ PRIVATE_KEY_B64 MISSING"; exit 1
@@ -22,17 +24,19 @@ workflows:
 
       - name: ENV sanity check
         script: |
-          echo "✓ ISSUER_ID: ${APP_STORE_CONNECT_ISSUER_ID}"
-          echo "✓ KEY_ID   : ${APP_STORE_CONNECT_KEY_IDENTIFIER}"
-          [ -n "$APP_STORE_CONNECT_PRIVATE_KEY" ] || { echo "✗ PRIVATE_KEY MISSING"; exit 1; }
+          echo "KEY_ID=$APP_STORE_CONNECT_KEY_IDENTIFIER"
+          echo "ISSUER_ID=$APP_STORE_CONNECT_ISSUER_ID"
+          test -n "$APP_STORE_CONNECT_PRIVATE_KEY" || { echo "✗ PRIVATE_KEY missing"; exit 1; }
+          echo "✓ env ok"
 
       - name: Install & sync Capacitor
         script: |
           npm ci
           npx cap sync ios
 
-      - name: Build .ipa
+      - name: Fetch signing & build .ipa
         script: |
+          app-store-connect fetch-signing-files --type IOS_APP_STORE --create
           xcode-project use-profiles
           xcode-project build-ipa \
             --workspace "$XCODE_WORKSPACE" \
@@ -48,4 +52,4 @@ workflows:
         api_key: $APP_STORE_CONNECT_PRIVATE_KEY
         key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
         issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        submit_to_testflight: true
+        # submit_to_testflight: true  # <-- YOK (sadece App Store Connect’e upload)
