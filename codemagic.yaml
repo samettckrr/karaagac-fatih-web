@@ -2,34 +2,27 @@ workflows:
   ios_capacitor_store:
     name: "iOS • Capacitor • App Store"
     instance_type: mac_mini_m2
-
     environment:
       vars:
         XCODE_WORKSPACE: "ios/App/App.xcworkspace"
         XCODE_SCHEME: "App"
-        # Bu isimlerle Env Variables ekranına değerlerini girdin:
+        BUNDLE_ID: $BUNDLE_ID
         APP_STORE_CONNECT_ISSUER_ID: $APP_STORE_CONNECT_ISSUER_ID
         APP_STORE_CONNECT_KEY_IDENTIFIER: $APP_STORE_CONNECT_KEY_IDENTIFIER
         APP_STORE_CONNECT_PRIVATE_KEY: $APP_STORE_CONNECT_PRIVATE_KEY
         APPLE_TEAM_ID: $APPLE_TEAM_ID
-        BUNDLE_ID: $BUNDLE_ID
-
     scripts:
-      - name: Check App Store key presence (fail fast)
+      - name: Validate env (safe)
         script: |
-          [ -n "$APP_STORE_CONNECT_PRIVATE_KEY" ] || { echo "PRIVATE_KEY YOK"; exit 1; }
-          [ -n "$APP_STORE_CONNECT_KEY_IDENTIFIER" ] || { echo "KEY_ID yok"; exit 1; }
-          [ -n "$APP_STORE_CONNECT_ISSUER_ID" ] || { echo "ISSUER_ID yok"; exit 1; }
-          [ -n "$APPLE_TEAM_ID" ] || { echo "APPLE_TEAM_ID yok"; exit 1; }
-          [ -n "$BUNDLE_ID" ] || { echo "BUNDLE_ID yok"; exit 1; }
+          test -n "$APP_STORE_CONNECT_KEY_IDENTIFIER" || { echo "KEY_ID yok"; exit 1; }
+          test -n "$APP_STORE_CONNECT_ISSUER_ID" || { echo "ISSUER_ID yok"; exit 1; }
+          test -n "$APPLE_TEAM_ID" || { echo "APPLE_TEAM_ID yok"; exit 1; }
           echo "Env OK"
-
       - name: Install & sync Capacitor
         script: |
           npm ci
           npx cap sync ios
-
-      - name: Fetch signing & apply (Automatic)
+      - name: Fetch signing & apply
         script: |
           app-store-connect fetch-signing-files \
             --type IOS_APP_STORE \
@@ -37,17 +30,17 @@ workflows:
             --create
           keychain add-certificates
           xcode-project use-profiles
-
+      - name: Check App Store key presence
+        script: |
+          [ -n "$APP_STORE_CONNECT_PRIVATE_KEY" ] && echo "PRIVATE_KEY OK" || { echo "PRIVATE_KEY YOK"; exit 1; }
       - name: Build IPA (Release)
         script: |
           xcode-project build-ipa \
             --workspace "$XCODE_WORKSPACE" \
             --scheme "$XCODE_SCHEME" \
             --export-method app-store
-
     artifacts:
       - build/ios/ipa/*.ipa
-
     publishing:
       app_store_connect:
         auth: api_key
