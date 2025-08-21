@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Kullanıcı Listesi</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="../js/firebase/firebase-init.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: #f4f6f9;
+    }
+    header {
+      background-color: #324960;
+      color: white;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .container {
+      padding: 20px;
+    }
+    .butonlar {
+      margin-bottom: 20px;
+    }
+    .butonlar button {
+      background-color: #2d6a4f;
+      color: white;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      min-width: 600px;
+    }
+    th, td {
+      padding: 12px 10px;
+      border-bottom: 1px solid #ddd;
+      text-align: left;
+    }
+    th {
+      background: #e3e3e3;
+    }
+    tr:hover {
+      background: #f0f0f0;
+      cursor: pointer;
+    }
+
+    /* MODAL GENEL */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .modal-icerik {
+      background: white;
+      padding: 25px 20px;
+      border-radius: 10px;
+      width: 100%;
+      max-width: 500px;
+      position: relative;
+      box-shadow: 0 0 12px rgba(0,0,0,0.3);
+      animation: fadeIn .3s ease-in-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .modal-kapat {
+      position: absolute;
+      top: 10px; right: 12px;
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: #888;
+    }
+    .modal-kapat:hover { color: #000; }
+
+    .modal-icerik h3 {
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 20px;
+      color: #2c3e50;
+    }
+    .form-group {
+      margin-bottom: 12px;
+    }
+    .form-group label {
+      font-weight: 600;
+      font-size: 14px;
+      display: block;
+      margin-bottom: 5px;
+      color: #444;
+    }
+    .form-group input, .form-group select {
+      width: 96%;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+    }
+    .checkbox-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .checkbox-list label {
+      font-weight: normal;
+      font-size: 14px;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 20px;
+      gap: 10px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      font-size: 15px;
+      cursor: pointer;
+    }
+    .btn-kaydet { background-color: #2d6a4f; color: white; }
+    .btn-sil { background-color: #c0392b; color: white; }
+
+    @media (max-width: 600px) {
+      .checkbox-list {
+        grid-template-columns: 1fr;
+      }
+      .modal-footer {
+        flex-direction: column;
+      }
+    }
+    @media (max-width: 768px) {
+  .modal-icerik {
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    border-radius: 0;
+    overflow-y: auto;
+    padding-bottom: 40px;
+  }
+}
+  </style>
+</head>
+<body>
+
+<header>
+  <div><strong>Kullanıcı Yönetimi</strong></div>
+  <button onclick="firebase.auth().signOut()">🚪 Çıkış Yap</button>
+</header>
+
+<div class="container">
+  <div class="butonlar">
+    <button onclick="modalEkle()">➕ Kullanıcı Ekle</button>
+  </div>
+
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr><th>Ad Soyad</th><th>Email</th><th>Rol</th><th>Görev</th><th>Yetkiler</th></tr>
+      </thead>
+      <tbody id="kullaniciListe"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Kullanıcı Ekle Modal -->
+<div class="modal" id="ekleModal" onclick="modalKapatDis(event)">
+  <div class="modal-icerik" id="modalIcerik">
+    <button class="modal-kapat" onclick="modalKapat()">×</button>
+    <!-- kullanici-ekle.html içeriği buraya gelecek -->
+  </div>
+</div>
+
+<!-- Düzenle Modal -->
+<div class="modal" id="duzenleModal" onclick="modalKapatDis(event)">
+  <div class="modal-icerik">
+    <button class="modal-kapat" onclick="modalKapat()">×</button>
+    <h3>Kullanıcıyı Düzenle</h3>
+    <div class="form-group">
+      <label>Ad Soyad</label>
+      <input type="text" id="duzenleAd">
+    </div>
+    <div class="form-group">
+      <label>Rol</label>
+      <input type="text" id="duzenleRol">
+    </div>
+    <div class="form-group">
+      <label>Görev</label>
+      <input type="text" id="duzenleGorev">
+    </div>
+    <div class="form-group">
+      <label>Yetkiler</label>
+      <div class="checkbox-list" id="duzenleYetkiler"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-kaydet" onclick="kullaniciGuncelle()">💾 Kaydet</button>
+      <button class="btn btn-sil" onclick="kullaniciSil()">🗑️ Sil</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const modal = document.getElementById("ekleModal");
+  const modalIcerik = document.getElementById("modalIcerik");
+
+  const duzenleModal = document.getElementById("duzenleModal");
+  let aktifKullaniciId = null;
+
+  const tumYetkiler = ["Talebe", "Personel", "Nehari", "Kermes", "Sistem Ayarları", "Muhasebe", "Kontrol Paneli"];
+
+  function modalEkle() {
+    modal.style.display = "flex";
+    fetch("kullanici-ekle.html")
+      .then(res => res.text())
+      .then(html => {
+        modalIcerik.innerHTML += html;
+      });
+  }
+
+  function modalKapat() {
+    modal.style.display = "none";
+    duzenleModal.style.display = "none";
+    modalIcerik.innerHTML = `<button class="modal-kapat" onclick="modalKapat()">×</button>`;
+    aktifKullaniciId = null;
+  }
+
+  function modalKapatDis(e) {
+    if (e.target.classList.contains("modal")) modalKapat();
+  }
+
+  async function listeYukle() {
+    const tbody = document.getElementById("kullaniciListe");
+    tbody.innerHTML = "";
+
+    const snap = await db.collection("kullanicilar").orderBy("eklenmeTarihi", "desc").get();
+    snap.forEach(doc => {
+      const d = doc.data();
+      const tr = document.createElement("tr");
+      tr.onclick = () => modalDuzenle(doc.id, d);
+      tr.innerHTML = `
+        <td>${d.adSoyad || "-"}</td>
+        <td>${d.email || "-"}</td>
+        <td>${d.rol || "-"}</td>
+        <td>${d.gorev || "-"}</td>
+        <td>${Array.isArray(d.yetkiler) ? d.yetkiler.join(", ") : "-"}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function modalDuzenle(id, data) {
+    aktifKullaniciId = id;
+    duzenleModal.style.display = "flex";
+    document.getElementById("duzenleAd").value = data.adSoyad || "";
+    document.getElementById("duzenleRol").value = data.rol || "";
+    document.getElementById("duzenleGorev").value = data.gorev || "";
+
+    const yetkiAlan = document.getElementById("duzenleYetkiler");
+    yetkiAlan.innerHTML = tumYetkiler.map(yetki => {
+      const checked = (data.yetkiler || []).includes(yetki) ? "checked" : "";
+      return `<label><input type="checkbox" value="${yetki}" ${checked}> ${yetki}</label>`;
+    }).join("");
+  }
+
+  async function kullaniciGuncelle() {
+    const ad = document.getElementById("duzenleAd").value.trim();
+    const rol = document.getElementById("duzenleRol").value.trim();
+    const gorev = document.getElementById("duzenleGorev").value.trim();
+    const yetkiler = [...document.querySelectorAll("#duzenleYetkiler input:checked")].map(cb => cb.value);
+
+    await db.collection("kullanicilar").doc(aktifKullaniciId).update({
+      adSoyad: ad,
+      rol,
+      gorev,
+      yetkiler
+    });
+
+    alert("Kullanıcı güncellendi.");
+    modalKapat();
+    listeYukle();
+  }
+
+  async function kullaniciSil() {
+    if (!confirm("Kullanıcı silinecek. Devam edilsin mi?")) return;
+    await db.collection("kullanicilar").doc(aktifKullaniciId).delete();
+    alert("Kullanıcı Firestore'dan silindi.\nFirebase Auth silme için sunucu tarafı gerekir.");
+    modalKapat();
+    listeYukle();
+  }
+
+  firebase.auth().onAuthStateChanged(user => {
+    if (!user) location.href = "../index.html";
+    else listeYukle();
+  });
+</script>
+
+</body>
+</html>

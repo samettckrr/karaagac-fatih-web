@@ -1,503 +1,461 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="tr" data-theme="auto">
 <head>
   <meta charset="UTF-8" />
-  <title>Karaağaç Fatih</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Karaağaç Fatih – iOS Panel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <link rel="icon" type="image/png" href="./img/logo.png" />
+
+  <!-- Firebase compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="./js/firebase/firebase-init.js"></script>
 
   <style>
     :root{
-      --appbar-h:56px;
-      --radius:14px; --shadow:0 12px 28px rgba(0,0,0,.14);
+      /* Safe area */
+      --safe-top: env(safe-area-inset-top);
+      --safe-bottom: env(safe-area-inset-bottom);
+      --safe-left: env(safe-area-inset-left);
+      --safe-right: env(safe-area-inset-right);
+
+      /* Theme tokens (mevcut dilinle uyumlu) */
       --bg:#0f172a; --bg2:#0b1324;
       --grad1:#0ea5e922; --grad2:#22d3ee22;
       --card:rgba(15,23,42,.92); --stroke:rgba(148,163,184,.18);
-      --text:#e5e7eb; --muted:#9aa4b2;
-      --brand:#38bdf8; --brand2:#0ea5e9;
-      --pill:#0b1220; --pill-hover:#101a2b;
-      --link:#c7e9ff; --surface:rgba(2,6,23,.08);
+      --text:#e5e7eb; --muted:#9aa4b2; --brand:#38bdf8; --brand2:#0ea5e9;
+      --surface:rgba(2,6,23,.1);
+      --radius:16px; --shadow:0 18px 40px rgba(0,0,0,.20);
+
+      --tab-h: 62px;
     }
     @media (prefers-color-scheme: light){
       :root{
         --bg:#eef6ff; --bg2:#f7fbff; --grad1:#38bdf822; --grad2:#22d3ee22;
-        --card:rgba(255,255,255,.95);
-        --stroke:rgba(15,23,42,.12);
+        --card:rgba(255,255,255,.95); --stroke:rgba(15,23,42,.12);
         --text:#0b1220; --muted:#4b5563; --brand:#0ea5e9; --brand2:#0284c7;
-        --pill:#f5f8ff; --pill-hover:#e9f2ff; --link:#0b5ea8; --surface:#eef3ff;
+        --surface:#eef3ff;
       }
-    }
-    html[data-theme="dark"]{
-      --bg:#0f172a; --bg2:#0b1324; --grad1:#0ea5e922; --grad2:#22d3ee22;
-      --card:rgba(15,23,42,.92); --stroke:rgba(148,163,184,.18);
-      --text:#e5e7eb; --muted:#9aa4b2; --brand:#38bdf8; --brand2:#0ea5e9;
-      --pill:#0b1220; --pill-hover:#101a2b; --link:#c7e9ff; --surface:rgba(2,6,23,.08);
-    }
-    html[data-theme="light"]{
-      --bg:#eef6ff; --bg2:#f7fbff; --grad1:#38bdf822; --grad2:#22d3ee22;
-      --card:rgba(255,255,255,.95); --stroke:rgba(15,23,42,.12);
-      --text:#0b1220; --muted:#4b5563; --brand:#0ea5e9; --brand2:#0284c7;
-      --pill:#f5f8ff; --pill-hover:#e9f2ff; --link:#0b5ea8; --surface:#eef3ff;
     }
 
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
       margin:0; color:var(--text);
-      font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Arial;
+      font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;
       background:
         radial-gradient(900px 680px at 12% 8%, var(--grad1), transparent 45%),
         radial-gradient(800px 640px at 88% 92%, var(--grad2), transparent 50%),
         linear-gradient(140deg, var(--bg), var(--bg2) 60%);
-      overflow-x:hidden; word-wrap:break-word;
+      overflow:hidden;
     }
-    a{color:var(--link); text-decoration:none}
-    a:hover{text-decoration:underline}
 
-    /* APPBAR */
-    .appbar{
-      position:sticky; top:0; z-index:60;
-      height:var(--appbar-h);
-      background:var(--card); backdrop-filter:blur(10px);
-      border-bottom:1px solid var(--stroke);
-      display:flex; align-items:center;
-      padding-top:0; padding-bottom:0;
-      padding-left:max(12px, env(safe-area-inset-left));
-      padding-right:max(12px, env(safe-area-inset-right));
+    /* ÜST – Hoş geldiniz alanı (Appbar YOK) */
+    .top{
+      position:sticky; top:0; z-index:10;
+      padding: calc(10px + var(--safe-top)) max(16px, var(--safe-left)) 12px max(16px, var(--safe-left));
+      padding-right: max(16px, var(--safe-right));
+      background: linear-gradient(180deg, rgba(2,6,23,.55), rgba(2,6,23,.15));
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--stroke);
     }
-    .brand{display:flex; align-items:center; gap:10px; cursor:pointer}
-    .brand img{width:24px; height:24px}
-    .brand span{font-weight:900; letter-spacing:.02em; color:var(--text)}
-
-    .nav-center{margin:0 auto; height:100%}
-    .nav-list{display:flex; gap:22px; align-items:center; height:100%; list-style:none; margin:0; padding:0}
-    .nav-item{position:relative; height:100%}
-    .nav-btn{height:100%; display:flex; align-items:center; gap:6px; color:var(--text); font-weight:600; cursor:pointer}
-    .nav-btn:hover{color:var(--brand)}
-    .caret{font-size:12px; opacity:.6}
-    .dropdown{position:absolute; top:100%; left:0; min-width:240px; background:var(--card); border:1px solid var(--stroke); border-radius:10px; box-shadow:var(--shadow); padding:8px; display:none}
-    .dropdown a{display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px; color:var(--text); text-decoration:none}
-    .dropdown a:hover{background:var(--surface)}
-    .nav-item.open .dropdown{display:block}
-
-    .nav-right{display:flex; gap:8px; align-items:center}
-    .btn{border:1px solid var(--stroke); background:var(--card); color:var(--text); border-radius:999px; padding:8px 12px; cursor:pointer}
-    .hamb{display:none}
-
-    /* DRAWER (mobil) */
-    .drawer{
-      position:fixed;
-      top:var(--appbar-h); right:0; bottom:0; left:30%;
-      transform:translateX(100%); transition:transform .25s ease;
-      background:var(--card); border-left:1px solid var(--stroke);
-      z-index:70; overflow:auto; -webkit-overflow-scrolling:touch; padding:12px;
+    .hello{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
+    .hello h1{ margin:0; font-size:18px; font-weight:900; letter-spacing:.02em }
+    .hello .date{ color:var(--muted); font-size:12px; margin-top:2px }
+    .top-actions{ display:flex; gap:8px; }
+    .btn{
+      border:1px solid var(--stroke); background:var(--card); color:var(--text);
+      border-radius:999px; padding:8px 12px; cursor:pointer; font-weight:600;
     }
-    .drawer.open{transform:translateX(0)}
-    .drawer .panel-title{margin:14px 4px 6px; font-weight:800; color:var(--muted); font-size:13px}
-    .drawer a{display:block; padding:10px; border-radius:10px; border:1px solid var(--stroke); margin:6px 0; color:var(--text); background:var(--pill)}
-    .drawer a:hover{background:var(--pill-hover)}
 
-    /* CONTENT */
-    .container{max-width:1200px; margin:0 auto; padding:16px}
-    .hero{display:flex; justify-content:space-between; align-items:flex-start; gap:16px; background:var(--card); border:1px solid var(--stroke); border-radius:var(--radius); padding:16px; margin:16px 0; box-shadow:var(--shadow)}
-    .hero h2{margin:0 0 6px; font-size:20px}
-    .hero-sub{color:var(--muted); font-size:13px}
-    .mini{display:flex; gap:8px; flex-wrap:wrap}
-    .pill{padding:6px 10px; border-radius:999px; border:1px solid var(--stroke); background:var(--pill); font-size:12px}
+    /* İçerik alanı */
+    .content{
+      position:relative;
+      height: calc(100dvh - var(--tab-h) - var(--safe-bottom));
+      overflow:auto; -webkit-overflow-scrolling: touch;
+      padding: 14px;
+      padding-left: max(14px, var(--safe-left));
+      padding-right: max(14px, var(--safe-right));
+    }
 
-    .grid{display:grid; gap:14px; grid-template-columns:repeat(12, minmax(0,1fr))}
-    .col-3{grid-column:span 3} .col-4{grid-column:span 4} .col-6{grid-column:span 6} .col-8{grid-column:span 8} .col-12{grid-column:span 12}
-    .card{background:var(--card); border:1px solid var(--stroke); border-radius:var(--radius); box-shadow:var(--shadow); padding:14px}
-    .card h3{margin:0 0 10px; font-size:16px}
-    .kpi{display:flex; align-items:center; justify-content:space-between; padding:12px; border-radius:12px; border:1px solid var(--stroke); background:var(--surface)}
+    /* Kartlar */
+    .card{
+      background:var(--card); border:1px solid var(--stroke);
+      border-radius: var(--radius); box-shadow: var(--shadow);
+      padding: 14px; margin-bottom: 12px;
+    }
+    .card h3{ margin:0 0 10px; font-size:16px; display:flex; justify-content:space-between; align-items:center }
+    .kpi{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:12px; border-radius:12px; border:1px solid var(--stroke); background:var(--surface)}
     .kpi .val{font-size:22px; font-weight:800}
     .kpi .sub{font-size:12px; color:var(--muted)}
     .list{display:grid; gap:10px}
-    .list-item{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; border-radius:12px; border:1px solid var(--stroke); background:var(--surface)}
+    .list-item{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 12px; border-radius:12px; border:1px solid var(--stroke); background:var(--surface)}
+    .tag{padding:4px 8px; font-size:12px; border-radius:999px; border:1px solid var(--stroke); background:rgba(56,189,248,.12)}
 
-    .toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:rgba(2,6,23,.95); color:#fff; border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:10px 12px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:200}
-    .toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
-    .page-gap{height:180px}
+    /* Temizlik: tam genişlik graf / satır listesi */
+    .table{width:100%; border-collapse: collapse; font-size:14px}
+    .table th,.table td{border-bottom:1px solid var(--stroke); padding:10px 6px; text-align:left}
+    .table th{color:var(--muted); font-weight:700}
 
-    @media (max-width: 1024px){ .nav-center{display:none} .hamb{display:inline-flex} }
-    @media (max-width: 960px){
-      .col-3{grid-column:span 6} .col-4{grid-column:span 6} .col-6{grid-column:span 6} .col-8{grid-column:span 6} .col-12{grid-column:span 6}
-      .hero{flex-direction:column}
+    /* Pull to refresh */
+    .ptr{
+      position:absolute; top:0; left:0; right:0; height:0; overflow:visible; display:flex; justify-content:center; pointer-events:none;
     }
+    .ptr .bubble{
+      margin-top: -40px; width:28px; height:28px; border-radius:50%;
+      border:2px solid rgba(255,255,255,.6); border-top-color:#fff; animation:spin 1s linear infinite; opacity:0; transition:opacity .15s;
+    }
+    .ptr.show .bubble{ opacity:1 }
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* Sheet – panelin sayfaları */
+    .sheet{
+      position: fixed; left:0; right:0;
+      bottom: calc(-100% - 20px); z-index: 50;
+      background: var(--card); border-top:1px solid var(--stroke);
+      border-top-left-radius: 16px; border-top-right-radius: 16px;
+      box-shadow: 0 -12px 30px rgba(0,0,0,.35);
+      transition: bottom .25s ease;
+      padding: 10px;
+      padding-bottom: calc(10px + var(--safe-bottom));
+      max-height: calc(70dvh + var(--safe-bottom)); overflow:auto;
+    }
+    .sheet.open{ bottom: 0 }
+    .sheet .drag{ width:46px; height:4px; border-radius:999px; background:var(--stroke); margin:6px auto 10px; }
+    .sheet h4{ margin:0 0 8px; font-size:14px; color:var(--muted); text-align:center }
+    .sheet a{ display:block; padding:12px; border-radius:12px; border:1px solid var(--stroke); background:var(--surface); color:var(--text); text-decoration:none; margin:6px 0 }
+
+    /* Alt Tab Bar */
+    .tabbar{
+      position: fixed; left:0; right:0; bottom:0; z-index: 60;
+      height: calc(var(--tab-h) + var(--safe-bottom));
+      padding-bottom: var(--safe-bottom);
+      background: var(--card); border-top:1px solid var(--stroke);
+      display:flex; align-items:center; justify-content: space-around; gap:6px;
+    }
+    .tab{
+      min-width: 0;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      padding: 6px 8px; gap:4px; border-radius:10px; flex:1; max-width: 140px;
+      color: var(--text); border:1px solid transparent;
+    }
+    .tab small{ font-size:11px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:120px }
+    .tab.active{ border-color: var(--stroke); background: var(--surface) }
   </style>
-
-  <!-- Firebase (compat) -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-  <script src="./js/firebase/firebase-init.js"></script>
-
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-
-  <script defer src="./js/ortak.js"></script>
 </head>
 <body>
 
-  <!-- APPBAR -->
-  <div class="appbar">
-    <div class="brand" onclick="location.reload()">
-      <img src="./img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
-    </div>
-
-    <nav class="nav-center"><ul class="nav-list" id="navMain"></ul></nav>
-
-    <div class="nav-right">
-      <button class="btn hamb" id="hamburger" title="Menü">☰</button>
-      <button class="btn" id="themeToggle" title="Tema: Açık/Koyu/Otomatik">🌗 <span id="themeLabel">Auto</span></button>
-      <button class="btn" onclick="logout()">Çıkış Yap</button>
+  <!-- ÜST – Hoş geldiniz -->
+  <div class="top">
+    <div class="hello">
+      <div>
+        <h1 id="helloName">Hoş geldiniz, —</h1>
+        <div class="date" id="todayText">—</div>
+      </div>
+      <div class="top-actions">
+        <button class="btn" id="btnTheme">Tema: Auto</button>
+        <button class="btn" id="btnLogout">Çıkış</button>
+      </div>
     </div>
   </div>
 
-  <!-- Mobil çekmece -->
-  <aside class="drawer" id="drawer"></aside>
+  <!-- İçerik -->
+  <main class="content" id="content">
+    <!-- Pull to refresh göstergesi -->
+    <div class="ptr" id="ptr"><div class="bubble"></div></div>
 
-  <!-- CONTENT -->
-  <main class="container">
-    <section class="hero">
-      <div>
-        <h2>Hoş geldiniz, <span id="username">—</span></h2>
-        <div class="hero-sub">Bugün: <span id="todayText">—</span></div>
-        <div class="mini">
-          <span class="pill">📦 <b id="panelCount">0</b> panel</span>
-          <span class="pill">🧩 <b id="pageCount">0</b> sayfa</span>
-          <span class="pill">🔔 <b id="duyuruCount">0</b> duyuru</span>
+    <!-- 1) Talebe -->
+    <section class="card">
+      <h3>Talebe <span class="tag">Güncel</span></h3>
+      <div class="kpi">
+        <div>
+          <div class="val" id="talebeToplam">—</div>
+          <div class="sub">Toplam Talebe</div>
+        </div>
+        <div>
+          <div class="sub">Ensar / Muhacir</div>
+          <div class="val" style="font-size:18px"><span id="talebeEnsar">—</span> / <span id="talebeMuhacir">—</span></div>
         </div>
       </div>
-      <div class="mini"><span class="pill">Tema: <span id="themeLabel2">Auto</span></span></div>
     </section>
 
-    <div class="grid">
-      <div class="card col-3">
-        <h3>Genel</h3>
-        <div class="kpi"><div><div class="val" id="kpiTalebe">--</div><div class="sub">Toplam Talebe</div></div><div>👥</div></div>
-        <div class="kpi" style="margin-top:10px"><div><div class="val"><span id="kpiEnsar">--</span> / <span id="kpiMuhacir">--</span></div><div class="sub">Ensar / Muhacir</div></div><div>📘</div></div>
+    <!-- 2) Nöbetçi -->
+    <section class="card">
+      <h3>Nöbetçi</h3>
+      <div class="kpi">
+        <div>
+          <div class="sub">Evli / İhvan</div>
+          <div class="val" id="nobetEvli">—</div>
+        </div>
+        <div>
+          <div class="sub">Bekar</div>
+          <div class="val" id="nobetBekar">—</div>
+        </div>
       </div>
-      <div class="card col-3">
-        <h3>Yoklama</h3>
-        <div class="kpi"><div><div class="val" id="kpiIzinli">--</div><div class="sub">Bugün İzinli</div></div><div>🗓️</div></div>
-        <canvas id="grafikYoklama" height="120" style="margin-top:10px"></canvas>
-      </div>
-      <div class="card col-3">
-        <h3>Temizlik</h3>
-        <div class="kpi"><div><div class="val" id="kpiTemizlik">--</div><div class="sub">Bugün Ortalama</div></div><div>🧹</div></div>
-        <canvas id="grafikTemizlik" height="120" style="margin-top:10px"></canvas>
-      </div>
-      <div class="card col-3">
-        <h3>Kasa</h3>
-        <div class="kpi"><div><div class="val" id="kpiKasa">--</div><div class="sub">Son 30 Gün Net</div></div><div>💰</div></div>
-        <canvas id="grafikKasa" height="120" style="margin-top:10px"></canvas>
-      </div>
+    </section>
 
-      <div class="card col-8">
-        <h3 style="display:flex;justify-content:space-between;align-items:center"><span>Duyurular</span><button id="duyuruEkleBtn" style="display:none" class="btn">+ Ekle</button></h3>
-        <div class="list" id="duyuruListe"></div>
-      </div>
-      <div class="card col-4">
-        <h3>Günlük Görevlerim</h3>
-        <div class="list" id="gorevBugun"></div>
-        <div style="margin-top:8px;color:var(--muted);font-size:12px">Bu hafta</div>
-        <div class="list" id="gorevHafta"></div>
-      </div>
-      <div class="card col-6"><h3>Sistem Hareketleri</h3><div class="list" id="logSistem"></div></div>
-      <div class="card col-6"><h3>Benim Son İşlemlerim</h3><div class="list" id="logBenim"></div></div>
-    </div>
+    <!-- 3) Temizlik (tam genişlik) -->
+    <section class="card">
+      <h3>Temizlik – Kat Puanları</h3>
+      <table class="table" id="temizlikTable">
+        <thead><tr><th>Kat</th><th>Puan</th><th>Not</th></tr></thead>
+        <tbody id="temizlikBody"><tr><td colspan="3">—</td></tr></tbody>
+      </table>
+    </section>
 
-    <div class="page-gap"></div>
+    <!-- 4) Eksikler -->
+    <section class="card">
+      <h3>Eksikler</h3>
+      <div class="list" id="eksikList"><div class="list-item"><div>—</div><div class="muted">—</div></div></div>
+    </section>
+
+    <!-- 5) Duyurular -->
+    <section class="card">
+      <h3>Duyurular</h3>
+      <div class="list" id="duyuruList"><div class="list-item"><div>—</div><div class="muted">—</div></div></div>
+    </section>
+
+    <div style="height:120px"></div>
   </main>
 
-  <div class="toast" id="toast"></div>
+  <!-- Panel sayfaları için sheet -->
+  <div class="sheet" id="sheet">
+    <div class="drag"></div>
+    <h4 id="sheetTitle">Panel</h4>
+    <div id="sheetBody"></div>
+  </div>
+
+  <!-- Alt Tab Bar (paneller) -->
+  <nav class="tabbar" id="tabbar"></nav>
 
   <script>
-    /* Yalnızca YETKİLER ile çalışır */
-    let CURRENT_ALLOW = new Set();  // pozitif yetkiler (panel adı ya da sayfa key)
-    let CURRENT_DENY  = new Set();  // - ile eklenen hariciler
+    /*************** THEME + AUTH *****************/
+    const auth = firebase.auth();
+    const db   = firebase.firestore();
+    try{ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL) }catch(e){}
 
-    const norm = (s) => String(s || '').trim().toLowerCase();
+    const root = document.documentElement;
+    const btnTheme = document.getElementById('btnTheme');
+    function applyTheme(mode){
+      localStorage.setItem('kf_theme', mode);
+      const auto = (mode === 'auto');
+      const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      root.setAttribute('data-theme', auto ? (isDark ? 'dark' : 'light') : mode);
+      btnTheme.textContent = 'Tema: ' + (mode[0].toUpperCase()+mode.slice(1));
+    }
+    applyTheme(localStorage.getItem('kf_theme')||'auto');
+    btnTheme.addEventListener('click', ()=>{
+      const cur = localStorage.getItem('kf_theme')||'auto';
+      applyTheme(cur==='dark'?'light':(cur==='light'?'auto':'dark'));
+    });
 
-    /* Panel ikonları */
-    const PANEL_ICON  = { 'Admin':'🎛️','Talebe':'📘','Personel':'👤','Muhasebe':'💰','Kermes':'🏪','Nehari':'🕌','Sistem Ayarları':'⚙️' };
+    document.getElementById('btnLogout').addEventListener('click', async ()=>{
+      try{ await auth.signOut(); location.replace('../index.html'); }catch(e){ alert('Çıkış hatası'); }
+    });
 
-    /* Tema */
-    (function(){
-      const root=document.documentElement, btn=document.getElementById('themeToggle');
-      const lab1=document.getElementById('themeLabel'), lab2=document.getElementById('themeLabel2');
-      const sysDark=()=>window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;
-      function apply(mode){
-        localStorage.setItem('kf_theme',mode);
-        const eff=(mode==='auto')?(sysDark()?'dark':'light'):mode;
-        root.setAttribute('data-theme',eff);
-        const txt=mode[0].toUpperCase()+mode.slice(1);
-        if(lab1) lab1.textContent=txt; if(lab2) lab2.textContent=txt;
-        const icon=mode==='dark'?'🌙':mode==='light'?'☀️':'🌗';
-        btn.innerHTML=icon+' <span id="themeLabel">'+txt+'</span>';
-      }
-      apply(localStorage.getItem('kf_theme')||'auto');
-      btn.addEventListener('click',()=>{const cur=localStorage.getItem('kf_theme')||'auto'; apply(cur==='dark'?'light':(cur==='light'?'auto':'dark'));});
-      if(window.matchMedia){ const m=window.matchMedia('(prefers-color-scheme: dark)'); m.addEventListener?.('change',()=>{ if((localStorage.getItem('kf_theme')||'auto')==='auto') apply('auto'); }); }
-    })();
+    /*************** TARİH *****************/
+    function setToday(){
+      const d=new Date(), days=['Pazar','Pazartesi','Salı','Çar','Per','Cum','Cts'];
+      document.getElementById('todayText').textContent =
+        `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()} • ${days[d.getDay()]}`;
+    }
+    setToday();
 
-    /* Helpers & Firebase */
-    const db=firebase.firestore(), auth=firebase.auth();
-    function showToast(msg){const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(window.__to); window.__to=setTimeout(()=>t.classList.remove('show'),3000);}
-    function setToday(){const d=new Date(); const days=['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi']; document.getElementById('todayText').textContent=`${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()} • ${days[d.getDay()]}`;}
+    /*************** SAFE DATA HELPERS *****************/
+    const norm = (s)=> String(s||'').trim().toLowerCase();
+    let CURRENT_ALLOW = new Set(); // yetki listesi (+)
+    let CURRENT_DENY  = new Set(); // hariçler (-)
 
-    /* ====== Manifesti yalnızca yetkilere göre süz ====== */
-    async function fetchPanels(allowSet, denySet){
-      const res=[];
+    /*************** MANİFESTTEN PANELLER *****************/
+    async function fetchPanels(){
+      // sayfa_manifesti -> { panels: {...} } ya da tek tek dokümanlar — senin paylaştığın yapıya uygun
+      const res = [];
       try{
-        const snap=await db.collection('sayfa_manifesti').get();
+        const snap = await db.collection('sayfa_manifesti').get(); // TODO: kendi yolunu kullan
         snap.forEach(doc=>{
-          const d=doc.data()||{}, id=doc.id;
-          const panelTitle=d.title||id;
-          const ikon=d.icon||(PANEL_ICON[id]||'📁');
-
-          const panelGrant = allowSet.has(norm(id)) || allowSet.has(norm(panelTitle));
-
-          let pages = Array.isArray(d.pages)? d.pages : [];
+          const d = doc.data()||{}, id=doc.id, title=d.title||id;
+          let pages = Array.isArray(d.pages) ? d.pages : [];
+          // Yetkiye göre sayfaları filtrele
           pages = pages.filter(pg=>{
-            const keyNorm = norm(pg.key || pg.title || '');
-            const pageGrant = allowSet.has(keyNorm);
-            const denied    = denySet.has(keyNorm);
-            return !denied && (panelGrant || pageGrant);
-          }).map(pg=>({
-            baslik: pg.title || pg.key || 'Sayfa',
-            url:    pg.path  || '#',
-            key:    pg.key   || pg.title || '',
-            sira:   typeof pg.order==='number' ? pg.order : 9999
-          })).sort((a,b)=>a.sira-b.sira);
-
-          if (pages.length===0) return;       // panel altında yetkili sayfa yoksa paneli gösterme
-          res.push({ id, baslik:panelTitle, ikon, sira: typeof d.order==='number'? d.order : 9999, pages });
+            const key = norm(pg.key || pg.title || '');
+            const inPanel = CURRENT_ALLOW.has(norm(id)) || CURRENT_ALLOW.has(norm(title));
+            const allowed = CURRENT_ALLOW.has(key) || inPanel;
+            const denied  = CURRENT_DENY.has(key);
+            return allowed && !denied;
+          });
+          if(pages.length){
+            res.push({ id, title, pages });
+          }
         });
-        res.sort((a,b)=>a.sira-b.sira);
-      }catch(e){
-        console.error('sayfa_manifesti okunamadı:', e);
-        showToast('Menü manifesti yüklenemedi.');
-      }
+      }catch(e){ console.error('manifest:', e); }
       return res;
     }
 
-    /* Nav çizimi (masaüstü dropdown + mobil drawer) */
-    function renderNav(panels){
-      const ul=document.getElementById('navMain'), drawer=document.getElementById('drawer');
-      ul.innerHTML=''; drawer.innerHTML='';
-      document.getElementById('panelCount').textContent=panels.length;
-      document.getElementById('pageCount').textContent=panels.reduce((a,p)=>a+(p.pages?p.pages.length:0),0);
+    /*************** TAB BAR OLUŞTURMA *****************/
+    const tabbar = document.getElementById('tabbar');
+    const sheet  = document.getElementById('sheet');
+    const sheetTitle = document.getElementById('sheetTitle');
+    const sheetBody  = document.getElementById('sheetBody');
 
-      if(!panels.length){
-        ul.innerHTML='<li class="nav-item"><div class="nav-btn">Hiç panel yok</div></li>';
-        drawer.innerHTML='<div style="color:var(--muted);padding:8px">Hiç panel bulunamadı</div>';
-        return;
-      }
-
-      // Masaüstü
-      panels.forEach(p=>{
-        const li=document.createElement('li'); li.className='nav-item';
-        li.innerHTML=`<div class="nav-btn">${p.baslik} <span class="caret">▾</span></div>`;
-        const dd=document.createElement('div'); dd.className='dropdown';
-        (p.pages||[]).forEach(pg=>{
-          const a=document.createElement('a');
-          a.href=pg.url; a.textContent=pg.baslik;
-          a.dataset.key=pg.key||pg.baslik; 
-          a.dataset.panel=p.id; 
-          a.dataset.panelTitle=p.baslik;
-          dd.appendChild(a);
-        });
-        li.appendChild(dd);
-        li.querySelector('.nav-btn').addEventListener('click',(e)=>{
-          e.stopPropagation();
-          ul.querySelectorAll('.nav-item').forEach(x=>{ if(x!==li) x.classList.remove('open'); });
-          li.classList.toggle('open');
-        });
-        ul.appendChild(li);
+    function openSheet(panel){
+      sheetTitle.textContent = panel.title;
+      sheetBody.innerHTML = '';
+      (panel.pages||[]).forEach(pg=>{
+        const a = document.createElement('a');
+        a.textContent = pg.title || pg.key || 'Sayfa';
+        a.href = pg.path || '#';
+        a.addEventListener('click', ()=> closeSheet());
+        sheetBody.appendChild(a);
       });
-      document.addEventListener('click',(e)=>{ if(!ul.contains(e.target)) ul.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('open')); });
+      sheet.classList.add('open');
+    }
+    function closeSheet(){ sheet.classList.remove('open'); }
+    sheet.addEventListener('click', (e)=>{ if(e.target===sheet) closeSheet(); });
 
-      // Mobil drawer
-      panels.forEach(p=>{
-        const h=document.createElement('div'); h.className='panel-title'; h.textContent=p.baslik; drawer.appendChild(h);
-        (p.pages||[]).forEach(pg=>{
-          const a=document.createElement('a');
-          a.href=pg.url; a.textContent=pg.baslik;
-          a.dataset.key=pg.key||pg.baslik; 
-          a.dataset.panel=p.id; 
-          a.dataset.panelTitle=p.baslik;
-          drawer.appendChild(a);
+    function renderTabs(panels){
+      tabbar.innerHTML = '';
+      panels.forEach((p, idx)=>{
+        const btn = document.createElement('button');
+        btn.className = 'tab' + (idx===0?' active':'');
+        btn.innerHTML = `<small>${p.title}</small>`;
+        btn.addEventListener('click', ()=>{
+          tabbar.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+          btn.classList.add('active');
+          openSheet(p);
         });
+        tabbar.appendChild(btn);
       });
     }
 
-    /* Drawer toggle */
+    /*************** CANLI VERİ – Firestore ***************/
+    async function loadTalebe(){
+      try{
+        // TODO: kendi yolların
+        // istatistik/talebe -> { toplam, ensar, muhacir }
+        const ref = db.collection('istatistik').doc('talebe');
+        const s = await ref.get();
+        const d = s.exists ? s.data() : {};
+        document.getElementById('talebeToplam').textContent  = d.toplam ?? '—';
+        document.getElementById('talebeEnsar').textContent   = d.ensar ?? '—';
+        document.getElementById('talebeMuhacir').textContent = d.muhacir ?? '—';
+      }catch(e){ console.log('talebe', e); }
+    }
+
+    async function loadNobet(){
+      try{
+        // TODO: nobet/gunluk/<YYYY-MM-DD> -> { evli, bekar }
+        const today = new Date();
+        const key = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+        const ref = db.collection('nobet').doc('gunluk').collection('günler').doc(key);
+        const s = await ref.get();
+        const d = s.exists ? s.data() : {};
+        document.getElementById('nobetEvli').textContent  = d.evli_ihvan ?? d.evli ?? '—';
+        document.getElementById('nobetBekar').textContent = d.bekar ?? '—';
+      }catch(e){ console.log('nöbet', e); }
+    }
+
+    async function loadTemizlik(){
+      try{
+        // TODO: temizlik/gunluk/<YYYY-MM-DD> -> { katlar:[{ad,puan,not}] }
+        const today = new Date();
+        const key = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+        const ref = db.collection('temizlik').doc('gunluk').collection('günler').doc(key);
+        const s = await ref.get();
+        const d = s.exists ? s.data() : {};
+        const rows = Array.isArray(d.katlar)? d.katlar : [];
+        const tbody = document.getElementById('temizlikBody');
+        tbody.innerHTML = rows.length ? '' : '<tr><td colspan="3">Kayıt yok</td></tr>';
+        rows.forEach(r=>{
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${r.ad||'-'}</td><td><b>${r.puan ?? '-'}</b></td><td>${r.not||''}</td>`;
+          tbody.appendChild(tr);
+        });
+      }catch(e){ console.log('temizlik', e); }
+    }
+
+    async function loadEksikler(){
+      try{
+        // TODO: eksikler (son 10) -> [{baslik, durum}]
+        const snap = await db.collection('eksikler').orderBy('ts','desc').limit(10).get();
+        const list = document.getElementById('eksikList');
+        list.innerHTML = '';
+        if(snap.empty){ list.innerHTML='<div class="list-item"><div>Eksik bulunamadı</div><div></div></div>'; return; }
+        snap.forEach(doc=>{
+          const d=doc.data()||{};
+          const el=document.createElement('div');
+          el.className='list-item';
+          el.innerHTML = `<div>${d.baslik||'Eksik'}</div><div class="tag">${(d.durum||'açık').toUpperCase()}</div>`;
+          list.appendChild(el);
+        });
+      }catch(e){ console.log('eksikler', e); }
+    }
+
+    async function loadDuyurular(){
+      try{
+        // TODO: duyurular (son 10) -> [{baslik, alt, ts}]
+        const snap = await db.collection('duyurular').orderBy('ts','desc').limit(10).get();
+        const list = document.getElementById('duyuruList');
+        list.innerHTML = '';
+        if(snap.empty){ list.innerHTML='<div class="list-item"><div>Duyuru yok</div><div></div></div>'; return; }
+        snap.forEach(doc=>{
+          const d=doc.data()||{};
+          const el=document.createElement('div');
+          el.className='list-item';
+          const when = d.ts && d.ts.toDate ? d.ts.toDate().toLocaleString('tr-TR') : '';
+          el.innerHTML = `<div><strong>${d.baslik||'—'}</strong><div class="muted" style="font-size:12px">${d.alt||''}</div></div><div class="muted" style="font-size:12px">${when}</div>`;
+          list.appendChild(el);
+        });
+      }catch(e){ console.log('duyurular', e); }
+    }
+
+    async function loadAll(){
+      await Promise.all([loadTalebe(), loadNobet(), loadTemizlik(), loadEksikler(), loadDuyurular()]);
+    }
+
+    /*************** PULL TO REFRESH *****************/
     (function(){
-      const hamb=document.getElementById('hamburger'), drawer=document.getElementById('drawer');
-      if(!hamb) return;
-      hamb.addEventListener('click',()=>drawer.classList.toggle('open'));
-      document.addEventListener('click',(e)=>{ if(!drawer.contains(e.target) && !hamb.contains(e.target)) drawer.classList.remove('open'); });
+      const sc = document.getElementById('content');
+      const ptr = document.getElementById('ptr');
+      let startY=0, pulling=false;
+      sc.addEventListener('touchstart', (e)=>{
+        if(sc.scrollTop===0){ startY = e.touches[0].clientY; pulling=true; }
+      }, {passive:true});
+      sc.addEventListener('touchmove', (e)=>{
+        if(!pulling) return;
+        const dy = e.touches[0].clientY - startY;
+        if(dy>60){ ptr.classList.add('show'); }
+      }, {passive:true});
+      sc.addEventListener('touchend', async ()=>{
+        if(!pulling) return;
+        pulling=false;
+        if(ptr.classList.contains('show')){
+          await loadAll();
+          setTimeout(()=> ptr.classList.remove('show'), 300);
+        }
+      }, {passive:true});
     })();
 
-    /* Dummy içerikler */
-    async function loadKPIs(){ document.getElementById('kpiTalebe').textContent='128'; document.getElementById('kpiEnsar').textContent='79'; document.getElementById('kpiMuhacir').textContent='49'; document.getElementById('kpiIzinli').textContent='6'; document.getElementById('kpiTemizlik').textContent='86'; document.getElementById('kpiKasa').textContent='₺ 42.300'; }
-    async function loadDuyurular(){ const list=document.getElementById('duyuruListe'); list.innerHTML=''; [{b:'10:00 toplantı',t:'Çayhane',z:'5 dk önce'},{b:'Temizlik form kapanışı 12:00',t:'2. Kat',z:'1 saat önce'},{b:'Kermes hazırlığı 16:30',t:'Mal kabul',z:'Dün'}].forEach(it=>{const el=document.createElement('div'); el.className='list-item'; el.innerHTML=`<div><strong>${it.b}</strong><div class="meta">${it.t}</div></div><div class="meta">${it.z}</div>`; list.appendChild(el);}); document.getElementById('duyuruCount').textContent=3; }
-    function gorevNode(item){ const el=document.createElement('div'); el.className='list-item'; el.innerHTML=`<div>${item.ok?'✅':'⬜️'} ${item.txt}</div><button class="btn">${item.ok?'Geri Al':'Tamamla'}</button>`; el.querySelector('button').onclick=()=>{ item.ok=!item.ok; el.querySelector('div').innerHTML=`${item.ok?'✅':'⬜️'} ${item.txt}`; el.querySelector('button').textContent=item.ok?'Geri Al':'Tamamla'; }; return el; }
-    async function loadGorevler(){ const b=document.getElementById('gorevBugun'), h=document.getElementById('gorevHafta'); b.innerHTML=h.innerHTML=''; [{txt:'10:00–12:00 Temizlik kontrol',ok:false},{txt:'Akşam yoklaması',ok:false}].forEach(x=>b.appendChild(gorevNode(x))); [{txt:'Cuma – Kermes hazırlık',ok:false},{txt:'Cumartesi – Nöbet',ok:true}].forEach(x=>h.appendChild(gorevNode(x))); }
-    async function loadLogs(){ const benim=document.getElementById('logBenim'), sistem=document.getElementById('logSistem'); benim.innerHTML=sistem.innerHTML=''; [{t:'Temizlik formu görüntülendi',z:'10 dk önce'},{t:'Talebe listesi açıldı',z:'1 saat önce'}].forEach(x=>{const n=document.createElement('div'); n.className='list-item'; n.innerHTML=`<div>${x.t}</div><div class="meta">${x.z}</div>`; benim.appendChild(n);}); [{t:'Yeni kullanıcı eklendi: A. Yılmaz',z:'3 dk önce'},{t:'Kasa hareketi girildi',z:'20 dk önce'}].forEach(x=>{const n=document.createElement('div'); n.className='list-item'; n.innerHTML=`<div>${x.t}</div><div class="meta">${x.z}</div>`; sistem.appendChild(n);}); }
-
-    /* Charts */
-    function chartColors(){ const s=getComputedStyle(document.documentElement); return {grid:s.getPropertyValue('--stroke')||'rgba(148,163,184,.2)', brand:s.getPropertyValue('--brand')||'#38bdf8', brand2:s.getPropertyValue('--brand2')||'#0ea5e9'}; }
-function initCharts() {
-  const { grid, brand, brand2 } = chartColors();
-
-  // Yoklama
-  try {
-    const el = document.getElementById('grafikYoklama');
-    if (el && window.Chart) {
-      const ctx = el.getContext('2d');
-      new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: ['Pzt','Sal','Çar','Per','Cum','Cts','Paz'],
-          datasets: [{
-            data: [4, 2, 6, 3, 5, 1, 2],
-            tension: 0.35,
-            borderColor: brand,
-            backgroundColor: brand + '33',
-            fill: true,
-            pointRadius: 2
-          }]
-        },
-        options: {
-          plugins: { legend: { display: false } },
-          scales: {
-            x: { grid: { color: grid } },
-            y: { grid: { color: grid } }
-          }
-        }
-      });
-    }
-  } catch (e) { console.error('Yoklama grafiği:', e); }
-
-  // Temizlik
-  try {
-    const el2 = document.getElementById('grafikTemizlik');
-    if (el2 && window.Chart) {
-      const c2 = el2.getContext('2d');
-      new Chart(c2, {
-        type: 'bar',
-        data: {
-          labels: ['1.Kat','2.Kat','3.Kat','4.Kat','5.Kat'],
-          datasets: [{
-            data: [82, 90, 88, 79, 86],
-            backgroundColor: brand
-          }]
-        },
-        options: {
-          plugins: { legend: { display: false } },
-          scales: {
-            x: { grid: { color: grid } },
-            y: {
-              grid: { color: grid },
-              suggestedMin: 0,
-              suggestedMax: 100
-            }
-          }
-        }
-      });
-    }
-  } catch (e) { console.error('Temizlik grafiği:', e); }
-
-  // Kasa
-  try {
-    const el3 = document.getElementById('grafikKasa');
-    if (el3 && window.Chart) {
-      const c3 = el3.getContext('2d');
-      new Chart(c3, {
-        type: 'line',
-        data: {
-          labels: ['W1','W2','W3','W4'],
-          datasets: [
-            {
-              data: [12, 18, 14, 20],
-              borderColor: brand,
-              backgroundColor: brand + '33',
-              tension: 0.3,
-              fill: true
-            },
-            {
-              data: [9, 10, 15, 12],
-              borderColor: brand2,
-              backgroundColor: brand2 + '26',
-              tension: 0.3,
-              fill: true
-            }
-          ]
-        },
-        options: {
-          plugins: { legend: { display: false } },
-          scales: {
-            x: { grid: { color: grid } },
-            y: { grid: { color: grid } }
-          }
-        }
-      });
-    }
-  } catch (e) { console.error('Kasa grafiği:', e); }
-}
-
-    /* Link guard – sadece yetkilere göre (panel adı ya da sayfa key) */
-    document.addEventListener('click', (e) => {
-      const a = e.target.closest('a[data-key]');
-      if (!a) return;
-
-      const key = norm(a.dataset.key);
-      const pnl = norm(a.dataset.panel || '');
-      const pnlTitle = norm(a.dataset.panelTitle || '');
-
-      if (CURRENT_DENY.has(key)) { e.preventDefault(); showToast('Bu sayfa için yetkiniz yok.'); return; }
-
-      const allowed = CURRENT_ALLOW.has(key) || CURRENT_ALLOW.has(pnl) || CURRENT_ALLOW.has(pnlTitle);
-      if (!allowed) { e.preventDefault(); showToast('Bu sayfa için yetkiniz yok.'); }
-    });
-
-    /* Persist ve Auth akışı */
-    try{ firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL); }catch(e){}
+    /*************** AUTH FLOW *****************/
     auth.onAuthStateChanged(async (user)=>{
-      if(!user){
-        setTimeout(()=>{ if(!auth.currentUser) location.replace('index.html'); },150);
-        return;
-      }
+      if(!user){ location.replace('../index.html'); return; }
+      document.getElementById('helloName').textContent = 'Hoş geldiniz, ' + (user.displayName || user.email || 'Kullanıcı');
+
+      // Kullanıcı yetkileri
       try{
-        setToday();
-        const uSnap = await db.collection('kullanicilar').doc(user.uid).get();
-        const data  = uSnap.exists ? uSnap.data() : {};
+        const u = await db.collection('kullanicilar').doc(user.uid).get();
+        const d = u.exists ? (u.data()||{}) : {};
+        const raw = Array.isArray(d.yetkiler) ? d.yetkiler : [];
+        CURRENT_ALLOW = new Set(raw.filter(s=>!String(s).trim().match(/^[-!]/)).map(norm));
+        CURRENT_DENY  = new Set(raw.filter(s=> String(s).trim().match(/^[-!]/)).map(s=>norm(String(s).replace(/^[-!]\s*/,''))));
+      }catch(e){}
 
-        document.getElementById('username').textContent = data.adSoyad || user.email || 'Kullanıcı';
+      // Paneller → Tab bar
+      const panels = await fetchPanels();
+      renderTabs(panels);
 
-        // yetkileri hazırla
-        const rawPerms = Array.isArray(data.yetkiler) ? data.yetkiler : [];
-        CURRENT_ALLOW = new Set(
-          rawPerms.filter(s=>!String(s).trim().startsWith('-') && !String(s).trim().startsWith('!'))
-                  .map(norm)
-        );
-        CURRENT_DENY = new Set(
-          rawPerms.filter(s=>String(s).trim().startsWith('-') || String(s).trim().startsWith('!'))
-                  .map(s=>norm(String(s).replace(/^[-!]\s*/,'')))
-        );
-
-        const panels = await fetchPanels(CURRENT_ALLOW, CURRENT_DENY);
-        renderNav(panels);
-
-        await loadKPIs(); await loadDuyurular(); await loadGorevler(); await loadLogs();
-        initCharts();
-      }catch(e){
-        console.error(e);
-        showToast('Veriler yüklenirken hata.');
-      }
+      // Veriler
+      await loadAll();
     });
   </script>
 </body>

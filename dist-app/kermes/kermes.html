@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kermes Paneli V1</title>
+  <link rel="icon" type="image/png" href="img/logo.png">
+  <link rel="stylesheet" href="../kermes/kermes.css" />
+  <link rel="icon" type="image/png" href="../img/karaağaç.png">
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="../../js/firebase/firebase-init.js"></script>
+  <script src="kermes.js"></script>
+</head>
+<body>
+  <div class="kermes-kart">
+    <h1>Kermes Uygulaması</h1>
+
+    <div class="kermes-butons">
+      <button onclick="menuyuGoster()">📋 Menüyü Gör</button>
+      <button onclick="satisModaliAc()">💰 Fiyat Hesapla (Satış Gir)</button>
+    </div>
+
+    <div class="kermes-istatistik">
+      <div class="istatistik-kart" id="nakitSatis">Nakit Satışı: 0₺</div>
+      <div class="istatistik-kart" id="bankaSatis">Banka Satışı: 0₺</div>
+      <div class="istatistik-kart" id="posSatis">POS Satışı: 0₺</div>
+      <div class="istatistik-kart" id="toplamSatis">Toplam Satış: 0₺</div>
+    </div>
+
+    <h2>Günlük Satış Kayıtları</h2>
+    <table class="satis-tablosu">
+      <thead>
+        <tr>
+          <th>Tarih</th>
+          <th>Masa No</th>
+          <th>İsim</th>
+          <th>Satış</th>
+          <th>Ödeme</th>
+        </tr>
+      </thead>
+      <tbody id="satisTabloGovde">
+        <!-- Satış kayıtları buraya gelecek -->
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Menüyü Gör Modal -->
+  <div id="menuModal" class="modal">
+    <div class="modal-icerik">
+      <span class="modal-kapat" onclick="modalKapat('menuModal')">&times;</span>
+      <h3>Ürün Menüsü</h3>
+      <div id="menuListesi">
+        <!-- Menü ürünleri buraya eklenecek -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Satış Giriş Modal -->
+  <div id="satisModal" class="modal">
+    <div class="modal-icerik">
+      <span class="modal-kapat" onclick="modalKapat('satisModal')">&times;</span>
+      <h3>Satış Girişi</h3>
+
+      <label>Masa No: <input type="text" id="satisMasa" placeholder="Zorunlu"></label>
+      <label>Müşteri Adı: <input type="text" id="satisIsim" placeholder="Müsafir"></label>
+
+      <div id="satisUrunleri" style="margin-top: 10px;"></div>
+      <p><strong>Toplam Tutar:</strong> <span id="toplamTutar">0₺</span></p>
+      <button onclick="odemeEkraniAc()">İleri</button>
+    </div>
+  </div>
+
+  <!-- Ödeme Modal -->
+  <div id="odemeModal" class="modal">
+    <div class="modal-icerik">
+      <span class="modal-kapat" onclick="modalKapat('odemeModal')">&times;</span>
+      <h3>Ödeme Al</h3>
+      <p><strong>Toplam:</strong> <span id="odemeToplam">0₺</span></p>
+      <label>Nakit: <input type="number" id="nakitOdeme" oninput="odemeHesapla()"></label>
+      <label>POS: <input type="number" id="posOdeme" oninput="odemeHesapla()"></label>
+      <label>Banka: <input type="number" id="bankaOdeme" oninput="odemeHesapla()"></label>
+      <p><strong>Kalan Bakiye:</strong> <span id="kalanBakiye">0₺</span></p>
+      <button onclick="satisKaydet()">Satışı Tamamla</button>
+    </div>
+  </div>
+
+  <!-- Satış Detay Modal -->
+<div id="satisDetayModal" class="modal">
+  <div class="modal-icerik">
+    <span class="modal-kapat" onclick="modalKapat('satisDetayModal')">&times;</span>
+    <h3>Satış Detayı</h3>
+    <div id="satisDetayIcerik"></div>
+    <div style="margin-top: 15px;">
+      <button onclick="odemeTamamlama()">💵 Ödeme Al</button>
+      <button onclick="satisDuzenle()">📝 Düzenle</button>
+      <button onclick="satisSil()">🗑️ Sil</button>
+    </div>
+  </div>
+</div>
+
+<!-- Satış Düzenle Modal -->
+<div id="duzenleModal" class="modal">
+  <div class="modal-icerik">
+    <span class="modal-kapat" onclick="modalKapat('duzenleModal')">&times;</span>
+    <h3>Satışı Düzenle</h3>
+    <label>İsim: <input type="text" id="duzenleIsim"></label><br>
+    <label>Masa No: <input type="text" id="duzenleMasa"></label><br><br>
+
+    <div id="duzenleUrunler"></div>
+
+    <p><strong>Toplam Tutar:</strong> <span id="duzenleToplam">0₺</span></p>
+
+    <label>Nakit: <input type="number" id="duzenleNakit" oninput="duzenleOdemeHesapla()"></label><br>
+    <label>POS: <input type="number" id="duzenlePos" oninput="duzenleOdemeHesapla()"></label><br>
+    <label>Banka: <input type="number" id="duzenleBanka" oninput="duzenleOdemeHesapla()"></label><br>
+    <p><strong>Kalan Bakiye:</strong> <span id="duzenleKalan">0₺</span></p>
+
+    <button onclick="satisGuncelle()">Güncelle</button>
+  </div>
+</div>
+
+<!-- Ek Ödeme Modalı -->
+<div id="ekOdemeModal" class="modal">
+  <div class="modal-icerik">
+    <span class="modal-kapat" onclick="modalKapat('ekOdemeModal')">&times;</span>
+    <h3>Eksik Ödeme Al</h3>
+
+    <p><strong>Toplam:</strong> <span id="ekToplamTutar">0₺</span></p>
+
+    <label>Nakit: <input type="number" id="ekNakit"></label>
+    <label>POS: <input type="number" id="ekPos"></label>
+    <label>Banka: <input type="number" id="ekBanka"></label>
+
+    <p><strong>Kalan Bakiye:</strong> <span id="ekKalanBakiye">0₺</span></p>
+
+    <button onclick="ekOdemeKaydet()">Ödemeyi Kaydet</button>
+  </div>
+</div>
+
+<!-- TOAST BİLDİRİM -->
+<div id="toast" class="toast"></div>
+
+</body>
+</html>

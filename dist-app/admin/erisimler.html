@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Erişim Talepleri</title>
+  <link rel="stylesheet" href="../css/stiller.css" />
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f4f6f9;
+      margin: 0;
+    }
+    header {
+      background-color: #324960;
+      color: white;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header-left {
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .header-right button {
+      margin-left: 10px;
+      background-color: #4a637d;
+      border: none;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .container {
+      padding: 30px;
+    }
+
+    .sekme-butonlar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .sekme-butonlar button {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      background-color: #e0e0e0;
+    }
+    .sekme-butonlar .aktif {
+      background-color: #2d6a4f;
+      color: white;
+    }
+
+    .talep-karti {
+      background: white;
+      padding: 15px 20px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    .talep-karti span {
+      display: block;
+      margin: 4px 0;
+    }
+    .talep-karti button {
+      margin-top: 10px;
+      margin-right: 10px;
+      padding: 6px 12px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      color: white;
+    }
+    .onayla-btn { background-color: #2d6a4f; }
+    .reddet-btn { background-color: #c0392b; }
+
+    .talep-listesi { display: none; }
+    .talep-listesi.aktif { display: block; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">Karaağaç Panel > Erişim Talepleri</div>
+  <div class="header-right">
+    <button onclick="window.history.back()">🔙 Geri Dön</button>
+    <button onclick="firebase.auth().signOut()">🚪 Çıkış Yap</button>
+  </div>
+</header>
+
+<div class="container">
+  <div class="sekme-butonlar">
+    <button class="aktif" onclick="sekmeGoster('bekleyen')">📥 Bekleyen</button>
+    <button onclick="sekmeGoster('onaylanan')">✅ Onaylanan</button>
+    <button onclick="sekmeGoster('reddedilen')">❌ Reddedilen</button>
+  </div>
+
+  <div id="bekleyen" class="talep-listesi aktif"></div>
+  <div id="onaylanan" class="talep-listesi"></div>
+  <div id="reddedilen" class="talep-listesi"></div>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="../js/firebase/firebase-init.js"></script>
+
+<script>
+  function sekmeGoster(id) {
+    document.querySelectorAll('.talep-listesi').forEach(div => div.classList.remove('aktif'));
+    document.querySelectorAll('.sekme-butonlar button').forEach(btn => btn.classList.remove('aktif'));
+    document.getElementById(id).classList.add('aktif');
+    document.querySelector(`.sekme-butonlar button[onclick*="${id}"]`).classList.add('aktif');
+  }
+
+  async function talepleriYukle() {
+    const snap = await db.collection("erisim_talepleri").orderBy("zaman", "desc").get();
+
+    const bekleyen = document.getElementById("bekleyen");
+    const onaylanan = document.getElementById("onaylanan");
+    const reddedilen = document.getElementById("reddedilen");
+
+    bekleyen.innerHTML = "";
+    onaylanan.innerHTML = "";
+    reddedilen.innerHTML = "";
+
+    snap.forEach(doc => {
+      const d = doc.data();
+      const zamanStr = d.zaman?.toDate().toLocaleString() || "-";
+      const div = document.createElement("div");
+      div.classList.add("talep-karti");
+      div.innerHTML = `
+        <span><b>Email:</b> ${d.email}</span>
+        <span><b>Sayfa:</b> ${d.sayfa}</span>
+        <span><b>Zaman:</b> ${zamanStr}</span>
+        <span><b>Tarayıcı:</b> ${d.userAgent?.substring(0, 80)}...</span>
+      `;
+
+      if (d.durum === "bekliyor") {
+        const onayBtn = document.createElement("button");
+        onayBtn.className = "onayla-btn";
+        onayBtn.innerText = "✴️ Onayla";
+        onayBtn.onclick = () => talepleriGuncelle(doc.id, "kabul");
+
+        const redBtn = document.createElement("button");
+        redBtn.className = "reddet-btn";
+        redBtn.innerText = "❌ Reddet";
+        redBtn.onclick = () => talepleriGuncelle(doc.id, "reddedildi");
+
+        div.appendChild(onayBtn);
+        div.appendChild(redBtn);
+        bekleyen.appendChild(div);
+      } else if (d.durum === "kabul") {
+        onaylanan.appendChild(div);
+      } else if (d.durum === "reddedildi") {
+        reddedilen.appendChild(div);
+      }
+    });
+  }
+
+  async function talepleriGuncelle(docId, yeniDurum) {
+    await db.collection("erisim_talepleri").doc(docId).update({
+      durum: yeniDurum,
+      islemZamani: new Date()
+    });
+
+    // Ayrıca islem_log'a da kayıt düş
+    const d = await db.collection("erisim_talepleri").doc(docId).get();
+    const data = d.data();
+
+    await db.collection("islem_log").add({
+      islem: `Erişim talebi ${yeniDurum}`,
+      uid: data.uid,
+      sayfa: data.sayfa,
+      zaman: new Date()
+    });
+
+    talepleriYukle();
+  }
+
+  firebase.auth().onAuthStateChanged(user => {
+    if (!user) {
+      location.href = "../index.html";
+    } else {
+      talepleriYukle();
+    }
+  });
+</script>
+
+</body>
+</html>
