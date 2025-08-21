@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Eksik / Arıza Bildir</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="../../../js/firebase/firebase-init.js"></script>
+
+  <style>
+    :root {
+      --bg:#f4f6f9; --card:#ffffff; --text:#2c3e50; --muted:#6b7a8f;
+      --accent:#2d6a4f; --accent2:#324960; --warn:#c0392b; --line:#e7edf3;
+      --shadow:0 6px 18px rgba(28,39,60,.08); --radius:14px;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,Arial,sans-serif}
+
+    header{
+      background:var(--card);box-shadow:var(--shadow);
+      padding:14px 18px;display:flex;flex-wrap:wrap;align-items:center;gap:10px
+    }
+    header h1{font-size:18px;margin:0;display:flex;align-items:center;gap:10px}
+    .badge{font-size:12px;background:#eef5ff;color:#264a7c;padding:4px 10px;border-radius:999px;border:1px solid #d8e6ff}
+    .btn{background:var(--accent2);color:#fff;border:none;border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer;box-shadow:var(--shadow)}
+    .btn.outline{background:#fff;color:var(--accent2);border:1px solid var(--accent2)}
+    .btn.sm{padding:6px 10px;font-size:12px;border-radius:8px}
+
+    .wrap{max-width:900px;margin:22px auto;padding:0 14px}
+    .chipbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+    .chip{background:#f7fafc;border:1px solid var(--line);padding:6px 10px;border-radius:999px;font-size:13px;display:inline-flex;align-items:center;gap:6px}
+
+    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;margin-top:14px}
+    .card h3{margin:0 0 6px 0;font-size:14px;font-weight:700}
+
+    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:10px 0}
+    .col{flex:1;min-width:240px}
+    .input,select,textarea{width:100%;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--text)}
+    textarea{min-height:110px;resize:vertical}
+    .hint{font-size:12px;color:var(--muted)}
+    .thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    .thumb img{width:110px;height:110px;object-fit:cover;border-radius:8px;border:1px solid #ddd}
+
+    .tabs{display:flex;gap:6px;margin-top:10px}
+    .tab{padding:6px 12px;border-radius:8px;cursor:pointer;border:1px solid var(--line);background:#fff}
+    .tab.active{background:var(--accent2);color:#fff}
+
+    .list{display:grid;gap:10px;margin-top:10px}
+    .item{border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:var(--shadow);padding:10px}
+    .status{font-size:11px;padding:3px 8px;border-radius:999px;border:1px solid #e8eef6}
+    .status.acik{background:#fff5f5;color:#c0392b;border-color:#fad4d4}
+    .status.yapiliyor{background:#fffbea;color:#b57f00;border-color:#fceabb}
+    .status.cozuldu{background:#f1fff3;color:#2d6a4f;border-color:#cde8d6}
+
+    .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#2d6a4f;color:#fff;padding:10px 14px;border-radius:10px;display:none;z-index:3000;box-shadow:var(--shadow);font-weight:600}
+    .toast.err{background:#c0392b}
+
+    .bilgi{margin-top:12px;font-size:12px;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Eksik / Arıza Bildir 
+      <a class="btn sm outline" href="temizlik-form.html">← Temizlik Formu</a>
+    </h1>
+    <span id="userBadge" class="badge">—</span>
+  </header>
+
+  <div class="wrap">
+    <div class="chipbar">
+      <div id="chipKat" class="chip">🏢 Kat: —</div>
+      <div id="chipTarih" class="chip">📅 Tarih: —</div>
+    </div>
+
+    <div id="formCard" class="card">
+      <h3>Yeni Bildirim</h3>
+      <div class="row">
+        <div class="col">
+          <label class="hint">Mahal (zorunlu)</label>
+          <select id="selMahal" class="input">
+            <option value="">— Seçin —</option>
+          </select>
+        </div>
+        <div class="col">
+          <label class="hint">Tip</label>
+          <div class="row" style="margin:0">
+            <label><input type="radio" name="tip" value="malzeme" checked /> Malzeme</label>
+            <label><input type="radio" name="tip" value="teknik" style="margin-left:14px" /> Teknik</label>
+            <label><input type="radio" name="tip" value="diger" style="margin-left:14px" /> Diğer</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col">
+          <label class="hint">Açıklama</label>
+          <textarea id="txtAck" class="input" placeholder="Örn: 2 adet çöp poşeti eksik..."></textarea>
+          <div class="hint">En az 6 karakter yazınız.</div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col">
+          <label class="hint">Fotoğraf (opsiyonel)</label>
+          <input id="fileInput" type="file" accept="image/*" multiple class="input" />
+          <div id="thumbs" class="thumbs"></div>
+        </div>
+      </div>
+
+      <div class="row" style="justify-content:flex-end">
+        <button id="btnSend" class="btn">Gönder</button>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <div id="tabToday" class="tab active">Bugünkü Bildirimler</div>
+      <div id="tabAll" class="tab">Tüm Bildirimler</div>
+    </div>
+
+    <div class="card" id="listCard">
+      <div id="list" class="list"></div>
+      <div class="bilgi">
+        Birazdan eksik/arıza yönetim paneli kuracağız. Kurduğumuz panelde “Yapıldı / Yapılmadı / Yapılıyor” şeklinde geri dönüşler yapılacaktır. Buradan gelen bildirimler burada gözükecektir.
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const db = window.db;
+    const auth = firebase.auth();
+
+    // ---- URL params
+    const usp = new URLSearchParams(location.search);
+    const KAT_PARAM_RAW = usp.get('kat') || '—';
+    const TARIH_PARAM   = usp.get('tarih') || new Date().toISOString().split('T')[0];
+
+    // ---- Elements
+    const selMahal = document.getElementById('selMahal');
+    const txtAck   = document.getElementById('txtAck');
+    const fileInput= document.getElementById('fileInput');
+    const thumbs   = document.getElementById('thumbs');
+    const btnSend  = document.getElementById('btnSend');
+    const listEl   = document.getElementById('list');
+    const toastEl  = document.getElementById('toast');
+
+    // ---- UI helpers
+    function showToast(msg, err=false){
+      toastEl.textContent = msg;
+      toastEl.className = 'toast' + (err?' err':'');
+      toastEl.style.display='block';
+      setTimeout(()=> toastEl.style.display='none', 2200);
+    }
+    function trSort(a,b){ return String(a).localeCompare(String(b),'tr'); }
+    function todayStr(){
+      const now=new Date(); return now.toISOString().split('T')[0];
+    }
+
+    // ---- Turkish normalize + smart doc id
+    function trNormalize(s=''){
+      const map={'İ':'i','I':'i','ı':'i','Ş':'s','ş':'s','Ğ':'g','ğ':'g','Ü':'u','ü':'u','Ö':'o','ö':'o','Ç':'c','ç':'c'};
+      return String(s).replace(/[İIıŞşĞğÜüÖöÇç]/g,m=>map[m]||m).toLowerCase().replace(/\s+/g,' ').trim();
+    }
+    async function findDocIdSmart(katCandidate){
+      const want = trNormalize(katCandidate);
+      const snap = await db.collection('temizlik_katlari').get();
+      let exact=null, norm=null;
+      snap.forEach(doc=>{
+        if(doc.id===katCandidate) exact=doc.id;
+        if(trNormalize(doc.id)===want) norm=doc.id;
+      });
+      return exact || norm || katCandidate;
+    }
+    // pick any structure -> list of strings
+    function pickMahallerField(data){
+      if(!data) return [];
+      if(Array.isArray(data.mahaller)) return data.mahaller;
+      if(data.mahaller && typeof data.mahaller==='object') return Object.keys(data.mahaller);
+      for(const k of Object.keys(data)){
+        const v=data[k];
+        if(Array.isArray(v) && v.length && v.every(x=> typeof x==='string')) return v;
+      }
+      return [];
+    }
+
+    // ---- File thumbs preview (upload backend eklemeyiz şimdilik)
+    let FILES = [];
+    fileInput.addEventListener('change', ()=>{
+      FILES = Array.from(fileInput.files||[]);
+      thumbs.innerHTML = FILES.map(f=>`<img class="thumb" src="${URL.createObjectURL(f)}" alt="">`).join('');
+    });
+
+    // ---- Auth + init
+    auth.onAuthStateChanged(async user=>{
+      if(!user){ location.href='index.html'; return; }
+      document.getElementById('userBadge').textContent = user.email || '—';
+      document.getElementById('chipKat').textContent   = `🏢 Kat: ${KAT_PARAM_RAW}`;
+      document.getElementById('chipTarih').textContent = `📅 Tarih: ${TARIH_PARAM}`;
+
+      await loadMahaller();        // <- mahal doldur
+      bindTabs();                  // <- sekmeler çalışsın
+      await renderList('today');   // <- default: bugünkü liste
+    });
+
+    // ---- Load mahaller
+    async function loadMahaller(){
+      const docId = await findDocIdSmart(KAT_PARAM_RAW);
+      const ds = await db.collection('temizlik_katlari').doc(docId).get();
+      if(!ds.exists){ selMahal.innerHTML=`<option value="">— Kayıt yok —</option>`; return; }
+      const list = pickMahallerField(ds.data());
+      const items = list.map(x=>String(x).trim()).filter(Boolean).sort(trSort);
+      selMahal.innerHTML = `<option value="">— Seçin —</option>` + items.map(m=>`<option>${m}</option>`).join('');
+    }
+
+    // ---- Save
+    btnSend.addEventListener('click', async ()=>{
+      const user = auth.currentUser;
+      if(!user) return showToast('Oturum yok',true);
+
+      const mahal = selMahal.value.trim();
+      const tip   = (document.querySelector('input[name="tip"]:checked')||{}).value || 'malzeme';
+      const ack   = txtAck.value.trim();
+
+      if(!mahal) return showToast('Mahal seçiniz',true);
+      if(ack.length<6) return showToast('Açıklama çok kısa (min 6)',true);
+
+      btnSend.disabled=true; btnSend.textContent='Gönderiliyor…';
+      try{
+        await db.collection('eksik_bildirim').add({
+          kat: KAT_PARAM_RAW,
+          tarih: TARIH_PARAM,
+          mahal, tip, aciklama: ack,
+          fotoUrls: [],             // (uploadı sonra bağlarız)
+          durum: 'açık',
+          olusturan_email: user.email || null,
+          olusturan_uid: user.uid,
+          ts: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        showToast('Bildiriminiz kaydedildi');
+        // reset
+        txtAck.value=''; selMahal.value='';
+        FILES=[]; fileInput.value=''; thumbs.innerHTML='';
+        await renderList(document.querySelector('#tabToday').classList.contains('active')?'today':'all');
+      }catch(e){
+        console.error(e); showToast('Kayıt hatası',true);
+      }finally{
+        btnSend.disabled=false; btnSend.textContent='Gönder';
+      }
+    });
+
+    // ---- Tabs + list
+    function bindTabs(){
+      document.getElementById('tabToday').addEventListener('click', ()=>{
+        setActiveTab('today'); renderList('today');
+      });
+      document.getElementById('tabAll').addEventListener('click', ()=>{
+        setActiveTab('all'); renderList('all');
+      });
+    }
+    function setActiveTab(which){
+      document.querySelectorAll('.tab').forEach(el=>el.classList.remove('active'));
+      document.getElementById(which==='today'?'tabToday':'tabAll').classList.add('active');
+    }
+
+    async function renderList(mode){
+      let ref = db.collection('eksik_bildirim')
+                  .where('kat','==',KAT_PARAM_RAW)
+                  .orderBy('ts','desc');
+      if(mode==='today'){
+        ref = ref.where('tarih','==',TARIH_PARAM);
+      }
+      try{
+        const q = await ref.get();
+        if(q.empty){
+          listEl.innerHTML = `<div class="hint">Kayıt bulunamadı.</div>`;
+          return;
+        }
+        const rows = [];
+        q.forEach(doc=>{
+          const d=doc.data()||{};
+          const s=(d.durum||'açık').toLowerCase();
+          const durumClass = s==='açık'?'acik':(s==='yapılıyor'?'yapiliyor':'cozuldu');
+          rows.push(`
+            <div class="item">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+                <div><strong>${d.mahal||'—'}</strong> • <span class="hint">${d.tip||'-'}</span></div>
+                <span class="status ${durumClass}">${s}</span>
+              </div>
+              <div class="hint" style="margin:6px 0">${d.aciklama||''}</div>
+              ${Array.isArray(d.fotoUrls)&&d.fotoUrls.length? `<div class="thumbs">${d.fotoUrls.map(u=>`<img src="${u}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:1px solid #e6ecf3">`).join('')}</div>`:''}
+              <div class="hint" style="margin-top:6px">${d.olusturan_email||''}</div>
+            </div>
+          `);
+        });
+        listEl.innerHTML = rows.join('');
+      }catch(e){
+        console.error(e); showToast('Liste yüklenemedi', true);
+      }
+    }
+  </script>
+</body>
+</html>

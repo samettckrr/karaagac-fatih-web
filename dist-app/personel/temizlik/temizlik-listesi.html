@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Temizlik Listesi | Kat-Mahal & Görev Atama</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Firebase compat (kendi init dosyanız: firebase-init.js Auth/Firestore/Storage başlatıyor) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="../../js/firebase/firebase-init.js"></script>
+
+  <style>
+    :root{
+      --bg:#f4f6f9; --card:#fff; --ink:#2c3e50; --muted:#667; --line:#e6eaef;
+      --accent:#2f7d32; --accentSoft:#e8f3ea; --danger:#c0392b; --warn:#c27c0e;
+      --chip:#eef2f7;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+    header{position:sticky;top:0;background:var(--card);border-bottom:1px solid var(--line);z-index:20}
+    .wrap{max-width:1100px;margin:0 auto;padding:14px 18px}
+    .bar{display:flex;gap:12px;align-items:center;justify-content:space-between}
+    .bar h1{font-size:18px;margin:0}
+    .right{display:flex;gap:8px;align-items:center}
+    button,.btn{border:0;border-radius:10px;padding:10px 14px;background:var(--ink);color:#fff;cursor:pointer}
+    button.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+    button.accent{background:var(--accent)}
+    button.warn{background:var(--warn)}
+    button.danger{background:var(--danger)}
+    button:disabled{opacity:.5;cursor:not-allowed}
+
+    .tabs{display:flex;gap:8px;margin-top:12px}
+    .tab{padding:10px 14px;border:1px solid var(--line);border-bottom:0;background:var(--card);border-top-left-radius:10px;border-top-right-radius:10px;cursor:pointer}
+    .tab.active{background:#fff;font-weight:600}
+    .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px}
+    .panel{border-top:1px solid var(--line);padding:16px;background:#fff;border-bottom-left-radius:14px;border-bottom-right-radius:14px}
+
+    .grid{display:grid;gap:12px}
+    .grid-2{grid-template-columns:1fr 1fr}
+    @media (max-width: 860px){ .grid-2{grid-template-columns:1fr} }
+
+    .field{display:flex;flex-direction:column;gap:6px}
+    .field label{font-size:13px;color:var(--muted)}
+    .field input,.field select,.field textarea{
+      border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:15px;background:#fff
+    }
+
+    .row{display:flex;gap:8px;align-items:center}
+    .chip{background:var(--chip);padding:6px 10px;border-radius:999px;border:1px solid var(--line);display:inline-flex;gap:8px;align-items:center}
+    .chip .x{cursor:pointer;font-weight:700}
+    .list{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+    .list .head,.list .item{display:grid;grid-template-columns:190px 1fr 160px;align-items:center}
+    .list .head{background:#fafbfc;color:var(--muted);font-weight:600;border-bottom:1px solid var(--line)}
+    .list .item{border-bottom:1px solid var(--line)}
+    .list .cell{padding:10px 12px}
+    .list .item:last-child{border-bottom:0}
+
+    .hint{font-size:13px;color:var(--muted)}
+    .ok{color:var(--accent)}
+    .err{color:var(--danger)}
+    .soft{background:var(--accentSoft);padding:10px;border-radius:10px}
+    .sep{height:1px;background:var(--line);margin:12px 0}
+
+    .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 14px;border-radius:10px;display:none;z-index:40}
+    .toast.show{display:block}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="bar">
+      <h1>Temizlik Listesi Yönetimi</h1>
+      <div class="right">
+        <span id="userMail" class="hint"></span>
+        <button id="btnSignOut" class="ghost">Çıkış Yap</button>
+      </div>
+    </div>
+    <div class="tabs">
+      <div class="tab active" data-tab="tanim">1) Kat &amp; Mahalle Tanımla</div>
+      <div class="tab" data-tab="gorev">2) Mahallelere Talebe Ata</div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap" style="margin-top:12px">
+  <!-- TANIMLAMA -->
+  <section id="tab-tanim" class="card">
+    <div class="grid grid-2">
+      <div class="field">
+        <label>Kat Seç / Ekle</label>
+        <div class="row">
+          <select id="katSelect"></select>
+          <input id="yeniKatInput" placeholder="Örn: 2.Kat - Lokal" />
+          <button id="btnKatEkle" class="ghost">Ekle</button>
+        </div>
+        <div class="hint">Kat listesi Firestore’da <b>temizlik_katlari</b> koleksiyonunda tutulur.</div>
+      </div>
+      <div></div>
+    </div>
+
+    <div class="sep"></div>
+
+    <div class="field">
+      <label>Mahalleler (Seçili Kat)</label>
+      <div id="mahalleChipleri" class="row" style="flex-wrap:wrap;gap:8px"></div>
+      <div class="row" style="margin-top:8px">
+        <input id="mahalInput" placeholder="Yeni mahal adı (örn: Balkon)" />
+        <button id="btnMahalEkle" class="ghost">Ekle</button>
+        <button id="btnMahalKaydet" class="accent">Mahalle Listesini Kaydet</button>
+      </div>
+      <div class="hint">Buradaki liste kayıt olduğunda katın mahalleleri güncellenir.</div>
+    </div>
+  </section>
+
+  <!-- GÖREV ATAMA -->
+  <section id="tab-gorev" class="card" style="display:none">
+    <div class="grid grid-2">
+      <div class="field">
+        <label>Kat Seç</label>
+        <select id="katSelectGorev"></select>
+      </div>
+      <div class="field">
+        <label>Talebe Havuzu (Öneriler)</label>
+        <input list="talebeHavuzu" id="talebeSearch" placeholder="İsim ile ara (opsiyonel)" />
+        <datalist id="talebeHavuzu"></datalist>
+        <div class="hint">Öneriler <b>talebeler</b> koleksiyonundan gelir (alan: <code>adSoyad</code>).</div>
+      </div>
+    </div>
+
+    <div class="sep"></div>
+
+    <div class="soft hint">
+      <b>Not:</b> Kaydet dediğinizde her satır <code>temizlik_listesi / {kat} / {mahalle} / {talebe_adi}</code> yoluna yazılır (doküman adı talebe adı).
+    </div>
+
+    <div class="list" style="margin-top:12px">
+      <div class="head">
+        <div class="cell">Mahalle</div>
+        <div class="cell">Talebe</div>
+        <div class="cell">İşlem</div>
+      </div>
+      <div id="gorevListesi"></div>
+    </div>
+
+    <div class="row" style="justify-content:flex-end;margin-top:12px;gap:8px">
+      <button id="btnTopluTemizle" class="warn">Tüm Atamaları Temizle (Bu Kat)</button>
+      <button id="btnTopluKaydet" class="accent">Toplu Kaydet</button>
+    </div>
+  </section>
+</main>
+
+<div id="toast" class="toast">Kaydedildi</div>
+
+<script>
+  // --- Yardımcı UI ---
+  const $ = sel => document.querySelector(sel);
+  const $$ = sel => Array.from(document.querySelectorAll(sel));
+  const toast = (msg) => {
+    const el = $('#toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    setTimeout(()=>el.classList.remove('show'), 1800);
+  };
+
+  // --- Firebase kısaltmaları ---
+  const auth = firebase.auth();
+  const db   = firebase.firestore();
+
+  // --- Giriş kontrol + sayfa erişim logu ---
+  auth.onAuthStateChanged(async (user) => {
+    if(!user){
+      // Giriş yoksa yönlendir
+      location.href = "../../index.html";
+      return;
+    }
+    $('#userMail').textContent = user.email || "";
+    // Erişim logu (projenizde kullanılan standart alan adlarıyla uyumlu)
+    try{
+      await db.collection('kullanici_log').add({
+        uid: user.uid,
+        email: user.email || null,
+        sayfa: 'temizlik-listesi',
+        zaman: firebase.firestore.FieldValue.serverTimestamp(),
+        userAgent: navigator.userAgent
+      });
+    }catch(e){ console.warn('Log hatası:', e); }
+
+    // Yüklemeler
+    await katlariYukle();            // Tanımlama sekmesi
+    await katlariYukleGorev();       // Görev sekmesi
+    await talebeHavuzunuYukle();     // Öneriler
+    await mahalleleriGetirVeCiz();   // Varsayılan ilk kat için
+  });
+
+  $('#btnSignOut').addEventListener('click', ()=> auth.signOut());
+
+  // --- Sekmeler ---
+  $$('.tab').forEach(t=>{
+    t.addEventListener('click', ()=>{
+      $$('.tab').forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');
+      const key = t.dataset.tab;
+      $('#tab-tanim').style.display = (key==='tanim') ? 'block' : 'none';
+      $('#tab-gorev').style.display = (key==='gorev') ? 'block' : 'none';
+    });
+  });
+
+  // -------------------------
+  // 1) KAT & MAHALLE TANIMLAMA
+  // -------------------------
+  const katSelect = $('#katSelect');
+  const katSelectGorev = $('#katSelectGorev');
+  const mahalChipleri = $('#mahalleChipleri');
+  let aktifKat = null;
+  let mahalleler = []; // UI üzerinde geçici liste
+
+  async function katlariYukle(){
+    katSelect.innerHTML = "";
+    const snap = await db.collection('temizlik_katlari').orderBy('sira','asc').get().catch(()=>null);
+    const frag = document.createDocumentFragment();
+    const items = [];
+    if(snap && !snap.empty){
+      snap.forEach(d=>{
+        items.push({id:d.id, ...d.data()});
+      });
+    }else{
+      // İlk kullanım için örnek katlar (sadece UI'da; kayıt edene kadar Firestore'a yazılmaz)
+      items.push({id:'2.Kat - Lokal', sira:1, mahalleler:['Balkon','Koridor','Sınıf 1','Sınıf 2']});
+      items.push({id:'1.Kat - Etüt', sira:2, mahalleler:['Etüt 1','Etüt 2','Koridor']});
+      items.push({id:'0 - Giriş Kat', sira:3, mahalleler:['Giriş','Merdiven','Muhasebe']});
+      items.push({id:'-1.Kat - Yatakhane', sira:4, mahalleler:['Yatak 1','Yatak 2','Lavabo']});
+      items.push({id:'-2.Kat - Yemekhane', sira:5, mahalleler:['Yemekhane','Mutfak','Depo']});
+      items.push({id:'Bahçe', sira:6, mahalleler:['Bahçe','Otopark']});
+    }
+    items.forEach(it=>{
+      const opt = document.createElement('option');
+      opt.value = it.id;
+      opt.textContent = it.id;
+      opt.dataset.mahalleler = JSON.stringify(it.mahalleler||[]);
+      frag.appendChild(opt);
+    });
+    katSelect.appendChild(frag);
+    aktifKat = katSelect.value || null;
+    mahalleler = JSON.parse(katSelect.selectedOptions[0]?.dataset?.mahalleler||'[]');
+    mahalChipleriniYenile();
+  }
+
+  function mahalChipleriniYenile(){
+    mahalChipleri.innerHTML = "";
+    if(!mahalleler || mahalleler.length===0){
+      const span = document.createElement('span');
+      span.className='hint';
+      span.textContent='Bu katta henüz mahal yok. Ekleyin ve kaydedin.';
+      mahalChipleri.appendChild(span);
+      return;
+    }
+    mahalleler.forEach(ad=>{
+      const chip = document.createElement('div');
+      chip.className='chip';
+      chip.innerHTML = `<span>${ad}</span><span class="x" title="Sil">&times;</span>`;
+      chip.querySelector('.x').addEventListener('click', ()=>{
+        mahalleler = mahalleler.filter(m=>m!==ad);
+        mahalChipleriniYenile();
+      });
+      mahalChipleri.appendChild(chip);
+    });
+  }
+
+  katSelect.addEventListener('change', ()=>{
+    aktifKat = katSelect.value;
+    mahalleler = JSON.parse(katSelect.selectedOptions[0]?.dataset?.mahalleler||'[]');
+    mahalChipleriniYenile();
+  });
+
+  $('#btnKatEkle').addEventListener('click', async ()=>{
+    const ad = $('#yeniKatInput').value.trim();
+    if(!ad){ toast('Kat adı boş olamaz'); return; }
+    // Varsayılan sira: mevcut sayıya +1
+    const sira = (katSelect.options.length||0)+1;
+    await db.collection('temizlik_katlari').doc(ad).set({
+      sira, mahalleler:[]
+    }, {merge:true});
+    $('#yeniKatInput').value="";
+    await katlariYukle();
+    toast('Kat eklendi');
+  });
+
+  $('#btnMahalEkle').addEventListener('click', ()=>{
+    const m = $('#mahalInput').value.trim();
+    if(!m){ toast('Mahalle adı boş'); return; }
+    if(mahalleler.includes(m)){ toast('Zaten mevcut'); return; }
+    mahalleler.push(m);
+    $('#mahalInput').value="";
+    mahalChipleriniYenile();
+  });
+
+  $('#btnMahalKaydet').addEventListener('click', async ()=>{
+    if(!aktifKat){ toast('Önce kat seçin'); return; }
+    // Seçili kat belgesini güncelle
+    await db.collection('temizlik_katlari').doc(aktifKat).set({
+      mahalleler, guncelleme: firebase.firestore.FieldValue.serverTimestamp()
+    }, {merge:true});
+    // select option içi dataset’i güncelle
+    katSelect.selectedOptions[0].dataset.mahalleler = JSON.stringify(mahalleler);
+    // Görev sekmesindeki kat select’ini de güncelle
+    await katlariYukleGorev();
+    toast('Mahalle listesi kaydedildi');
+  });
+
+  // -------------------------
+  // 2) GÖREV ATAMA
+  // -------------------------
+  async function katlariYukleGorev(){
+    katSelectGorev.innerHTML = "";
+    const snap = await db.collection('temizlik_katlari').orderBy('sira','asc').get().catch(()=>null);
+    const frag = document.createDocumentFragment();
+    const items = [];
+    if(snap && !snap.empty){
+      snap.forEach(d=> items.push({id:d.id, ...d.data()}));
+    }
+    if(items.length===0){
+      // Tanım yoksa tanımlama select’inden kopyala
+      Array.from(katSelect.options).forEach(o=>{
+        const opt = document.createElement('option');
+        opt.value = o.value;
+        opt.textContent = o.textContent;
+        opt.dataset.mahalleler = o.dataset.mahalleler || '[]';
+        frag.appendChild(opt);
+      });
+    }else{
+      items.forEach(it=>{
+        const opt = document.createElement('option');
+        opt.value = it.id;
+        opt.textContent = it.id;
+        opt.dataset.mahalleler = JSON.stringify(it.mahalleler||[]);
+        frag.appendChild(opt);
+      });
+    }
+    katSelectGorev.appendChild(frag);
+  }
+
+  async function talebeHavuzunuYukle(){
+    const dl = $('#talebeHavuzu');
+    dl.innerHTML = "";
+    try{
+      const snap = await db.collection('talebeler').get();
+      if(!snap.empty){
+        snap.forEach(d=>{
+          const ad = d.get('adSoyad') || d.get('ad') || null;
+          if(ad){
+            const opt = document.createElement('option');
+            opt.value = ad;
+            dl.appendChild(opt);
+          }
+        });
+      }
+    }catch(e){ /* koleksiyon yoksa sessizce geç */ }
+  }
+
+  katSelectGorev.addEventListener('change', ()=> mahalleleriGetirVeCiz());
+
+  async function mahalleleriGetirVeCiz(){
+    const kat = katSelectGorev.value;
+    const mahalList = JSON.parse(katSelectGorev.selectedOptions[0]?.dataset?.mahalleler||'[]');
+    const cont = $('#gorevListesi');
+    cont.innerHTML = "";
+
+    // Mevcut atamaları okumak için her mahalin altındaki subcollection’a bakalım
+    const atamalar = {};
+    for(const mahal of mahalList){
+      try{
+        const sub = await db.collection('temizlik_listesi').doc(kat).collection(mahal).get();
+        if(!sub.empty){
+          // Doküman adını talebe olarak ele alıyoruz (tek kişi varsayımı)
+          const first = sub.docs[0];
+          atamalar[mahal] = first.id; // doc adı
+        }else{
+          atamalar[mahal] = "";
+        }
+      }catch(e){
+        atamalar[mahal] = "";
+      }
+    }
+
+    // Liste çiz
+    if(mahalList.length===0){
+      const div = document.createElement('div'); div.className='item';
+      div.innerHTML = `<div class="cell hint">Bu katta mahal yok.</div><div class="cell"></div><div class="cell"></div>`;
+      cont.appendChild(div);
+      return;
+    }
+
+    mahalList.forEach(mahal=>{
+      const wrap = document.createElement('div'); wrap.className='item';
+      wrap.innerHTML = `
+        <div class="cell"><b>${mahal}</b></div>
+        <div class="cell">
+          <input list="talebeHavuzu" class="talebeInput" data-mahal="${mahal}" placeholder="Talebe adı yaz/ara" value="${atamalar[mahal]||''}">
+          <div class="hint">Kayıtlı: ${atamalar[mahal] ? '<span class="ok">'+atamalar[mahal]+'</span>' : '—'}</div>
+        </div>
+        <div class="cell">
+          <button class="btnKaydet" data-mahal="${mahal}">Kaydet</button>
+        </div>
+      `;
+      cont.appendChild(wrap);
+    });
+
+    // Tek tek kaydet
+    $$('.btnKaydet').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const mahal = btn.dataset.mahal;
+        const inp = document.querySelector(`.talebeInput[data-mahal="${mahal}"]`);
+        const talebe = (inp.value||"").trim();
+        await gorevKaydet(kat, mahal, talebe);
+      });
+    });
+  }
+
+  async function gorevKaydet(kat, mahal, talebe){
+    // Alt koleksiyonu temizleyip tek kişi yazalım (tek atama varsayımı)
+    try{
+      const ref = db.collection('temizlik_listesi').doc(kat).collection(mahal);
+      // mevcutları sil
+      const cur = await ref.get();
+      const batch = db.batch();
+      cur.forEach(d=> batch.delete(d.ref));
+      await batch.commit();
+
+      if(talebe){
+        await ref.doc(talebe).set({
+          talebe_ad: talebe,
+          guncelleyen: auth.currentUser?.email || null,
+          guncelleme: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        toast(`${mahal} → ${talebe} atandı`);
+      }else{
+        toast(`${mahal} ataması temizlendi`);
+      }
+    }catch(e){
+      console.error(e);
+      toast('Kayıt hatası');
+    }
+  }
+
+  // Toplu kaydet (listedeki tüm satırları)
+  $('#btnTopluKaydet').addEventListener('click', async ()=>{
+    const kat = katSelectGorev.value;
+    const inps = $$('.talebeInput');
+    for(const inp of inps){
+      const mahal = inp.dataset.mahal;
+      const talebe = (inp.value||"").trim();
+      await gorevKaydet(kat, mahal, talebe);
+    }
+    toast('Toplu kayıt tamam');
+    await mahalleleriGetirVeCiz();
+  });
+
+  // Bu kattaki tüm atamaları temizle
+  $('#btnTopluTemizle').addEventListener('click', async ()=>{
+    const kat = katSelectGorev.value;
+    const mahalList = JSON.parse(katSelectGorev.selectedOptions[0]?.dataset?.mahalleler||'[]');
+    if(mahalList.length===0){ toast('Bu katta mahal yok'); return; }
+    // Hepsini sil
+    try{
+      for(const mahal of mahalList){
+        const ref = db.collection('temizlik_listesi').doc(kat).collection(mahal);
+        const cur = await ref.get();
+        const batch = db.batch();
+        cur.forEach(d=> batch.delete(d.ref));
+        await batch.commit();
+      }
+      toast('Tüm atamalar temizlendi');
+      await mahalleleriGetirVeCiz();
+    }catch(e){
+      console.error(e);
+      toast('Temizleme hatası');
+    }
+  });
+
+  // İlk yüklemede görev listesini doldurmak için
+  async function initialDraw(){
+    if(katSelectGorev.options.length>0){
+      katSelectGorev.selectedIndex = 0;
+      await mahalleleriGetirVeCiz();
+    }
+  }
+  // Küçük gecikme ile ilk çizim
+  setTimeout(initialDraw, 400);
+</script>
+</body>
+</html>

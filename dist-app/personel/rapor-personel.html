@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Kişi Bazlı Alacak Raporu</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Firebase compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="../../js/firebase/firebase-init.js"></script>
+
+  <!-- html2pdf -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
+
+  <style>
+    :root{
+      --bg:#f4f6f9; --card:#fff; --ink:#2c3e50; --muted:#6c7a89; --accent:#324960;
+      --good:#2d6a4f; --warn:#d35400; --border:#e6ebf2;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+    .wrap{max-width:1180px;margin:0 auto;padding:12px 16px}
+
+    header{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--border)}
+    .rapor-ust{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+    .rapor-baslik{font-size:22px;line-height:1.25;margin:0;white-space:normal;word-break:break-word;overflow-wrap:anywhere}
+    .kisi-secim{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    select,button{height:38px;border:1px solid var(--border);background:#fff;border-radius:10px;padding:0 12px;font:inherit;color:var(--ink)}
+    button{background:var(--accent);color:#fff;border:none;cursor:pointer}
+    button.secondary{background:#fff;color:var(--ink)}
+
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px}
+    .row{display:grid;gap:12px}
+    .row.cols-3{grid-template-columns:repeat(3,1fr)}
+    @media (max-width:900px){.row.cols-3{grid-template-columns:1fr 1fr}}
+    @media (max-width:640px){.row.cols-3{grid-template-columns:1fr}}
+    .kpi{display:flex;flex-direction:column;gap:4px}
+    .kpi .label{color:var(--muted);font-size:12px}
+    .kpi .value{font-size:20px;font-weight:600}
+    .kpi.warn .value{color:var(--warn)}
+    .kpi.good .value{color:var(--good)}
+
+    .siralama-etiketleri{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px}
+    .badge-siralama{padding:6px 10px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid #e2e8f0;background:#f8fafc}
+
+    /* FAALİYET ÖZETİ – masaüstü: başlık, tahakkuk, tahsilat; altta ortalı Kalan */
+    .faaliyet-grid{display:grid;gap:10px;grid-template-columns:repeat(4,1fr)}
+    @media (max-width:900px){.faaliyet-grid{grid-template-columns:1fr 1fr}}
+    @media (max-width:640px){.faaliyet-grid{grid-template-columns:1fr}}
+    .faaliyet-kart{
+      display:grid !important;
+      grid-template-columns: 1fr auto;
+      grid-template-areas:
+        "title   ."
+        "tah     ."
+        "tas     ."
+        "kalan   kalan";
+      align-items:center;
+      gap:6px 12px;
+      padding:12px 14px;
+      border:1px solid #eef2f7;border-radius:12px;background:#fff;
+    }
+    .f-title{ grid-area:title; font-weight:700; }
+    .f-tah{ grid-area:tah; color:var(--muted); }
+    .f-tas{ grid-area:tas; color:var(--muted); }
+    .kalan-etiket{ grid-area:kalan; justify-self:center; white-space:nowrap;
+      padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid transparent }
+    .kalan-pozitif{ background:#fff7ed; color:#9a3412; border-color:#fdba74 }
+    .kalan-non{ background:#ecfdf5; color:#065f46; border-color:#86efac }
+    .kalan-negatif{ background:#eff6ff; color:#1d4ed8; border-color:#93c5fd }
+    @media (max-width:640px){
+      .faaliyet-kart{
+        grid-template-columns:1fr;
+        grid-template-areas:
+          "title"
+          "tah"
+          "tas"
+          "kalan";
+      }
+      .kalan-etiket{ justify-self:start }
+    }
+
+    .table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px}
+    table{width:100%;border-collapse:collapse;background:#fff;min-width:760px}
+    thead th{position:sticky;top:0;background:#fafbfc;border-bottom:1px solid var(--border);font-weight:600;text-align:left;font-size:13px;color:var(--muted);padding:10px;user-select:none;cursor:pointer}
+    thead th.sort-asc::after{content:" ▲";font-weight:700}
+    thead th.sort-desc::after{content:" ▼";font-weight:700}
+    tbody td{border-bottom:1px solid var(--border);padding:10px;font-size:14px}
+    tbody tr.zero{background:#f2fbf6}
+    tfoot td{border-top:2px solid var(--border);padding:10px;font-weight:600}
+    .right{text-align:right}
+
+    /* Print */
+    .avoid-break{page-break-inside:avoid;break-inside:avoid}
+    @media print{
+      header{position:static;border:none}
+      .wrap{max-width:100%;padding:0}
+      .card{border:none;padding:0}
+      .table-wrap{border:none}
+      .kisi-secim{display:none!important}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="rapor-ust">
+        <h1 id="kisiBaslik" class="rapor-baslik">Kişi Bazlı Alacak Raporu</h1>
+        <div class="kisi-secim">
+          <select id="personelSecim"></select>
+          <select id="selYil">
+            <option value="2023">2023</option>
+            <option value="2024">2024</option>
+            <option value="2025" selected>2025</option>
+            <option value="tum">Tüm Yıllar</option>
+          </select>
+          <button id="btnYukle">Yükle</button>
+          <button id="btnPDF" class="secondary">PDF düzeniyle birebir</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap" id="pdf-root">
+    <div class="card avoid-break" style="margin-top:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <div>
+          <h2 id="baslik" style="margin:0">Ad Soyad</h2>
+          <div class="muted" id="altBaslik">Yıl: 2025</div>
+        </div>
+        <div><span class="pill" id="pillAdet">0 kayıt</span></div>
+      </div>
+    </div>
+
+    <!-- Sıralama rozetleri -->
+    <div id="siralamaEtiketleri" class="siralama-etiketleri"></div>
+
+    <!-- KPI kartları -->
+    <div class="row cols-3 avoid-break" style="margin-top:12px">
+      <div class="card kpi"><span class="label">Toplam Tahakkuk</span><span class="value" id="kpiTahakkuk">₺0</span></div>
+      <div class="card kpi good"><span class="label">Toplam Tahsilat</span><span class="value" id="kpiTahsilat">₺0</span></div>
+      <div class="card kpi warn"><span class="label">Kalan</span><span class="value" id="kpiKalan">₺0</span></div>
+    </div>
+
+    <!-- Faaliyet özeti -->
+    <div class="card avoid-break" style="margin-top:12px">
+      <h3 style="margin:0 0 8px">Faaliyet Bazlı Özet</h3>
+      <div class="faaliyet-grid" id="faaliyetGrid"></div>
+    </div>
+
+    <!-- Detay tablo -->
+    <div class="card" style="margin-top:12px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
+        <h3 style="margin:0">Detaylı Liste</h3>
+        <span class="muted">Yıl / Faaliyet / Borçlu / Ödeyen / Tahakkuk / Tahsilat / Yeni Tahsilat / Kalan</span>
+      </div>
+      <div class="table-wrap avoid-break">
+        <table id="tbl">
+          <thead>
+            <tr id="hdr">
+              <th data-col="yil" data-type="num">Yıl</th>
+              <th data-col="faaliyet" data-type="str">Faaliyet</th>
+              <th data-col="borclu" data-type="str">Borçlu Adı Soyadı</th>
+              <th data-col="odeyen" data-type="str">Ödeyen Kişi</th>
+              <th class="right" data-col="tahakkuk" data-type="num">Tahakkuk</th>
+              <th class="right" data-col="tahsilat" data-type="num">Tahsilat</th>
+              <th class="right" data-col="yeni" data-type="num">Yeni Tahsilat</th>
+              <th class="right" data-col="kalan" data-type="num">Kalan</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+          <tfoot>
+            <tr>
+              <td colspan="4" class="right">TOPLAM</td>
+              <td class="right" id="sumTahakkuk">₺0</td>
+              <td class="right" id="sumTahsilat">₺0</td>
+              <td class="right" id="sumYeni">₺0</td>
+              <td class="right" id="sumKalan">₺0</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // ---------- Yardımcılar
+    const db = window.db;
+    const qs  = s => document.querySelector(s);
+    const qsa = s => [...document.querySelectorAll(s)];
+    const money = n => new Intl.NumberFormat('tr-TR',{style:'currency',currency:'TRY',maximumFractionDigits:2}).format(n||0);
+    const norm  = s => (s||'').toString().trim().toLocaleLowerCase('tr-TR');
+const tidy   = s => (s||'').toString().trim().replace(/\s+/g,' ');
+const normTR = s => tidy(s).toLocaleLowerCase('tr-TR');   // eşleştirme/anahtar
+
+// TR title-case: ayırıcıları korur (boşluk, -, ', ʼ, _, /, ., , ; : ( ) vs.)
+function titleTR(s){
+  const lower = normTR(s);
+  const SEP = /([ \t\r\n\-\u2019'_/.,;:()]+)/;  // U+2019 sağ apostrof da dahil
+  return lower.split(SEP).map(part=>{
+    if (!part || SEP.test(part)) return part;
+    return part.charAt(0).toLocaleUpperCase('tr-TR') + part.slice(1);
+  }).join('');
+}
+
+    const chunk = (arr,size)=>arr.length? [arr.slice(0,size)].concat(chunk(arr.slice(size),size)) : [];
+    const sevenDaysAgo = (()=>{ const d=new Date(); d.setDate(d.getDate()-7); return d.toISOString().slice(0,10); })();
+
+    // ---------- Parametreler
+    const params = new URLSearchParams(location.search);
+    const paramPersonel = params.get('personel') ? decodeURIComponent(params.get('personel')) : 'ALL';
+    const paramYil = params.get('yil') || '2025';
+
+    // ---------- Kişi listesi
+    async function loadPeople(){
+      const snap = await db.collection('tahakkuklar').get();
+      const set = new Set();
+      snap.forEach(d=>{ const p=(d.data().personel||'').toString().trim(); if(p) set.add(p); });
+      const arr = [...set].sort((a,b)=>a.localeCompare(b,'tr'));
+      const sel = qs('#personelSecim');
+      sel.innerHTML = `<option value="ALL">Tüm Personel</option>` +
+  arr.map(n=>`<option value="${n}">${titleTR(n)}</option>`).join('');
+      qs('#selYil').value = ['2023','2024','2025','tum'].includes(paramYil) ? paramYil : '2025';
+      if (arr.includes(paramPersonel)) sel.value = paramPersonel; else sel.value = 'ALL';
+    }
+
+    // ---------- Sıralama rozetleri
+    async function calcRanksForYear(yil){
+      let qTah = db.collection('tahakkuklar');
+      if(yil!=='tum') qTah = qTah.where('yil','==',Number(yil));
+      const tSnap = await qTah.get();
+      const sumTah = {};
+      tSnap.forEach(d=>{
+        const x=d.data(); const p=(x.personel||'').toString().trim();
+        sumTah[p]=(sumTah[p]||0)+Number(x.tahakkuk||0);
+      });
+
+      let qTsl = db.collection('tahsilatlar');
+      if(yil!=='tum') qTsl = qTsl.where('yil','==',Number(yil));
+      const sSnap = await qTsl.get();
+      const sumTsl = {};
+      sSnap.forEach(d=>{
+        const x=d.data(); const p=(x.personel||'').toString().trim();
+        sumTsl[p]=(sumTsl[p]||0)+Number(x.tutar||0);
+      });
+
+      const everyone = Object.keys({...sumTah, ...sumTsl});
+      const list = everyone.map(p=>{
+        const tah = sumTah[p]||0, tsl=sumTsl[p]||0;
+        const oran = tah>0 ? (tsl/tah) : 0;
+        return {p, tah, oran};
+      });
+
+      const borcOrder = [...list].sort((a,b)=>b.tah - a.tah).map((r,i)=>({p:r.p,sira:i+1}));
+      const oranOrder = [...list].sort((a,b)=>b.oran - a.oran).map((r,i)=>({p:r.p,sira:i+1}));
+
+      return function getRank(person){
+        const b = borcOrder.find(x=>x.p===person)?.sira ?? '-';
+        const o = oranOrder.find(x=>x.p===person)?.sira ?? '-';
+        return {borcSira:b, oranSira:o};
+      };
+    }
+
+    function renderSiralamaRozetleri({borcSira, oranSira}, toplamTahakkuk, toplamTahsilat){
+      const oran = toplamTahakkuk>0 ? (100*toplamTahsilat/toplamTahakkuk) : 0;
+      qs('#siralamaEtiketleri').innerHTML =
+        `<span class="badge-siralama">Toplam Tahakkuk Borç Sıralaması: <strong>${borcSira}. sıradasınız</strong></span>
+         <span class="badge-siralama">Tahsilat Oranı Sıralaması: <strong>${oranSira}. sıradasınız</strong> (Mevcut oran: ${oran.toFixed(1)}%)</span>`;
+    }
+
+    // ---------- Rapor (ALL & kişi)
+    async function loadReport(){
+      const person = qs('#personelSecim').value || 'ALL';
+      const yil    = qs('#selYil').value;
+
+      qs('#baslik').textContent = person==='ALL' ? 'Tüm Personel' : person;
+      qs('#altBaslik').textContent = `Yıl: ${yil==='tum' ? 'Tümü' : yil}`;
+      qs('#kisiBaslik').textContent = person==='ALL' ? 'Kişi Bazlı Alacak Raporu' : person;
+
+      // Tahakkuklar
+      let qTah = db.collection('tahakkuklar');
+      if (person!=='ALL') qTah = qTah.where('personel','==', person);
+      if (yil!=='tum')    qTah = qTah.where('yil','==', Number(yil));
+      const tSnap = await qTah.get();
+      const tahakkuklar = tSnap.docs.map(d=>({id:d.id, ...d.data()}));
+
+      // Tahsilatlar (id ve kişi bazlı birleştir)
+      let tahsilatlar = [];
+      const ids = tahakkuklar.map(x=>x.id);
+      for (const part of chunk(ids,10)){
+        if(part.length===0) continue;
+        const s = await db.collection('tahsilatlar').where('tahakkukId','in',part).get();
+        tahsilatlar = tahsilatlar.concat(s.docs.map(d=>({id:d.id, ...d.data()})));
+      }
+      let qTsl = db.collection('tahsilatlar');
+      if (person!=='ALL') qTsl = qTsl.where('personel','==', person);
+      if (yil!=='tum')    qTsl = qTsl.where('yil','==', Number(yil));
+      const sSnap = await qTsl.get();
+      const extra = sSnap.docs.map(d=>({id:d.id, ...d.data()}));
+      const seen = new Set(tahsilatlar.map(x=>x.id));
+      extra.forEach(x=>{ if(!seen.has(x.id)) tahsilatlar.push(x); });
+
+      // İndeksler
+      const byId = new Map();
+      tahsilatlar.forEach(s=>{
+        const arr = byId.get(s.tahakkukId)||[];
+        arr.push(s); byId.set(s.tahakkukId,arr);
+      });
+      const keyOf = (y,fa,p,bor)=>`${y}|${norm(fa)}|${norm(p)}|${norm(bor)}`;
+      const byKey = new Map();
+      tahsilatlar.forEach(s=>{
+        const k = keyOf(s.yil, s.faaliyet, s.personel||'', s.borclu||'');
+        const arr = byKey.get(k)||[]; arr.push(s); byKey.set(k,arr);
+      });
+
+      // Satırlar
+      const rows = tahakkuklar.map(t=>{
+        const k = keyOf(t.yil, t.faaliyet, t.personel||'', t.borclu||'');
+        const rel = (byId.get(t.id)||[]).concat(byKey.get(k)||[]);
+        const uniq = []; const mem = new Set();
+        rel.forEach(x=>{ if(!mem.has(x.id)){ mem.add(x.id); uniq.push(x); } });
+        const sumAll = uniq.reduce((a,b)=>a+Number(b.tutar||0),0);
+        const sumNew = uniq.filter(x=>(x.tarih||'')>=sevenDaysAgo).reduce((a,b)=>a+Number(b.tutar||0),0);
+
+        return {
+          yil: t.yil,
+          faaliyet: titleTR(t.faaliyet),
+          borclu:   titleTR(t.borclu||''),
+          odeyen:   titleTR(uniq[uniq.length-1]?.odeyen || ''),
+          tahakkuk: +Number(t.tahakkuk||0),
+          tahsilat: +Number(sumAll - sumNew),
+          yeni: +Number(sumNew),
+          kalan: +Number(t.tahakkuk||0) - +Number(sumAll)
+        };
+      });
+
+      renderAll(rows, person, yil);
+
+      if(person==='ALL'){
+        qs('#siralamaEtiketleri').innerHTML = '';
+      }else{
+        const getRank = await calcRanksForYear(yil);
+        const totals = rows.reduce((a,b)=>{ a.tah+=(b.tahakkuk||0); a.tsl+=(b.tahsilat||0)+(b.yeni||0); return a; }, {tah:0, tsl:0});
+        renderSiralamaRozetleri(getRank(person), totals.tah, totals.tsl);
+      }
+    }
+
+    // ---------- Render
+    let currentSort = {col:null, dir:'asc'};
+    const numCols = new Set(['tahakkuk','tahsilat','yeni','kalan','yil']);
+
+    function sortRows(rows){
+      const {col,dir} = currentSort;
+      if(!col) return rows;
+      const type = numCols.has(col) ? 'num' : 'str';
+      const cmp = (a,b)=> type==='num' ? ((+a||0)-(+b||0)) : String(a||'').localeCompare(String(b||''),'tr',{sensitivity:'base'});
+      const arr = rows.slice().sort((x,y)=>cmp(x[col], y[col]));
+      return dir==='asc' ? arr : arr.reverse();
+    }
+
+    function renderAll(rows, person, yil){
+      qs('#pillAdet').textContent = `${rows.length} kayıt`;
+
+      const tTah = rows.reduce((a,b)=>a+(b.tahakkuk||0),0);
+      const tTsl = rows.reduce((a,b)=>a+(b.tahsilat||0)+(b.yeni||0),0);
+      const tKal = tTah - tTsl;
+      qs('#kpiTahakkuk').textContent = money(tTah);
+      qs('#kpiTahsilat').textContent = money(tTsl);
+      qs('#kpiKalan').textContent    = money(tKal);
+
+      // ---- faaliyet özeti: TR locale ile tekilleştir/birleştir
+const fMap = new Map();
+rows.forEach(r=>{
+  const key = normTR(r.faaliyet);
+  if(!key) return;
+  if(!fMap.has(key)) fMap.set(key, { display: titleTR(r.faaliyet), tah:0, tsl:0 });
+  const o = fMap.get(key);
+  o.tah += +r.tahakkuk || 0;
+  o.tsl += (+r.tahsilat || 0) + (+r.yeni || 0); // toplam tahsilat = eski + yeni
+});
+
+      const grid = qs('#faaliyetGrid'); grid.innerHTML='';
+      [...fMap.values()]
+        .map(v => ({ ...v, kalan: v.tah - v.tsl }))
+        .sort((a,b) => b.kalan - a.kalan)
+        .forEach(item=>{
+          let cls='kalan-non'; if(item.kalan>0) cls='kalan-pozitif'; if(item.kalan<0) cls='kalan-negatif';
+          const div = document.createElement('div');
+          div.className='faaliyet-kart';
+          div.innerHTML = `
+            <div class="f-title">${item.display}</div>
+            <div class="f-tah">Tahakkuk: ${money(item.tah)}</div>
+            <div class="f-tas">Tahsilat: ${money(item.tsl)}</div>
+            <span class="kalan-etiket ${cls}">Kalan: ${money(item.kalan)}</span>`;
+          grid.appendChild(div);
+        });
+
+      // ---- tablo
+      const tbody = qs('#tbody'); tbody.innerHTML='';
+      let sTah=0,sTsl=0,sYeni=0,sKal=0;
+      sortRows(rows).forEach(r=>{
+        sTah+=r.tahakkuk||0; sTsl+=r.tahsilat||0; sYeni+=r.yeni||0; sKal+=r.kalan||0;
+        const tr=document.createElement('tr');
+        if(Math.abs(r.kalan)<0.001) tr.classList.add('zero');
+        tr.innerHTML = `
+          <td>${r.yil}</td>
+          <td>${r.faaliyet||''}</td>
+          <td>${r.borclu||''}</td>
+          <td>${r.odeyen||''}</td>
+          <td class="right">${money(r.tahakkuk)}</td>
+          <td class="right">${money(r.tahsilat)}</td>
+          <td class="right">${money(r.yeni)}</td>
+          <td class="right">${money(r.kalan)}</td>`;
+        tbody.appendChild(tr);
+      });
+      qs('#sumTahakkuk').textContent = money(sTah);
+      qs('#sumTahsilat').textContent = money(sTsl);
+      qs('#sumYeni').textContent     = money(sYeni);
+      qs('#sumKalan').textContent    = money(sKal);
+    }
+
+    // ---------- Sütun başlıklarına tıklama ile sıralama (isteğe bağlı)
+    qsa('#hdr th').forEach(th=>{
+      th.addEventListener('click', ()=>{
+        const col = th.dataset.col; if(!col) return;
+        currentSort.dir = (currentSort.col===col && currentSort.dir==='asc') ? 'desc' : 'asc';
+        currentSort.col = col;
+        qsa('#hdr th').forEach(x=>x.classList.remove('sort-asc','sort-desc'));
+        th.classList.add(currentSort.dir==='asc'?'sort-asc':'sort-desc');
+
+        // mevcut gövdeden veriyi okuyup yeniden çiz
+        const rows = [...qs('#tbody').querySelectorAll('tr')].map(tr=>{
+          const tds = tr.querySelectorAll('td');
+          const parseMoney = s => +tds[s].textContent.replace(/\D/g,'')/100;
+          return {
+            yil: +tds[0].textContent,
+            faaliyet: tds[1].textContent,
+            borclu: tds[2].textContent,
+            odeyen: tds[3].textContent,
+            tahakkuk: parseMoney(4),
+            tahsilat: parseMoney(5),
+            yeni: parseMoney(6),
+            kalan: parseMoney(7),
+          };
+        });
+        const person = qs('#personelSecim').value||'ALL';
+        const yil    = qs('#selYil').value;
+        renderAll(rows, person, yil);
+      });
+    });
+
+    // ---------- PDF
+    qs('#btnPDF').addEventListener('click', ()=>{
+      const el = document.getElementById('pdf-root');
+      const person = qs('#personelSecim').value || 'ALL';
+      const yil = qs('#selYil').value;
+      const opt = {
+        margin:[10,10,10,10],
+        filename:`${person}-${yil}-alacak-raporu.pdf`,
+        image:{type:'jpeg',quality:0.98},
+        html2canvas:{scale:2,useCORS:true,scrollY:-window.scrollY},
+        pagebreak:{mode:['css','legacy']},
+        jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
+      };
+      html2pdf().set(opt).from(el).save();
+    });
+
+    // ---------- Olaylar
+    qs('#btnYukle').addEventListener('click', loadReport);
+    qs('#personelSecim').addEventListener('change', loadReport);
+    qs('#selYil').addEventListener('change', loadReport);
+
+    // ---------- Başlat
+    (async ()=>{
+      await loadPeople();
+      await loadReport();
+    })();
+  </script>
+</body>
+</html>
