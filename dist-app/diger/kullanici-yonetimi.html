@@ -1,83 +1,324 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8">
-  <title>Kullanıcı Yönetimi</title>
-  <link rel="icon" type="image/png" href="img/logo.png">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Sistem Ayarları › Profil | Karaağaç Fatih</title>
+  <link rel="icon" type="image/png" href="../img/logo.png"/>
+
+  <!-- ========== ERKEN TEMA UYGULAMA (Tüm sayfalara önerilir) ========== -->
+  <script>
+  (function(){
+    try{
+      var lastUID = localStorage.getItem('lastUID') || 'guest';
+      var pref = localStorage.getItem('tema:'+lastUID) || 'auto'; // 'auto' | 'light' | 'dark'
+      apply(pref);
+      // Sekmeler arası senkron
+      window.addEventListener('storage', function(e){
+        if(!e.key) return;
+        if(e.key === 'lastUID'){
+          lastUID = localStorage.getItem('lastUID') || 'guest';
+          var p = localStorage.getItem('tema:'+lastUID) || 'auto';
+          apply(p);
+        }else if(e.key.startsWith('tema:')){
+          var activeUID = localStorage.getItem('lastUID') || 'guest';
+          if(e.key === 'tema:'+activeUID){
+            apply(localStorage.getItem(e.key) || 'auto');
+          }
+        }
+      });
+      function apply(mode){
+        var d = document.documentElement;
+        if(mode === 'dark'){ d.setAttribute('data-theme','dark'); }
+        else if(mode === 'light'){ d.setAttribute('data-theme','light'); }
+        else{ d.removeAttribute('data-theme'); } // AUTO => OS tercihi
+      }
+    }catch(e){}
+  })();
+  </script>
+
+  <!-- ========== TEMA DEĞİŞKENLERİ / TEMEL STİL ========== -->
   <style>
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', sans-serif;
-      background-color: #f4f6f9;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      padding: 20px;
+    :root{
+      color-scheme: light dark;
+      --appbar-h:56px; --radius:14px; --shadow:0 12px 28px rgba(0,0,0,.14);
+      --bg:#f4f6f9; --bg2:#ffffff; --card:#ffffff; --stroke:rgba(0,0,0,.08);
+      --text:#0b1324; --muted:#4b5563; --brand:#0ea5e9; --brand2:#22d3ee;
+      --grad1:#0ea5e922; --grad2:#22d3ee22;
+      background:var(--bg); color:var(--text);
     }
-
-    .calisma-karti {
-      background-color: #fff;
-      border: 2px dashed #ced4da;
-      border-radius: 16px;
-      padding: 30px;
-      max-width: 700px;
-      width: 100%;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-      text-align: center;
-    }
-
-    .calisma-karti img {
-      width: 100px;
-      height: 100px;
-      margin-bottom: 20px;
-      opacity: 0.85;
-    }
-
-    .calisma-karti h2 {
-      font-size: 24px;
-      margin-bottom: 10px;
-      color: #343a40;
-    }
-
-    .calisma-karti p {
-      font-size: 16px;
-      color: #495057;
-      margin-bottom: 6px;
-    }
-
-    .calisma-karti .alt-bilgi {
-      margin-top: 25px;
-      font-size: 14px;
-      color: #adb5bd;
-    }
-
-    @media (max-width: 600px) {
-      .calisma-karti {
-        padding: 20px;
-      }
-
-      .calisma-karti h2 {
-        font-size: 20px;
-      }
-
-      .calisma-karti p {
-        font-size: 15px;
+    @media (prefers-color-scheme: dark){
+      html:not([data-theme="light"]){
+        --bg:#0f172a; --bg2:#0b1324; --card:rgba(15,23,42,.92);
+        --stroke:rgba(148,163,184,.18); --text:#e5e7eb; --muted:#9aa4b2;
+        --brand:#38bdf8; --brand2:#22d3ee; --grad1:#0ea5e922; --grad2:#22d3ee22;
+        background:var(--bg); color:var(--text);
       }
     }
+    html[data-theme="light"]{
+      color-scheme: light;
+      --bg:#f4f6f9; --bg2:#ffffff; --card:#ffffff; --stroke:rgba(0,0,0,.08);
+      --text:#0b1324; --muted:#4b5563; --brand:#0ea5e9; --brand2:#22d3ee;
+      --grad1:#0ea5e922; --grad2:#22d3ee22;
+      background:var(--bg); color:var(--text);
+    }
+    html[data-theme="dark"]{
+      color-scheme: dark;
+      --bg:#0f172a; --bg2:#0b1324; --card:rgba(15,23,42,.92);
+      --stroke:rgba(148,163,184,.18); --text:#e5e7eb; --muted:#9aa4b2;
+      --brand:#38bdf8; --brand2:#22d3ee; --grad1:#0ea5e922; --grad2:#22d3ee22;
+      background:var(--bg); color:var(--text);
+    }
+
+    /* Layout */
+    *{box-sizing:border-box}
+    body{margin:0; font:500 15px/1.55 Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:var(--bg); color:var(--text)}
+    .appbar{
+      height:var(--appbar-h); display:flex; align-items:center; justify-content:space-between;
+      padding:0 14px; position:sticky; top:0; z-index:50;
+      background:linear-gradient(180deg, var(--bg2), transparent);
+      border-bottom:1px solid var(--stroke); backdrop-filter:saturate(140%) blur(6px);
+    }
+    .brand{display:flex; align-items:center; gap:10px; font-weight:700}
+    .brand img{width:28px; height:28px; border-radius:8px}
+    .actions{display:flex; align-items:center; gap:8px}
+    .btn{
+      height:36px; padding:0 12px; border-radius:12px; border:1px solid var(--stroke);
+      background:var(--bg2); color:var(--text); cursor:pointer;
+    }
+    .btn:hover{box-shadow:0 6px 18px rgba(0,0,0,.10)}
+    .btn.brand{background:linear-gradient(135deg,var(--brand1,#0ea5e9),var(--brand2,#22d3ee)); color:white; border-color:transparent}
+    main{max-width:960px; margin:18px auto; padding:0 14px}
+    .card{
+      background:var(--card); border:1px solid var(--stroke); border-radius:var(--radius);
+      box-shadow:var(--shadow); padding:16px;
+    }
+    .row{display:flex; gap:14px; flex-wrap:wrap}
+    .stack{display:flex; flex-direction:column; gap:10px}
+    .muted{color:var(--muted)}
+    .badge{
+      display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border:1px solid var(--stroke);
+      border-radius:999px; background:var(--bg2); font-size:12px;
+    }
+    .group{display:flex; gap:12px; flex-wrap:wrap}
+    .chip{
+      display:flex; align-items:center; gap:8px; padding:10px 12px; background:var(--bg2);
+      border:1px solid var(--stroke); border-radius:12px; cursor:pointer; user-select:none;
+    }
+    .chip input{accent-color: var(--brand)}
+    .divider{height:1px; background:var(--stroke); margin:14px 0}
+    .kbd{font:600 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background:var(--bg2); border:1px solid var(--stroke); padding:2px 6px; border-radius:6px}
+
+    /* Mini breadcrumb */
+    .crumbs{display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); margin-bottom:12px}
+    .crumbs span{opacity:.9}
+    .crumbs .dot{width:4px;height:4px;background:var(--muted);border-radius:50%}
   </style>
+
+  <!-- Firebase (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="../js/firebase/firebase-init.js"></script> <!-- window.db, window.firebaseApp -->
 </head>
 <body>
+  <!-- ========== ÜST BAR ========== -->
+  <header class="appbar">
+    <div class="brand">
+      <img src="../img/logo.png" alt="KF"/>
+      <div>Karaağaç Fatih</div>
+    </div>
+    <div class="actions">
+      <button id="btnSignOut" class="btn">Çıkış Yap</button>
+    </div>
+  </header>
 
-  <div class="calisma-karti">
-    <img src="https://cdn-icons-png.flaticon.com/512/1486/1486423.png" alt="Hazırlanıyor">
-    <h2>Kullanıcı ve Yetki Yönetimi Geliştiriliyor</h2>
-    <p>Bu sayfada kullanıcı profilleri düzenlenecek, roller tanımlanacak ve erişim izinleri yönetilecektir.</p>
-    <p>Bildirim gönderimi, giriş geçmişi, kullanıcı logları ve yetki talepleri gibi özellikler entegre edilecektir.</p>
-    <p>Yönetici yetkisine sahip olanlar bu modüle erişim sağlayabilecektir.</p>
-    <div class="alt-bilgi">Geliştirme Aşamasında – Temmuz 2025</div>
-  </div>
+  <main>
+    <div class="crumbs"><span>Sistem Ayarları</span><span class="dot"></span><span>Profil</span></div>
 
+    <section class="card stack" aria-labelledby="baslikProfil">
+      <div class="row" style="justify-content:space-between; align-items:center">
+        <h1 id="baslikProfil" style="margin:0;font-size:22px">Profil & Tema</h1>
+        <span class="badge"><strong id="dispName">—</strong><span class="muted" id="dispEmail"></span></span>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="stack">
+        <div>
+          <div style="font-weight:600; margin-bottom:6px">Tema Ayarı</div>
+          <div class="muted" style="margin-bottom:10px">Seçimin tüm sayfalara uygulanır ve hesabına özel kaydedilir.</div>
+          <div class="group" role="group" aria-label="Tema Seçimi">
+            <label class="chip"><input type="radio" name="tema" value="auto" /> Oto (Sistem)</label>
+            <label class="chip"><input type="radio" name="tema" value="light" /> Açık</label>
+            <label class="chip"><input type="radio" name="tema" value="dark" /> Koyu</label>
+          </div>
+          <div id="temaDurum" class="muted" style="margin-top:10px">Aktif tema: —</div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div>
+          <div style="font-weight:600; margin-bottom:6px">Kısayollar</div>
+          <div class="muted" style="margin-bottom:8px">Tema değiştirme kısayolları:</div>
+          <div class="group">
+            <span class="kbd">Alt</span> + <span class="kbd">T</span> <span class="muted">→ mod değiştir</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ========== SAYFA JS ========== -->
+  <script>
+  (function(){
+    const PAGE_KEY = 'ayarlar:profil'; // yetki anahtarı (sende nasıl kayıtlıysa bunu listeye ekle)
+    const db   = window.db;
+    const auth = firebase.auth();
+
+    const temaRadios = document.querySelectorAll('input[name="tema"]');
+    const temaDurum  = document.getElementById('temaDurum');
+    const dispName   = document.getElementById('dispName');
+    const dispEmail  = document.getElementById('dispEmail');
+    const btnSignOut = document.getElementById('btnSignOut');
+
+    // Çıkış
+    btnSignOut.addEventListener('click', async () => {
+      try{
+        await auth.signOut();
+      }finally{
+        window.location.href = '../index.html';
+      }
+    });
+
+    // Kısayol: Alt+T ile tema döngüsü (auto -> light -> dark)
+    window.addEventListener('keydown', (e)=>{
+      if(e.altKey && (e.key === 't' || e.key === 'T')){
+        e.preventDefault();
+        cycleTheme();
+      }
+    });
+
+    function cycleTheme(){
+      const checked = document.querySelector('input[name="tema"]:checked');
+      const order = ['auto','light','dark'];
+      const cur = checked ? checked.value : 'auto';
+      const next = order[(order.indexOf(cur)+1)%order.length];
+      const r = Array.from(temaRadios).find(x=>x.value===next);
+      if(r){
+        r.checked = true;
+        r.dispatchEvent(new Event('change',{bubbles:true}));
+      }
+    }
+
+    // Auth + Yetki + Tema yükleme
+    auth.onAuthStateChanged(async (user)=>{
+      if(!user){
+        // Giriş yok: index'e gönder
+        window.location.href = '../index.html';
+        return;
+      }
+      // Ekranda kullanıcı bilgisi
+      dispName.textContent  = user.displayName || 'Kullanıcı';
+      dispEmail.textContent = '· ' + (user.email || '');
+
+      const uid = user.uid;
+      localStorage.setItem('lastUID', uid);
+
+      // Erişim logu
+      logAccess(uid, user.email).catch(()=>{});
+
+      // Tema durumunu yükle
+      const {pref, source} = await loadThemePref(uid);
+      applyTheme(pref);
+      markUI(pref, source);
+
+      // Radio değişimlerini kaydet
+      temaRadios.forEach(r=>{
+        r.addEventListener('change', async (e)=>{
+          const val = e.target.value; // 'auto' | 'light' | 'dark'
+          applyTheme(val);
+          markUI(val, 'saved');
+          // LS (UID bazlı)
+          localStorage.setItem('tema:'+uid, val);
+          // Firestore
+          await saveTheme(uid, val);
+        }, {passive:true});
+      });
+    });
+
+    // === Yetki kontrolü (sende nasıl kaydettiysen ona göre ayarla) ===
+    async function hasPermission(uid, key){
+      try{
+        // Örn: 'kullanicilar/{uid}' dokümanında 'yetkiler' (array) var
+        const doc = await db.collection('kullanicilar').doc(uid).get();
+        const arr = (doc.exists && Array.isArray(doc.data().yetkiler)) ? doc.data().yetkiler : [];
+        // Esnek eşleşme: spesifik anahtar ya da genel anahtarlar
+        const allowKeys = new Set([key, 'ayarlar', 'profil', 'admin:full']);
+        return arr.some(k => allowKeys.has(k));
+      }catch(e){
+        return false;
+      }
+    }
+
+    // === Erişim logu ===
+    async function logAccess(uid, email){
+      try{
+        await db.collection('kullanici_log').add({
+          uid, email: email||null,
+          sayfa: 'ayarlar/profil',
+          path: location.pathname,
+          agent: navigator.userAgent,
+          ts: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }catch(e){}
+    }
+
+    // === Tema yükleme öncelik: Firestore > LocalStorage > 'auto' ===
+    async function loadThemePref(uid){
+      try{
+        const ref = db.collection('kullanici_ayar').doc(uid);
+        const snap = await ref.get();
+        const fsPref = (snap.exists && snap.data().tema) ? snap.data().tema : null;
+        if(fsPref) return {pref: fsPref, source:'firestore'};
+      }catch(e){}
+      const lsPref = localStorage.getItem('tema:'+uid);
+      if(lsPref) return {pref: lsPref, source:'local'};
+      return {pref:'auto', source:'default'};
+    }
+
+    function markUI(val, source){
+      const radio = Array.from(temaRadios).find(x=>x.value===val);
+      if(radio) radio.checked = true;
+      let label = val==='auto' ? 'Oto (Sistem)' : (val==='light'?'Açık':'Koyu');
+      let note  = source==='firestore' ? '• Sunucudan yüklendi' :
+                  source==='local'     ? '• Cihaz tercihi' :
+                  source==='saved'     ? '• Kaydedildi' : '';
+      temaDurum.textContent = 'Aktif tema: ' + label + (note?' '+note:'');
+    }
+
+    function applyTheme(mode){
+      const d = document.documentElement;
+      if(mode==='dark'){ d.setAttribute('data-theme','dark'); }
+      else if(mode==='light'){ d.setAttribute('data-theme','light'); }
+      else{ d.removeAttribute('data-theme'); } // AUTO
+      // Etkin UID için LS güncelle (sekme senkronu için)
+      const uid = localStorage.getItem('lastUID') || 'guest';
+      localStorage.setItem('tema:'+uid, mode);
+    }
+
+    async function saveTheme(uid, mode){
+      try{
+        await db.collection('kullanici_ayar').doc(uid).set({
+          tema: mode,
+          temaUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, {merge:true});
+      }catch(e){
+        // UI'ya küçük uyarı düş
+        temaDurum.textContent = 'Aktif tema: ' + (mode==='auto'?'Oto (Sistem)':mode==='light'?'Açık':'Koyu') + ' • Kaydetme hatası';
+      }
+    }
+  })();
+  </script>
 </body>
 </html>

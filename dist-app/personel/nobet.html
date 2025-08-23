@@ -160,6 +160,94 @@
   /* Satır içi notlar mobilde gizlensin (taşmayı azaltır) */
   .note-inline{ display:none }
 }
+    :root{
+      /* tabbar yüksekliği ve ekstra kaldırma (gap) */
+      --tabbar-base: 56px;     /* buton yüksekliği */
+      --tabbar-lift: 12px;     /* home indicator’dan uzaklık */
+      --tabbar-h: calc(var(--tabbar-base) + env(safe-area-inset-bottom) + var(--tabbar-lift));
+    }
+
+    /* body scroll’u kapat, gerçek scroll .app’te olsun (iOS bounce düzgün) */
+    html,body{height:100%; overflow:hidden}
+
+    /* İçerik alanı: üstte çentik payı, altta tabbar payı */
+    .app{
+      height: calc(100vh - var(--tabbar-h));
+      padding-top: calc(env(safe-area-inset-top) + 8px);
+      padding-bottom: var(--tabbar-h);
+      overflow:auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    /* iOS-layout */
+    --appbar-h: calc(56px + env(safe-area-inset-top));
+    --tabbar-h: calc(64px + env(safe-area-inset-bottom));
+    --radius:14px; --shadow:0 12px 28px rgba(0,0,0,.14);
+    
+    /* Videoda gördüğün beyaz bant sorununu önlemek için */
+    .app::after{
+      content:""; position:fixed; left:0; right:0; bottom:var(--tabbar-h);
+      height:10px; background:linear-gradient(180deg, transparent, var(--bg2));
+      pointer-events:none; z-index:1;
+    }
+    /* Tabbar */
+    .tabbar{
+      position:fixed; left:0; right:0;
+      bottom: calc(env(safe-area-inset-bottom) + var(--tabbar-lift));
+      height: var(--tabbar-h);
+      padding-bottom: env(safe-area-inset-bottom)
+      border-top:1px solid var(--stroke);
+      background:var(--bg2);
+      z-index:60;
+      display:flex; align-items:center; justify-content:center;
+      transform: translateZ(0);
+    }
+    .tabbar::before{
+      content:""; position:absolute; left:0; right:0; top:-10px; height:10px;
+      background:var(--bg2); pointer-events:none;
+    }
+    .tabbar .rail{
+      display:flex !important; flex-direction:row !important; flex-wrap:nowrap !important;
+      align-items:center; justify-content:center;
+      gap:12px; max-width:1100px; width:100%;
+      padding:6px 10px; overflow-x:auto; -webkit-overflow-scrolling:touch; white-space:nowrap;
+      !box-shadow:none;
+    }
+    /* Tabbar butonları */
+    .tabbar .tb, .tabbar .tb:link, .tabbar .tb:visited, .tabbar .tb:hover, .tabbar .tb:active{
+      display:flex; flex-direction:column; align-items:center; gap:4px;
+      min-width:72px; padding:6px 8px;
+      color:var(--muted) !important; text-decoration:none !important;
+      border-radius:12px;
+      background:transparent;           /* toolbar stilini sıfırla */
+      border:none;                       /* toolbar stilini sıfırla */
+    }
+    .tabbar .tb .ico{font-size:20px; line-height:20px}
+    .tabbar .tb .lbl{font-size:11.5px; line-height:1}
+    .tabbar .tb.active{color:var(--brand) !important}
+    .tabbar .tb.home{border:1px dashed var(--stroke)}
+
+    /* Sheet */
+    .sheet-backdrop{position:fixed; inset:0; z-index:59; display:none}
+    .sheet{
+      position:fixed; left:10px; right:10px; bottom:calc(var(--tabbar-h) + 10px);
+      background:var(--card); border:1px solid var(--stroke); border-radius:18px; box-shadow:var(--shadow);
+      z-index:61; display:none; max-height:40vh; overflow:auto;
+    }
+    .sheet .grip{width:44px; height:5px; background:var(--stroke); border-radius:999px; margin:8px auto}
+    .sheet .title{padding:6px 14px; font-weight:800}
+    .sheet .list{display:flex; flex-direction:column}
+    .sheet .item{padding:12px 14px; border-top:1px dashed var(--stroke); display:flex; align-items:center; justify-content:space-between; gap:10px}
+    .sheet .item .go{font-size:18px; opacity:.6}
+
+    /* Pull-to-refresh ipucu */
+    .ptr-tip{
+      position:fixed; top:calc(env(safe-area-inset-top) + 6px); left:50%; transform:translateX(-50%);
+      padding:6px 10px; font-size:12px; background:var(--bg2); border:1px solid var(--stroke);
+      color:var(--muted); border-radius:999px; opacity:0; transition:.25s; z-index:62;
+    }
+    .ptr-tip.show{opacity:1}
+
 </style>
 
 <!-- Firebase -->
@@ -170,21 +258,10 @@
 </head>
 <body>
 
-<!-- APPBAR -->
-<div class="appbar">
-  <div class="brand" onclick="location.reload()">
-    <img src="../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
-  </div>
-  <nav class="nav-center"><ul class="nav-list" id="navMain"></ul></nav>
-  <div class="nav-right">
-    <button class="btn hamb" id="hamburger">☰</button>
-    <button class="btn" id="themeToggle">🌗 <span id="themeLabel">Auto</span></button>
-    <button class="btn" onclick="logout()">Çıkış Yap</button>
-  </div>
-</div>
-<aside class="drawer" id="drawer"></aside>
-
 <!-- CONTENT -->
+<div class="app" id="scrollArea">
+<div class="ptr-tip" id="ptrTip">Yenilemek için bırak</div>
+
 <main class="container">
   <section class="hero">
     <div>
@@ -195,7 +272,6 @@
         <span class="pill">Özel Pazar: <b id="sumPazar">—</b></span>
       </div>
     </div>
-    <div class="mini"><span class="pill">Tema: <span id="themeLabel2">Auto</span></span></div>
   </section>
 
   <section class="card">
@@ -211,31 +287,34 @@
     <div id="controls" class="ctrls"></div>
     <div id="results" style="margin-top:10px"></div>
   </section>
-
-  <div class="page-end"></div>
 </main>
+</div>
+
+  <!-- Sheet (panel listesi) -->
+  <div class="sheet-backdrop" id="sheetBackdrop"></div>
+  <div class="sheet" id="panelSheet">
+    <div class="grip"></div>
+    <div class="title" id="sheetTitle">—</div>
+    <div class="list" id="sheetList"></div>
+  </div>
+
+  <!-- Tabbar -->
+  <div class="tabbar">
+    <div class="rail" id="tabRail"></div>
+  </div>
+
 
 <div class="toast" id="toast" style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:rgba(2,6,23,.95);color:#fff;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px 12px;opacity:0;pointer-events:none;transition:opacity .25s, transform .25s;z-index:200"></div>
 
 <script>
 /* ===== Tema ===== */
-(function(){
-  const root=document.documentElement, btn=document.getElementById('themeToggle');
-  const lab1=document.getElementById('themeLabel'), lab2=document.getElementById('themeLabel2');
-  const sysDark=()=>window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;
-  function apply(mode){
-    localStorage.setItem('kf_theme',mode);
-    const eff=(mode==='auto')?(sysDark()?'dark':'light'):mode;
-    root.setAttribute('data-theme',eff);
-    const txt=mode[0].toUpperCase()+mode.slice(1);
-    if(lab1) lab1.textContent=txt; if(lab2) lab2.textContent=txt;
-    const icon=mode==='dark'?'🌙':mode==='light'?'☀️':'🌗';
-    btn.innerHTML=icon+' <span id="themeLabel">'+txt+'</span>';
-  }
-  apply(localStorage.getItem('kf_theme')||'auto');
-  btn.addEventListener('click',()=>{const cur=localStorage.getItem('kf_theme')||'auto'; apply(cur==='dark'?'light':(cur==='light'?'auto':'dark'));});
-  if(window.matchMedia){ const m=window.matchMedia('(prefers-color-scheme: dark)'); m.addEventListener?.('change',()=>{ if((localStorage.getItem('kf_theme')||'auto')==='auto') apply('auto'); }); }
-})();
+    /* ===== Tema (profilden alınır) ===== */
+    function applyProfileTheme(uid, meta){
+      const sysDark = () => window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const pref = localStorage.getItem(`temaAyar:${uid}`) || meta?.tema || 'oto';   // 'acik' | 'koyu' | 'oto'
+      const eff  = pref === 'oto' ? (sysDark() ? 'dark' : 'light') : (pref === 'koyu' ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', eff);
+    }
 
 /* ===== Firebase & helpers ===== */
 const db=firebase.firestore(), auth=firebase.auth();
@@ -500,41 +579,177 @@ auth.onAuthStateChanged(async u=>{
 
   try{
     const uSnap = await db.collection('kullanicilar').doc(u.uid).get();
-    const data  = uSnap.exists ? uSnap.data() : {};
-    const rawPerms = Array.isArray(data.yetkiler) ? data.yetkiler : [];
-    CURRENT_ALLOW = new Set(rawPerms.filter(s=>!String(s).trim().startsWith('-') && !String(s).trim().startsWith('!')).map(norm));
-    CURRENT_DENY  = new Set(rawPerms.filter(s=>String(s).trim().startsWith('-') || String(s).trim().startsWith('!')).map(s=>norm(String(s).replace(/^[-!]\s*/,''))));
-    CAN_VIEW_OTHERS = CURRENT_ALLOW.has('nobet:all') || CURRENT_ALLOW.has('admin');
+    const meta  = uSnap.exists ? uSnap.data() : {};
 
-    const panels = await fetchPanels(CURRENT_ALLOW, CURRENT_DENY);
-    renderNav(panels);
-    PERMS_READY=true;
+    // 1) Tema: profil ayarı
+    applyProfileTheme(u.uid, meta);
 
-    const myPreferred = (data.adSoyad || u.displayName || (u.email?u.email.split('@')[0]:'')).trim();
-    let me = myPreferred;
-    try{
-      const s=await db.collection('nobet_index').limit(400).get();
-      const persons=[...new Set(s.docs.map(d=>(d.data().person||'').trim()).filter(Boolean))];
-      me = persons.find(p=>p.toLowerCase()===myPreferred.toLowerCase())
-        || persons.find(p=>p.toLowerCase().startsWith(myPreferred.toLowerCase()))
-        || persons[0] || myPreferred;
-    }catch(e){}
-    window.__ME_PERSON__ = me;
+    // 2) Yetkiler -> tabbar
+    const raw=Array.isArray(meta.yetkiler) ? meta.yetkiler : [];
+    const byPanelLabels={};  // { PanelAdı: ["Sayfa Etiketi", ...] }
+    raw.forEach(s=>{
+      const str=String(s); const i=str.indexOf(':'); if(i<0) return;
+      const panel=str.slice(0,i).trim(); const label=str.slice(i+1).trim();
+      if(!ALL_PANELS.includes(panel)) return;
+      (byPanelLabels[panel] ||= []).push(label);
+    });
+    CURRENT_PERMS = byPanelLabels;
+
+    MANIFEST = await loadManifest();
+    renderTabbar(Object.keys(byPanelLabels)); // alt tabbarı çiz
+
+    // 3) sayfa içerikleri
     buildControls();
 
-    document.getElementById('meName')?.replaceChildren(document.createTextNode(me));
+    // kullanıcı eşleşmesi (meName vs.)
+    const myPreferred = (meta.adSoyad || u.displayName || (u.email?u.email.split('@')[0]:'')).trim();
+    window.__ME_PERSON__ = myPreferred;
+    document.getElementById('meName')?.replaceChildren(document.createTextNode(myPreferred));
   }catch(e){
     console.error(e); showToast('Veriler yüklenirken hata.');
   }
 });
 
-/* Drawer toggle */
-document.getElementById('hamburger')?.addEventListener('click',()=>document.getElementById('drawer').classList.toggle('open'));
-document.addEventListener('click',(e)=>{const d=document.getElementById('drawer');const h=document.getElementById('hamburger');if(!d) return;if(!d.contains(e.target)&&!h?.contains(e.target)) d.classList.remove('open');});
+    /* ===== Pull-to-Refresh & Edge Swipe-Back ===== */
+    (function(){
+      const area=document.getElementById('scrollArea');
+      const tip=document.getElementById('ptrTip');
+      // PTR
+      const PTR_SHOW=110, PTR_TRIGGER=240;
+      let tSY=null,tSX=null,ptrActive=false,maxPull=0;
+      area.addEventListener('touchstart',e=>{
+        ptrActive=(area.scrollTop<=1);
+        tSY=e.touches[0].clientY; tSX=e.touches[0].clientX; maxPull=0;
+      },{passive:true});
+      area.addEventListener('touchmove',e=>{
+        if(!ptrActive) return;
+        const dy=e.touches[0].clientY - tSY;
+        const dx=e.touches[0].clientX - tSX;
+        if(Math.abs(dx)>50){ ptrActive=false; tip.classList.remove('show'); return; }
+        if(dy>PTR_SHOW) tip.classList.add('show'); else tip.classList.remove('show');
+        if(dy>maxPull) maxPull=dy;
+      },{passive:true});
+      area.addEventListener('touchend',()=>{
+        const shouldRefresh = ptrActive && (maxPull>=PTR_TRIGGER) && (area.scrollTop<=1);
+        tip.classList.remove('show'); ptrActive=false; tSY=tSX=null; maxPull=0;
+        if(shouldRefresh) location.reload();
+      },{passive:true});
 
-/* Logout */
-function logout(){ auth.signOut().then(()=>location.replace("../index.html")) }
-window.logout=logout;
+      // Edge swipe back
+      let sX=0,sY=0,dx=0,tracking=false;
+      const EDGE=24, TRIGGER=140, MAXVIS=100, MAXDY=80;
+      function setX(x,snap=false){
+        area.classList.toggle('snap', snap);
+        area.style.transform = `translateX(${Math.max(0, Math.min(x, MAXVIS))}px)`;
+      }
+      function reset(){ area.classList.remove('snap'); area.style.transform=''; tracking=false; dx=0; }
+      area.addEventListener('touchstart',e=>{ sX=e.touches[0].clientX; sY=e.touches[0].clientY; tracking=(sX<=EDGE); dx=0; },{passive:true});
+      area.addEventListener('touchmove',e=>{
+        if(!tracking) return;
+        const t=e.touches[0]; const dy=t.clientY - sY; if(Math.abs(dy)>MAXDY){ reset(); return; }
+        dx = t.clientX - sX; if(dx<=0){ setX(0); return; } setX(dx);
+      },{passive:true});
+      area.addEventListener('touchend',()=>{ if(!tracking) return; if(dx>=TRIGGER){ setX(MAXVIS,true); setTimeout(()=>history.back(),10); } else { setX(0,true); setTimeout(reset,220); } },{passive:true});
+      area.addEventListener('touchcancel', reset, {passive:true});
+    })();
+
+    /* ====== Tabbar / Manifest ====== */
+    const ALL_PANELS = ["Talebe","Personel","Nehari","Kermes","Muhasebe","Ayarlar","Admin"];
+    const ICONS = {Talebe:"👨‍🎓",Personel:"👥",Nehari:"📚",Kermes:"🧺",Muhasebe:"📊",Ayarlar:"⚙️",Admin:"🛡️",Home:"🏠"};
+    let CURRENT_PERMS = {};   // panel -> [labels]
+    let MANIFEST = {};        // panel -> pages
+
+    function normLower(s){ return String(s||'').trim().toLowerCase(); }
+
+    // panel köküne güvenli dönüş (dosya derinliğine göre ../ sayısı)
+    function panelHomeHref(){
+      const idx = location.pathname.indexOf('/panel/');
+      if (idx === -1) return '/panel/panel.html';               // tam yol fallback
+      const after = location.pathname.slice(idx + 7);           // '/panel/' sonrası
+      const depth = after.split('/').filter(Boolean).length - 1; // aynı klasörde ise 0
+      const up = '../'.repeat(Math.max(0, depth));
+      return up + 'panel.html';                                 // ../panel.html, ../../panel.html ...
+    }
+
+    // …tabbar oluşturan yerde:
+    function makeHomeBtn(){
+      const a = document.createElement('a');
+      a.href = panelHomeHref();           // ARTIK GERÇEK YOL
+      a.className = 'tbtn home';
+      a.innerHTML = `<div class="ico">🏠</div><div class="lbl">Ana Sayfa</div>`;
+      // dikkat: BURADA preventDefault yok!
+      return a;
+    }
+
+    function makeTabBtn(panel){
+      const a=document.createElement('a');
+      a.href="#"; a.className='tb'; a.dataset.panel=panel;
+      a.innerHTML=`<div class="ico">${ICONS[panel]||'📁'}</div><div class="lbl">${panel}</div>`;
+      a.addEventListener('click', e=>{ e.preventDefault(); openSheet(panel); });
+      return a;
+    }
+
+    function renderTabbar(allowed){
+      const rail=document.getElementById('tabRail'); rail.innerHTML='';
+      const panels = ALL_PANELS.filter(p=>allowed.includes(p));
+      const half = Math.ceil(panels.length/2);
+      panels.slice(0,half).forEach(p=> rail.appendChild(makeTabBtn(p)));
+      rail.appendChild(makeHomeBtn());
+      panels.slice(half).forEach(p=> rail.appendChild(makeTabBtn(p)));
+    }
+
+    const sheet=document.getElementById('panelSheet'),
+          sheetList=document.getElementById('sheetList'),
+          sheetTitle=document.getElementById('sheetTitle'),
+          sheetBackdrop=document.getElementById('sheetBackdrop');
+
+    function openSheet(panel){
+      sheetTitle.textContent=panel; sheetList.innerHTML='';
+      const allowedLabels = CURRENT_PERMS[panel] || [];
+      const manifestPages = MANIFEST[panel]    || [];
+      const items = manifestPages.filter(p=>{
+        const l=allowedLabels.map(x=>x.toLowerCase());
+        const key=(p.key||'').toLowerCase();
+        const label=(p.label||p.title||'').toLowerCase();
+        return l.includes(label) || l.includes(`${panel.toLowerCase()}: ${label}`) || (key && l.includes(key));
+      });
+
+      if(!items.length){
+        const it=document.createElement('div'); it.className='item'; it.textContent='Bu panel için sayfa tanımlı değil';
+        sheetList.appendChild(it);
+      }else{
+        items.forEach(p=>{
+          const it=document.createElement('div'); it.className='item';
+          it.innerHTML=`<div>${p.label||p.title}</div><div class="go">›</div>`;
+          it.addEventListener('click', ()=>{ if(p.path){ window.location.href = p.path.startsWith('/') ? p.path : '/'+p.path.replace(/^(\.\/|\.\.\/)+/,''); } });
+          sheetList.appendChild(it);
+        });
+      }
+      sheet.style.display='block'; sheetBackdrop.style.display='block';
+    }
+    function closeSheet(){ sheet.style.display='none'; sheetBackdrop.style.display='none'; }
+    sheetBackdrop.addEventListener('click', closeSheet);
+    let sStartY=null;
+    sheet.addEventListener('touchstart',e=>{ sStartY=e.touches[0].clientY },{passive:true});
+    sheet.addEventListener('touchmove',e=>{ if(sStartY==null) return; const dy=e.touches[0].clientY - sStartY; if(dy>40){ closeSheet(); sStartY=null; } },{passive:true});
+
+    /* Manifest: sayfa_manifesti/{Panel} -> { pages:[{key,title,path,order}] } */
+    async function loadManifest(){
+      const out={}; const root=db.collection('sayfa_manifesti'); const panelsSnap=await root.get();
+      for(const doc of panelsSnap.docs){
+        const panelName=(doc.id||'').trim();
+        const d=doc.data()||{}; const pages = Array.isArray(d.pages)? d.pages : [];
+        const arr = pages.map(p=>({
+          label: (p.title||'').trim() || ((p.key||'').split(':')[1]||'').trim(),
+          path:  (p.path||'').trim(),
+          key:   (p.key||'').trim(),
+          order: Number(p.order||0)
+        })).sort((a,b)=>a.order-b.order);
+        out[panelName]=arr;
+      }
+      return out;
+    }
+
 </script>
 </body>
 </html>

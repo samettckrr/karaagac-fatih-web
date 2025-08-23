@@ -1,462 +1,708 @@
 <!DOCTYPE html>
-<html lang="tr" data-theme="auto">
+<html lang="tr">
 <head>
-  <meta charset="UTF-8" />
-  <title>Karaağaç Fatih – iOS Panel</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <link rel="icon" type="image/png" href="./img/logo.png" />
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Panel | Karaağaç Fatih</title>
+<link rel="icon" type="image/png" href="./img/logo.png"/>
 
-  <!-- Firebase compat -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-  <script src="./js/firebase/firebase-init.js"></script>
+<!-- Firebase compat -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="./js/firebase/firebase-init.js"></script>
 
-  <style>
-    :root{
-      /* Safe area */
-      --safe-top: env(safe-area-inset-top);
-      --safe-bottom: env(safe-area-inset-bottom);
-      --safe-left: env(safe-area-inset-left);
-      --safe-right: env(safe-area-inset-right);
+<style>
+  :root{
+    /* Light */
+    --bg:#f6f7fb; --bg2:#ffffff; --text:#0f172a; --muted:#6b7280; --stroke:#e5e7eb;
+    --brand:#0ea5e9; --brand2:#22d3ee;
+    --card:#ffffff; --danger:#ef4444; --ok:#16a34a; --warn:#f59e0b;
+    --radius:16px; --shadow:0 12px 28px rgba(0,0,0,.12);
+    --appbar-h: calc(56px + env(safe-area-inset-top));
+    --tabbar-h: calc(64px + env(safe-area-inset-bottom));
+  }
+  :root.dark{
+    --bg:#0b1324; --bg2:#0f172a; --text:#e5e7eb; --muted:#9aa4b2; --stroke:#1f2937;
+    --card:rgba(15,23,42,.9); --shadow:0 10px 24px rgba(0,0,0,.35);
+    --danger:#f87171; --ok:#4ade80; --warn:#fbbf24;
+  }
 
-      /* Theme tokens (mevcut dilinle uyumlu) */
-      --bg:#0f172a; --bg2:#0b1324;
-      --grad1:#0ea5e922; --grad2:#22d3ee22;
-      --card:rgba(15,23,42,.92); --stroke:rgba(148,163,184,.18);
-      --text:#e5e7eb; --muted:#9aa4b2; --brand:#38bdf8; --brand2:#0ea5e9;
-      --surface:rgba(2,6,23,.1);
-      --radius:16px; --shadow:0 18px 40px rgba(0,0,0,.20);
-
-      --tab-h: 62px;
-    }
-    @media (prefers-color-scheme: light){
-      :root{
-        --bg:#eef6ff; --bg2:#f7fbff; --grad1:#38bdf822; --grad2:#22d3ee22;
-        --card:rgba(255,255,255,.95); --stroke:rgba(15,23,42,.12);
-        --text:#0b1220; --muted:#4b5563; --brand:#0ea5e9; --brand2:#0284c7;
-        --surface:#eef3ff;
-      }
-    }
-
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0; color:var(--text);
-      font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;
-      background:
-        radial-gradient(900px 680px at 12% 8%, var(--grad1), transparent 45%),
-        radial-gradient(800px 640px at 88% 92%, var(--grad2), transparent 50%),
-        linear-gradient(140deg, var(--bg), var(--bg2) 60%);
-      overflow:hidden;
+  *{box-sizing:border-box} html,body{height:100%}
+  body{
+    margin:0; background:linear-gradient(180deg,var(--bg),var(--bg2));
+    color:var(--text); font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+    -webkit-font-smoothing:antialiased; -moz-osx-smoothing:grayscale;
+  }
+    /* .app artık gerçek scroll container */
+    .app{
+      height: calc(100vh - var(--appbar-h) - var(--tabbar-h));
+      padding-top:var(--appbar-h);
+      padding-bottom:var(--tabbar-h);
+      overflow:auto;                 /* önemli */
+      -webkit-overflow-scrolling: touch; /* iOS için momentum scroll */
     }
 
-    /* ÜST – Hoş geldiniz alanı (Appbar YOK) */
-    .top{
-      position:sticky; top:0; z-index:10;
-      padding: calc(10px + var(--safe-top)) max(16px, var(--safe-left)) 12px max(16px, var(--safe-left));
-      padding-right: max(16px, var(--safe-right));
-      background: linear-gradient(180deg, rgba(2,6,23,.55), rgba(2,6,23,.15));
-      backdrop-filter: blur(10px);
-      border-bottom: 1px solid var(--stroke);
-    }
-    .hello{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
-    .hello h1{ margin:0; font-size:18px; font-weight:900; letter-spacing:.02em }
-    .hello .date{ color:var(--muted); font-size:12px; margin-top:2px }
-    .top-actions{ display:flex; gap:8px; }
-    .btn{
-      border:1px solid var(--stroke); background:var(--card); color:var(--text);
-      border-radius:999px; padding:8px 12px; cursor:pointer; font-weight:600;
+    /* Body’nin scroll yapmasını kapat (iOS bounce azaltır) */
+    html,body{height:100%; overflow:hidden}
+
+  /* Appbar (çentik altı) */
+  .appbar{
+    position:fixed; inset:0 0 auto 0; height:var(--appbar-h);
+    padding-top:env(safe-area-inset-top);
+    background:linear-gradient(180deg,var(--bg2),transparent);
+    backdrop-filter:saturate(140%) blur(8px);
+    border-bottom:1px solid var(--stroke); z-index:50;
+    display:flex; align-items:flex-end;
+  }
+  .appbar .inner{display:flex; align-items:center; justify-content:space-between; width:100%; padding:12px 16px 10px}
+  .hello{display:flex; flex-direction:column; gap:2px}
+  .hello .l1{font-weight:800; font-size:20px}
+  .hello .l2{font-size:13px; color:var(--muted)}
+  .hello .bullet{opacity:.5; padding:0 6px}
+
+  /* Content grid */
+  .container{max-width:980px; margin:16px auto; padding:0 14px}
+  .cards{display:grid; gap:14px}
+  @media(min-width:720px){ .cards{grid-template-columns:1fr 1fr} }
+  @media(min-width:980px){ .cards{grid-template-columns:1fr 1fr 1fr} }
+
+  .card{
+    background:var(--card); border:1px solid var(--stroke); border-radius:var(--radius);
+    box-shadow:var(--shadow);
+  }
+  .card .hd{padding:14px 14px 8px; border-bottom:1px dashed var(--stroke); font-weight:800}
+  .card .bd{padding:12px 14px 16px}
+  .stat-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0}
+  .stat-row + .stat-row{border-top:1px dashed var(--stroke)}
+  .stat-name{color:var(--muted); font-size:13.5px}
+  .stat-val{font-weight:800; font-size:18px}
+
+  /* Floors */
+  .floors{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+  @media(min-width:720px){ .floors{grid-template-columns:1fr 1fr 1fr} }
+  .floor{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    padding:10px 12px; border:1px solid var(--stroke); border-radius:12px; background:var(--bg2);
+  }
+  .floor.missing{ border-color:color-mix(in oklab,var(--danger) 60%, var(--stroke)); background:color-mix(in oklab,var(--danger) 12%, var(--bg2)) }
+  .floor .name{font-size:13px; color:var(--muted)} .floor .val{font-size:16px; font-weight:800}
+
+  .pill{padding:6px 10px; border-radius:999px; border:1px solid var(--stroke); background:var(--bg2); font-size:12px}
+  .pill.warn{border-color:color-mix(in oklab,var(--warn) 60%, var(--stroke)); color:var(--warn); background:color-mix(in oklab,var(--warn) 12%, var(--bg2))}
+
+  /* Tabbar */
+  .tabbar{
+    position:fixed; inset:auto 0 0 0; height:var(--tabbar-h);
+    padding-bottom:env(safe-area-inset-bottom);
+    border-top:1px solid var(--stroke);
+    background:linear-gradient(180deg, rgba(0,0,0,0), var(--bg2));
+    backdrop-filter:saturate(140%) blur(8px);
+    z-index:60; display:flex; align-items:center; justify-content:center;
+  }
+  .tabbar .rail{display:flex; align-items:center; gap:10px; max-width:1100px; width:100%; overflow-x:auto; padding:8px 12px 10px; scroll-snap-type:x proximity}
+  .tbtn{
+    flex:0 0 auto; scroll-snap-align:center;
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+    min-width:72px; padding:8px 10px; color:var(--muted); text-decoration:none; border-radius:12px
+  }
+  .tbtn.active{color:var(--brand)}
+  .tbtn .ico{font-size:20px; line-height:20px}
+  .tbtn .lbl{font-size:11.5px}
+  .tbtn.home{ /* gradyan KALDIRILDI */ background:transparent; color:inherit; border:1px dashed var(--stroke)}
+  .tbtn.home .ico{font-size:22px} .tbtn.home .lbl{font-weight:700}
+
+  /* Sheet (pages list) */
+  .sheet-backdrop{position:fixed; inset:0; z-index:59; display:none}
+  .sheet{
+    position:fixed; left:10px; right:10px; bottom:calc(var(--tabbar-h) + 10px);
+    background:var(--card); border:1px solid var(--stroke); border-radius:18px; box-shadow:var(--shadow);
+    z-index:61; display:none; max-height:40vh; overflow:auto;
+  }
+  .sheet .grip{width:44px; height:5px; background:var(--stroke); border-radius:999px; margin:8px auto}
+  .sheet .title{padding:6px 14px; font-weight:800}
+  .sheet .list{display:flex; flex-direction:column}
+  .sheet .item{padding:12px 14px; border-top:1px dashed var(--stroke); display:flex; align-items:center; justify-content:space-between; gap:10px}
+  .sheet .item .go{font-size:18px; opacity:.6}
+
+  /* Pull-to-refresh tip */
+  .ptr-tip{
+    position:fixed; top:calc(env(safe-area-inset-top) + 6px); left:50%; transform:translateX(-50%);
+    padding:6px 10px; font-size:12px; background:var(--bg2); border:1px solid var(--stroke);
+    color:var(--muted); border-radius:999px; opacity:0; transition:.25s; z-index:52;
+  }
+  .ptr-tip.show{opacity:1}
+  
+  /* Nöbetçi isimleri için chip görünümü */
+  #nobetciBox .stat-val{ padding:0 } /* iç boşluğu sıfırla */
+  #nobetciBox .chips{
+    display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end;
+  }
+  #nobetciBox .chip{
+    max-width: 70vw;          /* tek isim aşırı uzunsa */
+    padding:4px 8px; border:1px solid var(--stroke);
+    border-radius:999px; background:var(--bg2);
+    font-size:12px; color:var(--muted);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+
+
+    
+    .mask {
+      filter: blur(6px);
     }
 
-    /* İçerik alanı */
-    .content{
-      position:relative;
-      height: calc(100dvh - var(--tab-h) - var(--safe-bottom));
-      overflow:auto; -webkit-overflow-scrolling: touch;
-      padding: 14px;
-      padding-left: max(14px, var(--safe-left));
-      padding-right: max(14px, var(--safe-right));
-    }
-
-    /* Kartlar */
-    .card{
-      background:var(--card); border:1px solid var(--stroke);
-      border-radius: var(--radius); box-shadow: var(--shadow);
-      padding: 14px; margin-bottom: 12px;
-    }
-    .card h3{ margin:0 0 10px; font-size:16px; display:flex; justify-content:space-between; align-items:center }
-    .kpi{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:12px; border-radius:12px; border:1px solid var(--stroke); background:var(--surface)}
-    .kpi .val{font-size:22px; font-weight:800}
-    .kpi .sub{font-size:12px; color:var(--muted)}
-    .list{display:grid; gap:10px}
-    .list-item{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 12px; border-radius:12px; border:1px solid var(--stroke); background:var(--surface)}
-    .tag{padding:4px 8px; font-size:12px; border-radius:999px; border:1px solid var(--stroke); background:rgba(56,189,248,.12)}
-
-    /* Temizlik: tam genişlik graf / satır listesi */
-    .table{width:100%; border-collapse: collapse; font-size:14px}
-    .table th,.table td{border-bottom:1px solid var(--stroke); padding:10px 6px; text-align:left}
-    .table th{color:var(--muted); font-weight:700}
-
-    /* Pull to refresh */
-    .ptr{
-      position:absolute; top:0; left:0; right:0; height:0; overflow:visible; display:flex; justify-content:center; pointer-events:none;
-    }
-    .ptr .bubble{
-      margin-top: -40px; width:28px; height:28px; border-radius:50%;
-      border:2px solid rgba(255,255,255,.6); border-top-color:#fff; animation:spin 1s linear infinite; opacity:0; transition:opacity .15s;
-    }
-    .ptr.show .bubble{ opacity:1 }
-    @keyframes spin{to{transform:rotate(360deg)}}
-
-    /* Sheet – panelin sayfaları */
-    .sheet{
-      position: fixed; left:0; right:0;
-      bottom: calc(-100% - 20px); z-index: 50;
-      background: var(--card); border-top:1px solid var(--stroke);
-      border-top-left-radius: 16px; border-top-right-radius: 16px;
-      box-shadow: 0 -12px 30px rgba(0,0,0,.35);
-      transition: bottom .25s ease;
-      padding: 10px;
-      padding-bottom: calc(10px + var(--safe-bottom));
-      max-height: calc(70dvh + var(--safe-bottom)); overflow:auto;
-    }
-    .sheet.open{ bottom: 0 }
-    .sheet .drag{ width:46px; height:4px; border-radius:999px; background:var(--stroke); margin:6px auto 10px; }
-    .sheet h4{ margin:0 0 8px; font-size:14px; color:var(--muted); text-align:center }
-    .sheet a{ display:block; padding:12px; border-radius:12px; border:1px solid var(--stroke); background:var(--surface); color:var(--text); text-decoration:none; margin:6px 0 }
-
-    /* Alt Tab Bar */
-    .tabbar{
-      position: fixed; left:0; right:0; bottom:0; z-index: 60;
-      height: calc(var(--tab-h) + var(--safe-bottom));
-      padding-bottom: var(--safe-bottom);
-      background: var(--card); border-top:1px solid var(--stroke);
-      display:flex; align-items:center; justify-content: space-around; gap:6px;
-    }
-    .tab{
-      min-width: 0;
-      display:flex; flex-direction:column; align-items:center; justify-content:center;
-      padding: 6px 8px; gap:4px; border-radius:10px; flex:1; max-width: 140px;
-      color: var(--text); border:1px solid transparent;
-    }
-    .tab small{ font-size:11px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:120px }
-    .tab.active{ border-color: var(--stroke); background: var(--surface) }
-  </style>
+    
+</style>
 </head>
 <body>
-
-  <!-- ÜST – Hoş geldiniz -->
-  <div class="top">
-    <div class="hello">
-      <div>
-        <h1 id="helloName">Hoş geldiniz, —</h1>
-        <div class="date" id="todayText">—</div>
-      </div>
-      <div class="top-actions">
-        <button class="btn" id="btnTheme">Tema: Auto</button>
-        <button class="btn" id="btnLogout">Çıkış</button>
+  <!-- Appbar -->
+  <div class="appbar">
+    <div class="inner">
+      <div class="hello">
+        <div class="l1 mask">Hoş Geldin, <span id="adSoyad">...</span></div>
+        <div class="l2 mask"><span id="gun">—</span> <span class="bullet">•</span> <span id="tarih">—</span> <span class="bullet">•</span> Tema: <span id="temaYazi">—</span></div>
       </div>
     </div>
   </div>
 
-  <!-- İçerik -->
-  <main class="content" id="content">
-    <!-- Pull to refresh göstergesi -->
-    <div class="ptr" id="ptr"><div class="bubble"></div></div>
+  <div class="ptr-tip" id="ptrTip">Yenilemek için bırak</div>
 
-    <!-- 1) Talebe -->
-    <section class="card">
-      <h3>Talebe <span class="tag">Güncel</span></h3>
-      <div class="kpi">
-        <div>
-          <div class="val" id="talebeToplam">—</div>
-          <div class="sub">Toplam Talebe</div>
+  <div class="app" id="scrollArea">
+    <div class="container">
+      <div class="cards">
+
+        <!-- 1 Talebe İstatistiği -->
+        <div class="card">
+          <div class="hd">Talebe İstatistiği</div>
+          <div class="bd">
+            <div class="stat-row"><div class="stat-name">Toplam Talebe</div><div class="stat-val mask" id="toplamTalebe">—</div></div>
+            <div class="stat-row"><div class="stat-name">Ensar</div><div class="stat-val mask" id="ensarAdet">—</div></div>
+            <div class="stat-row"><div class="stat-name">Muhacir</div><div class="stat-val mask" id="muhacirAdet">—</div></div>
+          </div>
         </div>
-        <div>
-          <div class="sub">Ensar / Muhacir</div>
-          <div class="val" style="font-size:18px"><span id="talebeEnsar">—</span> / <span id="talebeMuhacir">—</span></div>
+
+        <!-- 2 Nöbetçi Personel -->
+        <div class="card">
+          <div class="hd">Nöbetçi Personel (Bugün)</div>
+          <div class="bd" id="nobetciBox">
+            <div class="stat-row"><div class="stat-name">Evli</div><div class="stat-val mask" id="evliNobet">—</div></div>
+            <div class="stat-row"><div class="stat-name">Bekar</div><div class="stat-val mask" id="bekarNobet">—</div></div>
+          </div>
         </div>
+
+        <!-- 3 Bugün Kurs Temizlik Talebe Puanı (geniş) -->
+        <div class="card" style="grid-column: span 2">
+          <div class="hd">Bugün Kurs Temizlik Talebe Puanı</div>
+          <div class="bd" id="temizlikBox">
+            <div class="stat-row">
+              <div class="stat-name">Toplam Ortalama</div>
+              <div class="stat-val" id="temizlikOrtalama">—</div>
+            </div>
+            <div class="floors" id="katlarGrid"></div>
+            <div id="temizlikNot" style="margin-top:10px; color:var(--muted); font-size:13px"></div>
+          </div>
+        </div>
+
+        <!-- 4 Genel Temizlik Kontrolü – Bugün (geniş, ufak ayrım) -->
+        <div class="card" style="grid-column: span 2; border-style:solid; border-width:1px; border-color:var(--stroke)">
+          <div class="hd">Genel Temizlik Kontrolü – Bugün</div>
+          <div class="bd">
+            <div class="stat-row">
+              <div class="stat-name">Toplam Ortalama</div>
+              <div class="stat-val">—</div>
+            </div>
+            <div class="floors">
+              <div class="floor missing"><div class="name">2.kat</div><div class="val">—</div></div>
+              <div class="floor missing"><div class="name">1.kat</div><div class="val">—</div></div>
+              <div class="floor missing"><div class="name">Giriş kat</div><div class="val">—</div></div>
+              <div class="floor missing"><div class="name">-1.kat</div><div class="val">—</div></div>
+              <div class="floor missing"><div class="name">-2.kat</div><div class="val">—</div></div>
+            </div>
+            <div style="margin-top:10px; color:var(--muted); font-size:13px">Form girilmedi.</div>
+          </div>
+        </div>
+
+        <!-- 5 Teknik Eksikler -->
+        <div class="card">
+          <div class="hd">Teknik Eksikler</div>
+          <div class="bd" id="eksiklerBox">
+            <div class="stat-row"><div class="stat-name">2. Kat</div><div class="stat-val" id="ex2">—</div></div>
+            <div class="stat-row"><div class="stat-name">1. Kat</div><div class="stat-val" id="ex1">—</div></div>
+            <div class="stat-row"><div class="stat-name">Giriş Kat</div><div class="stat-val" id="exG">—</div></div>
+            <div class="stat-row"><div class="stat-name">-1. Kat</div><div class="stat-val" id="ex-1">—</div></div>
+            <div class="stat-row"><div class="stat-name">-2. Kat</div><div class="stat-val" id="ex-2">—</div></div>
+          </div>
+        </div>
+
+        <!-- 6 Duyurular -->
+        <div class="card">
+          <div class="hd">Duyurular</div>
+          <div class="bd"><span class="pill">---</span></div>
+        </div>
+
       </div>
-    </section>
-
-    <!-- 2) Nöbetçi -->
-    <section class="card">
-      <h3>Nöbetçi</h3>
-      <div class="kpi">
-        <div>
-          <div class="sub">Evli / İhvan</div>
-          <div class="val" id="nobetEvli">—</div>
-        </div>
-        <div>
-          <div class="sub">Bekar</div>
-          <div class="val" id="nobetBekar">—</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 3) Temizlik (tam genişlik) -->
-    <section class="card">
-      <h3>Temizlik – Kat Puanları</h3>
-      <table class="table" id="temizlikTable">
-        <thead><tr><th>Kat</th><th>Puan</th><th>Not</th></tr></thead>
-        <tbody id="temizlikBody"><tr><td colspan="3">—</td></tr></tbody>
-      </table>
-    </section>
-
-    <!-- 4) Eksikler -->
-    <section class="card">
-      <h3>Eksikler</h3>
-      <div class="list" id="eksikList"><div class="list-item"><div>—</div><div class="muted">—</div></div></div>
-    </section>
-
-    <!-- 5) Duyurular -->
-    <section class="card">
-      <h3>Duyurular</h3>
-      <div class="list" id="duyuruList"><div class="list-item"><div>—</div><div class="muted">—</div></div></div>
-    </section>
-
-    <div style="height:120px"></div>
-  </main>
-
-  <!-- Panel sayfaları için sheet -->
-  <div class="sheet" id="sheet">
-    <div class="drag"></div>
-    <h4 id="sheetTitle">Panel</h4>
-    <div id="sheetBody"></div>
+    </div>
   </div>
 
-  <!-- Alt Tab Bar (paneller) -->
-  <nav class="tabbar" id="tabbar"></nav>
+  <!-- Sheet -->
+  <div class="sheet-backdrop" id="sheetBackdrop"></div>
+  <div class="sheet" id="panelSheet">
+    <div class="grip"></div>
+    <div class="title" id="sheetTitle">—</div>
+    <div class="list" id="sheetList"></div>
+  </div>
 
-  <script>
-    /*************** THEME + AUTH *****************/
-    const auth = firebase.auth();
-    const db   = firebase.firestore();
-    try{ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL) }catch(e){}
+  <!-- Tabbar -->
+  <div class="tabbar">
+    <div class="rail" id="tabRail"></div>
+  </div>
 
-    const root = document.documentElement;
-    const btnTheme = document.getElementById('btnTheme');
-    function applyTheme(mode){
-      localStorage.setItem('kf_theme', mode);
-      const auto = (mode === 'auto');
-      const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      root.setAttribute('data-theme', auto ? (isDark ? 'dark' : 'light') : mode);
-      btnTheme.textContent = 'Tema: ' + (mode[0].toUpperCase()+mode.slice(1));
-    }
-    applyTheme(localStorage.getItem('kf_theme')||'auto');
-    btnTheme.addEventListener('click', ()=>{
-      const cur = localStorage.getItem('kf_theme')||'auto';
-      applyTheme(cur==='dark'?'light':(cur==='light'?'auto':'dark'));
+<script>
+/* =========================
+   PATH sabitleri
+   ========================= */
+const PATHS = {
+  users: 'kullanicilar',
+  students: 'talebeler',
+  dutyWeeks: 'nobet_planlari',
+  cleaning: 'temizlik_kontrol',
+  issues: 'eksik_bildirim',
+  manifest: 'sayfa_manifesti' // {panel,label,path}
+};
+
+const KATLAR = ["2.kat","1.kat","Giriş kat","-1.kat","-2.kat"];
+const ALL_PANELS = ["Talebe","Personel","Nehari","Kermes","Muhasebe","Ayarlar","Admin"];
+const ICONS = {Talebe:"👨‍🎓",Personel:"👥",Nehari:"📚",Kermes:"🧺",Muhasebe:"📊",Ayarlar:"⚙️",Admin:"🛡️",Home:"🏠"};
+
+const db = window.db;
+const auth = firebase.auth();
+
+/* ====== Tarih/Gün ====== */
+function fmtDate(d=new Date()){
+  const daysTR = ['Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi','Pazar'];
+  const short = ['Pzt','Sal','Çar','Per','Cum','Cts','Paz'];
+  const dayIdx = (d.getDay()+6)%7;
+  return {
+    gunKisa: short[dayIdx],
+    gunUzun: daysTR[dayIdx],
+    tarihTR: d.toLocaleDateString('tr-TR',{day:'2-digit',month:'long',year:'numeric'}),
+    iso: d.toISOString().slice(0,10),
+    isoWeek: getISOWeekLabel(d) // 2025-W32
+  };
+}
+function getISOWeekLabel(date){
+  const d = new Date(Date.UTC(date.getFullYear(),date.getMonth(),date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+  const weekNo = Math.ceil((((d - yearStart)/86400000) + 1)/7);
+  const yyyy = d.getUTCFullYear();
+  return `${yyyy}-W${String(weekNo).padStart(2,'0')}`;
+}
+
+/* ====== Tema ====== */
+function setTheme(mode){
+  const root = document.documentElement;
+  if(mode==='oto'){
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    root.classList.toggle('dark', prefersDark);
+  }else{
+    root.classList.toggle('dark', mode==='koyu');
+  }
+  document.getElementById('temaYazi').textContent = mode==='oto'?'Oto':mode==='acik'?'Açık':'Koyu';
+}
+function saveThemeLocal(uid,mode){ try{ localStorage.setItem(`temaAyar:${uid}`,mode) }catch(e){} }
+function readThemeLocal(uid){ try{ return localStorage.getItem(`temaAyar:${uid}`) }catch(e){ return null } }
+
+/* ====== Yardımcı ====== */
+function $(id){ return document.getElementById(id) }
+function normKat(ad){
+  const s = (ad||'').toLowerCase();
+  if(s.includes('giriş')) return 'Giriş kat';
+  if(s.includes('2.kat')||s.includes('2. kat')) return '2.kat';
+  if(s.includes('1.kat')||s.includes('1. kat')) return '1.kat';
+  if(s.includes('-1.kat')||s.includes('-1. kat')) return '-1.kat';
+  if(s.includes('-2.kat')||s.includes('-2. kat')) return '-2.kat';
+  // çıplak "2.kat" gibi ise aynen döner
+  if(/^[-]?\d\.(kat)/.test(s)) return s.replace('.kat','')+'.kat';
+  return null;
+}
+
+/* ====== Tabbar / Sheet ====== */
+let CURRENT_PERMS = {};   // panel -> [labels]
+let MANIFEST = {};        // panel -> [{label,path}]
+function renderTabbar(allowed){
+  const rail = $('tabRail'); rail.innerHTML='';
+  const panels = ALL_PANELS.filter(p=>allowed.includes(p));
+
+  const half = Math.ceil(panels.length/2);
+  const left = panels.slice(0,half), right = panels.slice(half);
+
+  left.forEach(p=> rail.appendChild(makeTabBtn(p)));
+  rail.appendChild(makeHomeBtn());
+  right.forEach(p=> rail.appendChild(makeTabBtn(p)));
+}
+function makeHomeBtn(){
+  const a = document.createElement('a');
+  a.href="#"; a.className='tbtn home'; a.dataset.panel='Home';
+  a.innerHTML = `<div class="ico">${ICONS.Home}</div><div class="lbl">Ana Sayfa</div>`;
+  a.addEventListener('click', e=>{ e.preventDefault(); closeSheet(); window.scrollTo({top:0,behavior:'smooth'}); });
+  return a;
+}
+function makeTabBtn(panel){
+  const a = document.createElement('a');
+  a.href="#"; a.className='tbtn'; a.dataset.panel=panel;
+  a.innerHTML = `<div class="ico">${ICONS[panel]||'📁'}</div><div class="lbl">${panel}</div>`;
+  a.addEventListener('click', e=>{ e.preventDefault(); openSheet(panel); });
+  return a;
+}
+
+const sheet = $('panelSheet'), sheetList=$('sheetList'), sheetTitle=$('sheetTitle'), sheetBackdrop=$('sheetBackdrop');
+function openSheet(panel){
+  sheetTitle.textContent = panel;
+  sheetList.innerHTML = '';
+
+  const allowedLabels = CURRENT_PERMS[panel] || [];       // kullanıcının bu panelde görebileceği label listesi
+  const manifestPages  = MANIFEST[panel]    || [];        // manifestten gelen {label,path,order,key}
+
+  // allowedLabels'e göre manifest'i kes
+  const items = manifestPages.filter(p => {
+    const labelMatch = allowedLabels.some(l => l.toLowerCase() === p.label.toLowerCase());
+    const withPanel  = `${panel}: ${p.label}`.toLowerCase();
+    const withPanelMatch = allowedLabels.some(l => l.toLowerCase() === withPanel);
+    const keyMatch = allowedLabels.some(l => p.key && p.key.toLowerCase() === l.toLowerCase());
+    return labelMatch || withPanelMatch || keyMatch;
+  });
+
+  if(!items.length){
+    const it = document.createElement('div'); it.className='item';
+    it.textContent = 'Bu panel için sayfa tanımlı değil';
+    sheetList.appendChild(it);
+  }else{
+    items.forEach(p=>{
+      const it = document.createElement('div'); it.className='item';
+      it.innerHTML = `<div>${p.label}</div><div class="go">›</div>`;
+      it.addEventListener('click', ()=>{ if(p.path) window.location.href = p.path; });
+      sheetList.appendChild(it);
     });
+  }
 
-    document.getElementById('btnLogout').addEventListener('click', async ()=>{
-      try{ await auth.signOut(); location.replace('../index.html'); }catch(e){ alert('Çıkış hatası'); }
-    });
+  sheet.style.display='block';
+  sheetBackdrop.style.display='block';
+}
 
-    /*************** TARİH *****************/
-    function setToday(){
-      const d=new Date(), days=['Pazar','Pazartesi','Salı','Çar','Per','Cum','Cts'];
-      document.getElementById('todayText').textContent =
-        `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()} • ${days[d.getDay()]}`;
+function closeSheet(){ sheet.style.display='none'; sheetBackdrop.style.display='none'; }
+sheetBackdrop.addEventListener('click', closeSheet);
+let sStartY=null;
+sheet.addEventListener('touchstart',e=>{ sStartY=e.touches[0].clientY },{passive:true});
+sheet.addEventListener('touchmove',e=>{ if(sStartY==null) return; const dy=e.touches[0].clientY - sStartY; if(dy>40){ closeSheet(); sStartY=null; } },{passive:true});
+
+    /* ==============================
+       Pull-to-Refresh (zor) & Swipe-Back
+       ============================== */
+    const scrollArea = document.getElementById('scrollArea');
+    const ptrTip = document.getElementById('ptrTip');
+
+    // Eşikler
+    const PTR_SHOW = 110;     // ipucu gösterme eşiği
+    const PTR_TRIGGER = 240; // gerçek yenileme eşiği
+
+    // Durum değişkenleri
+    let touchStartY = null;
+    let touchStartX = null;
+    let ptrActive = false;   // sadece tepedeyken aktif
+    let maxPull = 0;
+
+    // Başlangıç dokunuşu
+    scrollArea.addEventListener('touchstart', (e) => {
+      // sadece en üstteysek (scrollTop <= 1) aktif olsun
+      const atTop = (scrollArea.scrollTop <= 1);               // gerçek container
+      ptrActive = atTop;
+      touchStartY = e.touches[0].clientY;
+      touchStartX = e.touches[0].clientX;
+      maxPull = 0;
+    }, { passive: true });
+
+    // Hareket
+    scrollArea.addEventListener('touchmove', (e) => {
+      if (!ptrActive) return;
+
+      const dy = e.touches[0].clientY - touchStartY;
+      const dx = e.touches[0].clientX - touchStartX;
+
+      // Yatay hareket baskınsa iptal (yukarı kaydırırken yanlışlıkla tetiklenmesin)
+      if (Math.abs(dx) > 50) {
+        ptrActive = false;
+        ptrTip.classList.remove('show');
+        return;
+      }
+
+      // İpucu 80px'ten sonra görünsün
+      if (dy > PTR_SHOW) {
+        ptrTip.classList.add('show');
+      } else {
+        ptrTip.classList.remove('show');
+      }
+
+      // En fazla çekilen mesafeyi tut
+      if (dy > maxPull) maxPull = dy;
+    }, { passive: true });
+
+    // Bırakma
+    scrollArea.addEventListener('touchend', () => {
+      const shouldRefresh = ptrActive && (maxPull >= PTR_TRIGGER) && (scrollArea.scrollTop <= 1);
+      ptrTip.classList.remove('show');
+      // reset
+      ptrActive = false;
+      touchStartY = touchStartX = null;
+      maxPull = 0;
+
+      if (shouldRefresh) location.reload();
+    }, { passive: true });
+
+    // Swipe-back (soldan sağa güçlü kaydırma)
+    let sbStartX=null, sbStartY=null;
+    scrollArea.addEventListener('touchstart', e => {
+      sbStartX = e.touches[0].clientX;
+      sbStartY = e.touches[0].clientY;
+    }, {passive:true});
+    scrollArea.addEventListener('touchmove', e => {
+      const dx = e.touches[0].clientX - sbStartX;
+      const dy = e.touches[0].clientY - sbStartY;
+      if (dx > 120 && Math.abs(dy) < 40) { history.back(); }
+    }, {passive:true});
+
+
+/* ====== Veri ====== */
+async function loadUser(uid){
+  const snap = await db.collection(PATHS.users).doc(uid).get();
+  return snap.exists ? snap.data() : {};
+}
+    // Panel adlarını normalize et (Firestore'da "Sistem Ayarları" dokümanı var)
+    const PANEL_ALIAS = {
+      "Sistem Ayarları": "Ayarlar",
+      "Sistem Ayarlari": "Ayarlar",
+      "Sistem Ayarları ": "Ayarlar"
+    };
+
+    function normPanelName(x){
+      const t = (x||'').trim();
+      return PANEL_ALIAS[t] || t;
     }
-    setToday();
 
-    /*************** SAFE DATA HELPERS *****************/
-    const norm = (s)=> String(s||'').trim().toLowerCase();
-    let CURRENT_ALLOW = new Set(); // yetki listesi (+)
-    let CURRENT_DENY  = new Set(); // hariçler (-)
+    // Manifest: sayfa_manifesti/{PanelDoc} -> { order, pages:[{key,title,path,order}] }
+    async function loadManifest(){
+      const out = {};
+      const root = db.collection('sayfa_manifesti');
+      const panelsSnap = await root.get();
 
-    /*************** MANİFESTTEN PANELLER *****************/
-    async function fetchPanels(){
-      // sayfa_manifesti -> { panels: {...} } ya da tek tek dokümanlar — senin paylaştığın yapıya uygun
-      const res = [];
-      try{
-        const snap = await db.collection('sayfa_manifesti').get(); // TODO: kendi yolunu kullan
-        snap.forEach(doc=>{
-          const d = doc.data()||{}, id=doc.id, title=d.title||id;
-          let pages = Array.isArray(d.pages) ? d.pages : [];
-          // Yetkiye göre sayfaları filtrele
-          pages = pages.filter(pg=>{
-            const key = norm(pg.key || pg.title || '');
-            const inPanel = CURRENT_ALLOW.has(norm(id)) || CURRENT_ALLOW.has(norm(title));
-            const allowed = CURRENT_ALLOW.has(key) || inPanel;
-            const denied  = CURRENT_DENY.has(key);
-            return allowed && !denied;
-          });
-          if(pages.length){
-            res.push({ id, title, pages });
+      for(const doc of panelsSnap.docs){
+        const panelName = normPanelName(doc.id);
+        const d = doc.data() || {};
+        const pages = Array.isArray(d.pages) ? d.pages : [];
+        const arr = pages.map(p=>{
+          // key: "Personel: Alacaklar" gibi; title: "Alacaklar"
+          const key = (p.key||'').trim();
+          const title = (p.title||'').trim();
+          const path = (p.path||'').trim();
+          const order = Number(p.order||0);
+          // label öncelik: title varsa title, yoksa key'deki iki noktadan sonraki kısım
+          let label = title;
+          if(!label){
+            const i = key.indexOf(':');
+            label = (i>=0 ? key.slice(i+1) : key).trim();
           }
-        });
-      }catch(e){ console.error('manifest:', e); }
-      return res;
+          // ayrıca eşleştirmede kullanmak için tamKey dursun
+          return { label, path, order, key };
+        }).sort((a,b)=>a.order-b.order);
+        out[panelName] = arr;
+      }
+      return out; // { "Personel":[{label,path,order,key},...], ... }
     }
 
-    /*************** TAB BAR OLUŞTURMA *****************/
-    const tabbar = document.getElementById('tabbar');
-    const sheet  = document.getElementById('sheet');
-    const sheetTitle = document.getElementById('sheetTitle');
-    const sheetBody  = document.getElementById('sheetBody');
-
-    function openSheet(panel){
-      sheetTitle.textContent = panel.title;
-      sheetBody.innerHTML = '';
-      (panel.pages||[]).forEach(pg=>{
-        const a = document.createElement('a');
-        a.textContent = pg.title || pg.key || 'Sayfa';
-        a.href = pg.path || '#';
-        a.addEventListener('click', ()=> closeSheet());
-        sheetBody.appendChild(a);
-      });
-      sheet.classList.add('open');
-    }
-    function closeSheet(){ sheet.classList.remove('open'); }
-    sheet.addEventListener('click', (e)=>{ if(e.target===sheet) closeSheet(); });
-
-    function renderTabs(panels){
-      tabbar.innerHTML = '';
-      panels.forEach((p, idx)=>{
-        const btn = document.createElement('button');
-        btn.className = 'tab' + (idx===0?' active':'');
-        btn.innerHTML = `<small>${p.title}</small>`;
-        btn.addEventListener('click', ()=>{
-          tabbar.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-          btn.classList.add('active');
-          openSheet(p);
-        });
-        tabbar.appendChild(btn);
-      });
-    }
-
-    /*************** CANLI VERİ – Firestore ***************/
-    async function loadTalebe(){
-      try{
-        // TODO: kendi yolların
-        // istatistik/talebe -> { toplam, ensar, muhacir }
-        const ref = db.collection('istatistik').doc('talebe');
-        const s = await ref.get();
-        const d = s.exists ? s.data() : {};
-        document.getElementById('talebeToplam').textContent  = d.toplam ?? '—';
-        document.getElementById('talebeEnsar').textContent   = d.ensar ?? '—';
-        document.getElementById('talebeMuhacir').textContent = d.muhacir ?? '—';
-      }catch(e){ console.log('talebe', e); }
-    }
+async function loadTalebeStats(){
+  const snap = await db.collection(PATHS.students).get();
+  let toplam=0, ensar=0, muhacir=0;
+  snap.forEach(doc=>{
+    toplam++;
+    const t=(doc.data().tur||'').toLowerCase();
+    if(t==='ensar') ensar++;
+    if(t==='muhacir') muhacir++;
+  });
+  $('toplamTalebe').textContent=toplam; $('ensarAdet').textContent=ensar; $('muhacirAdet').textContent=muhacir;
+}
 
     async function loadNobet(){
-      try{
-        // TODO: nobet/gunluk/<YYYY-MM-DD> -> { evli, bekar }
-        const today = new Date();
-        const key = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-        const ref = db.collection('nobet').doc('gunluk').collection('günler').doc(key);
-        const s = await ref.get();
-        const d = s.exists ? s.data() : {};
-        document.getElementById('nobetEvli').textContent  = d.evli_ihvan ?? d.evli ?? '—';
-        document.getElementById('nobetBekar').textContent = d.bekar ?? '—';
-      }catch(e){ console.log('nöbet', e); }
-    }
+      const { isoWeek, gunUzun } = fmtDate(); // "Perşembe" vb.
+      const doc = await db.collection('nobet_planlari').doc(isoWeek).get();
 
-    async function loadTemizlik(){
-      try{
-        // TODO: temizlik/gunluk/<YYYY-MM-DD> -> { katlar:[{ad,puan,not}] }
-        const today = new Date();
-        const key = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-        const ref = db.collection('temizlik').doc('gunluk').collection('günler').doc(key);
-        const s = await ref.get();
-        const d = s.exists ? s.data() : {};
-        const rows = Array.isArray(d.katlar)? d.katlar : [];
-        const tbody = document.getElementById('temizlikBody');
-        tbody.innerHTML = rows.length ? '' : '<tr><td colspan="3">Kayıt yok</td></tr>';
-        rows.forEach(r=>{
-          const tr = document.createElement('tr');
-          tr.innerHTML = `<td>${r.ad||'-'}</td><td><b>${r.puan ?? '-'}</b></td><td>${r.not||''}</td>`;
-          tbody.appendChild(tr);
-        });
-      }catch(e){ console.log('temizlik', e); }
-    }
-
-    async function loadEksikler(){
-      try{
-        // TODO: eksikler (son 10) -> [{baslik, durum}]
-        const snap = await db.collection('eksikler').orderBy('ts','desc').limit(10).get();
-        const list = document.getElementById('eksikList');
-        list.innerHTML = '';
-        if(snap.empty){ list.innerHTML='<div class="list-item"><div>Eksik bulunamadı</div><div></div></div>'; return; }
-        snap.forEach(doc=>{
-          const d=doc.data()||{};
-          const el=document.createElement('div');
-          el.className='list-item';
-          el.innerHTML = `<div>${d.baslik||'Eksik'}</div><div class="tag">${(d.durum||'açık').toUpperCase()}</div>`;
-          list.appendChild(el);
-        });
-      }catch(e){ console.log('eksikler', e); }
-    }
-
-    async function loadDuyurular(){
-      try{
-        // TODO: duyurular (son 10) -> [{baslik, alt, ts}]
-        const snap = await db.collection('duyurular').orderBy('ts','desc').limit(10).get();
-        const list = document.getElementById('duyuruList');
-        list.innerHTML = '';
-        if(snap.empty){ list.innerHTML='<div class="list-item"><div>Duyuru yok</div><div></div></div>'; return; }
-        snap.forEach(doc=>{
-          const d=doc.data()||{};
-          const el=document.createElement('div');
-          el.className='list-item';
-          const when = d.ts && d.ts.toDate ? d.ts.toDate().toLocaleString('tr-TR') : '';
-          el.innerHTML = `<div><strong>${d.baslik||'—'}</strong><div class="muted" style="font-size:12px">${d.alt||''}</div></div><div class="muted" style="font-size:12px">${when}</div>`;
-          list.appendChild(el);
-        });
-      }catch(e){ console.log('duyurular', e); }
-    }
-
-    async function loadAll(){
-      await Promise.all([loadTalebe(), loadNobet(), loadTemizlik(), loadEksikler(), loadDuyurular()]);
-    }
-
-    /*************** PULL TO REFRESH *****************/
-    (function(){
-      const sc = document.getElementById('content');
-      const ptr = document.getElementById('ptr');
-      let startY=0, pulling=false;
-      sc.addEventListener('touchstart', (e)=>{
-        if(sc.scrollTop===0){ startY = e.touches[0].clientY; pulling=true; }
-      }, {passive:true});
-      sc.addEventListener('touchmove', (e)=>{
-        if(!pulling) return;
-        const dy = e.touches[0].clientY - startY;
-        if(dy>60){ ptr.classList.add('show'); }
-      }, {passive:true});
-      sc.addEventListener('touchend', async ()=>{
-        if(!pulling) return;
-        pulling=false;
-        if(ptr.classList.contains('show')){
-          await loadAll();
-          setTimeout(()=> ptr.classList.remove('show'), 300);
+      // Yardımcı: chip'leri çiz
+      function renderChips(elId, value){
+        const el = document.getElementById(elId);
+        let names = [];
+        if (Array.isArray(value)) names = value;
+        else if (typeof value === 'string' && value.trim()){
+          names = value.split(',').map(s=>s.trim()).filter(Boolean);
         }
-      }, {passive:true});
-    })();
+        if (!names.length){ el.textContent = '—'; return; }
+        el.innerHTML = '<div class="chips">' + names.map(n=>(
+          `<span class="chip" title="${n.replace(/"/g,'&quot;')}">${n}</span>`
+        )).join('') + '</div>';
+      }
 
-    /*************** AUTH FLOW *****************/
-    auth.onAuthStateChanged(async (user)=>{
-      if(!user){ location.replace('../index.html'); return; }
-      document.getElementById('helloName').textContent = 'Hoş geldiniz, ' + (user.displayName || user.email || 'Kullanıcı');
+      let evli='—', bekar='—';
 
-      // Kullanıcı yetkileri
-      try{
-        const u = await db.collection('kullanicilar').doc(user.uid).get();
-        const d = u.exists ? (u.data()||{}) : {};
-        const raw = Array.isArray(d.yetkiler) ? d.yetkiler : [];
-        CURRENT_ALLOW = new Set(raw.filter(s=>!String(s).trim().match(/^[-!]/)).map(norm));
-        CURRENT_DENY  = new Set(raw.filter(s=> String(s).trim().match(/^[-!]/)).map(s=>norm(String(s).replace(/^[-!]\s*/,''))));
-      }catch(e){}
+      if (doc.exists){
+        const data = doc.data() || {};
+        let rows = [];
 
-      // Paneller → Tab bar
-      const panels = await fetchPanels();
-      renderTabs(panels);
+        // 1) rows[] varsa onu kullan
+        if (Array.isArray(data.rows)) rows = data.rows;
 
-      // Veriler
-      await loadAll();
+        // 2) yoksa dokümandaki object alanları tara
+        if (!rows.length){
+          rows = Object.values(data).filter(v => v && typeof v === 'object');
+        }
+
+        // Bugüne uygun kaydı esnek biçimde bul
+        const todayRow = rows.find(r => {
+          const g = (r.gun || r['gün'] || r.day || '').toString().toLowerCase().trim();
+          const full = gunUzun.toLowerCase(); // "perşembe"
+          const short = full.startsWith('pazartesi') ? 'pzt' :
+                        full.startsWith('salı')       ? 'sal' :
+                        full.startsWith('çarşamba')   ? 'çar' :
+                        full.startsWith('perşembe')   ? 'per' :
+                        full.startsWith('cuma')       ? 'cum' :
+                        full.startsWith('cumartesi')  ? 'cts' : 'paz';
+          return g === full || g === short;
+        });
+
+        if (todayRow){
+          const evliArr  = Array.isArray(todayRow.evli)  ? todayRow.evli  : (todayRow.evli  ? String(todayRow.evli).split(',').map(s=>s.trim())  : []);
+          const bekarArr = Array.isArray(todayRow.bekar) ? todayRow.bekar : (todayRow.bekar ? String(todayRow.bekar).split(',').map(s=>s.trim()) : []);
+          renderChips('evliNobet', evliArr);
+          renderChips('bekarNobet', bekarArr);
+          return; // çizdik, çık
+        }
+      }
+
+      // Kayıt bulunamadıysa:
+      document.getElementById('evliNobet').textContent = '—';
+      document.getElementById('bekarNobet').textContent = '—';
+    }
+
+async function loadTemizlik(){
+  const {iso} = fmtDate();
+  const grid = $('katlarGrid'); grid.innerHTML='';
+  let katOrtalama = {}; let katCount = {}; let missing = new Set(KATLAR);
+
+  // temizlik_kontrol koleksiyonundaki tüm doküman adları kat veya kat-bölüm
+  const allDocs = await db.collection(PATHS.cleaning).get();
+  for(const doc of allDocs.docs){
+    const docId = doc.id;               // örn: "1.Kat - Etüt", "2.kat", "Giriş Kat - ..."
+    const nk = normKat(docId);
+    if(!nk) continue;
+
+    try{
+      const dayCol = await db.collection(PATHS.cleaning).doc(docId).collection(iso).get();
+      if(dayCol.empty) continue;
+      missing.delete(nk);
+      let sum=0, cnt=0;
+      dayCol.forEach(m=>{
+        const x = m.data();
+        let p = (typeof x.puan10==='number') ? x.puan10 : (typeof x.puan==='number' ? x.puan/10 : NaN);
+        if(!isNaN(p)){ sum+=p; cnt++; }
+      });
+      if(cnt>0){
+        katOrtalama[nk]=(katOrtalama[nk]||0)+ (sum/cnt);
+        katCount[nk]=(katCount[nk]||0)+1;
+      }
+    }catch(e){/* yoksay */}
+  }
+
+  let total=0, count=0;
+  KATLAR.forEach(k=>{
+    let val='—', missingThis = missing.has(k);
+    if(katOrtalama[k]){
+      const avg = Math.round((katOrtalama[k]/katCount[k])*10)/10;
+      val = String(avg);
+      total += avg; count++;
+      missingThis = false;
+    }
+    const div = document.createElement('div');
+    div.className = 'floor' + (missingThis?' missing':'');
+    div.innerHTML = `<div class="name">${k}</div><div class="val">${val}</div>`;
+    grid.appendChild(div);
+  });
+
+  $('temizlikOrtalama').textContent = count? String(Math.round((total/count)*10)/10) : '—';
+  const note = $('temizlikNot');
+  if(missing.size===KATLAR.length) note.textContent='Bugün temizlik formları henüz doldurulmadı.';
+  else if(missing.size>0) note.textContent='Doldurulmayan katlar: ' + Array.from(missing).join(', ');
+  else note.textContent='';
+}
+
+async function loadEksikler(){
+  const snap = await db.collection(PATHS.issues).where('durum','==','acik').get();
+  const say = { "2.kat":0,"1.kat":0,"Giriş kat":0,"-1.kat":0,"-2.kat":0, "2. Kat":0,"1. Kat":0,"Giriş Kat":0,"-1. Kat":0,"-2. Kat":0 };
+  snap.forEach(d=>{
+    const k = d.data().kat || '';
+    if(say[k]!==undefined) say[k]++;  // hem büyük/küçük çeşitleri yakalamak için
+  });
+  $('ex2').textContent = (say["2.kat"]||say["2. Kat"]||0);
+  $('ex1').textContent = (say["1.kat"]||say["1. Kat"]||0);
+  $('exG').textContent = (say["Giriş kat"]||say["Giriş Kat"]||0);
+  $('ex-1').textContent = (say["-1.kat"]||say["-1. Kat"]||0);
+  $('ex-2').textContent = (say["-2.kat"]||say["-2. Kat"]||0);
+}
+
+/* ====== Başlat ====== */
+(async function init(){
+  const {gunKisa, tarihTR} = fmtDate();
+  $('gun').textContent=gunKisa; $('tarih').textContent=tarihTR;
+
+  auth.onAuthStateChanged(async (user)=>{
+    if(!user){ window.location.href = './index.html'; return; }
+
+    const uid  = user.uid;
+    const meta = await loadUser(uid);             // <-- KULLANICI DÖKÜMANI
+
+    // Hoş geldin adı
+    $('adSoyad').textContent = meta.adSoyad || user.displayName || 'Kullanıcı';
+
+    // Tema (localStorage > meta.tema > 'oto')
+    const tema = readThemeLocal(uid) || meta.tema || 'oto';
+    setTheme(tema); saveThemeLocal(uid, tema);
+    window.addEventListener('storage', (e)=>{
+      if(e.key === `temaAyar:${uid}`){ setTheme(e.newValue || 'oto'); }
     });
-  </script>
+
+    // YETKİLER: "Panel: Sayfa" stringlerinden panel->label listesi
+    const rawYetkiler = Array.isArray(meta.yetkiler) ? meta.yetkiler : [];
+    const byPanelLabels = {};  // { Muhasebe: ["Aylık Hedef-Teberru", ...], ... }
+
+    rawYetkiler.forEach(s=>{
+      const str = String(s);
+      const i = str.indexOf(':');
+      if(i<0) return;
+      let panel = str.slice(0,i).trim();
+      let label = str.slice(i+1).trim();
+      panel = normPanelName(panel);
+      if(!ALL_PANELS.includes(panel)) return;
+      (byPanelLabels[panel] ||= []).push(label);
+    });
+
+    CURRENT_PERMS = byPanelLabels;
+
+    // MANIFEST'i çek ve Tabbar'ı çiz
+    MANIFEST = await loadManifest();
+    renderTabbar(Object.keys(byPanelLabels));
+
+    // VERİLER
+    await Promise.all([loadTalebeStats(), loadNobet(), loadTemizlik(), loadEksikler()]);
+  });
+})();
+</script>
 </body>
 </html>
