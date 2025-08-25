@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <title>Karaağaç Fatih Giriş</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- ÇENTİK/Safe-Area için şart -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <link rel="icon" type="image/png" href="img/logo.png" />
 
   <style>
@@ -17,10 +19,10 @@
       --brand-600: #0ea5e9;
 
       /* dark defaults */
-      --bg: #0f172a;                 /* arka plan */
+      --bg: #0f172a;
       --bg-grad-1: #0ea5e933;
       --bg-grad-2: #22d3ee33;
-      --card: rgba(15, 23, 42, .72); /* modal */
+      --card: rgba(15, 23, 42, .72);
       --card-stroke: rgba(148,163,184,.25);
       --text: #e5e7eb;
       --muted: #94a3b8;
@@ -29,6 +31,10 @@
       --input-placeholder: #9aa5b1;
       --button-fg: #05121d;
       --toast-bg: rgba(2,6,23,.95);
+
+      /* iOS safe-area */
+      --safe-top: env(safe-area-inset-top);
+      --safe-bottom: env(safe-area-inset-bottom);
     }
 
     /* light theme overrides */
@@ -92,11 +98,13 @@
         linear-gradient(140deg, var(--bg), #0b1324 60%);
       overflow: hidden;
     }
-    .container { height: 100%; display: grid; place-items: center; padding: 24px; }
+    .container { height: 100%; display: grid; place-items: center; padding: 24px; padding-top: calc(24px + var(--safe-top)); }
 
-    /* ===================== THEME TOGGLE ===================== */
+    /* ===================== THEME TOGGLE (çentiğin ALTINA) ===================== */
     .theme-toggle {
-      position: fixed; top: 14px; right: 14px; z-index: 10;
+      position: fixed;
+      top: calc(12px + var(--safe-top));  /* kritik satır */
+      right: 14px; z-index: 10;
       background: var(--card);
       border: 1px solid var(--card-stroke);
       border-radius: 999px;
@@ -138,7 +146,7 @@
 
     .brand-title {
       margin: 0; font-weight: 900; letter-spacing: .02em; line-height: 1.1;
-      font-size: 22px;    /* Marka > alt başlık */
+      font-size: 22px;
     }
     .brand-title .karaagac { color: #ffffff; filter: drop-shadow(0 1px 10px rgba(255,255,255,.08)); }
     .brand-title .fatih { color: var(--brand-500); }
@@ -195,7 +203,7 @@
 
     /* toast */
     .toast {
-      position: fixed; left:50%; bottom: 26px; transform: translateX(-50%) translateY(20px);
+      position: fixed; left:50%; bottom: calc(26px + var(--safe-bottom)); transform: translateX(-50%) translateY(20px);
       min-width: 280px; max-width: 92vw; background: var(--toast-bg);
       color:#fff; border:1px solid rgba(255,255,255,.08); border-radius: 12px;
       box-shadow: var(--shadow); padding: 12px 14px; opacity: 0; pointer-events: none;
@@ -211,7 +219,7 @@
   </style>
 </head>
 <body>
-  <!-- Tema Anahtarı -->
+  <!-- Tema Anahtarı (artık çentiğin ALTINDA) -->
   <button class="theme-toggle" id="themeToggle" title="Tema: Açık/Koyu">
     <span id="themeIcon">🌗</span>
     <span class="hint">Tema</span>
@@ -246,7 +254,7 @@
 
       <div class="meta">
         <span>© 2025 Karaağaç Fatih</span>
-        <span>v1.0</span>
+        <span>v1.0.0</span>
       </div>
     </div>
   </div>
@@ -258,14 +266,10 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-
-  <!-- Config -->
   <script src="js/firebase/firebase-init.js"></script>
-
-  <!-- Mevcut auth akışı -->
   <script src="js/ortak.js"></script>
 
-  <!-- UI yardımcıları: tema toggle, şifre toggle, loading, toast -->
+  <!-- UI + Kalıcı oturum/yönlendirme -->
   <script>
     (function(){
       /* ====== Şifre göster/gizle ====== */
@@ -278,32 +282,83 @@
         pass.focus();
       });
 
-      /* ====== Submit loading ====== */
       const form = document.getElementById('loginForm');
       const btn  = document.getElementById('loginBtn');
       const toast = document.getElementById('toast');
       const forgot = document.getElementById('forgotPassword');
 
-      form.addEventListener('submit', () => {
+      /* ====== Firebase Auth: kalıcı oturum + yönlendirme ====== */
+      const auth = firebase.auth();
+      const db   = firebase.firestore();
+
+      // LOG kaydetme fonksiyonu
+      async function logKaydet({uid=null,email, durum, mesaj}) {
+        try {
+          await db.collection("kullanici_log").add({
+            uid: uid || null,
+            email: email || null,
+            durum,
+            mesaj,
+            zaman: firebase.firestore.FieldValue.serverTimestamp(),
+            userAgent: navigator.userAgent
+          });
+        } catch(err){ console.error("Log kaydedilemedi:", err); }
+      }
+
+      // Uygulama kapansa da oturum kalsın
+      auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(console.error);
+
+      // Açılışta: eğer kullanıcı zaten girişliyse, login'i gösterme → panel'e git
+      auth.onAuthStateChanged((user)=>{
+        if(user){
+          // login sayfasındayız → panel.html'e gönder
+          location.replace('panel.html');
+        }
+      });
+
+      /* ====== Form submit: Firebase ile giriş ====== */
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault(); // sayfa yenilenmesin
         btn.disabled = true;
         const original = btn.textContent;
         btn.innerHTML = '<span class="spinner"></span> Giriş yapılıyor…';
-        setTimeout(() => {
-          if (btn.disabled) {
-            btn.disabled = false;
-            btn.textContent = original;
-            showToast('Giriş denemesi uzadı. Bağlantınızı kontrol edin ve tekrar deneyin.');
-          }
-        }, 10000);
+
+        const email = (document.getElementById('email').value || '').trim();
+        const password = document.getElementById('password').value;
+
+        try{
+          await auth.signInWithEmailAndPassword(email, password);
+          await logKaydet({
+            uid: result.user.uid,
+            email,
+            durum: "basarili",
+            mesaj: "Giriş başarılı"
+          });
+         }catch(err){
+          showToast(err?.message || 'Giriş başarısız.');
+          await logKaydet({
+            email,
+            durum: "basarisiz",
+            mesaj: err?.message || "Hata"
+          });
+          btn.disabled = false;
+          btn.textContent = original;
+        }
       });
 
-      /* ====== Şifre sıfırlama bilgi ====== */
-      forgot.addEventListener('click', (e) => {
+      /* ====== Şifre sıfırlama ====== */
+      forgot.addEventListener('click', async (e) => {
         e.preventDefault();
         const email = (document.getElementById('email').value || '').trim();
-        if(!email) return showToast('Şifre sıfırlama için önce e-posta adresinizi yazın.');
-        showToast('Kayıtlı iseniz sıfırlama bağlantısı e-postanıza gönderilecektir.');
-        // Gerçek reset çağrısı ortak.js içerisindeki akışta olabilir.
+        if(!email) return showToast('Şifre sıfırlama için önce e-posta yazın.');
+        try{
+          await firebase.auth().sendPasswordResetEmail(email);
+          showToast('Sıfırlama bağlantısı e-postanıza gönderildi (kayıtlı ise).');
+          await logKaydet({email, durum:"sifre_isteme", mesaj:"Şifre sıfırlama istendi"});
+        }catch(err){
+          showToast(err?.message || 'İşlem başarısız.');
+          await logKaydet({email, durum:"sifre_isteme", mesaj:"Hata: "+(err?.message||"")});
+        }
       });
 
       function showToast(msg){
@@ -318,7 +373,6 @@
       const toggleBtn = document.getElementById('themeToggle');
       const icon = document.getElementById('themeIcon');
 
-      // başlangıç: localStorage > auto
       const saved = localStorage.getItem('kf_theme') || 'auto';
       applyTheme(saved);
 
@@ -332,17 +386,15 @@
       function applyTheme(mode){
         root.setAttribute('data-theme', mode);
         if(mode === 'auto'){
-          // sistem şemasını izle
           const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
           root.setAttribute('data-theme', isDark ? 'dark' : 'light');
           icon.textContent = isDark ? '🌙' : '☀️';
-          root.setAttribute('data-theme', 'auto'); // auto bayrağını koru
+          root.setAttribute('data-theme', 'auto');
         } else {
           icon.textContent = mode === 'dark' ? '🌙' : '☀️';
         }
       }
 
-      // Sistem değişirse ve mod "auto" ise canlı güncelle
       if (window.matchMedia) {
         const media = window.matchMedia('(prefers-color-scheme: dark)');
         media.addEventListener?.('change', e => {

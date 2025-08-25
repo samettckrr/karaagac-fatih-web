@@ -254,7 +254,7 @@
 
       <div class="meta">
         <span>© 2025 Karaağaç Fatih</span>
-        <span>v1.0</span>
+        <span>v1.0.0</span>
       </div>
     </div>
   </div>
@@ -266,11 +266,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-
-  <!-- Config -->
   <script src="js/firebase/firebase-init.js"></script>
-
-  <!-- Mevcut auth akışı -->
   <script src="js/ortak.js"></script>
 
   <!-- UI + Kalıcı oturum/yönlendirme -->
@@ -293,6 +289,21 @@
 
       /* ====== Firebase Auth: kalıcı oturum + yönlendirme ====== */
       const auth = firebase.auth();
+      const db   = firebase.firestore();
+
+      // LOG kaydetme fonksiyonu
+      async function logKaydet({uid=null,email, durum, mesaj}) {
+        try {
+          await db.collection("kullanici_log").add({
+            uid: uid || null,
+            email: email || null,
+            durum,
+            mesaj,
+            zaman: firebase.firestore.FieldValue.serverTimestamp(),
+            userAgent: navigator.userAgent
+          });
+        } catch(err){ console.error("Log kaydedilemedi:", err); }
+      }
 
       // Uygulama kapansa da oturum kalsın
       auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(console.error);
@@ -317,9 +328,19 @@
 
         try{
           await auth.signInWithEmailAndPassword(email, password);
-          // onAuthStateChanged panel'e yönlendirecek
-        }catch(err){
+          await logKaydet({
+            uid: result.user.uid,
+            email,
+            durum: "basarili",
+            mesaj: "Giriş başarılı"
+          });
+         }catch(err){
           showToast(err?.message || 'Giriş başarısız.');
+          await logKaydet({
+            email,
+            durum: "basarisiz",
+            mesaj: err?.message || "Hata"
+          });
           btn.disabled = false;
           btn.textContent = original;
         }
@@ -333,8 +354,10 @@
         try{
           await firebase.auth().sendPasswordResetEmail(email);
           showToast('Sıfırlama bağlantısı e-postanıza gönderildi (kayıtlı ise).');
+          await logKaydet({email, durum:"sifre_isteme", mesaj:"Şifre sıfırlama istendi"});
         }catch(err){
           showToast(err?.message || 'İşlem başarısız.');
+          await logKaydet({email, durum:"sifre_isteme", mesaj:"Hata: "+(err?.message||"")});
         }
       });
 
