@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Genel Temizlik Kontrolü</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Firebase (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="../../../js/firebase/firebase-init.js"></script>
+
+  <style>
+    :root{
+      --bg:#f4f6f9; --card:#fff; --text:#2c3e50; --muted:#6b7a8f;
+      --accent:#2d6a4f; --accent2:#324960; --warn:#c0392b; --line:#e7edf3;
+      --shadow:0 6px 18px rgba(28,39,60,.08); --radius:14px
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,Arial,sans-serif}
+    header{position:sticky;top:0;z-index:50;background:var(--card);box-shadow:var(--shadow);
+      padding:14px 18px;display:flex;align-items:center;justify-content:space-between}
+    header h1{font-size:18px;margin:0}
+    .badge{font-size:12px;background:#eef5ff;color:#264a7c;padding:4px 10px;border-radius:999px;border:1px solid #d8e6ff}
+    .btn{background:var(--accent2);color:#fff;border:none;border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer;box-shadow:var(--shadow)}
+    .btn.outline{background:#fff;color:var(--accent2);border:1px solid var(--accent2)}
+    .btn.ghost{background:#fff;color:#2c3e50;border:1px dashed #b9c4d3}
+    .chip{display:inline-flex;align-items:center;gap:8px;background:#f7fafc;border:1px solid var(--line);padding:6px 10px;border-radius:999px;font-size:12px}
+    .muted{color:var(--muted)} .good{color:var(--accent)} .bad{color:var(--warn)}
+    .wrap{max-width:1100px;margin:22px auto;padding:0 14px}
+    .topbar{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);
+      padding:14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .input, select, textarea{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--text)}
+    textarea{min-height:70px;width:100%;resize:vertical}
+    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+    @media (max-width:760px){ .grid{grid-template-columns:1fr} .btn{width:100%} }
+    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;margin-top:14px}
+    .card h3{margin:0 0 10px 0;font-size:13px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+    .kpi{background:#fbfcfe;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+    .kpi .label{font-size:12px;color:var(--muted)} .kpi .val{font-size:22px;font-weight:800}
+    .checklist{display:grid;gap:6px;margin-top:8px}
+    .footer-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:12px}
+    .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#2d6a4f;color:#fff;padding:10px 14px;border-radius:10px;display:none;z-index:3000;box-shadow:var(--shadow);font-weight:600}
+    .toast.err{background:#c0392b}
+    .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;z-index:2000;align-items:center;justify-content:center;padding:14px}
+    .modal{background:#fff;border-radius:16px;box-shadow:var(--shadow);max-width:720px;width:100%;padding:18px}
+    .modal h3{margin:0 0 10px 0}
+    .modal .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+    .table{width:100%;border-collapse:collapse}
+    .table th,.table td{border-bottom:1px solid #eef2f7;padding:8px;text-align:left;font-size:14px}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="row">
+      <h1>Genel Temizlik Kontrolü</h1>
+      <span id="katBadge" class="badge">—</span>
+    </div>
+    <div class="row">
+      <span id="todayBadge" class="badge">📅 —</span>
+      <button id="btnDetayGor" class="btn ghost">Detay Gör</button>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <!-- KPI -->
+    <div class="card">
+      <h3>Özet</h3>
+      <div class="grid">
+        <div class="kpi"><div class="label">Bugün Durum</div><div class="val" id="kpiDurum">—</div></div>
+        <div class="kpi"><div class="label">Puan (0–100)</div><div class="val good" id="kpiPuan">—</div></div>
+        <div class="kpi"><div class="label">Eksik/Uyarı</div><div class="val bad" id="kpiEksik">—</div></div>
+        <div class="kpi"><div class="label">Kaydı Yapan</div><div class="val" id="kpiKim">—</div></div>
+      </div>
+    </div>
+
+    <!-- GENEL DEĞERLENDİRME -->
+    <div id="genelWrap" class="card">
+      <h3>Genel Değerlendirme</h3>
+      <div class="grid">
+        <div class="kpi">
+          <b>Islak zeminler</b>
+          <div id="genelIslak" class="checklist"></div>
+        </div>
+        <div class="kpi">
+          <b>Kuru zeminler</b>
+          <div id="genelKuru" class="checklist"></div>
+        </div>
+        <div class="kpi">
+          <label for="genelPuan"><b>Genel Puan (1–10)</b></label>
+          <input id="genelPuan" type="number" min="1" max="10" class="input" placeholder="1-10" />
+        </div>
+        <div class="kpi">
+          <label class="row"><input type="checkbox" id="genelEksik"/> Eksik / uyarı var</label>
+        </div>
+      </div>
+      <div style="margin-top:12px">
+        <label class="muted" for="genelAck" style="font-weight:700">Açıklama</label>
+        <textarea id="genelAck" placeholder="Kısa notunuzu yazın…"></textarea>
+      </div>
+      <div class="footer-actions">
+        <button id="btnKaydetGenel" class="btn">Kaydet</button>
+        <button id="btnTemizleGenel" class="btn outline">Formu Sıfırla</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Kayıt sonrası modal -->
+  <div id="modalAfterBackdrop" class="backdrop">
+    <div class="modal">
+      <h3 id="afterTitle">Kayıt alındı</h3>
+      <p class="muted">İstersen bir sonraki kata geçebilir ya da ana sayfaya dönebilirsin.</p>
+      <div class="actions">
+        <button id="mHome" class="btn outline">Ana Sayfa</button>
+        <button id="mNext" class="btn">Bir Sonraki Kata Geç</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detay modal -->
+  <div id="modalDetayBackdrop" class="backdrop">
+    <div class="modal">
+      <h3>Geçmiş Kayıt Detayı</h3>
+      <div class="row" style="margin-bottom:10px">
+        <label class="muted">Tarih:</label>
+        <input id="hisDate" type="date" class="input" />
+        <button id="btnHisGetir" class="btn">Getir</button>
+        <span id="hisSummary" class="muted"></span>
+      </div>
+      <div id="hisContent" class="muted">Bir tarih seçiniz.</div>
+      <div class="actions">
+        <button id="btnHisClose" class="btn outline">Kapat</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bugün başka kullanıcı uyarısı -->
+  <div id="warnBackdrop" class="backdrop">
+    <div class="modal">
+      <h3>Bugün kayıt bulunuyor</h3>
+      <p class="muted" id="warnText">Bugün bu form başka bir kişi tarafından doldurulmuş.</p>
+      <div class="actions">
+        <button id="wSee" class="btn outline">Detayları Gör</button>
+        <button id="wFill" class="btn">Formu Ben de Dolduracağım</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bir sonraki kat seçimi -->
+  <div id="nextBackdrop" class="backdrop">
+    <div class="modal">
+      <h3>Bir sonraki kata geç</h3>
+      <p class="muted">Önerilen: <b id="nextSuggest">—</b>. İstersen farklı bir kat seçebilirsin.</p>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <label class="muted">Kat seç:</label>
+        <select id="nextSelect" class="input"></select>
+      </div>
+      <div class="actions">
+        <button id="nCancel" class="btn outline">Vazgeç</button>
+        <button id="nGo" class="btn">Geç</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+<script>
+(function(){
+  const db = window.db;
+  const auth = firebase.auth();
+
+  /* ====== Ayarlar ====== */
+  const HOME_PATH = '/personel/temizlik/temizlik-kontrolü.html';
+  const ORDERED_KATLAR = [
+    '2.Kat - Lokal','1.Kat - Etüt','0 - Giriş Kat','-1.Kat - Yatakhane','-2.Kat - Yemekhane','Bahçe'
+  ];
+
+  /* ===== Utils ===== */
+  const $ = (sel)=>document.querySelector(sel);
+  function showToast(msg, err=false){ const t=$('#toast'); t.textContent=msg; t.className='toast'+(err?' err':''); t.style.display='block'; setTimeout(()=>t.style.display='none',2300); }
+  function todayStr(){ const now=new Date(); const tz=new Date(now.toLocaleString('en-US',{timeZone:'Europe/Istanbul'})); const y=tz.getFullYear(), m=String(tz.getMonth()+1).padStart(2,'0'), d=String(tz.getDate()).padStart(2,'0'); return `${y}-${m}-${d}`; }
+  function clamp(n,min,max){ n=Number(n)||0; if(n<min)n=min; if(n>max)n=max; return n; }
+  function clamp10(n){ return clamp(n,1,10); }
+  function norm(s=''){ return String(s).trim().toLowerCase(); }
+  function nextKatLabel(cur){ const i=ORDERED_KATLAR.findIndex(x=>norm(x)===norm(cur)); return (i>=0 && i<ORDERED_KATLAR.length-1) ? ORDERED_KATLAR[i+1] : ORDERED_KATLAR[0]; }
+  function fmtTS(ts){ try{ const d=ts?.toDate?.(); return d? d.toLocaleString('tr-TR'): '—'; }catch(_){ return '—'; } }
+
+  /* ===== Kriter setleri (Genel) ===== */
+  const CRITERIA = {
+    islak: [
+      ['camasir','Çamaşır suyu kullanılmış mı?'],
+      ['izgara','Izgaralar üstü/altı temiz mi?'],
+      ['pecete','Peçete/kağıt havlu konulmuş mu?'],
+      ['sabun','Sıvı sabun/dispenser dolu mu?'],
+      ['koku','Koku giderilmiş mi? (havalandırma)'],
+      ['paspas','Yerler paspaslanmış mı?'],
+      ['kose','Köşe/kenar birikintisi yok mu?']
+    ],
+    kuru: [
+      ['supur','Süpürülmüş mü?'],
+      ['paspas','Paspas atılmış mı?'],
+      ['toz','Toz alma yapılmış mı?'],
+      ['cop','Çöpler toplanmış/poşet yenilenmiş mi?'],
+      ['cam','Cam/kapı kolları silinmiş mi?'],
+      ['duzen','Genel düzen iyi mi?']
+    ]
+  };
+
+  /* ===== DOM ===== */
+  const katBadge = $('#katBadge');
+  const todayBadge = $('#todayBadge');
+
+  const kpiDurum=$('#kpiDurum'), kpiPuan=$('#kpiPuan'), kpiEksik=$('#kpiEksik'), kpiKim=$('#kpiKim');
+
+  const genelIslak=$('#genelIslak'), genelKuru=$('#genelKuru');
+  const genelPuan=$('#genelPuan'), genelEksik=$('#genelEksik'), genelAck=$('#genelAck');
+  const btnKaydetGenel=$('#btnKaydetGenel'), btnTemizleGenel=$('#btnTemizleGenel');
+
+  const modalAfter=$('#modalAfterBackdrop'); const afterTitle=$('#afterTitle');
+  const mHome=$('#mHome'); const mNext=$('#mNext'); const nextBackdrop=$('#nextBackdrop');
+  const nextSelect=$('#nextSelect'); const nextSuggest=$('#nextSuggest');
+
+  const modalDetay=$('#modalDetayBackdrop'); const hisDate=$('#hisDate'); const hisSummary=$('#hisSummary'); const hisContent=$('#hisContent');
+
+  const warnBackdrop=$('#warnBackdrop'); const warnText=$('#warnText');
+
+  todayBadge.textContent = `📅 ${todayStr()}`;
+  hisDate.max = todayStr();
+  hisDate.value = todayStr();
+
+  const usp = new URLSearchParams(location.search);
+  const ACTIVE_KAT = usp.get('kat') || ORDERED_KATLAR[0];
+  katBadge.textContent = `🧹 ${ACTIVE_KAT}`;
+
+  /* ===== Firestore kökleri ===== */
+  function genelRoot(dateStr){ return db.collection('genel_temizlik_kontrol').doc(ACTIVE_KAT).collection(dateStr); }
+
+  /* ===== Genel checklist render ===== */
+  function makeCheck(id,label){ return `<label><input type="checkbox" data-crit="${id}" /> ${label}</label>`; }
+  function renderGenelChecklists(){
+    genelIslak.innerHTML = CRITERIA.islak.map(([id,label])=> makeCheck('g_'+id,label)).join('');
+    genelKuru.innerHTML  = CRITERIA.kuru .map(([id,label])=> makeCheck('g_'+id,label)).join('');
+  }
+  function readGenel(){
+    const readBlock = (root)=> { const obj={}; root.querySelectorAll('input[type="checkbox"][data-crit]').forEach(c=>{ obj[c.getAttribute('data-crit')] = !!c.checked; }); return obj; };
+    return {
+      islak: readBlock(genelIslak),
+      kuru:  readBlock(genelKuru),
+      puan10: clamp10(genelPuan.value||0),
+      eksik_var: !!genelEksik.checked,
+      aciklama: (genelAck.value||'')
+    };
+  }
+
+  /* ===== Ad Soyad Çözümleme ===== */
+  const NAME_CACHE=new Map();
+  async function nameByUid(uid){
+    if(!uid) return '—';
+    if(NAME_CACHE.has(uid)) return NAME_CACHE.get(uid);
+    try{
+      const ds=await db.collection('kullanicilar').doc(uid).get();
+      if(ds.exists){
+        const d=ds.data()||{};
+        const ad=(d.ad||''); const soy=(d.soyad||'');
+        const full=String((ad+' '+soy)).trim() || d.adSoyad || '—';
+        NAME_CACHE.set(uid, full);
+        return full;
+      }
+    }catch(_){}
+    NAME_CACHE.set(uid,'—'); return '—';
+  }
+
+  /* ===== Özet (KPI) ===== */
+  async function recomputeSummaryGenel(dateStr){
+    const snap = await genelRoot(dateStr).get();
+    let sum=0, n=0, eksikAny=false;
+    snap.forEach(d=>{
+      if(d.id==='_summary') return;
+      const v=d.data()||{};
+      if(typeof v.puan10 === 'number'){ sum += v.puan10; n++; }
+      if(v.eksik_var) eksikAny = true;
+    });
+    const avg10  = n? Math.round((sum/n)*10)/10 : 0;
+    const avg100 = Math.round(avg10*10);
+    await genelRoot(dateStr).doc('_summary').set({
+      submissions: n, avgPuan10: avg10, avgPuan100: avg100,
+      eksik_var_any: eksikAny, updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, {merge:true});
+  }
+  async function refreshKPIs(){
+    const t = todayStr();
+    const s = await genelRoot(t).doc('_summary').get();
+    if(s.exists){
+      const d=s.data()||{};
+      kpiDurum.textContent = `Kayıt Var (${d.submissions||0})`;
+      kpiPuan.textContent  = (d.avgPuan100!=null) ? d.avgPuan100 : (d.avgPuan10!=null? Math.round((d.avgPuan10||0)*10): '—');
+      kpiEksik.textContent = d.eksik_var_any ? 'Var' : 'Yok';
+      kpiKim.textContent   = '—';
+    }else{
+      kpiDurum.textContent = 'Kayıt Yok'; kpiPuan.textContent='—'; kpiEksik.textContent='—'; kpiKim.textContent='—';
+    }
+  }
+
+  /* ===== Aynı gün / kullanıcı kontrolleri ===== */
+  async function hasOwnToday(){
+    const user = auth.currentUser; if(!user) return false;
+    const t = todayStr();
+    const ds = await genelRoot(t).doc(user.uid).get();
+    return ds.exists;
+  }
+  async function checkAndWarnIfExists(){
+    const user = auth.currentUser; if(!user) return;
+    const t = todayStr();
+    let existByOthers = false, who = [];
+    const snap = await genelRoot(t).get();
+    snap.forEach(d=>{ if(d.id==='_summary') return; if(d.id!==user.uid){ existByOthers=true; const v=d.data()||{}; if(v.email) who.push(v.email); } });
+    if(existByOthers){
+      $('#warnText').innerHTML = `Bugün bu form <b>${[...new Set(who)].join(', ') || 'başka bir personel'}</b> tarafından dolduruldu.`;
+      $('#warnBackdrop').style.display='flex';
+    }
+  }
+
+  /* ===== Kaydet ===== */
+  async function saveGenel(){
+    const user = auth.currentUser; if(!user){ showToast('Oturum yok', true); return; }
+    const t = todayStr();
+    const d = readGenel();
+    if(!d.puan10 || d.puan10<1 || d.puan10>10){ showToast('Genel puanı 1-10 arası giriniz', true); return; }
+
+    if (await hasOwnToday()){
+      const ok = window.confirm('Bugün daha önce bir kayıt bırakmışsınız.\nYeni kaydınız geçerli olsun mu? (Öncekini sileceğiz)');
+      if(!ok) return;
+      await genelRoot(t).doc(user.uid).delete().catch(()=>{});
+    }
+
+    await genelRoot(t).doc(user.uid).set({
+      ...d,
+      email: user.email||'',
+      kaydeden_uid: user.uid,
+      kayit_zamani: firebase.firestore.FieldValue.serverTimestamp()
+    }, {merge:false});
+
+    await recomputeSummaryGenel(t);
+
+    afterTitle.textContent = `${ACTIVE_KAT} genel temizlik kontrol formu kaydedildi.`;
+    $('#modalAfterBackdrop').style.display='flex';
+    await refreshKPIs();
+  }
+
+  /* ===== Detay ===== */
+  async function loadHistory(dateStr){
+    hisContent.textContent = 'Yükleniyor…';
+    const sum = await genelRoot(dateStr).doc('_summary').get();
+    const list = await genelRoot(dateStr).get();
+
+    // ad soyad + zaman için
+    let rows = [];
+    for(const doc of list.docs){
+      if(doc.id==='_summary') continue;
+      const v=doc.data()||{};
+      const adsoyad = await nameByUid(v.kaydeden_uid);
+      rows.push({
+        adsoyad,
+        puan10: v.puan10,
+        eksik: v.eksik_var?'Var':'Yok',
+        ack: v.aciklama||'',
+        ts: fmtTS(v.kayit_zamani)
+      });
+    }
+
+    const d = sum.exists ? (sum.data()||{}) : {};
+    hisSummary.textContent = sum.exists ? `Kayıt: ${d.submissions||rows.length} • Ortalama: ${d.avgPuan10!=null? d.avgPuan10 : (d.avgPuan100!=null ? Math.round((d.avgPuan100||0)/10): '—')}` : 'Özet yok';
+    hisContent.innerHTML = rows.length? `
+      <table class="table">
+        <thead><tr><th>Personel</th><th>Puan (1–10)</th><th>Eksik</th><th>Açıklama</th><th>Zaman</th></tr></thead>
+        <tbody>${rows.map(r=>`<tr><td>${r.adsoyad}</td><td>${r.puan10??'—'}</td><td>${r.eksik}</td><td>${r.ack}</td><td>${r.ts}</td></tr>`).join('')}</tbody>
+      </table>` : 'Kayıt bulunamadı.';
+  }
+  function openDetail(dateStr){ $('#modalDetayBackdrop').style.display='flex'; hisDate.value = dateStr; loadHistory(dateStr); }
+
+  /* ===== Next chooser ===== */
+  function openNextChooser(){
+    nextSelect.innerHTML = ORDERED_KATLAR.map(k=>`<option value="${k}">${k}</option>`).join('');
+    const suggest = nextKatLabel(ACTIVE_KAT);
+    nextSuggest.textContent = suggest;
+    nextSelect.value = suggest;
+    nextBackdrop.style.display='flex';
+  }
+
+  /* ===== Events ===== */
+  $('#btnDetayGor').addEventListener('click', ()=> openDetail(todayStr()));
+  $('#btnHisGetir').addEventListener('click', ()=>{
+    const d=hisDate.value; if(!d) return showToast('Tarih seçin', true);
+    if(d > todayStr()){ showToast('Gelecek tarih seçilemez', true); return; }
+    loadHistory(d);
+  });
+  $('#btnHisClose').addEventListener('click', ()=> modalDetay.style.display='none');
+  modalDetay.addEventListener('click', e=>{ if(e.target===modalDetay) modalDetay.style.display='none'; });
+
+  btnKaydetGenel.addEventListener('click', saveGenel);
+  btnTemizleGenel.addEventListener('click', ()=>{ document.querySelectorAll('#genelWrap input[type="checkbox"]').forEach(c=> c.checked=false); genelPuan.value=''; genelAck.value=''; genelEksik.checked=false; });
+
+  mHome.addEventListener('click', ()=>{ modalAfter.style.display='none'; window.location.pathname = HOME_PATH; });
+  mNext.addEventListener('click', ()=>{ modalAfter.style.display='none'; openNextChooser(); });
+  nextBackdrop.addEventListener('click', e=>{ if(e.target===nextBackdrop) nextBackdrop.style.display='none'; });
+  $('#nCancel').addEventListener('click', ()=> nextBackdrop.style.display='none');
+  $('#nGo').addEventListener('click', ()=>{
+    const sel = nextSelect.value;
+    const qs = new URLSearchParams({kat: sel});
+    window.location.search = qs.toString();
+  });
+
+  warnBackdrop.addEventListener('click', e=>{ if(e.target===warnBackdrop) warnBackdrop.style.display='none'; });
+  $('#wSee').addEventListener('click', ()=>{ warnBackdrop.style.display='none'; openDetail(todayStr()); });
+  $('#wFill').addEventListener('click', ()=>{ warnBackdrop.style.display='none'; /* devam */ });
+
+  /* ===== Init ===== */
+  function initUI(){
+    renderGenelChecklists();
+    todayBadge.textContent = `📅 ${todayStr()}`;
+    nextSelect.innerHTML = ORDERED_KATLAR.map(k=>`<option value="${k}">${k}</option>`).join('');
+  }
+
+  auth.onAuthStateChanged(async user=>{
+    if(!user){ window.location.href='../../index.html'; return; }
+    initUI();
+    await refreshKPIs();
+    await checkAndWarnIfExists();
+  });
+})();
+</script>
+</body>
+</html>

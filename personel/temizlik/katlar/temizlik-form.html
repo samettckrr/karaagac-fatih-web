@@ -95,7 +95,6 @@
       <h1>Temizlik Formu</h1>
       <span id="userBadge" class="badge">—</span>
     </div>
-    <button id="btnSignOut" class="btn outline sm">Çıkış</button>
   </header>
 
   <div class="wrap">
@@ -194,6 +193,60 @@
     function from100(to100v){ const n=Number(to100v)||0; return clamp10(Math.round(n/10)); }
     function trSort(a,b){ return a.localeCompare(b,'tr'); }
     function trNormalize(s=''){ const map={'İ':'i','I':'i','ı':'i','Ş':'s','ş':'s','Ğ':'g','ğ':'g','Ü':'u','ü':'u','Ö':'o','ö':'o','Ç':'c','ç':'c'}; return String(s).replace(/[İIıŞşĞğÜüÖöÇç]/g,m=>map[m]||m).toLowerCase().replace(/\s+/g,' ').replace(/[\s._–—-]+/g,'-').trim(); }
+
+        // --- Günlük tek-dolum kilidi ---
+    let DAILY_LOCKED = false;
+    const DAILY_INFO_TEXT = 'Bu formu günde yalnızca 1 kez doldurabilirsiniz.';
+    const DAILY_LOCK_TEXT = 'Bugün temizlik kontrolü yapıldı. Detay açılıyor…';
+
+    function lockUIForToday(){
+  // giriş alanlarını kapat
+  try{
+    document.getElementById('btnKaydet').disabled = true;
+    document.getElementById('btnTemizle').disabled = true;
+    tbodyForm.querySelectorAll('input, textarea, select').forEach(el=> el.disabled = true);
+    cardsWrap.querySelectorAll('input, textarea, select').forEach(el=> el.disabled = true);
+  }catch(e){}
+
+  // üst çipe küçük bir rozet ekle (opsiyonel)
+  try{
+    const badge = document.createElement('span');
+    badge.className = 'chip';
+    badge.style.borderColor = '#ffd5d5';
+    badge.style.background = '#fff0f0';
+    badge.style.color = '#b63d3d';
+    badge.textContent = 'Bugün kayıt mevcut';
+    todayChip.insertAdjacentElement('afterend', badge);
+  }catch(e){}
+}
+
+// Bugün aynı kullanıcı bu katta kayıt yapmış mı?
+async function checkDailyOnce(katDocId){
+  const user = auth.currentUser; if(!user) return false;
+  const t = todayStr();
+  try{
+    const qs = await db
+      .collection('temizlik_kontrol').doc(katDocId).collection(t)
+      .where('kaydeden_uid','==', user.uid).limit(1).get();
+
+    DAILY_LOCKED = !qs.empty;
+
+    if (DAILY_LOCKED){
+      lockUIForToday();
+      showToast(DAILY_LOCK_TEXT);
+      // otomatik "Detay" aç
+      modalDetay.style.display = 'flex';
+      hisDate.value = t;
+      await loadHistory(t);
+    } else {
+      // ilk girişte bilgilendir
+      showToast(DAILY_INFO_TEXT);
+    }
+  }catch(err){
+    console.warn('[daily-once]', err);
+  }
+  return DAILY_LOCKED;
+}
 
     async function findDocIdSmart(katCandidate){
       const want = trNormalize(katCandidate);
@@ -461,15 +514,22 @@
 
     /* -------- Save + Modals -------- */
     async function saveAll(){
+        if (DAILY_LOCKED){
+    showToast('Bugünkü kontrolünüz zaten kayıtlı. Detay açılıyor…');
+    modalDetay.style.display = 'flex';
+    hisDate.value = todayStr();
+    await loadHistory(todayStr());
+    return;
+  }
       const user = auth.currentUser; if(!user){ showToast('Oturum yok', true); return; }
       const tarih = todayStr();
       const items = readRows(); if(!items.length){ showToast('Kayıt yapılacak mahal yok', true); return; }
 
       // Temiz=true ise puan10 zorunlu
       for(const it of items){
-        if(it.temiz && (!isFinite(it.puan10) || it.puan10<1 || it.puan10>10)){
-          showToast(`${it.mahal}: 1-10 puanı giriniz`, true); return;
-        }
+      if (it.temiz && (!Number.isFinite(it.puan10) || it.puan10<1 || it.puan10>10)) {
+        showToast(`${it.mahal}: 1-10 puanı giriniz`, true); return;
+      }
       }
 
       const batch = db.batch();
@@ -483,7 +543,7 @@
           puan: Number(it.puan)||0,            // 0–100 ölçek (yekün)
           aciklama: it.aciklama || "",
           kaydeden_uid: user.uid,
-          kayit_zamani: now
+          kayit_zamani: firebase.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
       });
 
@@ -528,7 +588,7 @@
     // Kayıt sonrası modal
     document.getElementById('mNo').addEventListener('click', ()=>{
       modalAfter.style.display='none';
-      window.location.href = `../temizlik-kontrolu.html`;
+      window.location.pathname = '/personel/temizlik/temizlik-kontrolü.html';
     });
     document.getElementById('mYes').addEventListener('click', ()=>{
       modalAfter.style.display='none';
@@ -554,15 +614,14 @@
     modalDetay.addEventListener('click', e=>{ if(e.target===modalDetay) modalDetay.style.display='none'; });
 
     // Auth + init
-    document.getElementById('btnSignOut').onclick = async ()=>{ try{ await auth.signOut(); }catch(e){} };
-    auth.onAuthStateChanged(user=>{
+    auth.onAuthStateChanged(async (user)=>{
       if(!user){ window.location.href='../../index.html'; return; }
       userBadge.textContent = user.email || '—';
+      await loadAll();
+      await checkDailyOnce(ACTIVE_DOC_ID);
     });
 
-    // İlk yükleme
-    (async ()=>{ await loadAll(); })();
-  })();
-  </script>
+})();  // <<< EKLENDİ
+</script>
 </body>
 </html>
