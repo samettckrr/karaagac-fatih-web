@@ -17,6 +17,7 @@
       --brand:#38bdf8; --brand2:#0ea5e9;
       --pill:#0b1220; --pill-hover:#101a2b;
       --link:#c7e9ff; --surface:rgba(2,6,23,.08);
+      --danger:#ff4255; --ok:#33c27f;
     }
     @media (prefers-color-scheme: light){
       :root{
@@ -60,10 +61,8 @@
       height:var(--appbar-h);
       background:var(--card); backdrop-filter:blur(10px);
       border-bottom:1px solid var(--stroke);
-      display:flex; align-items:center;
-      padding-top:0; padding-bottom:0;
-      padding-left:max(12px, env(safe-area-inset-left));
-      padding-right:max(12px, env(safe-area-inset-right));
+      display:flex; align-items:center; gap:10px;
+      padding:0 max(12px, env(safe-area-inset-right)) 0 max(12px, env(safe-area-inset-left));
     }
     .brand{display:flex; align-items:center; gap:10px; cursor:pointer}
     .brand img{width:24px; height:24px}
@@ -81,8 +80,13 @@
     .nav-item.open .dropdown{display:block}
 
     .nav-right{display:flex; gap:8px; align-items:center}
-    .btn{border:1px solid var(--stroke); background:var(--card); color:var(--text); border-radius:999px; padding:8px 12px; cursor:pointer}
-    .hamb{display:none}
+    .iconbtn{border:1px solid var(--stroke); background:var(--card); color:var(--text); border-radius:999px; padding:8px 12px; cursor:pointer}
+    .badge{background:var(--danger); color:#fff; font-size:11px; padding:2px 6px; border-radius:8px; margin-left:6px}
+    .dropdown-panel{position:absolute; top:100%; right:0; min-width:280px; background:var(--card); border:1px solid var(--stroke); border-radius:12px; box-shadow:var(--shadow); padding:8px; display:none; z-index:80}
+    .nav-right .open + .dropdown-panel{display:block}
+    .drop-row{padding:8px 10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center}
+    .drop-row:hover{background:var(--surface)}
+    .muted{color:var(--muted); font-size:12px}
 
     /* DRAWER (mobil) */
     .drawer{
@@ -123,7 +127,6 @@
     th,td{border-bottom:1px solid var(--stroke); padding:10px 8px; text-align:left}
     thead th{font-size:12px; color:var(--muted)}
     .time{font-variant-numeric:tabular-nums; font-weight:700; color:var(--brand2)}
-    .muted{color:var(--muted)}
     .inline{min-width:150px}
 
     .toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:rgba(2,6,23,.95); color:#fff; border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:10px 12px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:200}
@@ -134,6 +137,118 @@
       .col-3{grid-column:span 6} .col-4{grid-column:span 6} .col-6{grid-column:span 6} .col-8{grid-column:span 6} .col-12{grid-column:span 12}
       .hero{flex-direction:column}
     }
+    /* === Masaüstünde hamburger görünmesin === */
+.hamb{ display: none !important; }
+
+/* === Appbar ve butonlara modern dokunuşlar === */
+.appbar{
+  background: color-mix(in oklab, var(--card), transparent 10%);
+  backdrop-filter: saturate(160%) blur(14px);
+  border-bottom: 1px solid color-mix(in oklab, var(--stroke), transparent 25%);
+}
+
+/* Eski .iconbtn'yi biraz “pill” ve hover/press animasyonlu yapalım */
+.iconbtn{
+  display:inline-flex; align-items:center; gap:8px;
+  padding:8px 12px; line-height:1;
+  border-radius:12px;
+  background: linear-gradient(180deg,
+              color-mix(in oklab, var(--pill), white 6%),
+              var(--pill));
+  border:1px solid var(--stroke);
+  transition: transform .12s ease, box-shadow .12s ease, background .18s ease, border-color .18s ease;
+}
+.iconbtn:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(0,0,0,.14);
+  background: color-mix(in oklab, var(--pill), white 10%);
+  border-color: color-mix(in oklab, var(--stroke), white 12%);
+}
+.iconbtn:active{ transform: translateY(0); box-shadow:none; }
+
+/* Bildirim sayacı (daha net pill) */
+.badge{
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:18px; height:18px; padding:0 6px;
+  border-radius:999px; margin-left:6px;
+  font-size:11px; font-weight:700;
+  background: color-mix(in oklab, var(--danger), black 6%); color:#fff;
+  border: 1px solid color-mix(in oklab, var(--danger), white 20%);
+}
+
+/* Dropdown panel – yumuşak gölge ve pop animasyonu */
+.dropdown-panel{
+  border-radius:14px;
+  border:1px solid color-mix(in oklab, var(--stroke), transparent 10%);
+  box-shadow: 0 10px 30px rgba(0,0,0,.18);
+  background: color-mix(in oklab, var(--card), transparent 4%);
+  animation: pop .14s ease;
+}
+.drop-row{ transition: background .15s ease, transform .08s ease; }
+.drop-row:hover{ background: var(--surface); transform: translateX(2px); }
+
+@keyframes pop{
+  from{ opacity:0; transform: translateY(6px) scale(.98); }
+  to  { opacity:1; transform: translateY(0)   scale(1); }
+}
+
+/* Masaüstü/mobil kırılımı: hamburger sadece mobilde görünsün */
+@media (max-width: 1024px){
+  .nav-center{ display:none; }
+  .hamb{ display:inline-flex !important; } /* sadece mobilde göster */
+}
+/* ===== Mobilde tabloyu kart görünümüne çevir ===== */
+@media (max-width: 720px){
+  /* Başlık gizle, table yapısını block'a çevir */
+  table{border-collapse:separate;border-spacing:0}
+  thead{display:none}
+  table, thead, tbody, tr, th, td{display:block; width:100%}
+
+  /* Her TR bir “kart” olsun */
+  tbody tr{
+    background: var(--card);
+    border: 1px solid var(--stroke);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    margin: 10px 0 14px;
+    overflow: hidden;
+  }
+
+  /* Satır içi hücreler: etiket + değer düzeni */
+  tbody td{
+    display:grid;
+    grid-template-columns: 120px 1fr; /* sol etiket / sağ içerik */
+    align-items:center;
+    gap:10px;
+    padding:12px 14px;
+    border-bottom:1px solid var(--stroke);
+    word-break: break-word;
+  }
+  tbody td:last-child{ border-bottom: none; }
+
+  /* Etiketleri pseudo ile veriyoruz (thead gizli) */
+  tbody td:nth-child(1)::before{ content:"Gün";      color:var(--muted); font-size:12px; font-weight:700; }
+  tbody td:nth-child(2)::before{ content:"Tarih";    color:var(--muted); font-size:12px; font-weight:700; }
+  tbody td:nth-child(3)::before{ content:"Saat";     color:var(--muted); font-size:12px; font-weight:700; }
+  tbody td:nth-child(4)::before{ content:"Bekâr";    color:var(--muted); font-size:12px; font-weight:700; }
+  tbody td:nth-child(5)::before{ content:"Evli/Sabit"; color:var(--muted); font-size:12px; font-weight:700; }
+  tbody td:nth-child(6)::before{ content:"Not";      color:var(--muted); font-size:12px; font-weight:700; }
+
+  /* İçerik (sağ kolon) tipografisi */
+  .time{ font-weight:700; color:var(--brand2); }
+
+  /* Select'ler kart içinde tam genişlik olsun */
+  select.inline{ min-width:0; width:100%; }
+
+  /* Küçük ekranlarda pill’ler taşmasın */
+  .pill{ display:inline-flex; align-items:center; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+}
+
+/* İsteğe bağlı: çok dar ekranlarda etiket kolonu biraz daralsın */
+@media (max-width: 380px){
+  tbody td{ grid-template-columns: 96px 1fr; }
+}
+
   </style>
 
   <!-- Firebase (compat) -->
@@ -146,16 +261,31 @@
 
   <!-- APPBAR -->
   <div class="appbar">
-    <div class="brand" onclick="location.reload()">
+    <div class="brand" onclick="location.href='../panel.html'">
       <img src="../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
     </div>
 
     <nav class="nav-center"><ul class="nav-list" id="navMain"></ul></nav>
 
     <div class="nav-right">
-      <button class="btn hamb" id="hamburger" title="Menü">☰</button>
-      <button class="btn" id="themeToggle" title="Tema: Açık/Koyu/Otomatik">🌗 <span id="themeLabel">Auto</span></button>
-      <button class="btn" onclick="logout()">Çıkış Yap</button>
+      <!-- Bildirim -->
+      <button class="iconbtn" id="btnNotif" title="Bildirimler">🔔<span class="badge" id="notifBadge" style="display:none">0</span></button>
+      <div class="dropdown-panel" id="notifDropdown">
+        <div class="muted" style="padding:6px 8px">Son bildirimler</div>
+        <div id="notifList" style="max-height:300px;overflow:auto"></div>
+        <a href="../diger/bildirim.html" class="drop-row">Tüm bildirimleri gör →</a>
+      </div>
+
+      <!-- Profil -->
+      <button class="iconbtn" id="btnProfile" title="Profil">👤 <span id="profName" class="muted">Profil</span></button>
+      <div class="dropdown-panel" id="profDropdown">
+        <a href="../admin/kullanici-listesi.html" class="drop-row">Kullanıcı Yönetimi</a>
+        <a href="../ayarlar.html" class="drop-row">Ayarlar</a>
+        <a href="../privacy.html" class="drop-row">Gizlilik</a>
+        <a href="#" id="btnLogout" class="drop-row" style="color:#fff;background:#b91c1c;border-color:#b91c1c">Çıkış Yap</a>
+      </div>
+
+      <button class="iconbtn hamb" id="hamburger" title="Menü">☰</button>
     </div>
   </div>
 
@@ -176,7 +306,6 @@
           <span class="pill">Özel Pazar: <b id="sumPazar">—</b></span>
         </div>
       </div>
-      <div class="mini"><span class="pill">Tema: <span id="themeLabel2">Auto</span></span></div>
     </section>
 
     <!-- AYARLAR -->
@@ -218,10 +347,11 @@
       </div>
 
       <div class="row right" style="margin-top:10px">
-        <button class="btn soft" id="btnYazdir">Yazdır / PDF</button>
-        <button class="btn" id="btnOlustur" style="border-color:transparent; background:linear-gradient(90deg,var(--brand2),var(--brand)); color:#fff">Planı Oluştur</button>
-        <button class="btn" id="btnKaydet" style="border-color:transparent; background:linear-gradient(90deg,var(--brand),#60a5fa); color:#fff">Planı Kaydet</button>
+        <button class="iconbtn soft" id="btnOlustur" style="border-color:transparent; background:linear-gradient(90deg,var(--brand2),var(--brand)); color:#fff">Planı Oluştur / Yükle</button>
+        <button class="iconbtn soft" id="btnKaydet" style="border-color:transparent; background:linear-gradient(90deg,var(--brand),#60a5fa); color:#fff">Planı Kaydet</button>
+        <button class="iconbtn soft" id="btnHaftaSil" style="display:none;background:#b91c1c;border-color:#b91c1c;color:#fff">Bu Haftayı Sil</button>
       </div>
+      <div class="muted" id="existInfo" style="display:none;margin-top:8px"></div>
     </section>
 
     <!-- PLAN -->
@@ -243,34 +373,54 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    /* ===== Tema: Açık/Koyu/Otomatik (panel.html ile aynı) ===== */
-    (function(){
-      const root=document.documentElement, btn=document.getElementById('themeToggle');
-      const lab1=document.getElementById('themeLabel'), lab2=document.getElementById('themeLabel2');
-      const sysDark=()=>window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;
-      function apply(mode){
-        localStorage.setItem('kf_theme',mode);
-        const eff=(mode==='auto')?(sysDark()?'dark':'light'):mode;
-        root.setAttribute('data-theme',eff);
-        const txt=mode[0].toUpperCase()+mode.slice(1);
-        if(lab1) lab1.textContent=txt; if(lab2) lab2.textContent=txt;
-        const icon=mode==='dark'?'🌙':mode==='light'?'☀️':'🌗';
-        btn.innerHTML=icon+' <span id="themeLabel">'+txt+'</span>';
-      }
-      apply(localStorage.getItem('kf_theme')||'auto');
-      btn.addEventListener('click',()=>{const cur=localStorage.getItem('kf_theme')||'auto'; apply(cur==='dark'?'light':(cur==='light'?'auto':'dark'));});
-      if(window.matchMedia){ const m=window.matchMedia('(prefers-color-scheme: dark)'); m.addEventListener?.('change',()=>{ if((localStorage.getItem('kf_theme')||'auto')==='auto') apply('auto'); }); }
+    /* ===== Tema (Auto) – sadece görünüm için, profil menüsüne taşındı ===== */
+    (function(){ const root=document.documentElement; const mode=localStorage.getItem('kf_theme')||'auto';
+      const sysDark=()=>matchMedia && matchMedia('(prefers-color-scheme: dark)').matches;
+      root.setAttribute('data-theme', mode==='auto' ? (sysDark()?'dark':'light') : mode);
+      if(window.matchMedia){ const m=matchMedia('(prefers-color-scheme: dark)'); m.addEventListener?.('change',()=>{ if((localStorage.getItem('kf_theme')||'auto')==='auto'){ root.setAttribute('data-theme', sysDark()?'dark':'light'); } }); }
     })();
 
-    /* ===== Nav Manifest (panel ile aynı akış) ===== */
-    let CURRENT_ALLOW = new Set(), CURRENT_DENY = new Set();
-    const norm = s => String(s||'').trim().toLowerCase();
-    const PANEL_ICON = { 'Admin':'🎛️','Talebe':'📘','Personel':'👤','Muhasebe':'💰','Kermes':'🏪','Nehari':'🕌','Sistem Ayarları':'⚙️' };
+    /* ====== Firebase ====== */
     const db=firebase.firestore(), auth=firebase.auth();
 
+    /* ===== UI yardımcıları ===== */
     function showToast(msg){const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(window.__to); window.__to=setTimeout(()=>t.classList.remove('show'),3000);}
-    function setToday(){const d=new Date(); const days=['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi']; document.getElementById('todayText').textContent=`${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()} • ${days[d.getDay()]}`;}
 
+    const norm = s => String(s||'').trim().toLowerCase();
+    function setToday(){
+      const d=new Date(); const days=['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
+      document.getElementById('todayText').textContent=`${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()} • ${days[d.getDay()]}`;
+    }
+
+    /* ===== Bildirim & Profil menüleri ===== */
+    (function(){
+      const btnN = document.getElementById('btnNotif');
+      const dropN= document.getElementById('notifDropdown');
+      const btnP = document.getElementById('btnProfile');
+      const dropP= document.getElementById('profDropdown');
+      function toggle(el,btn){ btn.classList.toggle('open'); el.style.display = btn.classList.contains('open') ? 'block' : 'none'; }
+      btnN.addEventListener('click',(e)=>{ e.stopPropagation(); btnP.classList.remove('open'); dropP.style.display='none'; toggle(dropN,btnN); });
+      btnP.addEventListener('click',(e)=>{ e.stopPropagation(); btnN.classList.remove('open'); dropN.style.display='none'; toggle(dropP,btnP); });
+      document.addEventListener('click',()=>{ btnN.classList.remove('open'); btnP.classList.remove('open'); dropN.style.display='none'; dropP.style.display='none'; });
+      document.getElementById('btnLogout').addEventListener('click',(e)=>{ e.preventDefault(); auth.signOut().then(()=>location.replace('../index.html')); });
+    })();
+
+    /* ===== Nav Manifest (link normalizasyonu) ===== */
+    let CURRENT_ALLOW = new Set(), CURRENT_DENY = new Set();
+    const PANEL_ICON = { 'Admin':'🎛️','Talebe':'📘','Personel':'👤','Muhasebe':'💰','Kermes':'🏪','Nehari':'🕌','Sistem Ayarları':'⚙️' };
+    function resolveHref(path){
+      if(!path) return '#';
+      if(/^https?:\/\//i.test(path)) return path;
+      if(path.startsWith('./') || path.startsWith('../')) return path;
+      const inAdmin = location.pathname.includes('/admin/');
+      // manifestte "admin/..." verilmişse ve şu an admin altındaysak gereksiz ön eki kaldır
+      if(inAdmin){
+        if(path.startsWith('admin/')) return '../' + path.replace(/^admin\//,'');
+        return '../' + path.replace(/^\/+/,''); // köke göre verilenleri bir seviye yukarı taşı
+      }else{
+        return path.startsWith('/') ? path : ('./' + path);
+      }
+    }
     async function fetchPanels(allowSet, denySet){
       const res=[]; try{
         const snap=await db.collection('sayfa_manifesti').get();
@@ -284,7 +434,7 @@
             const pageGrant = allowSet.has(keyNorm);
             const denied    = denySet.has(keyNorm);
             return !denied && (panelGrant || pageGrant);
-          }).map(pg=>({ baslik: pg.title || pg.key || 'Sayfa', url: pg.path || '#', key: pg.key || pg.title || '', sira: typeof pg.order==='number'?pg.order:9999 })).sort((a,b)=>a.sira-b.sira);
+          }).map(pg=>({ baslik: pg.title || pg.key || 'Sayfa', url: resolveHref(pg.path || '#'), key: pg.key || pg.title || '', sira: typeof pg.order==='number'?pg.order:9999 })).sort((a,b)=>a.sira-b.sira);
           if(pages.length) res.push({ id, baslik:panelTitle, ikon:d.icon||PANEL_ICON[id]||'📁', sira: typeof d.order==='number'?d.order:9999, pages });
         });
         res.sort((a,b)=>a.sira-b.sira);
@@ -314,7 +464,6 @@
       hamb?.addEventListener('click',()=>drawer.classList.toggle('open'));
       document.addEventListener('click',(e)=>{ if(!drawer.contains(e.target) && !hamb?.contains(e.target)) drawer.classList.remove('open'); });
     }
-
     document.addEventListener('click', (e) => {
       const a = e.target.closest('a[data-key]'); if (!a) return;
       const key = norm(a.dataset.key), pnl = norm(a.dataset.panel||''), pnlTitle = norm(a.dataset.panelTitle||'');
@@ -330,6 +479,8 @@
     const inpEvli=document.getElementById('inpEvli');
     const selOtoPazar=document.getElementById('selOtoPazar');
     const tbody=document.getElementById('tbody');
+    const existInfo=document.getElementById('existInfo');
+    const btnHaftaSil=document.getElementById('btnHaftaSil');
 
     function pad(n){return n<10?'0'+n:''+n}
     function toISO(d){return d.toISOString().split('T')[0]}
@@ -340,35 +491,112 @@
       const w=Math.ceil((((d-yStart)/86400000)+1)/7);
       return {isoYear:d.getUTCFullYear(),weekNo:w}
     }
-    function rotate(a,i){ if(!a.length) return []; const k=((i%a.length)+a.length)%a.length; return a.slice(k).concat(a.slice(0,k)); }
-    function parseList(s){ return (s||"").split(",").map(x=>x.trim()).filter(Boolean); }
     function buildWeek(date){ const d=new Date(date); const off=(d.getDay()+6)%7; const pzt=new Date(d); pzt.setDate(d.getDate()-off); const arr=[]; for(let i=0;i<7;i++){ const x=new Date(pzt); x.setDate(pzt.getDate()+i); arr.push(x);} return arr; }
     const DAYS=["Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi","Pazar"];
     const FULLDAY="09:00 → ertesi 09:00";
     const PZ_GUN="08:00 → 19:30";           // evli (özel pazar)
     const PZ_BEKAR="18:00 → ertesi 09:00";  // bekâr (özel pazar)
 
-    function refreshBadges(){
-      if(!inpTarih.value){ document.getElementById('outWeek').textContent="—"; return; }
-      const d=new Date(inpTarih.value+"T12:00:00"); const {isoYear,weekNo}=isoWeek(d);
-      document.getElementById('outWeek').textContent=`${isoYear}-W${('0'+weekNo).slice(-2)}`;
-      const bl=parseList(inpBekar.value), el=parseList(inpEvli.value);
-      document.getElementById('outBStart').textContent=bl.length?(weekNo%bl.length):"-";
-      document.getElementById('outEStart').textContent=el.length?(weekNo%el.length):"-";
+    /* ---- Önceki haftadan türetme ---- */
+    function mapFromPrevWeek(prevRows, isSpecialPazarCurr){
+      const byDay = Object.fromEntries(prevRows.map(r=>[r.gun,r]));
+      const result = {};
+      // EVLİ: örnek kural (isteğin doğrultusunda geri kaydırma & Pazartesi sabit ihvan)
+      const mapEvli = {
+        "Cumartesi": byDay["Salı"]?.evli || null,
+        "Salı":      byDay["Çarşamba"]?.evli || null,
+        "Çarşamba":  byDay["Perşembe"]?.evli || null,
+        "Perşembe":  byDay["Cuma"]?.evli || null,
+        "Cuma":      byDay["Cumartesi"]?.evli || null,
+        "Pazar":     isSpecialPazarCurr ? (byDay["Pazar"]?.evli || null) : null,
+        "Pazartesi": null // ihvan sabit
+      };
+      // BEKÂR: 1 gün geri kaydırma (genel kural)
+      const prevOrder = ["Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi","Pazar"];
+      const back1 = d => prevOrder[(prevOrder.indexOf(d)+1)%7]; // “geri” = bir sonraki günün kişisi
+      const mapBekar = Object.fromEntries(prevOrder.map(day => [day, byDay[back1(day)]?.bekar || null]));
+      return {evli:mapEvli, bekar:mapBekar};
     }
 
-    function planOlustur(opts){
-      const {date,bekarList,evliList,ihvan,manPazar,otoPazar,tehir}=opts;
+    function makeSelect(options,val,onChange,disabled){
+      const s=document.createElement('select'); s.className="inline"; if(disabled) s.disabled=true;
+      const o0=document.createElement('option'); o0.value=""; o0.textContent="—"; s.appendChild(o0);
+      options.forEach(o=>{ const op=document.createElement('option'); op.value=o; op.textContent=o; if(o===val) op.selected=true; s.appendChild(op); });
+      s.addEventListener('change',()=>onChange(s.value||null)); return s;
+    }
+
+    function drawPlan(plan){
+      const tb=document.getElementById('tbody'); tb.innerHTML="";
+      document.getElementById('sumPazar').textContent=plan.isPazarTehir?"Tehir":(plan.isSpecialPazar?"Var":"Yok");
+      const bOps=(inpBekar.value||'').split(',').map(x=>x.trim()).filter(Boolean);
+      const eOps=(inpEvli.value||'').split(',').map(x=>x.trim()).filter(Boolean);
+      plan.rows.forEach(r=>{
+        const tr=document.createElement('tr');
+        const tdG=document.createElement('td'); tdG.textContent=r.gun;
+        const tdD=document.createElement('td'); tdD.textContent=r.tarihISO;
+        const tdS=document.createElement('td'); tdS.innerHTML=`<span class="time">${r.saat}</span>`;
+        const tdB=document.createElement('td'); const tdE=document.createElement('td'); const tdN=document.createElement('td');
+
+        if(r.gun==="Cumartesi" && plan.isSpecialPazar){ tdB.innerHTML=`<span class="muted">—</span>`; }
+        else{ tdB.appendChild(makeSelect(bOps,r.bekar,v=>r.bekar=v)); }
+
+        if(r.gun==="Pazartesi"){
+          const ih=plan.ihvan || inpIhvan.value.trim();
+          tdE.appendChild(makeSelect([ih], ih, v=>r.evli=v, true));
+        }else if(r.gun==="Pazar" && plan.isSpecialPazar && !plan.isPazarTehir){
+          tdE.appendChild(makeSelect(eOps,r.evli,v=>r.evli=v));
+        }else if(r.gun==="Pazar"){
+          tdE.innerHTML=`<span class="muted">—</span>`;
+        }else{
+          tdE.appendChild(makeSelect(eOps,r.evli,v=>r.evli=v));
+        }
+
+        tdN.textContent=r.not||"—";
+        tr.append(tdG,tdD,tdS,tdB,tdE,tdN); tb.appendChild(tr);
+      });
+    }
+
+    function planFromInputs(date, prevPlanOrNull){
       const iso=isoWeek(date); const weekDates=buildWeek(date);
+      const isAuto = (selOtoPazar.value==="auto") ? (iso.weekNo%2===0) : false;
+      const isSpecial = document.getElementById('chkManPazar').checked || isAuto;
+      const isTehir = document.getElementById('chkTehir').checked;
+      const ihvan = inpIhvan.value.trim();
+
+      let rows=[];
+      if(prevPlanOrNull){
+        // Önceki haftadan türet
+        const maps = mapFromPrevWeek(prevPlanOrNull.rows||[], isSpecial && !isTehir);
+        DAYS.forEach((g,i)=>{
+          const tarihISO=toISO(weekDates[i]); const monthKey=tarihISO.slice(0,7);
+          let saat = FULLDAY, not="";
+          let bekar = maps.bekar[g] ?? null;
+          let evli  = maps.evli[g]  ?? null;
+
+          if(g==="Pazar" && isSpecial && !isTehir){
+            saat=`${PZ_BEKAR} (bekâr) + ${PZ_GUN} (evli)`;
+            not="Özel Pazar (önceki haftadan türetildi)";
+          }else if(g==="Pazar"){
+            evli=null; not=isTehir?"Pazar tehir":"Normal Pazar — evli yok";
+          }else if(g==="Pazartesi"){
+            evli=ihvan; not="Pazartesi sabit ihvan";
+          }
+          if(g==="Cumartesi" && isSpecial){ bekar=null; not = (not?not+'; ':'')+"Cumartesi bekâr yok (özel pazar)"; }
+
+          rows.push({gun:g,tarihISO,monthKey,saat,bekar,evli,not});
+        });
+        return {isoYear:iso.isoYear,weekNo:iso.weekNo,isSpecialPazar:isSpecial,isPazarTehir:isTehir,pazarEvli:rows.find(r=>r.gun==='Pazar')?.evli||null, ihvan, rows};
+      }
+
+      // Sıfırdan (mevcut algoritman)
+      const bekarList=(inpBekar.value||'').split(',').map(x=>x.trim()).filter(Boolean);
+      const evliList =(inpEvli.value||'').split(',').map(x=>x.trim()).filter(Boolean);
       const bStart=bekarList.length?(iso.weekNo%bekarList.length):0;
       const eStart=evliList.length?(iso.weekNo%evliList.length):0;
+      const rotate=(a,i)=>{ if(!a.length) return []; const k=((i%a.length)+a.length)%a.length; return a.slice(k).concat(a.slice(0,k)); }
       let bSeq=rotate(bekarList,bStart); let eSeq=rotate(evliList,eStart);
-      const isAuto=(otoPazar==="auto")? (iso.weekNo%2===0) : false;
-      const isSpecial=manPazar?true:isAuto;
-      const isTehir=!!tehir;
       const pazarEvli=(isSpecial&&evliList.length)?eSeq[0]:null;
 
-      const rows=[];
       DAYS.forEach((g,i)=>{
         let bekar=null, evli=null, saat=FULLDAY, not="";
         const tarihISO=toISO(weekDates[i]); const monthKey=tarihISO.slice(0,7);
@@ -391,14 +619,12 @@
             }
             if(chosen){ evli=chosen; eSeq=rotate(eSeq,k+1); }
             else{ evli=eSeq[0]||null; if(evli) eSeq=rotate(eSeq,1); }
-            if(isSpecial) not = (not?not+"; ":"")+"Cumartesi evlisi pazar evlisiyle çakışmadı";
           }
         } else if(g==="Pazar"){
           if(isSpecial && !isTehir){
             bekar=bSeq[0]||null; if(bekar) bSeq=rotate(bSeq,1);
             evli=pazarEvli;
-            saat=`${PZ_BEKAR} (bekâr) + ${PZ_GUN} (evli)`;
-            not="Özel Pazar: evli (gündüz) + bekâr (akşam)";
+            saat=`${PZ_BEKAR} (bekâr) + ${PZ_GUN} (evli)`; not="Özel Pazar";
             if(evli){ const ix=eSeq.indexOf(evli); if(ix>=0) eSeq=rotate(eSeq,ix+1); }
           } else {
             bekar=bSeq[0]||null; if(bekar) bSeq=rotate(bSeq,1);
@@ -408,67 +634,47 @@
         rows.push({gun:g,tarihISO,monthKey,saat,bekar,evli,not});
       });
 
-      return {isoYear:iso.isoYear,weekNo:iso.weekNo,bStart,eStart,isSpecialPazar:isSpecial,isPazarTehir:isTehir,pazarEvli,rows};
+      return {isoYear:iso.isoYear,weekNo:iso.weekNo,isSpecialPazar:isSpecial,isPazarTehir:isTehir,pazarEvli, ihvan, rows};
     }
 
-    function makeSelect(options,val,onChange,disabled){
-      const s=document.createElement('select'); s.className="inline"; if(disabled) s.disabled=true;
-      const o0=document.createElement('option'); o0.value=""; o0.textContent="—"; s.appendChild(o0);
-      options.forEach(o=>{ const op=document.createElement('option'); op.value=o; op.textContent=o; if(o===val) op.selected=true; s.appendChild(op); });
-      s.addEventListener('change',()=>onChange(s.value||null)); return s;
-    }
-    function drawPlan(plan){
-      const tb=document.getElementById('tbody'); tb.innerHTML="";
-      document.getElementById('sumPazar').textContent=plan.isPazarTehir?"Tehir":(plan.isSpecialPazar?"Var":"Yok");
-      const bOps=parseList(inpBekar.value), eOps=parseList(inpEvli.value);
-      plan.rows.forEach(r=>{
-        const tr=document.createElement('tr');
-        const tdG=document.createElement('td'); tdG.textContent=r.gun;
-        const tdD=document.createElement('td'); tdD.textContent=r.tarihISO;
-        const tdS=document.createElement('td'); tdS.innerHTML=`<span class="time">${r.saat}</span>`;
-        const tdB=document.createElement('td'); const tdE=document.createElement('td'); const tdN=document.createElement('td');
-
-        if(r.gun==="Cumartesi" && plan.isSpecialPazar){ tdB.innerHTML=`<span class="muted">—</span>`; }
-        else{ tdB.appendChild(makeSelect(bOps,r.bekar,v=>r.bekar=v)); }
-
-        if(r.gun==="Pazartesi"){
-          const ih=inpIhvan.value.trim(); tdE.appendChild(makeSelect([ih], ih, v=>r.evli=v, true));
-        }else if(r.gun==="Pazar" && plan.isSpecialPazar && !plan.isPazarTehir){
-          tdE.appendChild(makeSelect(eOps,r.evli,v=>r.evli=v));
-        }else if(r.gun==="Pazar"){
-          tdE.innerHTML=`<span class="muted">—</span>`;
-        }else{
-          tdE.appendChild(makeSelect(eOps,r.evli,v=>r.evli=v));
-        }
-
-        tdN.textContent=r.not||"—";
-        tr.append(tdG,tdD,tdS,tdB,tdE,tdN); tb.appendChild(tr);
-      });
+    function renderWeekBadge(d){
+      const {isoYear,weekNo}=isoWeek(d);
+      document.getElementById('outWeek').textContent=`${isoYear}-W${('0'+weekNo).slice(-2)}`;
     }
 
     async function saveAyarIf(){
       if(!document.getElementById('chkAyarKaydet').checked) return;
       await db.collection('nobet_ayar').doc('genel').set({
-        bekarlar:parseList(inpBekar.value),
-        evliler: parseList(inpEvli.value),
+        bekarlar:(inpBekar.value||'').split(',').map(x=>x.trim()).filter(Boolean),
+        evliler: (inpEvli.value||'').split(',').map(x=>x.trim()).filter(Boolean),
         ihvan:   inpIhvan.value.trim(),
         otoPazar:selOtoPazar.value
       },{merge:true});
     }
+
     async function savePlan(plan){
       const weekKey=`${plan.isoYear}-W${('0'+plan.weekNo).slice(-2)}`;
-      const batch=db.batch();
-      batch.set(db.collection('nobet_planlari').doc(weekKey),{
+      // 1) Bu haftanın mevcut index kayıtlarını temizle
+      const idxCol = db.collection('nobet_index');
+      const old = await idxCol.where('weekKey','==',weekKey).get();
+      let batch = db.batch(); let i=0;
+      old.forEach(doc=>{ batch.delete(doc.ref); if(++i%450===0){ /* commit parça parça*/ }});
+      if(i) await batch.commit();
+
+      // 2) Plan belgesi ve yeni index kayıtları
+      batch = db.batch();
+      const planRef = db.collection('nobet_planlari').doc(weekKey);
+      batch.set(planRef,{
         weekKey, isoYear:plan.isoYear, weekNo:plan.weekNo,
         isSpecialPazar:plan.isSpecialPazar, isPazarTehir:plan.isPazarTehir, pazarEvli:plan.pazarEvli||null,
-        rows:plan.rows, createdAt:firebase.firestore.FieldValue.serverTimestamp(), createdBy:auth.currentUser?auth.currentUser.uid:null
+        rows:plan.rows, ihvan:plan.ihvan||null,
+        updatedAt:firebase.firestore.FieldValue.serverTimestamp(), updatedBy:auth.currentUser?auth.currentUser.uid:null
       },{merge:true});
 
-      const idx=db.collection('nobet_index');
       plan.rows.forEach(r=>{
         if(r.bekar){
           const type=(r.gun==="Pazar" && plan.isSpecialPazar && !plan.isPazarTehir)?"pazar-aksam":"24s";
-          batch.set(idx.doc(),{
+          batch.set(idxCol.doc(),{
             weekKey,date:r.tarihISO,day:r.gun,person:r.bekar,role:"bekar",
             saat:type==="pazar-aksam"?"18:00→09:00":"09:00→09:00", type, monthKey:r.monthKey, year:r.tarihISO.slice(0,4),
             createdAt:firebase.firestore.FieldValue.serverTimestamp()
@@ -476,13 +682,14 @@
         }
         if(r.evli){
           const type=(r.gun==="Pazar" && plan.isSpecialPazar && !plan.isPazarTehir)?"pazar-gunduz":"24s";
-          batch.set(idx.doc(),{
+          batch.set(idxCol.doc(),{
             weekKey,date:r.tarihISO,day:r.gun,person:r.evli,role:(r.gun==="Pazartesi"?"ihvan":"evli"),
             saat:type==="pazar-gunduz"?"08:00→19:30":"09:00→09:00", type, monthKey:r.monthKey, year:r.tarihISO.slice(0,4),
             createdAt:firebase.firestore.FieldValue.serverTimestamp()
           });
         }
       });
+
       await batch.commit();
       await saveAyarIf();
       showToast("✅ Plan kaydedildi.");
@@ -490,11 +697,13 @@
 
     /* ==== Auth ve init ==== */
     function setDefaults(){
-      const t=new Date(); inpTarih.value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
-      refreshBadges();
+      const t=new Date(); const iso=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+      document.getElementById('inpTarih').value=iso;
+      renderWeekBadge(t);
     }
 
     try{ firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL); }catch(e){}
+
     auth.onAuthStateChanged(async (user)=>{
       if(!user){ setTimeout(()=>{ if(!auth.currentUser) location.replace('../index.html'); },150); return; }
       try{
@@ -502,6 +711,7 @@
         const uSnap = await db.collection('kullanicilar').doc(user.uid).get();
         const data  = uSnap.exists ? uSnap.data() : {};
         document.getElementById('username').textContent = data.adSoyad || user.email || 'Kullanıcı';
+        document.getElementById('profName').textContent = data.adSoyad?.split(' ')[0] || 'Profil';
 
         // yetkiler
         const rawPerms = Array.isArray(data.yetkiler) ? data.yetkiler : [];
@@ -526,37 +736,89 @@
       }catch(e){ console.error(e); showToast('Veriler yüklenirken hata.'); }
     });
 
-    // Events
-    [inpTarih,inpBekar,inpEvli].forEach(el=>el.addEventListener('change',refreshBadges));
-    document.getElementById('btnYazdir').addEventListener('click',()=>window.print());
+    // Tarih değişikliği: hafta rozeti
+    document.getElementById('inpTarih').addEventListener('change', (e)=>{ const d=new Date(e.target.value+"T12:00:00"); renderWeekBadge(d); });
 
-    let lastPlan=null;
-    document.getElementById('btnOlustur').addEventListener('click',()=>{
-      if(!inpTarih.value){ showToast('Tarih seçin'); return; }
-      const d=new Date(inpTarih.value+"T12:00:00");
-      const plan=planOlustur({
-        date:d,
-        bekarList:parseList(inpBekar.value),
-        evliList: parseList(inpEvli.value),
-        ihvan:    inpIhvan.value.trim(),
-        manPazar: document.getElementById('chkManPazar').checked,
-        otoPazar: selOtoPazar.value,
-        tehir:    document.getElementById('chkTehir').checked
-      });
-      lastPlan=plan; drawPlan(plan);
-      document.getElementById('outWeek').textContent=`${plan.isoYear}-W${('0'+plan.weekNo).slice(-2)}`;
-      document.getElementById('outBStart').textContent=plan.bStart;
-      document.getElementById('outEStart').textContent=plan.eStart;
+    let lastPlan=null, lastWeekKey=null, loadedExisting=false;
+
+    // Planı oluştur / yükle
+    document.getElementById('btnOlustur').addEventListener('click', async ()=>{
+      const val = inpTarih.value; if(!val){ showToast('Tarih seçin'); return; }
+      const d=new Date(val+"T12:00:00");
+      const {isoYear,weekNo}=isoWeek(d);
+      const weekKey=`${isoYear}-W${('0'+weekNo).slice(-2)}`;
+
+      // Hafta var mı?
+      const exist = await db.collection('nobet_planlari').doc(weekKey).get();
+      if(exist.exists){
+        const planDoc = exist.data();
+        showToast('ℹ️ Seçili tarihte daha önceden plan var. Yüklendi.');
+        existInfo.style.display='block';
+        existInfo.textContent = `Bu hafta (${weekKey}) mevcut plan düzenleniyor. Kaydedersen üzerine yazılır.`;
+        btnHaftaSil.style.display='inline-block';
+
+        // UI'ya doldur
+        inpIhvan.value = planDoc.ihvan || inpIhvan.value;
+        document.getElementById('chkTehir').checked = !!planDoc.isPazarTehir;
+        document.getElementById('chkManPazar').checked = !!planDoc.isSpecialPazar;
+
+        lastPlan = { isoYear, weekNo, isSpecialPazar:!!planDoc.isSpecialPazar, isPazarTehir:!!planDoc.isPazarTehir, pazarEvli:planDoc.pazarEvli||null, ihvan: planDoc.ihvan||inpIhvan.value, rows: planDoc.rows||[] };
+        drawPlan(lastPlan);
+        lastWeekKey = weekKey;
+        return;
+      }
+
+      // Yoksa: bir önceki haftaya bak
+      const prevKey = (wk=>{ const [y, w]=wk; let Y=y, W=w-1; if(W===0){ Y=y-1; W=53; } return `${Y}-W${String(W).padStart(2,'0')}`; })([isoYear, weekNo]);
+      const prevDoc = await db.collection('nobet_planlari').doc(prevKey).get();
+      const prevPlan = prevDoc.exists ? prevDoc.data() : null;
+
+      lastPlan = planFromInputs(d, prevPlan);
+      drawPlan(lastPlan);
+      existInfo.style.display='none';
+      btnHaftaSil.style.display='none';
+      lastWeekKey = weekKey;
     });
 
-    document.getElementById('btnKaydet').addEventListener('click',async()=>{
-      if(!lastPlan){ showToast('Önce plan oluşturun'); return; }
-      try{ await savePlan(lastPlan); }catch(e){ console.error(e); showToast('Kaydetme hatası.'); }
+    // Planı kaydet
+    document.getElementById('btnKaydet').addEventListener('click', async ()=>{
+      if(!lastPlan){ showToast('Önce planı oluşturun veya yükleyin.'); return; }
+      try{
+        // tabloda yapılan değişiklikler lastPlan.rows içine zaten yazılıyor (select onChange)
+        await savePlan(lastPlan);
+      }catch(e){ console.error(e); showToast('Kaydetme hatası.'); }
     });
 
-    // Global logout
-    function logout(){ auth.signOut().then(()=>location.replace('../index.html')); }
-    window.logout = logout;
+    // Bu haftayı tamamen sil
+    btnHaftaSil.addEventListener('click', async ()=>{
+      if(!lastWeekKey){ showToast('Hafta bulunamadı.'); return; }
+      if(!confirm(`${lastWeekKey} haftasındaki plan ve index kayıtları silinsin mi?`)) return;
+      // plan sil
+      await db.collection('nobet_planlari').doc(lastWeekKey).delete().catch(()=>{});
+      // index sil
+      const idx = await db.collection('nobet_index').where('weekKey','==',lastWeekKey).get();
+      let batch=db.batch(); let i=0;
+      idx.forEach(doc=>{ batch.delete(doc.ref); if(++i%450===0){/* parça commit edilebilir */}});
+      if(i) await batch.commit();
+      showToast('🗑️ Hafta silindi.');
+      document.getElementById('tbody').innerHTML='';
+      existInfo.style.display='none'; btnHaftaSil.style.display='none';
+      lastPlan=null; lastWeekKey=null;
+    });
+
+    // Bildirim listesine sahte içerik (bağla: Firestore bildirimlerin varsa oradan çek)
+    (function seedNotif(){
+      const list=document.getElementById('notifList');
+      list.innerHTML = `
+        <div class="drop-row"><span>Nöbet planı güncellendi</span><span class="muted">az önce</span></div>
+        <div class="drop-row"><span>Temizlik raporu yayımlandı</span><span class="muted">1s</span></div>
+      `;
+      const badge=document.getElementById('notifBadge'); badge.style.display='inline-block'; badge.textContent='2';
+    })();
+
+    // Başlangıç
+    setToday();
+
   </script>
 </body>
 </html>

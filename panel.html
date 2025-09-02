@@ -127,6 +127,14 @@
       .nav-center{display:none}
       .hamb{display:inline-flex}
     }
+    /* --- Top-3 kartları için ufak görsel dokunuşlar --- */
+.rank{min-width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;
+  border-radius:999px;border:1px solid var(--stroke);background:var(--pill);font-weight:800;margin-right:8px}
+.amount{font-weight:800}
+.meta{font-size:15px;color:var(--muted)}
+.bar{height:6px;border-radius:999px;background:var(--surface);overflow:hidden;margin-top:6px}
+.bar>span{display:block;height:100%;background:linear-gradient(90deg,var(--brand),var(--brand2));width:0}
+
   </style>
 
   <!-- Firebase (compat) -->
@@ -242,16 +250,22 @@
       <div class="card col-4">
         <h3>Teknik Eksikler</h3>
         <div class="kpi">
-          <div><div class="val" id="kpiGenelTemizlikOrt">--</div><div class="sub">Tüm Katlar Ortalama</div></div>
-          <div>🧹</div>
+          <div><div class="val" id="kpiEksikSayisi">--</div><div class="sub">Bugün Toplam Eksik</div></div>
+          <div>🛠️</div>
         </div>
-        <div class="list" id="katOrtList" style="margin-top:10px"></div>
+        <div class="list" id="eksikList" style="margin-top:10px"></div>
       </div>
 
-      <!-- Aylık Top-3 -->
+      <!-- Aylık Top-3 (Yüzde) -->
       <div class="card col-4">
         <h3><span id="ayTop3">Ağustos Ayı</span> • En Fazla Tahsilat (Yüzde) – İlk 3</h3>
         <div class="list" id="top3List"></div>
+      </div>
+
+      <!-- 🆕 Aylık Top-3 (Tutar) -->
+      <div class="card col-4">
+        <h3><span id="ayTop3Tutar">Ağustos Ayı</span> • En Fazla Tahsilat (Tutar) – İlk 3</h3>
+        <div class="list" id="top3TutarList"></div>
       </div>
 
       <!-- Aylık Hiç Tahsilat Yok -->
@@ -375,6 +389,8 @@
     })();
 
     /* ===== Dinamik Kartlar ===== */
+    // Panelde raporlayacağın katların etiketi
+    const KATLAR = ['2.Kat - Lokal','1.Kat - Etüt','0 - Giriş Kat','-1.Kat - Yatakhane','-2.Kat - Yemekhane','Bahçe'];
     const monthsTR = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
     function toDate(v){
       if(!v) return null;
@@ -385,6 +401,165 @@
     }
     function rangeYear(year){ return { start:new Date(year,0,1,0,0,0), end:new Date(year,11,31,23,59,59,999) }; }
     function rangeMonth(d){ return { start:new Date(d.getFullYear(), d.getMonth(), 1, 0,0,0), end:new Date(d.getFullYear(), d.getMonth()+1, 0, 23,59,59,999) }; }
+
+        // İsim tekilleştirme ve görselleştirme
+    const tidy   = s => (s||'').toString().trim().replace(/\s+/g,' ');
+    const normTR = s => tidy(s).toLocaleLowerCase('tr-TR');
+    function nameKey(s){ return normTR(s).toUpperCase(); }
+
+    // Çok alanlı isim yakalayıcı (isim eksiklerini azaltır)
+    function coalesceName(obj){
+      const cand = [
+        obj?.personel, obj?.personelAd, obj?.sorumlu, obj?.adSoyad, obj?.isim, obj?.ad_soyad, obj?.ad_soyad,
+        obj?.ad, obj?.name
+      ].map(tidy).filter(Boolean);
+      if (cand.length) return cand[0];
+      // e-posta varsa ad@… → “ad” yakala
+      const mail = tidy(obj?.email || obj?.mail || obj?.eposta);
+      if (mail.includes('@')) return mail.split('@')[0];
+      return '—';
+    }
+
+    // Para biçimlendirici
+    function fmtTL(n){ const v=Number(n||0); return isNaN(v) ? '₺0' : '₺ ' + v.toLocaleString('tr-TR'); }
+
+    // === Ortak yardımcılar (TR günü) ===
+    function todayStrTR(){
+      const now = new Date();
+      // İstanbul TZ ile günü fixle
+      const tz = new Date(now.toLocaleString('en-US',{timeZone:'Europe/Istanbul'}));
+      const y = tz.getFullYear(), m = String(tz.getMonth()+1).padStart(2,'0'), d = String(tz.getDate()).padStart(2,'0');
+      return `${y}-${m}-${d}`;
+    }
+    function avg(nums){ if(!nums.length) return 0; const s=nums.reduce((a,b)=>a+(+b||0),0); return Math.round((s/nums.length)*10)/10; }
+
+    // Kattaki toplam mahal sayısını getir (temizlik_listesi > temizlik_katlari fallback)
+    async function getToplamMahaller(kat){
+      try{
+        const snap = await db.collection('temizlik_listesi').doc(kat).collection('mahaller').get();
+        if(!snap.empty) return snap.size;
+      }catch(_){}
+      try{
+        const ds = await db.collection('temizlik_katlari').doc(kat).get();
+        if(ds.exists){
+          const d = ds.data()||{};
+          if (Array.isArray(d.mahaller)) return d.mahaller.length;
+          if (d.mahaller && typeof d.mahaller==='object') return Object.keys(d.mahaller).length;
+        }
+      }catch(_){}
+      return 0;
+    }
+
+    // 1) TEMİZLİK KONTROLÜ — tek kat, tek gün
+    async function fetchTemizlikKontrolKatGun(kat, dateStr){
+      const col = db.collection('temizlik_kontrol').doc(kat).collection(dateStr);
+      const snap = await col.get();
+      const puanlar = [], zeroes = [];
+      snap.forEach(doc=>{
+        const v = doc.data()||{};
+        const p = Number(v.puan)||0;
+        puanlar.push(p);
+        if(p===0) zeroes.push(1);
+      });
+      const kayitli = snap.size;
+      const toplam = await getToplamMahaller(kat);
+      const kapsama = toplam>0? kayitli/toplam : null;
+      const ortalama = avg(puanlar);
+      const eksikMah = toplam>0? Math.max(0, toplam-kayitli): 0;
+      const uyari = eksikMah + zeroes.length; // 0 puan + eksik giriş
+      return { kat, kayitli, toplam, kapsama, ortalama, uyari };
+    }
+
+    // 2) GENEL TEMİZLİK — _summary varsa onu kullan
+    async function fetchGenelSummaryKatGun(kat, dateStr){
+      const root = db.collection('genel_temizlik_kontrol').doc(kat).collection(dateStr);
+      const sum = await root.doc('_summary').get();
+      if(sum.exists){
+        const d = sum.data()||{};
+        return { kat, submissions: d.submissions||0, avgPuan100: d.avgPuan100 ?? Math.round((d.avgPuan10||0)*10), eksikAny: !!d.eksik_var_any };
+      }
+      const snap = await root.get();
+      let s=0, n=0, eksik=false;
+      snap.forEach(doc=>{
+        if(doc.id==='_summary') return;
+        const v=doc.data()||{};
+        if(typeof v.puan10==='number'){ s+=v.puan10; n++; }
+        if(v.eksik_var) eksik = true;
+      });
+      const avg100 = n? Math.round((s/n)*10): 0;
+      return { kat, submissions:n, avgPuan100: avg100, eksikAny: eksik };
+    }
+
+    // 3) DETAYLI — _summary / fallback
+    async function fetchDetaySummaryKatGun(kat, dateStr){
+      const root = db.collection('genel_temizlik_detay').doc(kat).collection(dateStr);
+      const sum = await root.doc('_summary').get();
+      if(sum.exists){
+        const d = sum.data()||{};
+        return { kat, submissions: d.submissions||0, avgPuan100: d.avgPuan100 ?? 0, eksikAny: !!d.eksik_var_any };
+      }
+      const snap = await root.get();
+      let s=0, n=0, eksik=false;
+      snap.forEach(doc=>{
+        if(doc.id==='_summary') return;
+        const v=doc.data()||{};
+        if(typeof v.puan100==='number'){ s+=v.puan100; n++; }
+        if(v.eksik_var) eksik = true;
+      });
+      const avg100 = n? Math.round(s/n): 0;
+      return { kat, submissions:n, avgPuan100: avg100, eksikAny: eksik };
+    }
+
+    // 4) EKSİKLER — açık kayıtlar
+    async function fetchEksikler({dateStr=null, kat=null, status='acik'}={}){
+      let q = db.collection('eksik_bildirim').where('status','==', status);
+      if(dateStr) q = q.where('tarih','==', dateStr);
+      if(kat)     q = q.where('kat','==', kat);
+      const snap = await q.get();
+      const list = [];
+      snap.forEach(doc=>{
+        const v=doc.data()||{};
+        const parcalar = String(v.aciklama||'').split('/').map(s=>s.trim()).filter(Boolean);
+        list.push({ id: doc.id, kat: v.kat||'—', tarih: v.tarih||'—', uid: v.uid||'', email: v.email||'', aciklama: v.aciklama||'', parcalar, createdAt: v.createdAt||null, status: v.status||'acik' });
+      });
+      return { count: snap.size, list };
+    }
+
+    // === Hepsini toplu: panel kartları için tek fonksiyon
+    async function buildTemizlikDashboard({kats, dateStr = todayStrTR()}){
+      // 1) Temizlik Kontrolü
+      const tkRows = await Promise.all(kats.map(k=> fetchTemizlikKontrolKatGun(k, dateStr)));
+      const tk = {
+        toplamMahaller: tkRows.reduce((a,r)=> a + (r.toplam||0), 0),
+        doldurulan:     tkRows.reduce((a,r)=> a + (r.kayitli||0), 0),
+        ortalamaPuan:   (()=>{ let s=0,c=0; tkRows.forEach(r=>{ if(r.kayitli>0 && Number.isFinite(r.ortalama)){ s += r.ortalama * r.kayitli; c += r.kayitli; } }); return c? Math.round((s/c)*10)/10 : 0; })(),
+        uyari:          tkRows.reduce((a,r)=> a + (r.uyari||0), 0),
+        katlar:         tkRows
+      };
+
+      // 2) Genel Temizlik (özet)
+      const genelRows = await Promise.all(kats.map(k=> fetchGenelSummaryKatGun(k, dateStr)));
+      const genel = {
+        submissions:  genelRows.reduce((a,r)=> a+(r.submissions||0), 0),
+        avgPuan100:   (()=>{ let s=0,c=0; genelRows.forEach(r=>{ s += (r.avgPuan100||0) * (r.submissions||0); c += (r.submissions||0); }); return c? Math.round(s/c) : 0; })(),
+        eksikAny:     genelRows.some(r=> r.eksikAny),
+        katlar:       genelRows
+      };
+
+      // 3) Detaylı (özet) — gerekirse ileride kullanırız
+      const detayRows = await Promise.all(kats.map(k=> fetchDetaySummaryKatGun(k, dateStr)));
+      const detay = {
+        submissions:  detayRows.reduce((a,r)=> a+(r.submissions||0), 0),
+        avgPuan100:   (()=>{ let s=0,c=0; detayRows.forEach(r=>{ s += (r.avgPuan100||0) * (r.submissions||0); c += (r.submissions||0); }); return c? Math.round(s/c) : 0; })(),
+        eksikAny:     detayRows.some(r=> r.eksikAny),
+        katlar:       detayRows
+      };
+
+      // 4) Eksikler (açık)
+      const eksik = await fetchEksikler({dateStr, status:'acik'});
+
+      return { date: dateStr, temizlik: tk, genel, detay, eksik };
+    }
 
  /* ===== Talebe Sayıları (değişmedi) ===== */
   async function loadTalebeStats(){
@@ -405,69 +580,60 @@
   }
 
   /* ===== Talebe Temizlik Puanı (Bugün) – kat kat + genel ortalama ===== */
-async function loadTalebeTemizlik(){
-  const todayKey=new Date().toISOString().slice(0,10);
-  const listEl=document.getElementById("talebeTemizlikTop5");
-  const kpiEl=document.getElementById("kpiTalebeTemizlikOrt");
-  listEl.innerHTML="";
-  let genTop=0, genN=0;
+  async function loadTalebeTemizlik(){
+    const dateStr = todayStrTR();
+    const listEl = document.getElementById("talebeTemizlikTop5");
+    const kpiEl  = document.getElementById("kpiTalebeTemizlikOrt");
+    listEl.innerHTML = '';
 
-  const katSnap=await db.collection("temizlik_kontrol").get();
-  for (const doc of katSnap.docs){
-    const katId=doc.id;
-    const data=doc.data()||{};
-    const scores=[];
+    try{
+      const data = await buildTemizlikDashboard({kats: KATLAR, dateStr});
+      // KPI: temizlik_kontrol ağırlıklı ortalama (0–100)
+      kpiEl.textContent = Number.isFinite(data.temizlik.ortalamaPuan) ? data.temizlik.ortalamaPuan.toFixed(1) : '--';
 
-    // A) Şema: doc içinde "2025-08-15" alanı (nested map)
-    const node=data[todayKey];
-    if(node && typeof node==='object'){
-      Object.values(node).forEach(entry=>{
-        if(entry && typeof entry==='object'){
-          let p = ('puan10' in entry) ? Number(entry.puan10)*10 : Number(entry.puan||0);
-          if(!isNaN(p)) scores.push(p);
-        }
-      });
-    }else{
-      // B) Şema: alt koleksiyon /2025-08-15
-      const s=await db.collection("temizlik_kontrol").doc(katId).collection(todayKey).get().catch(()=>({empty:true, forEach:()=>{}}));
-      if(!s.empty){
-        s.forEach(d=>{
-          const v=d.data()||{};
-          let p=('puan10' in v) ? Number(v.puan10)*10 : Number(v.puan||0);
-          if(!isNaN(p)) scores.push(p);
+      // Liste: her kat için ortalama + kapsama bilgisi
+      data.temizlik.katlar
+        .slice() // kopya
+        .sort((a,b)=> (b.ortalama||0)-(a.ortalama||0))
+        .forEach(r=>{
+          const kaps = (r.kapsama!=null) ? Math.round((r.kapsama*100))+'%' : '—';
+          const el=document.createElement('div'); el.className='list-item';
+          el.innerHTML = `<div><strong>${r.kat}</strong><div class="sub" style="font-size:12px;color:var(--muted)">Kayıt: ${r.kayitli}/${r.toplam} • Kapsama: ${kaps}</div></div><div>${(Number.isFinite(r.ortalama)? r.ortalama.toFixed(1): '—')}</div>`;
+          listEl.appendChild(el);
         });
-      }
-    }
-
-    if(scores.length===0){
-      const el=document.createElement("div");
-      el.className="list-item";
-      el.innerHTML=`<div><strong>${katId}</strong></div><div style="color:var(--danger);font-weight:700">-</div>`;
-      listEl.appendChild(el);
-    }else{
-      const sum=scores.reduce((a,b)=>a+b,0);
-      const ort=sum/scores.length;
-      genTop+=sum; genN+=scores.length;
-      const el=document.createElement("div");
-      el.className="list-item";
-      el.innerHTML=`<div><strong>${katId}</strong></div><div>${ort.toFixed(1)}</div>`;
-      listEl.appendChild(el);
+    }catch(e){
+      console.error(e);
+      kpiEl.textContent='--';
+      listEl.innerHTML='<div class="muted">Veri yüklenemedi.</div>';
     }
   }
-  kpiEl.textContent = genN ? (genTop/genN).toFixed(1) : "--";
-}
 
   /* ===== Genel Temizlik (bugün) – şimdilik tamamı “-” ===== */
-  function loadGenelTemizlik(){
-    document.getElementById("kpiGenelTemizlikOrt").textContent="--";
-    const cont=document.getElementById("katOrtList");
-    cont.innerHTML="";
-    ['1.kat','2.kat','3.kat','4.kat','5.kat'].forEach(k=>{
-      const el=document.createElement('div');
-      el.className='list-item';
-      el.innerHTML=`<div><strong>${k}</strong></div><div style="color:var(--danger);font-weight:700">-</div>`;
-      cont.appendChild(el);
-    });
+  async function loadGenelTemizlik(){
+    const dateStr = todayStrTR();
+    const kpi = document.getElementById("kpiGenelTemizlikOrt");
+    const cont = document.getElementById("katOrtList");
+    cont.innerHTML='';
+
+    try{
+      const data = await buildTemizlikDashboard({kats: KATLAR, dateStr});
+      // KPI: genel avgPuan100 (0–100)
+      kpi.textContent = Number.isFinite(data.genel.avgPuan100) ? data.genel.avgPuan100 : '--';
+
+      // Liste: kat bazında avg + submissions
+      data.genel.katlar
+        .slice()
+        .sort((a,b)=> (b.avgPuan100||0) - (a.avgPuan100||0))
+        .forEach(r=>{
+          const el=document.createElement('div'); el.className='list-item';
+          el.innerHTML = `<div><strong>${r.kat}</strong><div class="sub" style="font-size:12px;color:var(--muted)">Form: ${r.submissions} • ${r.eksikAny?'Eksik var':'Tam'}</div></div><div>${(r.avgPuan100??'—')}</div>`;
+          cont.appendChild(el);
+        });
+    }catch(e){
+      console.error(e);
+      kpi.textContent='--';
+      cont.innerHTML='<div class="muted">Veri yüklenemedi.</div>';
+    }
   }
 
   /* ===== Alacak Raporu: toplam, 2024, 2025 ===== */
@@ -526,51 +692,55 @@ async function loadAlacak(){
   /* ===== Aylık performans: Top‑3 (yüzde) & 0% =====
      - Yüzde = (personelin bu ayki tahsilatı) / (aynı yıldaki toplam tahakkuku) * 100
   */
-function nameKey(s){
-  return String(s||'—')
-    .normalize('NFD').replace(/[\u0300-\u036f]/g,'') // diacritics
-    .replace(/\s+/g,' ')                             // fazla boşluk
-    .trim().toUpperCase();
-}
-function niceName(key, fallback){ return fallback || key; }
-
 async function loadAylik(){
   const tidy   = s => (s||'').toString().trim().replace(/\s+/g,' ');
   const normTR = s => tidy(s).toLocaleLowerCase('tr-TR');
-  const nameKey= s => normTR(s).toUpperCase();      // kişileri tekilleştir
 
   const now = new Date();
-  const monthsTR=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
   const { start, end } = (()=>{
     const s = new Date(now.getFullYear(), now.getMonth(), 1);
     const e = new Date(now); e.setHours(23,59,59,999); // ayın bugüne kadarki kısmı
     return { start:s, end:e };
   })();
   const yil = now.getFullYear();
-  document.getElementById('ayTop3').textContent  = monthsTR[now.getMonth()]+' Ayı';
-  document.getElementById('ayZero').textContent  = monthsTR[now.getMonth()]+' Ayı';
+  document.getElementById('ayTop3').textContent     = monthsTR[now.getMonth()]+' Ayı';
+  document.getElementById('ayTop3Tutar').textContent= monthsTR[now.getMonth()]+' Ayı'; // 🆕
+  document.getElementById('ayZero').textContent     = monthsTR[now.getMonth()]+' Ayı';
 
   // Veriler
-  const [tSnap, sSnap] = await Promise.all([
+  const [tSnapYear, tSnapAll, sSnap] = await Promise.all([
     db.collection('tahakkuklar').where('yil','==',yil).get().catch(_=>db.collection('tahakkuklar').get()),
+    db.collection('tahakkuklar').get(),   // tüm yıllar
     db.collection('tahsilatlar').get()
   ]);
 
-  // Tahakkuk indeksleri + yıllık tahakkuk kişi bazında
-  const tahById = new Map();             // id -> tahakkuk doc
-  const keyToId = new Map();             // composite -> id
-  const annualTah = new Map();           // personKey -> yıllık tahakkuk toplamı
-  const displayName = new Map();         // personKey -> gösterim adı
+  // Haritalar
+  const tahById = new Map();      // id -> tahakkuk doc (sadece bu yıl)
+  const keyToId = new Map();      // eşleştirme için composit key (bu yıl)
+  const annualTah  = new Map();   // bu yıl kişi bazında
+  const overallTah = new Map();   // tüm yıllar kişi bazında
+  const displayName = new Map();  // gösterim adı
 
-  tSnap.forEach(doc=>{
+      // BU YIL tahakkukları
+  tSnapYear.forEach(doc=>{
     const t = doc.data()||{};
     if (Number(t.yil) !== yil) return;
     tahById.set(doc.id, t);
-    const k = `${yil}||${normTR(t.faaliyet)}||${normTR(t.personel)}||${normTR(t.borclu)}`;
+    const k = `${yil}||${normTR(t.faaliyet)}||${normTR(t.personel||t.personelAd||t.sorumlu||'')}||${normTR(t.borclu)}`;
     keyToId.set(k, doc.id);
-    const pk = nameKey(t.personel || t.personelAd || '—');
+    const pName = coalesceName(t);
+    const pk    = nameKey(pName);
     annualTah.set(pk, (annualTah.get(pk)||0) + Number(t.tahakkuk||0));
-    displayName.set(pk, t.personel || t.personelAd || '—');
+    displayName.set(pk, pName);
+  });
+
+  // TÜM YILLAR tahakkukları
+  tSnapAll.forEach(doc=>{
+    const t = doc.data()||{};
+    const pName = coalesceName(t);
+    const pk    = nameKey(pName);
+    overallTah.set(pk, (overallTah.get(pk)||0) + Number(t.tahakkuk||0));
+    if (!displayName.has(pk)) displayName.set(pk, pName);
   });
 
   // Bu ayki tahsilatlar (sadece eşleşenler, ve eşleştiği tahakkukun PERSONEL'ine yaz)
@@ -581,6 +751,7 @@ async function loadAylik(){
     if (!dt || dt < start || dt > end) return;
 
     let tah = null;
+
     if (v.tahakkukId && tahById.has(v.tahakkukId)) {
       tah = tahById.get(v.tahakkukId);
     } else {
@@ -591,43 +762,87 @@ async function loadAylik(){
     }
     if (!tah || Number(tah.yil)!==yil) return;
 
-    const pk = nameKey(tah.personel || tah.personelAd || '—');
-    displayName.set(pk, tah.personel || tah.personelAd || '—');
+    // İSİM: tah'da yoksa tahsilattan tamamla
+    const pName = coalesceName(tah) !== '—' ? coalesceName(tah) : coalesceName(v);
+    const pk    = nameKey(pName);
+    displayName.set(pk, pName);
+
     monthlyTh.set(pk, (monthlyTh.get(pk)||0) + Number(v.tutar||0));
   });
 
   // Top-3 (yüzde = aylık tahsilat / yıllık tahakkuk)
-  const rows = [...annualTah.keys()].map(pk=>{
-    const tah = annualTah.get(pk)||0;
-    const th  = monthlyTh.get(pk)||0;
-    return { pk, name: displayName.get(pk)||pk, pct: (tah>0 ? (th/tah*100) : 0), th, tah };
-  });
-
-  const top3 = document.getElementById('top3List'); top3.innerHTML='';
-  const top  = rows.filter(r=>r.pct>0).sort((a,b)=>b.pct-a.pct).slice(0,3);
-  if (!top.length){
-    top3.innerHTML = '<div class="list-item"><div>Veri yok</div><div class="muted">—</div></div>';
-  } else {
-    top.forEach((r,i)=>{
-      const el=document.createElement('div'); el.className='list-item';
-      el.innerHTML = `<div>${i+1}. ${r.name}</div><div class="muted">${r.pct.toFixed(1)}%</div>`;
-      top3.appendChild(el);
+    const rows = [...displayName.keys()].map(pk=>{
+      const tahAll = overallTah.get(pk)||0;   // 🆕 tüm yıllar
+      const tahYr  = annualTah.get(pk)||0;    // istersen label’da göstermek için
+      const th     = monthlyTh.get(pk)||0;    // bu ay tahsilat
+      return {
+        pk, name: displayName.get(pk)||pk,
+        pct: (tahAll>0 ? (th/tahAll*100) : 0),  // 🆕 yüzde artık tüm yıllara nispetle
+        th, tahAll, tahYr
+      };
     });
-  }
 
-  // 0% listesi: bu yıl tahakkuku > 0 olup ay içinde tahsilatı 0 olanlar
-  const zero = document.getElementById('zeroList'); zero.innerHTML='';
-  const zeros = rows.filter(r=>r.tah>0 && !monthlyTh.get(r.pk)).map(r=>r.name).sort();
-  if (!zeros.length){
-    zero.innerHTML = '<div class="list-item"><div>Tüm personelde tahsilat var</div><div class="muted">—</div></div>';
-  } else {
-    zeros.forEach(n=>{
-      const el=document.createElement('div'); el.className='list-item';
-      el.innerHTML = `<div>${n}</div><div class="muted">0%</div>`;
-      zero.appendChild(el);
-    });
-  }
-}
+    // --- Top-3 (YÜZDE) ---
+    const top3Pct = document.getElementById('top3List'); top3Pct.innerHTML='';
+    const topPct  = rows.filter(r=>r.pct>0).sort((a,b)=>b.pct-a.pct).slice(0,3);
+
+    if (!topPct.length){
+      top3Pct.innerHTML = '<div class="list-item"><div>Veri yok</div><div class="muted">—</div></div>';
+    } else {
+      topPct.forEach((r,i)=>{
+        const el=document.createElement('div'); el.className='list-item';
+        const w = Math.max(0, Math.min(100, r.pct));
+        el.innerHTML = `
+          <div style="flex:1">
+            <div><span class="rank">${i+1}</span>${r.name}</div>
+            <div class="meta">${r.pct.toFixed(1)}% • Toplam Alacak Tahak.: ${fmtTL(r.tahAll)}</div>
+            <div class="bar"><span style="width:${w}%"></span></div>
+          </div>
+        `;
+        top3Pct.appendChild(el);
+      });
+    }
+
+    // --- 🆕 Top-3 (TUTAR) ---
+    const top3Amt = document.getElementById('top3TutarList'); top3Amt.innerHTML='';
+    const topAmt  = rows.filter(r=>r.th>0).sort((a,b)=>b.th-a.th).slice(0,3);
+
+    if (!topAmt.length){
+      top3Amt.innerHTML = '<div class="list-item"><div>Veri yok</div><div class="muted">—</div></div>';
+    } else {
+      topAmt.forEach((r,i)=>{
+        // yüzdeyi "Toplamına nispetle" (tüm yıllar) gösteriyoruz:
+        const pctAll = (r.tahAll>0)? (r.th/r.tahAll*100) : 0;
+        const w      = Math.max(0, Math.min(100, pctAll));
+        const el=document.createElement('div'); el.className='list-item';
+        el.innerHTML = `
+          <div style="flex:1">
+            <div><span class="rank">${i+1}</span>${r.name}</div>
+            <div class="meta">${fmtTL(r.th)} • ${pctAll.toFixed(1)}%</div>
+            <div class="bar"><span style="width:${w}%"></span></div>
+          </div>
+        `;
+        top3Amt.appendChild(el);
+      });
+    }
+
+    // --- 0% listesi ---
+    const zero = document.getElementById('zeroList'); zero.innerHTML='';
+    const zeros = rows
+      .filter(r => r.tahAll > 0 && !monthlyTh.get(r.pk))  // 🟢 bu yıl tahakkuku olup ayda tahsilatı yok
+      .map(r => r.name)
+      .sort();
+
+    if (!zeros.length){
+      zero.innerHTML = '<div class="list-item"><div>Tüm personelde tahsilat var</div><div class="muted">—</div></div>';
+    } else {
+      zeros.forEach(n=>{
+        const el=document.createElement('div'); el.className='list-item';
+        el.innerHTML = `<div>${n}</div><div class="muted">0%</div>`;
+        zero.appendChild(el);
+      });
+    }
+    }
 
   /* ===== Nöbetçi (09:00→09:00) nobet_planlari/{YYYY-Www} rows.tarihISO ile ===== */
   function isoWeekKey(d){
@@ -661,6 +876,38 @@ async function loadAylik(){
       document.getElementById("nobetEvli").textContent = '—';
       document.getElementById("nobetBekar").textContent= '—';
     }catch(e){ console.error(e); }
+  }
+    /* ===== Teknik Eksikler (iskele) ===== */
+  async function loadEksikler(){
+    const dateStr = todayStrTR();
+    const kpi=document.getElementById('kpiEksikSayisi');
+    const list=document.getElementById('eksikList');
+    if(!kpi || !list) return;
+    list.innerHTML='';
+
+    try{
+      const ex = await fetchEksikler({dateStr, status:'acik'});
+      kpi.textContent = ex.count || 0;
+
+      if(ex.count===0){
+        list.innerHTML='<div class="list-item"><div>Bugün açık eksik yok</div><div class="muted">—</div></div>';
+        return;
+      }
+
+      // İlk 6 kaydı, "kat • parça sayısı" şeklinde özetle
+      ex.list
+        .slice(0,6)
+        .forEach(v=>{
+          const el=document.createElement('div'); el.className='list-item';
+          const parc = (v.parcalar && v.parcalar.length)? ` • ${v.parcalar.length} madde` : '';
+          el.innerHTML=`<div><strong>${v.kat}</strong>${parc}</div><div class="muted">${v.status.toUpperCase()}</div>`;
+          list.appendChild(el);
+        });
+    }catch(e){
+      console.error(e);
+      kpi.textContent='--';
+      list.innerHTML='<div class="muted">Eksikler yüklenemedi.</div>';
+    }
   }
 
   /* ===== Bildirim rozet (aynı) ===== */
@@ -714,15 +961,16 @@ async function loadAylik(){
       const panels = await fetchPanels(CURRENT_ALLOW, CURRENT_DENY);
       renderNav(panels);
 
-      await Promise.all([
-        loadAlacak(),          // ✅ isim düzeltildi
-        loadAylik(),           // ✅ isim düzeltildi
-        loadNobet(),
-        loadNotifications(),
-        loadTalebeStats(),
-        loadTalebeTemizlik(),
-        loadGenelTemizlik()
-      ]);
+    await Promise.all([
+      loadAlacak(),
+      loadAylik(),
+      loadNobet(),
+      loadNotifications(),
+      loadTalebeStats(),
+      loadTalebeTemizlik(),   // ↩️ yeni sürüm
+      loadGenelTemizlik(),    // ↩️ yeni sürüm
+      loadEksikler()          // ↩️ fetchEksikler kullanan sürüm
+    ]);
     }catch(e){
       console.error(e);
       showToast('Veriler yüklenirken hata.');
