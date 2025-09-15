@@ -1,81 +1,273 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8">
-  <title>Aylık Personel Performansı</title>
-  <link rel="icon" type="image/png" href="img/logo.png">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8"/>
+  <title>Aylık Performans | Analiz</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <link rel="icon" href="../img/logo.png"/>
+
   <style>
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', sans-serif;
-      background-color: #f4f6f9;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      padding: 20px;
+    /* =====================  AÇIK TEMA & RESPONSIVE  ===================== */
+    :root{
+      --bg:#f7fafc; --surface:#ffffff; --text:#0f172a; --muted:#475569; --stroke:#e2e8f0;
+      --brand:#0ea5e9; --brand2:#6366f1; --radius:14px; --shadow:0 8px 24px rgba(2,6,23,.08);
+      --ok:#16a34a; --bad:#ef4444;
     }
-
-    .calisma-karti {
-      background-color: #fff;
-      border: 2px dashed #ced4da;
-      border-radius: 16px;
-      padding: 30px;
-      max-width: 700px;
-      width: 100%;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-      text-align: center;
-    }
-
-    .calisma-karti img {
-      width: 100px;
-      height: 100px;
-      margin-bottom: 20px;
-      opacity: 0.85;
-    }
-
-    .calisma-karti h2 {
-      font-size: 24px;
-      margin-bottom: 10px;
-      color: #343a40;
-    }
-
-    .calisma-karti p {
-      font-size: 16px;
-      color: #495057;
-      margin-bottom: 6px;
-    }
-
-    .calisma-karti .alt-bilgi {
-      margin-top: 25px;
-      font-size: 14px;
-      color: #adb5bd;
-    }
-
-    @media (max-width: 600px) {
-      .calisma-karti {
-        padding: 20px;
-      }
-
-      .calisma-karti h2 {
-        font-size: 20px;
-      }
-
-      .calisma-karti p {
-        font-size: 15px;
-      }
-    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,Segoe UI,Arial}
+    .appbar{position:sticky;top:0;z-index:5;height:56px;background:#ffffffd9;border-bottom:1px solid var(--stroke);
+      backdrop-filter:saturate(120%) blur(6px);display:flex;align-items:center;justify-content:space-between;padding:0 16px}
+    .appbar h1{margin:0;font-size:18px;font-weight:700}
+    .btn{appearance:none;border:1px solid var(--stroke);background:#fff;border-radius:12px;padding:9px 12px;cursor:pointer}
+    .btn:hover{background:#f8fafc}
+    .btn.acc{background:linear-gradient(90deg,var(--brand),var(--brand2));border:0;color:#fff;font-weight:700}
+    .wrap{max-width:1240px;margin:18px auto;padding:0 16px;display:grid;gap:16px}
+    .row{display:grid;gap:16px}
+    @media(min-width:980px){.cols-3{grid-template-columns:1fr 1fr 1fr}.cols-2{grid-template-columns:1.2fr 1fr}}
+    .card{background:var(--surface);border:1px solid var(--stroke);border-radius:var(--radius);box-shadow:var(--shadow)}
+    .card .hd{padding:14px 16px;border-bottom:1px solid var(--stroke);display:flex;align-items:center;justify-content:space-between}
+    .card .bd{padding:16px}
+    .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    @media(max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}}
+    .kpi{background:#fff;border:1px solid var(--stroke);border-radius:12px;padding:12px}
+    .kpi .lbl{font-size:12px;color:var(--muted)}
+    .kpi .val{font-weight:800;font-size:20px}
+    .kpi .diff{font-size:12px;color:var(--muted)}
+    .badge{font-size:11px;border:1px solid var(--stroke);padding:4px 6px;border-radius:8px;color:var(--muted)}
+    #charts{display:grid;gap:16px}
+    @media(min-width:980px){#charts{grid-template-columns:1.2fr 1fr}}
+    input,select{width:100%;padding:9px;border-radius:10px;border:1px solid var(--stroke);background:#fff;color:var(--text)}
+    label{font-size:12px;color:var(--muted)}
   </style>
+
+  <!-- ApexCharts -->
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 </head>
 <body>
+  <header class="appbar">
+    <h1>📈 Aylık Performans & Analiz</h1>
+    <div style="display:flex;gap:8px">
+      <button class="btn" onclick="history.back()">Geri Dön</button>
+      <button class="btn acc" id="btnLogout">Çıkış</button>
+    </div>
+  </header>
 
-  <div class="calisma-karti">
-    <img src="https://cdn-icons-png.flaticon.com/512/1486/1486423.png" alt="Hazırlanıyor">
-    <h2>Personel Performans Takip Sistemi Geliştiriliyor</h2>
-    <p>Her personelin günlük, haftalık ve aylık vazifeleri sistem üzerinden takip edilecektir.</p>
-    <div class="alt-bilgi">Güncelleme Tarihi: Temmuz 2025</div>
-  </div>
+  <main class="wrap">
+    <!-- Filtreler -->
+    <section class="card">
+      <div class="hd"><strong>Filtreler</strong></div>
+      <div class="bd">
+        <div class="row cols-3">
+          <div><label>Yıl</label><select id="fYil"></select></div>
+          <div><label>Karşılaştırma Yılı</label><select id="fYilCmp"></select></div>
+          <div><label>Personel (ops.)</label><input id="fPer" placeholder="ID veya ad-soyad"/></div>
+        </div>
+        <div class="row cols-3" style="margin-top:8px">
+          <div><label>Kategori (path başı)</label><input id="fPath" placeholder="Örn: Kurban veya Ramazan>İftar"/></div>
+          <div style="display:flex;align-items:end;gap:8px">
+            <input type="checkbox" id="fIncludeAccrual"/><label for="fIncludeAccrual" style="margin:0">Tahakkukları da dahil et</label>
+          </div>
+          <div style="display:flex;justify-content:end;align-items:end"><button class="btn acc" id="btnUygula">Uygula</button></div>
+        </div>
+      </div>
+    </section>
 
+    <!-- KPI Kartları -->
+    <section class="kpis" aria-label="KPI">
+      <div class="kpi"><div class="lbl">Toplam Gelir (cash)</div><div class="val" id="kGelir">₺0</div><div class="diff" id="kGelirDiff">—</div></div>
+      <div class="kpi"><div class="lbl">Toplam Gider (cash)</div><div class="val" id="kGider">₺0</div><div class="diff" id="kGiderDiff">—</div></div>
+      <div class="kpi"><div class="lbl">Açık Tahakkuk</div><div class="val" id="kAccrual">₺0</div><div class="diff" id="kAccrualInfo">—</div></div>
+      <div class="kpi"><div class="lbl">Bütçe Ulaşım (Gelir)</div><div class="val" id="kButceGelir">0%</div><div class="diff" id="kButceGelirNeed">—</div></div>
+    </section>
+
+    <!-- Grafikler -->
+    <section id="charts">
+      <article class="card">
+        <div class="hd"><strong>Aylık Gelir vs Gider</strong><span class="badge" id="lblYil">—</span></div>
+        <div class="bd"><div id="chMonthly" style="height:320px"></div></div>
+      </article>
+      <article class="card">
+        <div class="hd"><strong>Bütçe İlerleme (Gelir)</strong><span class="badge" id="lblButce">—</span></div>
+        <div class="bd"><div id="chGauge" style="height:320px"></div></div>
+      </article>
+    </section>
+
+    <section class="card">
+      <div class="hd"><strong>Personel Kıyas (Gelir – seçilen yıllar)</strong></div>
+      <div class="bd"><div id="chPersonel" style="height:360px"></div></div>
+    </section>
+
+    <section class="card">
+      <div class="hd"><strong>Arama / Drilldown</strong></div>
+      <div class="bd">
+        <div class="row cols-3">
+          <div><label>İsim/ID (Bağışçı & Tedarikçi & Personel)</label><input id="qSearch" placeholder="örn. Muhsin veya B123"/></div>
+          <div style="display:flex;align-items:end"><button class="btn" id="btnAra">Ara</button></div>
+        </div>
+        <div id="drill" class="badge" style="display:block;margin-top:10px">Sonuçlar burada listelenir.</div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Firebase -->
+  <!-- Firebase -->
+      <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+      <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+      <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+      <script src="../js/firebase/firebase-init.js"></script>
+        <script>
+    /* =====================  ANALİZ JS  ===================== */
+    const auth = firebase.auth(); const db = window.db;
+    const fmt = n => (n==null||isNaN(n)) ? '₺0' : '₺' + Number(n).toLocaleString('tr-TR',{maximumFractionDigits:2});
+
+    // Yıl seçimlerini doldur
+    (function fillYears(){
+      const now=new Date().getFullYear(), sel=document.getElementById('fYil'), cmp=document.getElementById('fYilCmp');
+      [now-1,now,now+1].forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y; sel.appendChild(o.cloneNode(true)); cmp.appendChild(o);});
+      sel.value=now; cmp.value=now-1;
+    })();
+
+    // Grafik nesneleri
+    const chMonthly = new ApexCharts(document.querySelector("#chMonthly"), {
+      chart:{type:'bar',height:320,toolbar:{show:false}},
+      series:[{name:'Gelir',data:Array(12).fill(0)},{name:'Gider',data:Array(12).fill(0)}],
+      xaxis:{categories:['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara']},
+      dataLabels:{enabled:false}, stroke:{width:2}
+    }); chMonthly.render();
+
+    const chGauge = new ApexCharts(document.querySelector("#chGauge"), {
+      chart:{type:'radialBar',height:320}, series:[0],
+      plotOptions:{radialBar:{hollow:{size:'58%'},dataLabels:{value:{formatter:(v)=>v.toFixed(0)+'%'}}}}
+    }); chGauge.render();
+
+    const chPersonel = new ApexCharts(document.querySelector("#chPersonel"), {
+      chart:{type:'bar',height:360,toolbar:{show:false}},
+      series:[{name:'Seçili Yıl',data:[]},{name:'Karş. Yıl',data:[]}],
+      xaxis:{categories:[]}, dataLabels:{enabled:false}
+    }); chPersonel.render();
+
+    // Auth + log
+    auth.onAuthStateChanged(async (u)=>{
+      if(!u){ location.href='../index.html'; return; }
+      await db.collection('sayfa_loglari').add({sayfa:'aylik-performans', uid:u.uid, zaman:new Date(), ua:navigator.userAgent});
+      applyFilters();
+    });
+    document.getElementById('btnLogout').onclick = ()=> auth.signOut();
+    document.getElementById('btnUygula').onclick = applyFilters;
+
+    async function applyFilters(){
+      const yil=Number(document.getElementById('fYil').value),
+            yilCmp=Number(document.getElementById('fYilCmp').value),
+            per=document.getElementById('fPer').value.trim(),
+            path=document.getElementById('fPath').value.trim(),
+            includeAcc=document.getElementById('fIncludeAccrual').checked;
+
+      document.getElementById('lblYil').textContent = `${yil} ${path? '• '+path : ''}`;
+
+      const {ayGelir, ayGider, sumGelir, sumGider, accrualOpen, perSumThis, perSumCmp} =
+        await fetchYearData(yil, yilCmp, per, path, includeAcc);
+
+      // KPI
+      document.getElementById('kGelir').textContent = fmt(sumGelir);
+      document.getElementById('kGider').textContent = fmt(sumGider);
+      document.getElementById('kAccrual').textContent = fmt(accrualOpen);
+      document.getElementById('kAccrualInfo').textContent = includeAcc ? 'Dahil ediliyor' : 'Dahil edilmiyor';
+
+      // Bütçe (gelir) – hedef varsa oran ve kalan/günlük gerek
+      const b = await getBudget(yil, path || null, 'gelir');
+      let ratio=0, needText='—';
+      if(b && b.hedef_tutar>0){
+        ratio = Math.min(100, (sumGelir/b.hedef_tutar)*100);
+        const now=new Date(), end=new Date(`${yil}-12-31`);
+        const leftDays = Math.max(1, Math.floor((end - now)/86400000));
+        const kalan = Math.max(0, b.hedef_tutar - sumGelir);
+        needText = `Kalan: ${fmt(kalan)} • Günlük gerek: ${fmt(kalan/leftDays)} (${leftDays}gün)`;
+        document.getElementById('lblButce').textContent = `Hedef: ${fmt(b.hedef_tutar)}`;
+      }else{
+        document.getElementById('lblButce').textContent = 'Hedef yok';
+      }
+      chGauge.updateSeries([ratio]);
+      document.getElementById('kButceGelir').textContent = `${ratio.toFixed(0)}%`;
+      document.getElementById('kButceGelirNeed').textContent = needText;
+
+      // Grafik güncellemeleri
+      chMonthly.updateSeries([{name:'Gelir',data:ayGelir},{name:'Gider',data:ayGider}]);
+      chPersonel.updateOptions({xaxis:{categories:Object.keys(perSumThis)}});
+      chPersonel.updateSeries([
+        {name:String(yil), data:Object.values(perSumThis).map(v=>Number(v.toFixed(2)))},
+        {name:String(yilCmp), data:Object.keys(perSumThis).map(k=> Number((perSumCmp[k]||0).toFixed(2)))}
+      ]);
+
+      // Basit fark bilgisi
+      const sumGelirCmp = Object.values(perSumCmp).reduce((a,b)=>a+b,0);
+      const diffG = sumGelir - sumGelirCmp;
+      document.getElementById('kGelirDiff').textContent = `Karşı yıla göre: ${diffG>=0?'+':''}${fmt(diffG)}`;
+      document.getElementById('kGiderDiff').textContent = '—';
+    }
+
+    // Seçili yıl için verileri topla
+    async function fetchYearData(yil, yilCmp, per, path, includeAcc){
+      let ayGelir=Array(12).fill(0), ayGider=Array(12).fill(0);
+      let sumGelir=0, sumGider=0, accrualOpen=0;
+      const perSumThis={}, perSumCmp={};
+
+      const pathFilter = p => path ? String(p||'').startsWith(path) : true;
+      const perFilter  = p => per  ? String(p||'').toLowerCase().includes(per.toLowerCase()) : true;
+
+      // Seçili yıl
+      const s1 = await db.collection('islemler').where('yil','==',yil).get();
+      s1.forEach(doc=>{
+        const d=doc.data(); if(!pathFilter(d.kategori_path)||!perFilter(d.personel_id)) return;
+        const a=(d.ay||1)-1; const include = !d.tahakkuk || includeAcc===true;
+        if(include){
+          if(d.tip==='gelir'){ ayGelir[a]+=d.tutar||0; sumGelir+=d.tutar||0; }
+          else if(d.tip==='gider'){ ayGider[a]+=d.tutar||0; sumGider+=d.tutar||0; }
+        }
+        if(d.tahakkuk && d.durum==='acik'){ accrualOpen += d.tutar||0; }
+        if(d.tip==='gelir' && include){ const key=d.personel_id||'—'; perSumThis[key]=(perSumThis[key]||0)+(d.tutar||0); }
+      });
+
+      // Karşı yıl (sadece personel kıyas)
+      const s2 = await db.collection('islemler').where('yil','==',yilCmp).get();
+      s2.forEach(doc=>{
+        const d=doc.data(); if(!pathFilter(d.kategori_path)||!perFilter(d.personel_id)) return;
+        const include = !d.tahakkuk || includeAcc===true;
+        if(d.tip==='gelir' && include){ const key=d.personel_id||'—'; perSumCmp[key]=(perSumCmp[key]||0)+(d.tutar||0); }
+      });
+
+      return {ayGelir, ayGider, sumGelir, sumGider, accrualOpen, perSumThis, perSumCmp};
+    }
+
+    // Bütçe çek (butce_planlari/{yil}.kalemler[])
+    async function getBudget(yil, path, tip){
+      const doc = await db.collection('butce_planlari').doc(String(yil)).get();
+      if(!doc.exists) return null;
+      const d=doc.data();
+      if(Array.isArray(d.kalemler)){
+        if(path){
+          return d.kalemler.find(k=>k.tip==='gelir' && String(k.path).startsWith(path)) || null;
+        }else{
+          const toplam = d.kalemler.filter(k=>k.tip==='gelir').reduce((a,b)=>a+(b.hedef_tutar||0),0);
+          return {path:'*', tip:'gelir', hedef_tutar:toplam};
+        }
+      }
+      return null;
+    }
+
+    // Drilldown arama
+    document.getElementById('btnAra').onclick = async ()=>{
+      const q = document.getElementById('qSearch').value.trim();
+      if(!q){ document.getElementById('drill').textContent='Arama giriniz.'; return; }
+      const res=[]; const snap=await db.collection('islemler').orderBy('tarih','desc').limit(300).get();
+      snap.forEach(doc=>{
+        const d=doc.data();
+        if(String(d.personel_id||'').toLowerCase().includes(q.toLowerCase())
+           || String(d.bagisci_vendor_id||'').toLowerCase().includes(q.toLowerCase())){
+          res.push(`${(d.gun||'').slice(0,10)} • ${d.tip} • ${d.kategori_path} • ${fmt(d.tutar)} • P:${d.personel_id||'-'} • BV:${d.bagisci_vendor_id||'-'}`);
+        }
+      });
+      document.getElementById('drill').innerHTML = res.length? res.map(x=>`<div>${x}</div>`).join('') : 'Kayıt bulunamadı.';
+    };
+  </script>
 </body>
 </html>

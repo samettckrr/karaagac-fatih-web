@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Genel Mizan | Muhasebe</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <link rel="icon" href="../img/logo.png"/>
+  <!-- İstersen projedeki ortak stilleri de bağla -->
+  <!-- <link rel="stylesheet" href="../css/stiller.css"/> -->
+  <!-- <link rel="stylesheet" href="../css/form.css"/> -->
+
+  <style>
+    /* =====================  AÇIK TEMA TASARIM  ===================== */
+    :root{
+      /* Renk Tokenları (açık tema) */
+      --bg:#f7fafc;              /* sayfa zemini */
+      --surface:#ffffff;         /* kartlar */
+      --text:#0f172a;            /* ana metin */
+      --muted:#475569;           /* ikincil metin */
+      --stroke:#e2e8f0;          /* sınırlar */
+      --brand:#0ea5e9;           /* ana aksan */
+      --brand2:#6366f1;          /* ikincil aksan */
+      --ok:#16a34a;              /* olumlu */
+      --warn:#f59e0b;            /* uyarı */
+      --bad:#ef4444;             /* hata */
+      --radius:14px;
+      --shadow:0 8px 24px rgba(2,6,23,.08);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,Segoe UI,Arial}
+
+    /* Üst Bar */
+    .appbar{position:sticky;top:0;z-index:5;height:56px;background:#ffffffd9;
+      backdrop-filter:saturate(120%) blur(6px);border-bottom:1px solid var(--stroke);
+      display:flex;align-items:center;justify-content:space-between;padding:0 16px}
+    .appbar h1{margin:0;font-size:18px;font-weight:700}
+    .btn{appearance:none;border:1px solid var(--stroke);background:#fff;border-radius:12px;
+      padding:9px 12px;cursor:pointer;color:var(--text)}
+    .btn:hover{background:#f8fafc}
+    .btn.acc{background:linear-gradient(90deg,var(--brand),var(--brand2));border:0;color:#fff;font-weight:700}
+    .btn.ok{background:linear-gradient(90deg,#22c55e,#16a34a);border:0;color:#fff}
+    .btn.warn{background:linear-gradient(90deg,#fbbf24,#f59e0b);border:0;color:#1f2937}
+    .btn.bad{background:linear-gradient(90deg,#fda4af,#ef4444);border:0;color:#fff}
+
+    /* Yerleşim */
+    .wrap{max-width:1200px;margin:18px auto;padding:0 16px;display:grid;gap:16px}
+    .row{display:grid;gap:16px}
+    @media(min-width:980px){.cols-2{grid-template-columns:1fr 1fr}.cols-3{grid-template-columns:1.1fr 1fr 1fr}}
+
+    /* Kart */
+    .card{background:var(--surface);border:1px solid var(--stroke);border-radius:var(--radius);box-shadow:var(--shadow)}
+    .card .hd{padding:14px 16px;border-bottom:1px solid var(--stroke);display:flex;align-items:center;justify-content:space-between}
+    .card .hd h3{margin:0;font-size:16px}
+    .card .bd{padding:16px}
+    .muted{color:var(--muted)}
+
+    /* Formlar */
+    label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
+    input,select,textarea{width:100%;padding:10px;border-radius:12px;border:1px solid var(--stroke);background:#fff;color:var(--text)}
+    input[type="date"]{padding:8px 10px}
+    .grid-2{display:grid;gap:12px}
+    @media(min-width:720px){.grid-2{grid-template-columns:1fr 1fr}}
+
+    /* Tablo */
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px;border-bottom:1px solid var(--stroke);text-align:left}
+    thead th{background:#f1f5f9;font-weight:700}
+    tr:hover{background:#f8fafc}
+
+    /* Küçük rozetler */
+    .pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 10px;font-size:12px;border:1px solid var(--stroke)}
+    .pill.gelir{background:#ecfdf5;border-color:#bbf7d0;color:#14532d}
+    .pill.gider{background:#fff1f2;border-color:#fecdd3;color:#7f1d1d}
+    .pill.tah{background:#eef2ff;border-color:#c7d2fe;color:#1e1b4b}
+
+    /* Modal */
+    .modal{position:fixed;inset:0;background:rgba(15,23,42,.35);display:none;align-items:center;justify-content:center;padding:16px}
+    .modal .panel{width:min(880px,100%);max-height:90vh;overflow:auto}
+
+    /* Toast */
+    .toast{position:fixed;right:16px;bottom:16px;display:grid;gap:8px;z-index:9}
+    .toast .t{background:#fff;border:1px solid var(--stroke);border-left:6px solid var(--brand);border-radius:10px;padding:10px 12px;box-shadow:var(--shadow)}
+
+    .hint{font-size:12px;color:var(--muted)}
+    .divider{height:1px;background:var(--stroke);margin:8px 0}
+
+    /* Erişilebilirlik */
+    .sr-only{position:absolute;width:1px;height:1px;margin:-1px;border:0;padding:0;clip:rect(0 0 0 0);overflow:hidden}
+  </style>
+</head>
+<body>
+  <!-- ============ APPBAR ============ -->
+  <div class="appbar" role="banner">
+    <h1>📚 Genel Mizan (Muhasebe)</h1>
+    <div class="flex" style="display:flex;gap:8px">
+      <button class="btn" onclick="history.back()">Geri Dön</button>
+      <button class="btn acc" id="btnLogout">Çıkış</button>
+    </div>
+  </div>
+
+  <main class="wrap">
+    <!-- ===== Hızlı Özet ===== -->
+    <section class="row cols-3" aria-label="Özet">
+      <article class="card" aria-live="polite">
+        <div class="hd"><h3>Bugün</h3></div>
+        <div class="bd grid-2">
+          <div><div class="muted">Gelir (cash)</div><div id="sumTodayGelir" style="font-weight:800;font-size:20px">₺0</div></div>
+          <div><div class="muted">Gider (cash)</div><div id="sumTodayGider" style="font-weight:800;font-size:20px">₺0</div></div>
+          <div><div class="muted">Açık Tahakkuk</div><div id="sumTahakkuk" style="font-weight:800;font-size:20px">₺0</div></div>
+          <div><div class="muted">Son CSV Import</div><div id="lastImport" class="pill">—</div></div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="hd"><h3>İşlem Filtreleri</h3></div>
+        <div class="bd grid-2">
+          <div><label>Tarih (Başlangıç)</label><input type="date" id="fStart"/></div>
+          <div><label>Tarih (Bitiş)</label><input type="date" id="fEnd"/></div>
+          <div>
+            <label>Tip</label>
+            <select id="fTip">
+              <option value="">Hepsi</option><option value="gelir">Gelir</option><option value="gider">Gider</option>
+            </select>
+          </div>
+          <div><label>Kategori (path)</label><input id="fPath" placeholder="Örn: Kurban>Büyükbaş"/></div>
+          <div><label>Personel</label><input id="fPersonel" placeholder="Ad soyad veya ID"/></div>
+          <div style="display:flex;gap:8px;align-items:end">
+            <button class="btn ok" id="btnFiltreUygula">Filtre Uygula</button>
+            <button class="btn" id="btnFiltreTemizle">Temizle</button>
+          </div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="hd"><h3>Kategori Yöneticisi</h3></div>
+        <div class="bd">
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn acc" id="btnKategori">Kategori Ekle/Düzenle</button>
+            <span class="hint">Çok seviyeli hiyerarşi desteklenir.</span>
+          </div>
+          <div class="divider"></div>
+          <p class="hint">Kayıt sırasında seçilecek kategoriler burada tanımlanır. Her kayıtta <b>kategori_path</b> tutulur.</p>
+        </div>
+      </article>
+    </section>
+
+    <!-- ===== Veri Girişi + CSV ===== -->
+    <section class="row cols-2" aria-label="Veri Girişi">
+      <article class="card">
+        <div class="hd"><h3>Hızlı İşlem Girişi</h3></div>
+        <div class="bd">
+          <!-- Form: tahakkuk/cash, ilişki kodu, etiketler -->
+          <form id="frmQuick" class="grid-2">
+            <div>
+              <label for="qTip">Tip</label>
+              <select id="qTip" required>
+                <option value="gelir">Gelir</option><option value="gider">Gider</option>
+              </select>
+            </div>
+            <div>
+              <label for="qTarih">Tarih</label>
+              <input type="date" id="qTarih" required/>
+            </div>
+
+            <div class="grid-2" style="grid-column:1/-1">
+              <div>
+                <label for="qKategoriPath">Kategori (Path)</label>
+                <input id="qKategoriPath" placeholder="Örn: Ramazan>İftar" list="katList" required/>
+                <datalist id="katList"></datalist>
+                <div class="hint">Yazmaya başlayınca kayıtlı kategoriler çıkar.</div>
+              </div>
+              <div>
+                <label for="qEtiketler">Alt Etiket(ler)</label>
+                <input id="qEtiketler" placeholder="virgül ile: yakıt,şube-2"/>
+              </div>
+            </div>
+
+            <div><label for="qPersonel">Personel</label><input id="qPersonel" placeholder="ID ya da ad soyad" required/></div>
+            <div><label for="qBV">Bağışçı/Tedarikçi</label><input id="qBV" placeholder="Opsiyonel"/></div>
+
+            <div><label for="qTutar">Tutar (₺)</label><input type="number" step="0.01" id="qTutar" required/></div>
+            <div><label for="qAdet">Adet</label><input type="number" step="1" id="qAdet"/></div>
+
+            <div class="grid-2" style="grid-column:1/-1">
+              <div style="display:flex;gap:8px;align-items:center;margin-top:20px">
+                <input type="checkbox" id="qTahakkuk"/><label for="qTahakkuk" style="margin:0">Tahakkuk (kasayı etkilemez)</label>
+              </div>
+              <div>
+                <label for="qIliski">İlişki Kodu (taahhüt/tahsil eşleştirme)</label>
+                <input id="qIliski" placeholder="örn. RZ-IF-0001"/>
+              </div>
+            </div>
+
+            <div style="grid-column:1/-1">
+              <label for="qAciklama">Açıklama</label>
+              <textarea id="qAciklama" rows="2" placeholder="Kısa not"></textarea>
+            </div>
+
+            <div style="grid-column:1/-1;display:flex;gap:8px;justify-content:end">
+              <button class="btn ok" type="submit">Kaydet</button>
+              <button class="btn" type="reset">Temizle</button>
+            </div>
+          </form>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="hd"><h3>CSV İçe Aktarma</h3></div>
+        <div class="bd">
+          <div class="grid-2">
+            <div><label>CSV Dosyası</label><input type="file" id="csvFile" accept=".csv"/></div>
+            <div style="display:flex;gap:8px;align-items:end">
+              <button class="btn acc" id="btnImport">İçe Aktar</button>
+              <a class="btn" id="btnSample" href="#" download="csv-sablon.csv">Şablonu İndir</a>
+            </div>
+          </div>
+          <div class="divider"></div>
+          <p class="hint">Başlıklar: <b>tarih,yil,tip,kategori_path,personel_kodu,bagisci_vendor_kodu,tutar,adet,tahakkuk,etiketler,varlik_kodu,aciklama,iliski_kodu</b></p>
+          <div aria-live="polite" id="importRes" class="hint">Hazır.</div>
+        </div>
+      </article>
+    </section>
+
+    <!-- ===== Son İşlemler ===== -->
+    <section class="card" aria-label="Son İşlemler">
+      <div class="hd">
+        <h3>Son İşlemler</h3>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn" id="btnExcel">CSV Dışa Aktar</button>
+          <span class="muted" id="cntInfo">0 kayıt</span>
+        </div>
+      </div>
+      <div class="bd">
+        <div class="sr-only" aria-live="polite" id="liveTable"></div>
+        <div style="overflow:auto">
+          <table id="tbl">
+            <thead>
+              <tr><th>Tarih</th><th>Tip</th><th>Kategori</th><th>Personel</th><th>Tutar</th><th>Tahakkuk</th><th>İlişki</th><th>Açıklama</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ===== Kategori Modal ===== -->
+  <div class="modal" id="modalKat" role="dialog" aria-modal="true" aria-labelledby="katTitle">
+    <div class="panel card">
+      <div class="hd">
+        <h3 id="katTitle">📂 Kategori Yöneticisi</h3>
+        <button class="btn" onclick="hideKat()">Kapat</button>
+      </div>
+      <div class="bd">
+        <div class="grid-2">
+          <div><label>Üst Kategori (path)</label><input id="katParent" placeholder="örn. Kurban veya boş bırak"/></div>
+          <div><label>Yeni Kategori Adı</label><input id="katAd" placeholder="Büyükbaş, İftar, Yemekhane..."/></div>
+          <div>
+            <label>Tip</label>
+            <select id="katTip"><option value="gelir">gelir</option><option value="gider">gider</option><option value="herikisi">herikisi</option></select>
+          </div>
+          <div style="display:flex;align-items:end"><button class="btn ok" id="btnKatEkle">Ekle</button></div>
+        </div>
+        <div class="divider"></div>
+        <p class="hint">Kayıtlı Kategoriler</p>
+        <div style="overflow:auto;max-height:50vh">
+          <table id="tblKat">
+            <thead><tr><th>Path</th><th>Tip</th><th>Sil</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Toast ===== -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Firebase + Init -->
+  <!-- Firebase -->
+      <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+      <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+      <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+      <script src="../js/firebase/firebase-init.js"></script>
+        <!-- PapaParse (CSV) -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+  <script>
+    /* =====================  GENEL JS  ===================== */
+    const auth = firebase.auth();
+    const db = window.db;
+    const $ = (id)=>document.getElementById(id);
+    const toastBox = $('toast');
+
+    function toast(msg){const d=document.createElement('div');d.className='t';d.textContent=msg;toastBox.appendChild(d);setTimeout(()=>d.remove(),3500)}
+    const fmt = n => (n==null||isNaN(n)) ? '₺0' : '₺' + Number(n).toLocaleString('tr-TR',{maximumFractionDigits:2});
+    const toDateInput = d => new Date(d).toISOString().slice(0,10);
+    function parseMoney(v){ if(v==null||v==='') return null; return Number(String(v).replace(/[₺\s\.]/g,'').replace(',', '.')); }
+
+    // SHA-256 → hex (idempotent satır anahtarı)
+    async function sha256Hex(s){
+      const enc=new TextEncoder().encode(s);const buf=await crypto.subtle.digest('SHA-256',enc);
+      return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+    }
+    async function rowUID(o){ const raw=`${o.yil}|${o.tip}|${o.path}|${o.tarih}|${o.tutar||''}|${o.bv||''}|${o.iliski||''}`; return sha256Hex(raw); }
+
+    /* -------- Yetki + Sayfa log -------- */
+    auth.onAuthStateChanged(async (u)=>{
+      if(!u){ location.href='../index.html'; return; }
+      // İstersen admin claim kontrolü ekle
+      await db.collection('sayfa_loglari').add({sayfa:'genelmizan', uid:u.uid, zaman:new Date(), ua:navigator.userAgent});
+      initPage();
+    });
+    $('btnLogout').onclick = ()=> auth.signOut();
+
+    /* -------- Kategori Modal -------- */
+    const mKat = $('modalKat'); const tblKat = $('tblKat').querySelector('tbody');
+    $('btnKategori').onclick = ()=>{ mKat.style.display='flex'; loadKategoriler(); };
+    function hideKat(){ mKat.style.display='none'; }
+
+    async function loadKategoriler(){
+      tblKat.innerHTML='<tr><td colspan="3" class="muted">Yükleniyor...</td></tr>';
+      const snap = await db.collection('kategoriler').orderBy('path').get();
+      const rows=[];
+      snap.forEach(doc=>{
+        const d=doc.data();
+        rows.push(`<tr><td>${d.path}</td><td>${d.tip}</td><td><button class="btn bad" onclick="silKat('${doc.id}','${d.path}')">Sil</button></td></tr>`);
+      });
+      tblKat.innerHTML = rows.join('') || '<tr><td colspan="3" class="muted">Kategori yok</td></tr>';
+      // datalist
+      const dl=$('katList'); dl.innerHTML=''; snap.forEach(doc=>{const d=doc.data(); const o=document.createElement('option'); o.value=d.path; dl.appendChild(o);});
+    }
+    async function silKat(id, path){ if(!confirm(`Silinsin mi?\n${path}`)) return; await db.collection('kategoriler').doc(id).delete(); toast('Kategori silindi'); loadKategoriler(); }
+    $('btnKatEkle').onclick = async ()=>{
+      const parent=$('katParent').value.trim(); const ad=$('katAd').value.trim(); const tip=$('katTip').value;
+      if(!ad){toast('Kategori adı gerekli');return}
+      const path = parent ? `${parent}>${ad}` : ad;
+      const dup = await db.collection('kategoriler').where('path','==',path).limit(1).get(); if(!dup.empty){toast('Bu path zaten var');return}
+      await db.collection('kategoriler').add({ad,tip,parent_id:null,path,seviye:path.split('>').length-1,aktif:true,sira:0});
+      $('katAd').value=''; toast('Kategori eklendi'); loadKategoriler();
+    };
+
+    /* -------- Veri Girişi -------- */
+    $('qTarih').value = toDateInput(new Date());
+    $('frmQuick').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const tip=$('qTip').value;
+      const tarih=new Date($('qTarih').value||Date.now());
+      const yil=tarih.getFullYear(); const ay=tarih.getMonth()+1;
+      const path=$('qKategoriPath').value.trim();
+      const etiketler=$('qEtiketler').value.trim()? $('qEtiketler').value.split(',').map(s=>s.trim()).filter(Boolean):[];
+      const personel=$('qPersonel').value.trim(); const bv=$('qBV').value.trim();
+      const tutar=parseMoney($('qTutar').value); const adet=Number($('qAdet').value||0)||null;
+      const tahakkuk=$('qTahakkuk').checked; const iliski=$('qIliski').value.trim(); const aciklama=$('qAciklama').value.trim()||null;
+      if(!path || !tutar){toast('Kategori ve tutar zorunlu');return}
+
+      const uid=await rowUID({yil,tip,path,tarih:tarih.toISOString().slice(0,10),tutar,bv,iliski});
+      const doc={
+        tarih,yil,ay,hafta:Number(new Intl.DateTimeFormat('tr-TR',{week:'numeric'}).format(tarih))||0,
+        gun:tarih.toISOString().slice(0,10),
+        tip,kategori_path:path,kategori_id:null,
+        personel_id:personel||null,bagisci_vendor_id:bv||null,
+        tutar,adet,para_birimi:'TRY',
+        tahakkuk, durum:tahakkuk?'acik':'tamam',
+        iliski_id: iliski||null, etiketler, varlik_id:null,
+        kaynak:'form', row_uid:uid, aciklama
+      };
+      await db.collection('islemler').doc(uid).set(doc,{merge:true});
+      toast('Kaydedildi'); e.target.reset(); $('qTarih').value = toDateInput(new Date());
+      refreshSummary(); loadSonIslemler();
+    });
+
+    /* -------- CSV İçe Aktarım -------- */
+    $('btnSample').addEventListener('click',(e)=>{
+      e.preventDefault();
+      const head='tarih,yil,tip,kategori_path,personel_kodu,bagisci_vendor_kodu,tutar,adet,tahakkuk,etiketler,varlik_kodu,aciklama,iliski_kodu\n';
+      const sample=[
+        '2025-03-20,2025,gelir,"Ramazan>İftar",P001,B123,15555,,true,,,"İftar taahhüdü","RZ-IF-0001"',
+        '2025-04-05,2025,gelir,"Ramazan>İftar",P001,B123,15555,,false,,,"Tahsilat","RZ-IF-0001"',
+        '2025-02-12,2025,gider,"İaşe>Yemekhane",,V045,3250,,false,,,"Pazar alışverişi",'
+      ].join('\n');
+      const blob=new Blob([head+sample],{type:'text/csv;charset=utf-8'});
+      const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='csv-sablon.csv'; a.click(); URL.revokeObjectURL(url);
+    });
+
+    $('btnImport').onclick = ()=>{
+      const file=$('csvFile').files[0]; if(!file){toast('CSV dosyası seç');return}
+      Papa.parse(file,{
+        header:true,skipEmptyLines:true,
+        complete: async ({data,errors})=>{
+          if(errors.length){ $('importRes').textContent='CSV hata: '+errors[0].message; toast('CSV hata'); return;}
+          let done=0,total=data.length; const chunkSize=400;
+          for(let i=0;i<data.length;i+=chunkSize){
+            const chunk=data.slice(i,i+chunkSize); const batch=db.batch();
+            for(const r of chunk){
+              const tarih=new Date(r.tarih||Date.now()); const yil=Number(r.yil||tarih.getFullYear());
+              const tip=(r.tip||'').trim(); const path=(r.kategori_path||'').trim(); const tutar=parseMoney(r.tutar);
+              if(!yil||!tip||!path||!tutar) continue;
+              const uid=await rowUID({yil,tip,path,tarih:tarih.toISOString().slice(0,10),tutar,bv:r.bagisci_vendor_kodu||'',iliski:r.iliski_kodu||''});
+              const ref=db.collection('islemler').doc(uid);
+              batch.set(ref,{
+                tarih,yil,ay:tarih.getMonth()+1,hafta:Number(new Intl.DateTimeFormat('tr-TR',{week:'numeric'}).format(tarih))||0,
+                gun:tarih.toISOString().slice(0,10),
+                tip,kategori_path:path,kategori_id:null,
+                personel_id:(r.personel_kodu||null),bagisci_vendor_id:(r.bagisci_vendor_kodu||null),
+                tutar,adet:r.adet?Number(r.adet):null,para_birimi:'TRY',
+                tahakkuk:String(r.tahakkuk).toLowerCase()==='true',durum:String(r.tahakkuk).toLowerCase()==='true'?'acik':'tamam',
+                iliski_id:r.iliski_kodu||null,
+                etiketler:r.etiketler?String(r.etiketler).split(',').map(s=>s.trim()).filter(Boolean):[],
+                varlik_id:r.varlik_kodu||null,
+                kaynak:'csv',row_uid:uid,aciklama:r.aciklama||null
+              },{merge:true});
+            }
+            await batch.commit(); done+=chunk.length;
+            $('importRes').textContent=`Aktarıldı: ${done}/${total}`;
+          }
+          await db.collection('sayfa_loglari').add({sayfa:'genelmizan_csv',adet:data.length,zaman:new Date()});
+          toast('CSV içe aktarım tamam'); $('lastImport').textContent=new Date().toLocaleString('tr-TR');
+          refreshSummary(); loadSonIslemler();
+        }
+      });
+    };
+
+    /* -------- Özet + Liste -------- */
+    async function refreshSummary(){
+      const dd=new Date().toISOString().slice(0,10);
+      const q1=await db.collection('islemler').where('gun','==',dd).where('tahakkuk','==',false).get();
+      let g=0,k=0; q1.forEach(d=>{const x=d.data(); if(x.tip==='gelir') g+=x.tutar||0; else if(x.tip==='gider') k+=x.tutar||0;});
+      $('sumTodayGelir').textContent=fmt(g); $('sumTodayGider').textContent=fmt(k);
+
+      const q2=await db.collection('islemler').where('tahakkuk','==',true).where('durum','==','acik').limit(500).get();
+      let t=0; q2.forEach(d=> t+=(d.data().tutar||0)); $('sumTahakkuk').textContent=fmt(t);
+    }
+
+    async function loadSonIslemler(){
+      const fs=$('fStart').value, fe=$('fEnd').value, fTip=$('fTip').value, fPath=$('fPath').value.trim(), fPer=$('fPersonel').value.trim();
+      let ref=db.collection('islemler').orderBy('tarih','desc').limit(300);
+      if(fs) ref=ref.where('gun','>=',fs); if(fe) ref=ref.where('gun','<=',fe); if(fTip) ref=ref.where('tip','==',fTip);
+      const snap=await ref.get(); const rows=[]; let count=0;
+      snap.forEach(doc=>{
+        const d=doc.data();
+        if(fPath && !String(d.kategori_path||'').startsWith(fPath)) return;
+        if(fPer && String(d.personel_id||'').indexOf(fPer)===-1) return;
+        count++;
+        rows.push(`<tr>
+          <td>${(d.gun||'').slice(0,10)}</td>
+          <td><span class="pill ${d.tip}">${d.tip}</span></td>
+          <td>${d.kategori_path||'-'}</td>
+          <td>${d.personel_id||'-'}</td>
+          <td>${fmt(d.tutar)}</td>
+          <td>${d.tahakkuk?'<span class="pill tah">tahakkuk</span>':'-'}</td>
+          <td>${d.iliski_id||'-'}</td>
+          <td>${d.aciklama? d.aciklama.replace(/</g,'&lt;') : ''}</td>
+        </tr>`);
+      });
+      $('tbl').querySelector('tbody').innerHTML = rows.join('') || `<tr><td colspan="8" class="muted">Kayıt bulunamadı</td></tr>`;
+      $('cntInfo').textContent = `${count} kayıt`;
+      $('liveTable').textContent = `Tablo güncellendi, ${count} kayıt.`;
+    }
+    $('btnFiltreUygula').onclick = loadSonIslemler;
+    $('btnFiltreTemizle').onclick = ()=>{['fStart','fEnd','fTip','fPath','fPersonel'].forEach(id=>$(id).value=''); loadSonIslemler();};
+
+    // CSV dışa aktar
+    $('btnExcel').onclick = ()=>{
+      const rows=[['tarih','tip','kategori','personel','tutar','tahakkuk','iliski','aciklama']];
+      document.querySelectorAll('#tbl tbody tr').forEach(tr=>{
+        rows.push([...tr.children].map(td=>td.textContent.trim()));
+      });
+      const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+      const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+      const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='genelmizan-export.csv'; a.click(); URL.revokeObjectURL(url);
+    };
+
+    // Başlat
+    async function initPage(){
+      // Son 30 gün default filtre
+      const now=new Date(); const s=new Date(now); s.setDate(now.getDate()-30);
+      $('fStart').value=toDateInput(s); $('fEnd').value=toDateInput(now);
+      await refreshSummary(); await loadSonIslemler(); await loadKategoriler();
+    }
+  </script>
+</body>
+</html>
