@@ -112,6 +112,22 @@
         </div>
       </article>
 
+      <article class="card" aria-live="polite">
+        <div class="hd"><h3>Bu Ay</h3></div>
+        <div class="bd grid-2">
+          <div><div class="muted">Gelir (cash)</div><div id="sumMonthGelir" style="font-weight:800;font-size:20px">₺0</div></div>
+          <div><div class="muted">Gider (cash)</div><div id="sumMonthGider" style="font-weight:800;font-size:20px">₺0</div></div>
+        </div>
+      </article>
+
+      <article class="card" aria-live="polite">
+        <div class="hd"><h3>Bu Yıl</h3></div>
+        <div class="bd grid-2">
+          <div><div class="muted">Gelir (cash)</div><div id="sumYearGelir" style="font-weight:800;font-size:20px">₺0</div></div>
+          <div><div class="muted">Gider (cash)</div><div id="sumYearGider" style="font-weight:800;font-size:20px">₺0</div></div>
+        </div>
+      </article>
+
       <article class="card">
         <div class="hd"><h3>İşlem Filtreleri</h3></div>
         <div class="bd grid-2">
@@ -220,6 +236,52 @@
           <div aria-live="polite" id="importRes" class="hint">Hazır.</div>
         </div>
       </article>
+
+      <article class="card">
+  <div class="hd"><h3>Tahakkuk Tahsilat (Hızlı)</h3></div>
+  <div class="bd grid-2">
+    <div><label>İlişki Kodu</label><input id="tsIliski" placeholder="(örn. TRF-00001)"/></div>
+    <div><label>Tutar (₺)</label><input id="tsTutar" type="number" step="0.01"/></div>
+    <div><label>Kategori (ops.)</label><input id="tsPath" list="katList" placeholder="Tahsil kaydı için kategori"/></div>
+    <div style="display:flex;align-items:end;gap:8px">
+      <button class="btn ok" id="btnTahsil">Tahsil Et</button>
+    </div>
+    <div class="hint" id="tsRes">Açık tahakkuktan düşer + kasa kaydı oluşturur.</div>
+  </div>
+</article>
+
+      <article class="card">
+  <div class="hd"><h3>Bütçe Planı (Elle Ekle)</h3></div>
+  <div class="bd">
+    <form id="frmButce" class="grid-2">
+      <div><label>Yıl</label><input id="bYil" type="number" placeholder="2026" required/></div>
+      <div><label>Tip</label>
+        <select id="bTip"><option value="gelir">gelir</option><option value="gider">gider</option></select>
+      </div>
+      <div style="grid-column:1/-1"><label>Path</label>
+        <input id="bPath" placeholder="Kurban veya Ramazan>İftar" required list="katList"/>
+      </div>
+      <div><label>Hedef Tutar (₺)</label><input id="bHedef" type="number" step="0.01" required/></div>
+      <div><label>Not (ops.)</label><input id="bNot" placeholder="Açıklama"/></div>
+      <div style="grid-column:1/-1;display:flex;justify-content:end;gap:8px">
+        <button class="btn ok" type="submit">Ekle</button>
+      </div>
+    </form>
+  </div>
+</article>
+<article class="card">
+  <div class="hd"><h3>Bütçe → Personele Pay Et</h3></div>
+  <div class="bd grid-2">
+    <div><label>Yıl</label><input id="bpYil" type="number" placeholder="2026"/></div>
+    <div><label>Tip</label><select id="bpTip"><option value="gelir">gelir</option><option value="gider">gider</option></select></div>
+    <div><label>Kategori (üst/alt)</label><input id="bpPath" list="katList" placeholder="Ramazan>İftar"/></div>
+    <div><label>Personel ID</label><input id="bpPer" placeholder="P001"/></div>
+    <div><label>Miktar (₺)</label><input id="bpMiktar" type="number" step="0.01"/></div>
+    <div><label>Yüzde (%)</label><input id="bpYuzde" type="number" step="0.01" placeholder="Miktar boşsa yüzdeden hesap"/></div>
+    <div style="grid-column:1/-1;display:flex;justify-content:end"><button class="btn ok" id="btnButcePay">Kaydet</button></div>
+    <div class="hint">Miktar doluysa yüzdeyi sistem hesaplar; yüzde doluysa miktarı sistem hesaplar.</div>
+  </div>
+</article>
     </section>
 
     <!-- ===== Son İşlemler ===== -->
@@ -319,6 +381,105 @@
     $('btnKategori').onclick = ()=>{ mKat.style.display='flex'; loadKategoriler(); };
     function hideKat(){ mKat.style.display='none'; }
 
+      function initialsFromPath(path){
+    // "Ramazan-ı Şerif>İftar" -> "RF" (ilk iki segmentin ilk harfi)
+    const segs = String(path||'').split('>').map(s=>s.trim()).filter(Boolean);
+    const letters = segs.map(s=>{
+      const clean = s.replace(/[^A-Za-zÇĞİÖŞÜçğıöşü]/g,' ').trim().split(/\s+/)[0]||'';
+      return clean[0] ? clean[0].toUpperCase() : '';
+    }).join('');
+    return letters.slice(0,2) || 'XX';
+  }
+  async function nextIliskiCode(prefix){
+    const id = `iliski_${prefix}`;
+    const ref = db.collection('sayaclar').doc(id);
+    const n = await db.runTransaction(async (trx)=>{
+      const snap = await trx.get(ref);
+      const cur = snap.exists ? (snap.data().seq||0) : 0;
+      const next = cur+1;
+      trx.set(ref,{seq:next, updated_at:new Date()},{merge:true});
+      return next;
+    });
+    return `${prefix}-${String(n).padStart(5,'0')}`;
+  }
+async function reconcileAccrualsByIliski(iliskiId, tahsilTutar, tip='gelir') {
+  if(!iliskiId || !tahsilTutar || tahsilTutar <= 0) return {applied:0, items:[], kalan:tahsilTutar};
+  const q = await db.collection('islemler')
+    .where('tahakkuk','==',true)
+    .where('durum','==','acik')
+    .where('tip','==',tip)
+    .where('iliski_id','==',iliskiId)
+    .orderBy('tarih','asc').get();
+
+  let kalan = tahsilTutar; const items=[];
+  for(const doc of q.docs){
+    if(kalan<=0) break;
+    await db.runTransaction(async (trx)=>{
+      const snap = await trx.get(doc.ref); const cur=snap.data();
+      const bakiye = (cur.kalan_tutar ?? cur.tutar ?? 0);
+      if(bakiye<=0) return;
+      const dusulecek = Math.min(kalan, bakiye);
+      kalan -= dusulecek;
+      const yeniToplam = (cur.tahsilat_toplam||0) + dusulecek;
+      const yeniKalan = Math.max(0, bakiye - dusulecek);
+      const patch = {tahsilat_toplam:yeniToplam, kalan_tutar:yeniKalan};
+      if(yeniKalan===0){ patch.durum='tamam'; patch.kapandi_at=new Date(); }
+      trx.set(doc.ref, patch, {merge:true});
+      items.push({id:doc.id, dusulen:dusulecek});
+    });
+  }
+  return {applied: tahsilTutar-kalan, items, kalan};
+}
+// ... doc oluşturma kısmında:
+if (tahakkuk) {
+  doc.tahsilat_toplam = 0;
+  doc.kalan_tutar = tutar;
+  doc.kapandi_at = null;
+} else if (iliski) {
+  // Tahsil girişinde, tahakkuklardan düş
+  const rec = await reconcileAccrualsByIliski(iliski, tutar, tip);
+  doc.tahakkuk_settle = rec.items;
+  if(rec.kalan>0){ toast(`Uyarı: ${fmt(rec.kalan)} tahsil açık tahakkukla eşleşmedi`); }
+}
+$('btnTahsil').onclick = async ()=>{
+  const il = $('tsIliski').value.trim();
+  const tutar = parseMoney($('tsTutar').value);
+  const path = $('tsPath').value.trim() || 'Tahsilatlar';
+  if(!il || !tutar){ toast('İlişki ve tutar gerekli'); return; }
+  const tarih = new Date(); const yil=tarih.getFullYear(); const ay=tarih.getMonth()+1;
+  // Önce reconcile
+  const rec = await reconcileAccrualsByIliski(il, tutar, 'gelir');
+  // Sonra kasa kaydı
+  const uid = await rowUID({yil, tip:'gelir', path, tarih:tarih.toISOString().slice(0,10), tutar, bv:'', iliski:il});
+  await db.collection('islemler').doc(uid).set({
+    tarih, yil, ay, hafta:Number(new Intl.DateTimeFormat('tr-TR',{week:'numeric'}).format(tarih))||0,
+    gun:tarih.toISOString().slice(0,10), tip:'gelir', kategori_path:path,
+    personel_id:null, bagisci_vendor_id:null, tutar, para_birimi:'TRY',
+    tahakkuk:false, durum:'tamam', iliski_id:il, etiketler:['tahsil'], varlik_id:null,
+    kaynak:'form', row_uid:uid, aciklama:'Tahakkuk tahsilat', tahakkuk_settle:rec.items
+  },{merge:true});
+  $('tsRes').textContent = `Mahsup: ${fmt(rec.applied)} • Kalan: ${fmt(rec.kalan)}`;
+  toast('Tahsil kaydedildi & mahsup edildi');
+  $('tsIliski').value=''; $('tsTutar').value=''; $('tsPath').value='';
+  refreshSummary(); loadSonIslemler();
+};
+
+$('btnButcePay').onclick = async ()=>{
+  const yil=Number($('bpYil').value), tip=$('bpTip').value, path=$('bpPath').value.trim(), per=$('bpPer').value.trim();
+  let miktar=parseMoney($('bpMiktar').value), yuzde=Number($('bpYuzde').value||0);
+  if(!yil || !path || !per || (!miktar && !yuzde)){ toast('Zorunlu alanlar eksik'); return; }
+  const b = await getBudget(yil, path, tip);
+  if(!b){ toast('Önce kategori için bütçe hedefi giriniz'); return; }
+  if(!miktar && yuzde){ miktar = b.hedef_tutar * (yuzde/100); }
+  if(miktar && !yuzde){ yuzde = (miktar / b.hedef_tutar)*100; }
+  await db.collection('butce_planlari').doc(String(yil))
+    .collection('personel_pay').doc(`${tip}:${path}:${per}`).set({
+      tip, path, personel_id:per, miktar, yuzde, updated_at:new Date()
+    },{merge:true});
+  toast('Personel hedefi kaydedildi');
+  $('bpPer').value=''; $('bpMiktar').value=''; $('bpYuzde').value='';
+};
+
     async function loadKategoriler(){
       tblKat.innerHTML='<tr><td colspan="3" class="muted">Yükleniyor...</td></tr>';
       const snap = await db.collection('kategoriler').orderBy('path').get();
@@ -340,6 +501,19 @@
       await db.collection('kategoriler').add({ad,tip,parent_id:null,path,seviye:path.split('>').length-1,aktif:true,sira:0});
       $('katAd').value=''; toast('Kategori eklendi'); loadKategoriler();
     };
+
+      async function updateKatDatalistForTip(formTip){
+    // herikisi + formTip
+    const q = await db.collection('kategoriler').get();
+    const dl=$('katList'); dl.innerHTML='';
+    q.forEach(doc=>{
+      const d=doc.data();
+      if(d.tip==='herikisi' || d.tip===formTip){
+        const o=document.createElement('option'); o.value=d.path; dl.appendChild(o);
+      }
+    });
+  }
+  $('qTip').addEventListener('change', ()=>updateKatDatalistForTip($('qTip').value));
 
     /* -------- Veri Girişi -------- */
     $('qTarih').value = toDateInput(new Date());
@@ -421,42 +595,118 @@
         }
       });
     };
+          let iliski=$('qIliski').value.trim();
+          // otomatik ilişki kodu üret
+          if(!iliski){
+            const base = initialsFromPath(path);
+            const prefix = (tahakkuk? 'T' : '') + base; // örn: TRF
+            iliski = await nextIliskiCode(prefix);
+          }
+    $('qKategoriPath').addEventListener('blur', async ()=>{
+      if(!$('qIliski').value.trim()){
+        const base = initialsFromPath($('qKategoriPath').value);
+        const prefix = ($('qTahakkuk').checked? 'T':'' )+ base;
+        // sadece önizleme – gerçek kod kaydetmeden önce üretiliyor
+        $('qIliski').placeholder = `${prefix}-.....`;
+      }
+    });
+    doc.iliski_id = iliski;
+
+        // --- Bütçe hızlı ekleme ---
+    document.getElementById('frmButce').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const yil = Number(document.getElementById('bYil').value);
+      const tip = document.getElementById('bTip').value;
+      const path = document.getElementById('bPath').value.trim();
+      const hedef = parseMoney(document.getElementById('bHedef').value);
+      const not = document.getElementById('bNot').value.trim() || null;
+      if(!yil || !path || !hedef){ toast('Yıl/Path/Hedef gereklidir'); return; }
+
+      const docRef = db.collection('butce_planlari').doc(String(yil));
+      await db.runTransaction(async (trx)=>{
+        const snap = await trx.get(docRef);
+        const base = snap.exists ? snap.data() : {kalemler:[], versiyon:0};
+        // aynı path+tip varsa güncelle
+        const arr = base.kalemler || [];
+        const idx = arr.findIndex(k=>k.path===path && k.tip===tip);
+        const yeni = {path, tip, hedef_tutar:hedef, not};
+        if(idx>=0) arr[idx] = {...arr[idx], ...yeni};
+        else arr.push(yeni);
+        trx.set(docRef, {kalemler:arr, versiyon:(base.versiyon||0)+1, published_at:new Date()}, {merge:true});
+      });
+      toast('Bütçe kalemi eklendi/güncellendi');
+      e.target.reset();
+    });
 
     /* -------- Özet + Liste -------- */
     async function refreshSummary(){
-      const dd=new Date().toISOString().slice(0,10);
-      const q1=await db.collection('islemler').where('gun','==',dd).where('tahakkuk','==',false).get();
-      let g=0,k=0; q1.forEach(d=>{const x=d.data(); if(x.tip==='gelir') g+=x.tutar||0; else if(x.tip==='gider') k+=x.tutar||0;});
-      $('sumTodayGelir').textContent=fmt(g); $('sumTodayGider').textContent=fmt(k);
+      const today = new Date().toISOString().slice(0,10);
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth()+1).padStart(2,'0');
+      const monthStart = `${y}-${m}-01`;
+      const yearStart = `${y}-01-01`;
 
-      const q2=await db.collection('islemler').where('tahakkuk','==',true).where('durum','==','acik').limit(500).get();
-      let t=0; q2.forEach(d=> t+=(d.data().tutar||0)); $('sumTahakkuk').textContent=fmt(t);
+      // Bugün (cash)
+      const qToday = await db.collection('islemler')
+        .where('gun','==',today).where('tahakkuk','==',false).get();
+      let gT=0,kT=0;
+      qToday.forEach(s=>{const x=s.data(); if(x.tip==='gelir') gT+=x.tutar||0; else if(x.tip==='gider') kT+=x.tutar||0;});
+      $('sumTodayGelir').textContent=fmt(gT); $('sumTodayGider').textContent=fmt(kT);
+
+      // Bu ay (cash)
+      const qMon = await db.collection('islemler')
+        .where('gun','>=',monthStart).where('gun','<=',today).where('tahakkuk','==',false).get();
+      let gM=0,kM=0;
+      qMon.forEach(s=>{const x=s.data(); if(x.tip==='gelir') gM+=x.tutar||0; else if(x.tip==='gider') kM+=x.tutar||0;});
+      $('sumMonthGelir').textContent=fmt(gM); $('sumMonthGider').textContent=fmt(kM);
+
+      // Bu yıl (cash)
+      const qYear = await db.collection('islemler')
+        .where('gun','>=',yearStart).where('gun','<=',today).where('tahakkuk','==',false).get();
+      let gY=0,kY=0;
+      qYear.forEach(s=>{const x=s.data(); if(x.tip==='gelir') gY+=x.tutar||0; else if(x.tip==='gider') kY+=x.tutar||0;});
+      $('sumYearGelir').textContent=fmt(gY); $('sumYearGider').textContent=fmt(kY);
+
+      // Açık tahakkuk toplamı (KALAN üzerinden)
+      const qAcc = await db.collection('islemler').where('tahakkuk','==',true).where('durum','==','acik').limit(1000).get();
+      let t=0; qAcc.forEach(d=>{
+        const x=d.data();
+        const kalan = (x.kalan_tutar != null) ? x.kalan_tutar : Math.max(0,(x.tutar||0) - (x.tahsilat_toplam||0));
+        t += kalan;
+      });
+      $('sumTahakkuk').textContent=fmt(t);
     }
 
-    async function loadSonIslemler(){
-      const fs=$('fStart').value, fe=$('fEnd').value, fTip=$('fTip').value, fPath=$('fPath').value.trim(), fPer=$('fPersonel').value.trim();
-      let ref=db.collection('islemler').orderBy('tarih','desc').limit(300);
-      if(fs) ref=ref.where('gun','>=',fs); if(fe) ref=ref.where('gun','<=',fe); if(fTip) ref=ref.where('tip','==',fTip);
-      const snap=await ref.get(); const rows=[]; let count=0;
-      snap.forEach(doc=>{
-        const d=doc.data();
-        if(fPath && !String(d.kategori_path||'').startsWith(fPath)) return;
-        if(fPer && String(d.personel_id||'').indexOf(fPer)===-1) return;
-        count++;
-        rows.push(`<tr>
-          <td>${(d.gun||'').slice(0,10)}</td>
-          <td><span class="pill ${d.tip}">${d.tip}</span></td>
-          <td>${d.kategori_path||'-'}</td>
-          <td>${d.personel_id||'-'}</td>
-          <td>${fmt(d.tutar)}</td>
-          <td>${d.tahakkuk?'<span class="pill tah">tahakkuk</span>':'-'}</td>
-          <td>${d.iliski_id||'-'}</td>
-          <td>${d.aciklama? d.aciklama.replace(/</g,'&lt;') : ''}</td>
-        </tr>`);
-      });
-      $('tbl').querySelector('tbody').innerHTML = rows.join('') || `<tr><td colspan="8" class="muted">Kayıt bulunamadı</td></tr>`;
-      $('cntInfo').textContent = `${count} kayıt`;
-      $('liveTable').textContent = `Tablo güncellendi, ${count} kayıt.`;
+async function loadSonIslemler(){
+  const fs=$('fStart').value, fe=$('fEnd').value, fTip=$('fTip').value, fPath=$('fPath').value.trim(), fPer=$('fPersonel').value.trim();
+  let ref = db.collection('islemler');
+  if(fs) ref = ref.where('gun','>=',fs);
+  if(fe) ref = ref.where('gun','<=',fe);
+  // Tarihe göre sırala
+  ref = ref.orderBy('gun','desc').limit(800);
+
+  const snap=await ref.get(); const rows=[]; let count=0;
+  snap.forEach(doc=>{
+    const d=doc.data();
+    if(fTip && d.tip!==fTip) return;
+    if(fPath && !String(d.kategori_path||'').startsWith(fPath)) return;
+    if(fPer && String(d.personel_id||'').indexOf(fPer)===-1) return;
+    count++;
+    rows.push(`<tr>
+      <td>${(d.gun||'').slice(0,10)}</td>
+      <td><span class="pill ${d.tip}">${d.tip}</span></td>
+      <td>${d.kategori_path||'-'}</td>
+      <td>${d.personel_id||'-'}</td>
+      <td>${fmt(d.tutar)}</td>
+      <td>${d.tahakkuk?'<span class="pill tah">tahakkuk</span>':'-'}</td>
+      <td>${d.iliski_id||'-'}</td>
+      <td>${d.aciklama? d.aciklama.replace(/</g,'&lt;') : ''}</td>
+    </tr>`);
+  });
+  $('tbl').querySelector('tbody').innerHTML = rows.join('') || `<tr><td colspan="8" class="muted">Kayıt bulunamadı</td></tr>`;
+  $('cntInfo').textContent = `${count} kayıt`;
+  $('liveTable').textContent = `Tablo güncellendi, ${count} kayıt.`;
     }
     $('btnFiltreUygula').onclick = loadSonIslemler;
     $('btnFiltreTemizle').onclick = ()=>{['fStart','fEnd','fTip','fPath','fPersonel'].forEach(id=>$(id).value=''); loadSonIslemler();};
@@ -478,6 +728,7 @@
       const now=new Date(); const s=new Date(now); s.setDate(now.getDate()-30);
       $('fStart').value=toDateInput(s); $('fEnd').value=toDateInput(now);
       await refreshSummary(); await loadSonIslemler(); await loadKategoriler();
+      await updateKatDatalistForTip($('qTip').value);
     }
   </script>
 </body>

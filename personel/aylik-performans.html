@@ -59,7 +59,21 @@
       <div class="bd">
         <div class="row cols-3">
           <div><label>Yıl</label><select id="fYil"></select></div>
-          <div><label>Karşılaştırma Yılı</label><select id="fYilCmp"></select></div>
+<div class="row cols-3" style="margin-top:8px">
+  <div><label>Kategori (üst/alt)</label>
+    <select id="fKatUst"></select>
+    <select id="fKatAlt" style="margin-top:6px"><option value="">(Alt kategori yok)</option></select>
+  </div>
+  <div>
+    <label>Karşılaştırma Yılları (çoklu)</label>
+    <select id="fYillarCmp" multiple size="4"></select>
+    <div class="badge">Ctrl/Cmd ile çoklu seç</div>
+  </div>
+  <div>
+    <label>Zaman Çözünürlüğü</label>
+    <select id="fGran"><option value="ay">Ay</option><option value="hafta">Hafta</option><option value="gun">Gün</option><option value="yil">Yıl</option></select>
+  </div>
+</div>
           <div><label>Personel (ops.)</label><input id="fPer" placeholder="ID veya ad-soyad"/></div>
         </div>
         <div class="row cols-3" style="margin-top:8px">
@@ -78,10 +92,11 @@
       <div class="kpi"><div class="lbl">Toplam Gider (cash)</div><div class="val" id="kGider">₺0</div><div class="diff" id="kGiderDiff">—</div></div>
       <div class="kpi"><div class="lbl">Açık Tahakkuk</div><div class="val" id="kAccrual">₺0</div><div class="diff" id="kAccrualInfo">—</div></div>
       <div class="kpi"><div class="lbl">Bütçe Ulaşım (Gelir)</div><div class="val" id="kButceGelir">0%</div><div class="diff" id="kButceGelirNeed">—</div></div>
+      <div class="kpi"><div class="lbl">Bütçe Ulaşım (Gider)</div><div class="val" id="kButceGider">0%</div><div class="diff" id="kButceGiderNeed">—</div></div>
     </section>
 
     <!-- Grafikler -->
-    <section id="charts">
+      <section id="charts" style="display:grid;gap:16px;grid-template-columns:1fr 1fr 1fr">
       <article class="card">
         <div class="hd"><strong>Aylık Gelir vs Gider</strong><span class="badge" id="lblYil">—</span></div>
         <div class="bd"><div id="chMonthly" style="height:320px"></div></div>
@@ -90,12 +105,41 @@
         <div class="hd"><strong>Bütçe İlerleme (Gelir)</strong><span class="badge" id="lblButce">—</span></div>
         <div class="bd"><div id="chGauge" style="height:320px"></div></div>
       </article>
+        <article class="card">
+    <div class="hd"><strong>Bütçe İlerleme (Gider)</strong><span class="badge" id="lblButceGider">—</span></div>
+    <div class="bd"><div id="chGaugeGider" style="height:320px"></div></div>
+  </article>
     </section>
 
     <section class="card">
       <div class="hd"><strong>Personel Kıyas (Gelir – seçilen yıllar)</strong></div>
       <div class="bd"><div id="chPersonel" style="height:360px"></div></div>
+      <div class="bd">
+  <div id="chPersonel" style="height:360px"></div>
+  <div style="overflow:auto;margin-top:10px">
+    <table id="tblPer" style="width:100%;border-collapse:collapse">
+      <thead><tr><th>Personel</th><th id="thCmpYil">Önceki Yıl Miktar</th><th id="thThisYil">Seçili Yıl</th><th>Katkı % (Bütçe)</th><th>Hedef Ulaşım %</th><th>∆ vs Önceki</th><th>Yorum</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
     </section>
+
+<section class="card">
+  <div class="hd"><strong>Personel Katkı Dağılımı (Gelir)</strong></div>
+  <div class="bd">
+    <div id="chDonut" style="height:340px"></div>
+    <div id="donutNote" class="badge" style="margin-top:8px">Seçili kategori bütçesine göre doluluk</div>
+  </div>
+</section>
+    
+<section class="card">
+  <div class="hd"><strong>Gider Kalemleri (Üst/Alt)</strong></div>
+  <div class="bd">
+    <div id="chGiderKat" style="height:360px"></div>
+    <div id="giderDetay" class="badge" style="margin-top:10px">Bir üst kaleme tıklayın</div>
+  </div>
+</section>
 
     <section class="card">
       <div class="hd"><strong>Arama / Drilldown</strong></div>
@@ -121,11 +165,30 @@
     const fmt = n => (n==null||isNaN(n)) ? '₺0' : '₺' + Number(n).toLocaleString('tr-TR',{maximumFractionDigits:2});
 
     // Yıl seçimlerini doldur
-    (function fillYears(){
-      const now=new Date().getFullYear(), sel=document.getElementById('fYil'), cmp=document.getElementById('fYilCmp');
-      [now-1,now,now+1].forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y; sel.appendChild(o.cloneNode(true)); cmp.appendChild(o);});
-      sel.value=now; cmp.value=now-1;
-    })();
+(function fillYearsMulti(){
+  const now=new Date().getFullYear();
+  const ySel=document.getElementById('fYil'), cmp=document.getElementById('fYillarCmp');
+  [now-3,now-2,now-1,now,now+1].forEach(y=>{
+    const o1=document.createElement('option'); o1.value=y; o1.textContent=y; ySel.appendChild(o1);
+    const o2=document.createElement('option'); o2.value=y; o2.textContent=y; cmp.appendChild(o2);
+  });
+  ySel.value=now;
+})();
+async function fillKategoriler(){
+  const ust=$('fKatUst'), alt=$('fKatAlt'); ust.innerHTML=''; alt.innerHTML='<option value="">(Alt kategori yok)</option>';
+  const q=await db.collection('kategoriler').orderBy('path').get();
+  const topSet=new Set(q.docs.map(d=> (d.data().path||'').split('>')[0]));
+  [...topSet].forEach(p=>{const o=document.createElement('option'); o.value=p; o.textContent=p; $('fKatUst').appendChild(o);});
+  ust.addEventListener('change', ()=>{
+    const base=ust.value; alt.innerHTML='<option value="">(Alt kategori yok)</option>';
+    q.forEach(doc=>{
+      const p=doc.data().path||''; if(p.startsWith(base+'>')){
+        const name=p.split('>')[1]; if(name){ const o=document.createElement('option'); o.value=p; o.textContent=name; alt.appendChild(o); }
+      }
+    });
+  });
+}
+fillKategoriler();
 
     // Grafik nesneleri
     const chMonthly = new ApexCharts(document.querySelector("#chMonthly"), {
@@ -155,56 +218,241 @@
     document.getElementById('btnLogout').onclick = ()=> auth.signOut();
     document.getElementById('btnUygula').onclick = applyFilters;
 
-    async function applyFilters(){
-      const yil=Number(document.getElementById('fYil').value),
-            yilCmp=Number(document.getElementById('fYilCmp').value),
-            per=document.getElementById('fPer').value.trim(),
-            path=document.getElementById('fPath').value.trim(),
-            includeAcc=document.getElementById('fIncludeAccrual').checked;
+async function applyFilters(){
+  const yil=Number($('fYil').value);
+  const cmpYears=[...$('fYillarCmp').selectedOptions].map(o=>Number(o.value));
+  const per=$('fPer').value.trim();
+  const gran=$('fGran').value; // 'ay'|'hafta'|'gun'|'yil'
 
-      document.getElementById('lblYil').textContent = `${yil} ${path? '• '+path : ''}`;
+  // kategori path: üst + (opsiyonel) alt
+  const katUst=$('fKatUst').value||'';
+  const katAltFull=$('fKatAlt').value||'';
+  const path = katAltFull || (katUst? katUst : '');
 
-      const {ayGelir, ayGider, sumGelir, sumGider, accrualOpen, perSumThis, perSumCmp} =
-        await fetchYearData(yil, yilCmp, per, path, includeAcc);
+  // Ana yıl
+  const base = await fetchAggregates({yil, per, path, includeAcc: $('fIncludeAccrual').checked, gran});
+  // Çoklu yıllar
+  const cmpData = {};
+  for(const y of cmpYears){ cmpData[y]= await fetchAggregates({yil:y, per, path, includeAcc: $('fIncludeAccrual').checked, gran}); }
 
-      // KPI
-      document.getElementById('kGelir').textContent = fmt(sumGelir);
-      document.getElementById('kGider').textContent = fmt(sumGider);
-      document.getElementById('kAccrual').textContent = fmt(accrualOpen);
-      document.getElementById('kAccrualInfo').textContent = includeAcc ? 'Dahil ediliyor' : 'Dahil edilmiyor';
+  // KPI (gelir/gider)
+  $('kGelir').textContent=fmt(base.sumGelir);
+  $('kGider').textContent=fmt(base.sumGider);
+  $('kAccrual').textContent=fmt(base.accrualOpen);
+  $('kAccrualInfo').textContent = $('fIncludeAccrual').checked ? 'Dahil ediliyor' : 'Dahil edilmiyor';
 
-      // Bütçe (gelir) – hedef varsa oran ve kalan/günlük gerek
-      const b = await getBudget(yil, path || null, 'gelir');
-      let ratio=0, needText='—';
-      if(b && b.hedef_tutar>0){
-        ratio = Math.min(100, (sumGelir/b.hedef_tutar)*100);
-        const now=new Date(), end=new Date(`${yil}-12-31`);
-        const leftDays = Math.max(1, Math.floor((end - now)/86400000));
-        const kalan = Math.max(0, b.hedef_tutar - sumGelir);
-        needText = `Kalan: ${fmt(kalan)} • Günlük gerek: ${fmt(kalan/leftDays)} (${leftDays}gün)`;
-        document.getElementById('lblButce').textContent = `Hedef: ${fmt(b.hedef_tutar)}`;
-      }else{
-        document.getElementById('lblButce').textContent = 'Hedef yok';
-      }
-      chGauge.updateSeries([ratio]);
-      document.getElementById('kButceGelir').textContent = `${ratio.toFixed(0)}%`;
-      document.getElementById('kButceGelirNeed').textContent = needText;
+  // Bütçe: GELİR
+  const bGelir = await getBudget(yil, path||null, 'gelir');
+  let ratioG=0, needTextG='—';
+  if(bGelir && bGelir.hedef_tutar>0){
+    ratioG = Math.min(100, (base.sumGelir/bGelir.hedef_tutar)*100);
+    const {leftDays,kalan} = kalanGunVeTutar(bGelir.hedef_tutar, base.sumGelir, yil, path);
+    needTextG = `Kalan: ${fmt(kalan)} • Günlük gerek: ${fmt(kalan/Math.max(1,leftDays))} (${leftDays}gün)`;
+    $('lblButce').textContent = `Hedef: ${fmt(bGelir.hedef_tutar)}`;
+  } else { $('lblButce').textContent='Hedef yok'; }
+  chGauge.updateSeries([ratioG]); $('kButceGelir').textContent=`${ratioG.toFixed(0)}%`; $('kButceGelirNeed').textContent=needTextG;
 
-      // Grafik güncellemeleri
-      chMonthly.updateSeries([{name:'Gelir',data:ayGelir},{name:'Gider',data:ayGider}]);
-      chPersonel.updateOptions({xaxis:{categories:Object.keys(perSumThis)}});
-      chPersonel.updateSeries([
-        {name:String(yil), data:Object.values(perSumThis).map(v=>Number(v.toFixed(2)))},
-        {name:String(yilCmp), data:Object.keys(perSumThis).map(k=> Number((perSumCmp[k]||0).toFixed(2)))}
-      ]);
+  // Bütçe: GİDER
+  const bGider = await getBudget(yil, path||null, 'gider');
+  let ratioK=0, needTextK='—';
+  if(bGider && bGider.hedef_tutar>0){
+    ratioK = Math.min(100, (base.sumGider/bGider.hedef_tutar)*100);
+    const {leftDays,kalan} = kalanGunVeTutar(bGider.hedef_tutar, base.sumGider, yil, path);
+    needTextK = `Kalan: ${fmt(kalan)} • Günlük üst limit: ${fmt(kalan/Math.max(1,leftDays))}`;
+    $('lblButceGider').textContent = `Hedef: ${fmt(bGider.hedef_tutar)}`;
+  } else { $('lblButceGider').textContent='Hedef yok'; }
+  chGaugeGider.updateSeries([ratioK]); $('kButceGider').textContent=`${ratioK.toFixed(0)}%`; $('kButceGiderNeed').textContent=needTextK;
 
-      // Basit fark bilgisi
-      const sumGelirCmp = Object.values(perSumCmp).reduce((a,b)=>a+b,0);
-      const diffG = sumGelir - sumGelirCmp;
-      document.getElementById('kGelirDiff').textContent = `Karşı yıla göre: ${diffG>=0?'+':''}${fmt(diffG)}`;
-      document.getElementById('kGiderDiff').textContent = '—';
+  // Aylık/haftalık/günlük seri (ana yıl)
+  chMonthly.updateSeries([{name:'Gelir',data:base.seriesGelir},{name:'Gider',data:base.seriesGider}]);
+  $('lblYil').textContent = `${yil}${path? ' • '+path : ''}`;
+
+  // Personel kıyas (ana yıl vs ilk karşılaştırma yılı)
+  const yilCmp = cmpYears[0] ?? (yil-1);
+  const pNow = base.perSum;
+  const pCmp = (cmpData[yilCmp]?.perSum) || {};
+  updatePersonelBlock({yil, yilCmp, pNow, pCmp, bGelirPath: bGelir});
+
+  // Personel katkı donut (gelir)
+  renderDonut(base.personelShares, bGelir?.hedef_tutar || null);
+
+  // Gider kalemleri grafiği (üst/alt toplanmış)
+  renderGiderKategoriChart(base.kategoriGiderTree);
+}
+function kalanGunVeTutar(hedef, gercek, yil, path){
+  const now=new Date(); const end = new Date(`${yil}-12-31`);
+  // İleri aşamada Ramazan özel bitişi için path’e göre tarih set edebilirsin
+  const leftDays = Math.max(0, Math.floor((end - now)/86400000));
+  const kalan = Math.max(0, hedef - gercek);
+  return {leftDays, kalan};
+}
+
+const chDonut = new ApexCharts(document.querySelector('#chDonut'), {
+  chart:{type:'donut',height:340}, series:[], labels:[]
+}); chDonut.render();
+
+function renderDonut(personelShares, hedef){
+  const labels=Object.keys(personelShares);
+  const vals=Object.values(personelShares);
+  let toplam=vals.reduce((a,b)=>a+b,0);
+  const series=[...vals];
+  if(hedef && hedef>toplam){
+    labels.push('Kalan'); series.push(hedef-toplam);
+  }
+  chDonut.updateOptions({labels});
+  chDonut.updateSeries(series);
+  $('donutNote').textContent = hedef ? `Toplam ${fmt(toplam)} / Hedef ${fmt(hedef)}` : `Hedef tanımlı değil`;
+}
+
+const chGiderKat = new ApexCharts(document.querySelector('#chGiderKat'), {
+  chart:{type:'bar',height:360,events:{
+    dataPointSelection: (e, ctx, config)=>{
+      const name = config.w.config.xaxis.categories[config.dataPointIndex];
+      const tree = window._lastGiderTree||{};
+      const node = tree[name]||{};
+      const alts = Object.keys(node).filter(k=>k!=='_sum');
+      $('giderDetay').innerHTML = alts.length? alts.map(a=>`${a}: ${fmt(node[a])}`).join(' • ') : 'Alt kategori yok';
     }
+  }},
+  series:[{name:'Gider',data:[]}],
+  xaxis:{categories:[]}, dataLabels:{enabled:false}
+}); chGiderKat.render();
 
+function renderGiderKategoriChart(tree){
+  window._lastGiderTree = tree;
+  const cats = Object.keys(tree);
+  const vals = cats.map(k=> tree[k]._sum || 0);
+  chGiderKat.updateOptions({xaxis:{categories:cats}});
+  chGiderKat.updateSeries([{name:'Gider',data:vals}]);
+}
+
+async function getBudget(yil, path, tip){
+  const doc = await db.collection('butce_planlari').doc(String(yil)).get();
+  if(!doc.exists) return null;
+  const d=doc.data();
+  if(Array.isArray(d.kalemler)){
+    if(path){
+      return d.kalemler.find(k=>k.tip===tip && String(k.path).startsWith(path)) || null;
+    }else{
+      const toplam = d.kalemler.filter(k=>k.tip===tip).reduce((a,b)=>a+(b.hedef_tutar||0),0);
+      return {path:'*', tip, hedef_tutar:toplam};
+    }
+  }
+  return null;
+}
+
+async function applyFilters(){
+  const yil=Number($('fYil').value);
+  const cmpYears=[...$('fYillarCmp').selectedOptions].map(o=>Number(o.value));
+  const per=$('fPer').value.trim();
+  const gran=$('fGran').value; // 'ay'|'hafta'|'gun'|'yil'
+
+  // kategori path: üst + (opsiyonel) alt
+  const katUst=$('fKatUst').value||'';
+  const katAltFull=$('fKatAlt').value||'';
+  const path = katAltFull || (katUst? katUst : '');
+
+  // Ana yıl
+  const base = await fetchAggregates({yil, per, path, includeAcc: $('fIncludeAccrual').checked, gran});
+  // Çoklu yıllar
+  const cmpData = {};
+  for(const y of cmpYears){ cmpData[y]= await fetchAggregates({yil:y, per, path, includeAcc: $('fIncludeAccrual').checked, gran}); }
+
+  // KPI (gelir/gider)
+  $('kGelir').textContent=fmt(base.sumGelir);
+  $('kGider').textContent=fmt(base.sumGider);
+  $('kAccrual').textContent=fmt(base.accrualOpen);
+  $('kAccrualInfo').textContent = $('fIncludeAccrual').checked ? 'Dahil ediliyor' : 'Dahil edilmiyor';
+
+  // Bütçe: GELİR
+  const bGelir = await getBudget(yil, path||null, 'gelir');
+  let ratioG=0, needTextG='—';
+  if(bGelir && bGelir.hedef_tutar>0){
+    ratioG = Math.min(100, (base.sumGelir/bGelir.hedef_tutar)*100);
+    const {leftDays,kalan} = kalanGunVeTutar(bGelir.hedef_tutar, base.sumGelir, yil, path);
+    needTextG = `Kalan: ${fmt(kalan)} • Günlük gerek: ${fmt(kalan/Math.max(1,leftDays))} (${leftDays}gün)`;
+    $('lblButce').textContent = `Hedef: ${fmt(bGelir.hedef_tutar)}`;
+  } else { $('lblButce').textContent='Hedef yok'; }
+  chGauge.updateSeries([ratioG]); $('kButceGelir').textContent=`${ratioG.toFixed(0)}%`; $('kButceGelirNeed').textContent=needTextG;
+
+  // Bütçe: GİDER
+  const bGider = await getBudget(yil, path||null, 'gider');
+  let ratioK=0, needTextK='—';
+  if(bGider && bGider.hedef_tutar>0){
+    ratioK = Math.min(100, (base.sumGider/bGider.hedef_tutar)*100);
+    const {leftDays,kalan} = kalanGunVeTutar(bGider.hedef_tutar, base.sumGider, yil, path);
+    needTextK = `Kalan: ${fmt(kalan)} • Günlük üst limit: ${fmt(kalan/Math.max(1,leftDays))}`;
+    $('lblButceGider').textContent = `Hedef: ${fmt(bGider.hedef_tutar)}`;
+  } else { $('lblButceGider').textContent='Hedef yok'; }
+  chGaugeGider.updateSeries([ratioK]); $('kButceGider').textContent=`${ratioK.toFixed(0)}%`; $('kButceGiderNeed').textContent=needTextK;
+
+  // Aylık/haftalık/günlük seri (ana yıl)
+  chMonthly.updateSeries([{name:'Gelir',data:base.seriesGelir},{name:'Gider',data:base.seriesGider}]);
+  $('lblYil').textContent = `${yil}${path? ' • '+path : ''}`;
+
+  // Personel kıyas (ana yıl vs ilk karşılaştırma yılı)
+  const yilCmp = cmpYears[0] ?? (yil-1);
+  const pNow = base.perSum;
+  const pCmp = (cmpData[yilCmp]?.perSum) || {};
+  updatePersonelBlock({yil, yilCmp, pNow, pCmp, bGelirPath: bGelir});
+
+  // Personel katkı donut (gelir)
+  renderDonut(base.personelShares, bGelir?.hedef_tutar || null);
+
+  // Gider kalemleri grafiği (üst/alt toplanmış)
+  renderGiderKategoriChart(base.kategoriGiderTree);
+}
+function kalanGunVeTutar(hedef, gercek, yil, path){
+  const now=new Date(); const end = new Date(`${yil}-12-31`);
+  // İleri aşamada Ramazan özel bitişi için path’e göre tarih set edebilirsin
+  const leftDays = Math.max(0, Math.floor((end - now)/86400000));
+  const kalan = Math.max(0, hedef - gercek);
+  return {leftDays, kalan};
+}
+function updatePersonelBlock({yil, yilCmp, pNow, pCmp, bGelirPath}){
+  $('thCmpYil').textContent = `${yilCmp} Miktar`;
+  $('thThisYil').textContent = `${yil} Miktar`;
+  const tb = $('tblPer').querySelector('tbody'); tb.innerHTML='';
+  const toplamNow = Object.values(pNow).reduce((a,b)=>a+b,0) || 1;
+
+  // seçili path’in bütçesi
+  const hedefPromise = getBudget(yil, ($('fKatAlt').value || $('fKatUst').value || null), 'gelir');
+  Promise.resolve(hedefPromise).then(b=>{
+    const hedef = b?.hedef_tutar || null;
+    Object.keys(pNow).sort((a,b)=>pNow[b]-pNow[a]).forEach(k=>{
+      const now = pNow[k]||0, prev=pCmp[k]||0;
+      const katki = hedef? (now/hedef*100): null;
+      const hedefPct = (hedef? (now/hedef*100) : null);
+      const delta = now - prev;
+      const yorum = buildYorum({yil, yilCmp, now, prev, hedef, personel:k});
+      tb.insertAdjacentHTML('beforeend', `<tr>
+        <td>${k}</td>
+        <td>${fmt(prev)}</td>
+        <td>${fmt(now)}</td>
+        <td>${katki!=null? katki.toFixed(1)+'%':'—'}</td>
+        <td>${hedefPct!=null? hedefPct.toFixed(1)+'%':'—'}</td>
+        <td>${(delta>=0?'+':'')+fmt(delta)}</td>
+        <td>${yorum}</td>
+      </tr>`);
+    });
+  });
+}
+function buildYorum({yil,yilCmp,now,prev,hedef,personel}){
+  const parts=[];
+  if(now>prev) parts.push('Geçen yıla göre artış var ✅');
+  else if(now<prev) parts.push('Geçen yıla göre gerileme var ⚠️');
+  else parts.push('Geçen yılla aynı seviyede');
+
+  if(hedef!=null){
+    if(now>=hedef) parts.push('Bu yıl hedefinize ulaştınız 🎯');
+    else {
+      const {leftDays,kalan} = kalanGunVeTutar(hedef, now, yil, null);
+      if(leftDays>0) parts.push(`Hedefe kalan ${fmt(kalan)}. Günlük ~${fmt(kalan/Math.max(1,leftDays))} gerekli.`);
+      else parts.push('Yıl bitti, hedefe ulaşılamadı.');
+    }
+  }
+  return parts.join(' • ');
+}
     // Seçili yıl için verileri topla
     async function fetchYearData(yil, yilCmp, per, path, includeAcc){
       let ayGelir=Array(12).fill(0), ayGider=Array(12).fill(0);
