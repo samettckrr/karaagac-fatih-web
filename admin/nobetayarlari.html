@@ -231,7 +231,7 @@
   tbody td:nth-child(2)::before{ content:"Tarih";    color:var(--muted); font-size:12px; font-weight:700; }
   tbody td:nth-child(3)::before{ content:"Saat";     color:var(--muted); font-size:12px; font-weight:700; }
   tbody td:nth-child(4)::before{ content:"Bekâr";    color:var(--muted); font-size:12px; font-weight:700; }
-  tbody td:nth-child(5)::before{ content:"Evli/Sabit"; color:var(--muted); font-size:12px; font-weight:700; }
+  tbody td:nth-child(5)::before{ content:"Evli"; color:var(--muted); font-size:12px; font-weight:700; }
   tbody td:nth-child(6)::before{ content:"Not";      color:var(--muted); font-size:12px; font-weight:700; }
 
   /* İçerik (sağ kolon) tipografisi */
@@ -317,10 +317,6 @@
           <input type="date" id="inpTarih">
         </div>
         <div class="fg-4">
-          <label>Pazartesi Sabit İhvan</label>
-          <input type="text" id="inpIhvan" value="İhvan">
-        </div>
-        <div class="fg-4">
           <label>Özel Pazar Otomatiği</label>
           <select id="selOtoPazar">
             <option value="auto">2 haftada bir (otomatik)</option>
@@ -360,7 +356,7 @@
       <table>
         <thead>
           <tr>
-            <th>Gün</th><th>Tarih</th><th>Saat</th><th>Bekâr</th><th>Evli / Sabit</th><th>Not</th>
+            <th>Gün</th><th>Tarih</th><th>Saat</th><th>Bekâr</th><th>Evli</th><th>Not</th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -474,7 +470,6 @@
 
     /* ===== Sayfa özgü: Nöbet planlayıcı ===== */
     const inpTarih=document.getElementById('inpTarih');
-    const inpIhvan=document.getElementById('inpIhvan');
     const inpBekar=document.getElementById('inpBekar');
     const inpEvli=document.getElementById('inpEvli');
     const selOtoPazar=document.getElementById('selOtoPazar');
@@ -482,8 +477,12 @@
     const existInfo=document.getElementById('existInfo');
     const btnHaftaSil=document.getElementById('btnHaftaSil');
 
-    function pad(n){return n<10?'0'+n:''+n}
-    function toISO(d){return d.toISOString().split('T')[0]}
+    function toISO(d){
+      const yy = d.getFullYear();
+      const mm = String(d.getMonth()+1).padStart(2,'0');
+      const dd = String(d.getDate()).padStart(2,'0');
+      return `${yy}-${mm}-${dd}`;
+    }
     function isoWeek(date){
       const d=new Date(Date.UTC(date.getFullYear(),date.getMonth(),date.getDate()));
       const day=d.getUTCDay()||7; d.setUTCDate(d.getUTCDate()+4-day);
@@ -500,21 +499,17 @@
     /* ---- Önceki haftadan türetme ---- */
     function mapFromPrevWeek(prevRows, isSpecialPazarCurr){
       const byDay = Object.fromEntries(prevRows.map(r=>[r.gun,r]));
-      const result = {};
-      // EVLİ: örnek kural (isteğin doğrultusunda geri kaydırma & Pazartesi sabit ihvan)
-      const mapEvli = {
-        "Cumartesi": byDay["Salı"]?.evli || null,
-        "Salı":      byDay["Çarşamba"]?.evli || null,
-        "Çarşamba":  byDay["Perşembe"]?.evli || null,
-        "Perşembe":  byDay["Cuma"]?.evli || null,
-        "Cuma":      byDay["Cumartesi"]?.evli || null,
-        "Pazar":     isSpecialPazarCurr ? (byDay["Pazar"]?.evli || null) : null,
-        "Pazartesi": null // ihvan sabit
-      };
-      // BEKÂR: 1 gün geri kaydırma (genel kural)
-      const prevOrder = ["Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi","Pazar"];
-      const back1 = d => prevOrder[(prevOrder.indexOf(d)+1)%7]; // “geri” = bir sonraki günün kişisi
-      const mapBekar = Object.fromEntries(prevOrder.map(day => [day, byDay[back1(day)]?.bekar || null]));
+      // 1 gün geri kaydırma (bekâr ve evli için aynı mantık)
+      const order = ["Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi","Pazar"];
+      const back1 = d => order[(order.indexOf(d)+1)%7];
+
+      const mapBekar = Object.fromEntries(order.map(day => [day, byDay[back1(day)]?.bekar || null]));
+      const mapEvli  = Object.fromEntries(order.map(day => [day, byDay[back1(day)]?.evli  || null]));
+
+      // Pazar özel kuralı: özel pazar yoksa evliyi boşalt
+      if(!isSpecialPazarCurr){
+        mapEvli["Pazar"] = null;
+      }
       return {evli:mapEvli, bekar:mapBekar};
     }
 
@@ -541,8 +536,8 @@
         else{ tdB.appendChild(makeSelect(bOps,r.bekar,v=>r.bekar=v)); }
 
         if(r.gun==="Pazartesi"){
-          const ih=plan.ihvan || inpIhvan.value.trim();
-          tdE.appendChild(makeSelect([ih], ih, v=>r.evli=v, true));
+          // Pazartesi artık kilitli değil → normal gün gibi seçilebilir
+          tdE.appendChild(makeSelect(eOps,r.evli,v=>r.evli=v));
         }else if(r.gun==="Pazar" && plan.isSpecialPazar && !plan.isPazarTehir){
           tdE.appendChild(makeSelect(eOps,r.evli,v=>r.evli=v));
         }else if(r.gun==="Pazar"){
@@ -561,7 +556,6 @@
       const isAuto = (selOtoPazar.value==="auto") ? (iso.weekNo%2===0) : false;
       const isSpecial = document.getElementById('chkManPazar').checked || isAuto;
       const isTehir = document.getElementById('chkTehir').checked;
-      const ihvan = inpIhvan.value.trim();
 
       let rows=[];
       if(prevPlanOrNull){
@@ -578,14 +572,12 @@
             not="Özel Pazar (önceki haftadan türetildi)";
           }else if(g==="Pazar"){
             evli=null; not=isTehir?"Pazar tehir":"Normal Pazar — evli yok";
-          }else if(g==="Pazartesi"){
-            evli=ihvan; not="Pazartesi sabit ihvan";
           }
           if(g==="Cumartesi" && isSpecial){ bekar=null; not = (not?not+'; ':'')+"Cumartesi bekâr yok (özel pazar)"; }
 
           rows.push({gun:g,tarihISO,monthKey,saat,bekar,evli,not});
         });
-        return {isoYear:iso.isoYear,weekNo:iso.weekNo,isSpecialPazar:isSpecial,isPazarTehir:isTehir,pazarEvli:rows.find(r=>r.gun==='Pazar')?.evli||null, ihvan, rows};
+        return {isoYear:iso.isoYear,weekNo:iso.weekNo,isSpecialPazar:isSpecial,isPazarTehir:isTehir,pazarEvli:rows.find(r=>r.gun==='Pazar')?.evli||null, rows};
       }
 
       // Sıfırdan (mevcut algoritman)
@@ -602,8 +594,9 @@
         const tarihISO=toISO(weekDates[i]); const monthKey=tarihISO.slice(0,7);
 
         if(g==="Pazartesi"){
+          // Artık normal gün: evli/bekâr rotasyondan
           bekar=bSeq[0]||null; if(bekar) bSeq=rotate(bSeq,1);
-          evli=ihvan||null; not="Pazartesi sabit ihvan";
+          evli=eSeq[0]||null;  if(evli)  eSeq=rotate(eSeq,1);
         } else if(["Salı","Çarşamba","Perşembe","Cuma"].includes(g)){
           bekar=bSeq[0]||null; if(bekar) bSeq=rotate(bSeq,1);
           evli=eSeq[0]||null;  if(evli)  eSeq=rotate(eSeq,1);
@@ -634,8 +627,9 @@
         rows.push({gun:g,tarihISO,monthKey,saat,bekar,evli,not});
       });
 
-      return {isoYear:iso.isoYear,weekNo:iso.weekNo,isSpecialPazar:isSpecial,isPazarTehir:isTehir,pazarEvli, ihvan, rows};
-    }
+          return {isoYear:iso.isoYear,weekNo:iso.weekNo,isSpecialPazar:isSpecial,
+             isPazarTehir:isTehir,pazarEvli, rows};
+          }
 
     function renderWeekBadge(d){
       const {isoYear,weekNo}=isoWeek(d);
@@ -646,46 +640,60 @@
       if(!document.getElementById('chkAyarKaydet').checked) return;
       await db.collection('nobet_ayar').doc('genel').set({
         bekarlar:(inpBekar.value||'').split(',').map(x=>x.trim()).filter(Boolean),
-        evliler: (inpEvli.value||'').split(',').map(x=>x.trim()).filter(Boolean),
-        ihvan:   inpIhvan.value.trim(),
+        evliler:(inpEvli.value||'').split(',').map(x=>x.trim()).filter(Boolean),
         otoPazar:selOtoPazar.value
       },{merge:true});
     }
+    async function deleteWeekIndex(idxCol, weekKey){
+      const snap = await idxCol.where('weekKey','==',weekKey).get();
+      const docs = snap.docs;
+      for(let i=0;i<docs.length;i+=400){
+        const part = docs.slice(i, i+400);
+        const batch = db.batch();
+        part.forEach(d=>batch.delete(d.ref));
+        await batch.commit();
+      }
+    }
 
     async function savePlan(plan){
-      const weekKey=`${plan.isoYear}-W${('0'+plan.weekNo).slice(-2)}`;
-      // 1) Bu haftanın mevcut index kayıtlarını temizle
-      const idxCol = db.collection('nobet_index');
-      const old = await idxCol.where('weekKey','==',weekKey).get();
-      let batch = db.batch(); let i=0;
-      old.forEach(doc=>{ batch.delete(doc.ref); if(++i%450===0){ /* commit parça parça*/ }});
-      if(i) await batch.commit();
+      const weekKey = `${plan.isoYear}-W${('0'+plan.weekNo).slice(-2)}`;
+      const idxCol  = db.collection('nobet_index');
 
-      // 2) Plan belgesi ve yeni index kayıtları
-      batch = db.batch();
+      // 1) Eski indexleri TEK yerde ve ÖNCE sil
+      await deleteWeekIndex(idxCol, weekKey);
+
+      // 2) Plan belgesi + yeni indexler
+      let batch = db.batch();
       const planRef = db.collection('nobet_planlari').doc(weekKey);
-      batch.set(planRef,{
-        weekKey, isoYear:plan.isoYear, weekNo:plan.weekNo,
-        isSpecialPazar:plan.isSpecialPazar, isPazarTehir:plan.isPazarTehir, pazarEvli:plan.pazarEvli||null,
-        rows:plan.rows, ihvan:plan.ihvan||null,
-        updatedAt:firebase.firestore.FieldValue.serverTimestamp(), updatedBy:auth.currentUser?auth.currentUser.uid:null
-      },{merge:true});
+      batch.set(planRef, {
+        weekKey,
+        isoYear: plan.isoYear,
+        weekNo:  plan.weekNo,
+        isSpecialPazar: plan.isSpecialPazar,
+        isPazarTehir:   plan.isPazarTehir,
+        pazarEvli:      plan.pazarEvli || null,
+        rows:           plan.rows,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedBy: auth.currentUser ? auth.currentUser.uid : null
+      }, { merge:true });
 
       plan.rows.forEach(r=>{
         if(r.bekar){
-          const type=(r.gun==="Pazar" && plan.isSpecialPazar && !plan.isPazarTehir)?"pazar-aksam":"24s";
-          batch.set(idxCol.doc(),{
-            weekKey,date:r.tarihISO,day:r.gun,person:r.bekar,role:"bekar",
-            saat:type==="pazar-aksam"?"18:00→09:00":"09:00→09:00", type, monthKey:r.monthKey, year:r.tarihISO.slice(0,4),
-            createdAt:firebase.firestore.FieldValue.serverTimestamp()
+          const type = (r.gun==="Pazar" && plan.isSpecialPazar && !plan.isPazarTehir) ? "pazar-aksam" : "24s";
+          batch.set(idxCol.doc(), {
+            weekKey, date:r.tarihISO, day:r.gun, person:r.bekar, role:"bekar",
+            saat: type==="pazar-aksam" ? "18:00→09:00" : "09:00→09:00",
+            type, monthKey:r.monthKey, year:r.tarihISO.slice(0,4),
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
           });
         }
         if(r.evli){
-          const type=(r.gun==="Pazar" && plan.isSpecialPazar && !plan.isPazarTehir)?"pazar-gunduz":"24s";
-          batch.set(idxCol.doc(),{
-            weekKey,date:r.tarihISO,day:r.gun,person:r.evli,role:(r.gun==="Pazartesi"?"ihvan":"evli"),
-            saat:type==="pazar-gunduz"?"08:00→19:30":"09:00→09:00", type, monthKey:r.monthKey, year:r.tarihISO.slice(0,4),
-            createdAt:firebase.firestore.FieldValue.serverTimestamp()
+          const type = (r.gun==="Pazar" && plan.isSpecialPazar && !plan.isPazarTehir) ? "pazar-gunduz" : "24s";
+          batch.set(idxCol.doc(), {
+            weekKey, date:r.tarihISO, day:r.gun, person:r.evli, role:"evli",
+            saat: type==="pazar-gunduz" ? "08:00→19:30" : "09:00→09:00",
+            type, monthKey:r.monthKey, year:r.tarihISO.slice(0,4),
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
           });
         }
       });
@@ -728,7 +736,6 @@
             const a=snap.data();
             if(a.bekarlar) inpBekar.value=a.bekarlar.join(',');
             if(a.evliler)  inpEvli.value=a.evliler.join(',');
-            if(a.ihvan)    inpIhvan.value=a.ihvan;
             if(a.otoPazar) selOtoPazar.value=a.otoPazar;
           }
         }catch(e){ console.warn(e); }
@@ -739,14 +746,20 @@
     // Tarih değişikliği: hafta rozeti
     document.getElementById('inpTarih').addEventListener('change', (e)=>{ const d=new Date(e.target.value+"T12:00:00"); renderWeekBadge(d); });
 
-    let lastPlan=null, lastWeekKey=null, loadedExisting=false;
+    let lastPlan=null, lastWeekKey=null;
 
     // Planı oluştur / yükle
     document.getElementById('btnOlustur').addEventListener('click', async ()=>{
       const val = inpTarih.value; if(!val){ showToast('Tarih seçin'); return; }
       const d=new Date(val+"T12:00:00");
-      const {isoYear,weekNo}=isoWeek(d);
-      const weekKey=`${isoYear}-W${('0'+weekNo).slice(-2)}`;
+      const { isoYear, weekNo } = isoWeek(d);
+      const weekKey = `${isoYear}-W${('0'+weekNo).slice(-2)}`;
+
+      const bl = (inpBekar.value||'').split(',').map(s=>s.trim()).filter(Boolean);
+      const el = (inpEvli.value||'').split(',').map(s=>s.trim()).filter(Boolean);
+
+      document.getElementById('outBStart').textContent = bl.length ? (weekNo % bl.length) : '-';
+      document.getElementById('outEStart').textContent = el.length ? (weekNo % el.length) : '-';
 
       // Hafta var mı?
       const exist = await db.collection('nobet_planlari').doc(weekKey).get();
@@ -758,18 +771,23 @@
         btnHaftaSil.style.display='inline-block';
 
         // UI'ya doldur
-        inpIhvan.value = planDoc.ihvan || inpIhvan.value;
         document.getElementById('chkTehir').checked = !!planDoc.isPazarTehir;
         document.getElementById('chkManPazar').checked = !!planDoc.isSpecialPazar;
 
-        lastPlan = { isoYear, weekNo, isSpecialPazar:!!planDoc.isSpecialPazar, isPazarTehir:!!planDoc.isPazarTehir, pazarEvli:planDoc.pazarEvli||null, ihvan: planDoc.ihvan||inpIhvan.value, rows: planDoc.rows||[] };
+        lastPlan = { isoYear, weekNo, isSpecialPazar:!!planDoc.isSpecialPazar,
+          isPazarTehir:!!planDoc.isPazarTehir, pazarEvli:planDoc.pazarEvli||null,
+          rows: planDoc.rows||[] };
         drawPlan(lastPlan);
         lastWeekKey = weekKey;
         return;
       }
 
       // Yoksa: bir önceki haftaya bak
-      const prevKey = (wk=>{ const [y, w]=wk; let Y=y, W=w-1; if(W===0){ Y=y-1; W=53; } return `${Y}-W${String(W).padStart(2,'0')}`; })([isoYear, weekNo]);
+      const prevKey = (() => {
+        const d2 = new Date(d); d2.setDate(d2.getDate() - 7);
+        const { isoYear:py, weekNo:pw } = isoWeek(d2);
+        return `${py}-W${String(pw).padStart(2,'0')}`;
+      })();
       const prevDoc = await db.collection('nobet_planlari').doc(prevKey).get();
       const prevPlan = prevDoc.exists ? prevDoc.data() : null;
 
@@ -793,13 +811,13 @@
     btnHaftaSil.addEventListener('click', async ()=>{
       if(!lastWeekKey){ showToast('Hafta bulunamadı.'); return; }
       if(!confirm(`${lastWeekKey} haftasındaki plan ve index kayıtları silinsin mi?`)) return;
-      // plan sil
+
+      // indexleri güvenli şekilde parça parça sil
+      await deleteWeekIndex(db.collection('nobet_index'), lastWeekKey);
+
+      // planı sil
       await db.collection('nobet_planlari').doc(lastWeekKey).delete().catch(()=>{});
-      // index sil
-      const idx = await db.collection('nobet_index').where('weekKey','==',lastWeekKey).get();
-      let batch=db.batch(); let i=0;
-      idx.forEach(doc=>{ batch.delete(doc.ref); if(++i%450===0){/* parça commit edilebilir */}});
-      if(i) await batch.commit();
+
       showToast('🗑️ Hafta silindi.');
       document.getElementById('tbody').innerHTML='';
       existInfo.style.display='none'; btnHaftaSil.style.display='none';

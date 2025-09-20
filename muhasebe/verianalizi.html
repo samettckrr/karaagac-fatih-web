@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Veri Aktarıcı | Karaağaç Fatih</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/png" href="../img/logo.png" />
+
+  <!-- Firebase compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="../js/firebase/firebase-init.js"></script>
+
+  <!-- PapaParse (CSV) -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+  <style>
+    :root{
+      --appbar-h:56px; --radius:14px; --stroke:#e5e7eb; --text:#0f172a; --muted:#475569;
+      --bg:#f6f7fb; --card:#fff; --brand:#2563eb; --ok:#059669; --err:#e11d48;
+    }
+    *{box-sizing:border-box}
+    body{margin:0; font-family:Inter, system-ui, Segoe UI, Arial; color:var(--text); background:var(--bg)}
+    header{
+      position:sticky; top:0; z-index:10; height:var(--appbar-h); display:flex; align-items:center; justify-content:space-between;
+      padding:0 16px; background:#fff; border-bottom:1px solid var(--stroke)
+    }
+    main{max-width:1100px; margin:16px auto; padding:0 16px; display:grid; gap:14px}
+    .card{background:var(--card); border:1px solid var(--stroke); border-radius:14px; padding:14px}
+    h1{font-size:18px; margin:0}
+    .muted{color:var(--muted); font-size:13px}
+    .grid{display:grid; gap:12px}
+    .grid-2{grid-template-columns:1fr 1fr}
+    .btn{padding:10px 12px; border-radius:12px; border:1px solid var(--stroke); background:#fff; cursor:pointer; font-weight:600}
+    .btn.brand{border-color:#c7d2fe; background:linear-gradient(180deg,#eef2ff,#fff)}
+    .btn.ok{border-color:#bbf7d0; background:linear-gradient(180deg,#ecfdf5,#fff)}
+    .btn.err{border-color:#fecaca; background:linear-gradient(180deg,#fff1f2,#fff)}
+    input[type="file"]{display:none}
+    .drop{
+      border:2px dashed #cbd5e1; border-radius:14px; padding:18px; text-align:center; background:#fff
+    }
+    .drop.drag{background:#f1f5ff; border-color:#93c5fd}
+    table{width:100%; border-collapse:collapse; font-size:14px}
+    th,td{padding:8px 10px; border-bottom:1px solid var(--stroke)}
+    th{background:#f8fafc; text-align:left; position:sticky; top:0}
+    .inline{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+    select, input[type="text"]{
+      padding:8px 10px; border-radius:10px; border:1px solid var(--stroke); background:#fff
+    }
+    .stat{display:flex; gap:12px; flex-wrap:wrap}
+    .chip{border:1px solid var(--stroke); border-radius:999px; padding:6px 10px; background:#fff; font-size:12px}
+    .ok{color:var(--ok)} .err{color:var(--err)}
+    .progress{height:10px; background:#eef2ff; border-radius:999px; overflow:hidden}
+    .bar{height:10px; background:#2563eb; width:0%}
+    .note{font-size:12px; color:#475569}
+    @media (max-width: 900px){ .grid-2{grid-template-columns:1fr} }
+  </style>
+</head>
+<body>
+<header>
+  <div class="inline">
+    <img src="../img/logo.png" alt="KF" style="width:28px;height:28px;border-radius:8px"/>
+    <h1>Veri Aktarıcı</h1>
+  </div>
+  <div class="inline">
+    <button class="btn" id="btnBack">Geri Dön</button>
+    <button class="btn" id="btnLogout">Çıkış</button>
+  </div>
+</header>
+
+<main>
+  <!-- 1) Açıklama & CSV şablonları -->
+  <section class="card">
+    <div class="grid">
+      <div class="inline" style="justify-content:space-between">
+        <div>
+          <div style="font-weight:700">Adım 1 — CSV’yi hazırla</div>
+          <div class="muted">PDF/Excel verilerini aşağıdaki başlığa göre CSV olarak kaydet.</div>
+        </div>
+        <div class="inline">
+          <button class="btn brand" id="btnTemplate">Şablon CSV indir</button>
+        </div>
+      </div>
+      <code class="note">personelId,personelAd,kategori,faaliyet,aciklama,tutar,tarih,externalId</code>
+      <div class="note">
+        <b>İpucu:</b> TL alanı “₺”, “.” ve “,” karışık olabilir — sistem otomatik temizler. Tarih olarak “2025-06-15” önerilir (gün/ay/yıl da kabul edilir).
+      </div>
+    </div>
+  </section>
+
+  <!-- 2) Yükleme & Eşleştirme -->
+  <section class="card">
+    <div class="grid grid-2">
+      <div>
+        <div style="font-weight:700; margin-bottom:6px">Adım 2 — CSV yükle</div>
+        <label for="file" class="drop" id="drop">
+          <input type="file" id="file" accept=".csv" />
+          <div><b>CSV dosyanı buraya bırak</b> ya da tıkla</div>
+          <div class="note">Maks. 100K satır önerilir (büyük dosya otomatik parça parça işlenir)</div>
+        </label>
+        <div class="stat" id="stat"></div>
+      </div>
+
+      <div>
+        <div style="font-weight:700; margin-bottom:6px">Eşleştirme</div>
+        <div class="grid">
+          <div class="inline">
+            <span class="note" style="width:140px">personelId</span>
+            <select id="m_personelId"></select>
+          </div>
+          <div class="inline">
+            <span class="note" style="width:140px">personelAd</span>
+            <select id="m_personelAd"></select>
+          </div>
+          <div class="inline">
+            <span class="note" style="width:140px">kategori</span>
+            <select id="m_kategori"></select>
+          </div>
+          <div class="inline">
+            <span class="note" style="width:140px">faaliyet</span>
+            <select id="m_faaliyet"></select>
+          </div>
+          <div class="inline">
+            <span class="note" style="width:140px">aciklama</span>
+            <select id="m_aciklama"></select>
+          </div>
+          <div class="inline">
+            <span class="note" style="width:140px">tutar</span>
+            <select id="m_tutar"></select>
+          </div>
+          <div class="inline">
+            <span class="note" style="width:140px">tarih</span>
+            <select id="m_tarih"></select>
+          </div>
+          <div class="inline">
+            <span class="note" style="width:140px">externalId (ops.)</span>
+            <select id="m_externalId"></select>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3) Önizleme -->
+  <section class="card">
+    <div class="inline" style="justify-content:space-between">
+      <div>
+        <div style="font-weight:700">Adım 3 — Önizleme</div>
+        <div class="note">İlk 20 satır gösterilir. Hatalı alanları düzeltmek için CSV’ni güncelle veya eşleştirmeyi değiştir.</div>
+      </div>
+      <div class="inline">
+        <button class="btn" id="btnClear">Temizle</button>
+        <button class="btn ok" id="btnImport" disabled>İçe Aktar</button>
+      </div>
+    </div>
+    <div class="progress" style="margin:10px 0; display:none" id="progWrap"><div class="bar" id="bar"></div></div>
+    <div class="table-wrap" style="max-height:320px; overflow:auto; border:1px solid var(--stroke); border-radius:12px">
+      <table>
+        <thead id="thead"></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script>
+const db = window.db;
+const auth = firebase.auth();
+
+const drop = document.getElementById('drop');
+const fileInput = document.getElementById('file');
+const stat = document.getElementById('stat');
+const thead = document.getElementById('thead');
+const tbody = document.getElementById('tbody');
+const btnImport = document.getElementById('btnImport');
+const btnClear = document.getElementById('btnClear');
+const btnTemplate = document.getElementById('btnTemplate');
+const progWrap = document.getElementById('progWrap');
+const bar = document.getElementById('bar');
+
+const mapIds = ["personelId","personelAd","kategori","faaliyet","aciklama","tutar","tarih","externalId"];
+const m = Object.fromEntries(mapIds.map(k=>[k, document.getElementById('m_'+k)]));
+
+let parsed = { headers:[], rows:[] };
+
+document.getElementById('btnBack').onclick = ()=> history.length>1 ? history.back() : location.href="panel.html";
+document.getElementById('btnLogout').onclick = async ()=> { await auth.signOut(); location.href="index.html"; };
+
+btnTemplate.onclick = () => {
+  const csv = "personelId,personelAd,kategori,faaliyet,aciklama,tutar,tarih,externalId\n"
+            + "uid_muhsin,Muhsin Çelik,Ramazan-ı Şerif,İFTAR,Ali Gövercin,10000,2024-03-15,ram2024-iftar-ali\n";
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], {type:"text/csv;charset=utf-8"}));
+  a.download = "islemler-sablon.csv";
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+// Drag & drop
+['dragenter','dragover'].forEach(evt => drop.addEventListener(evt, (e)=>{ e.preventDefault(); e.stopPropagation(); drop.classList.add('drag'); }));
+['dragleave','drop'].forEach(evt => drop.addEventListener(evt, (e)=>{ e.preventDefault(); e.stopPropagation(); drop.classList.remove('drag'); }));
+drop.addEventListener('drop', (e)=> { if(e.dataTransfer.files?.length) handleFile(e.dataTransfer.files[0]); });
+drop.addEventListener('click', ()=> fileInput.click());
+fileInput.addEventListener('change', ()=> fileInput.files?.[0] && handleFile(fileInput.files[0]));
+
+// Parse CSV
+function handleFile(f){
+  stat.innerHTML = `<span class="chip">Dosya: <b>${f.name}</b> (${(f.size/1024).toFixed(1)} KB)</span>`;
+  Papa.parse(f, {
+    header: true,
+    skipEmptyLines: true,
+    complete: (res)=>{
+      parsed.headers = res.meta.fields || [];
+      parsed.rows = res.data || [];
+      buildMapping(parsed.headers);
+      preview();
+    }
+  });
+}
+
+// Eşleştirme menüleri
+function buildMapping(headers){
+  mapIds.forEach(k=>{
+    const sel = m[k];
+    sel.innerHTML = "";
+    const optNone = document.createElement('option'); optNone.value=""; optNone.textContent="— (yok)";
+    sel.appendChild(optNone);
+    headers.forEach(h=>{
+      const o = document.createElement('option'); o.value=h; o.textContent=h; sel.appendChild(o);
+    });
+    // otomatik eşleştirme
+    const auto = headers.find(h => h.toLowerCase() === k.toLowerCase());
+    if(auto) sel.value = auto;
+  });
+}
+
+function normalizeMoney(v){
+  if(v==null) return 0;
+  let s = String(v).replace(/[₺\s]/g,'').replace(/\./g,'').replace(/,/g,'.'); // ₺, . , ,
+  const num = Number(s);
+  return isNaN(num) ? 0 : num;
+}
+function parseDate(v){
+  if(!v) return null;
+  // 2025-06-15 veya 15.06.2025 veya 15/06/2025
+  const s = String(v).trim();
+  let d=null;
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)){ d = new Date(s+"T12:00:00"); }
+  else if(/^\d{2}[./-]\d{2}[./-]\d{4}$/.test(s)){
+    const [a,b,c] = s.split(/[./-]/);
+    d = new Date(`${c}-${b}-${a}T12:00:00`);
+  }else{
+    const tryD = new Date(s);
+    if(!isNaN(tryD)) d = tryD;
+  }
+  return d;
+}
+
+function preview(){
+  thead.innerHTML = ""; tbody.innerHTML = "";
+  if(!parsed.headers.length){ btnImport.disabled = true; return; }
+  const trh = document.createElement('tr');
+  parsed.headers.forEach(h=>{
+    const th = document.createElement('th'); th.textContent = h; trh.appendChild(th);
+  });
+  thead.appendChild(trh);
+
+  parsed.rows.slice(0,20).forEach(r=>{
+    const tr = document.createElement('tr');
+    parsed.headers.forEach(h=>{
+      const td = document.createElement('td'); td.textContent = r[h] ?? ""; tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+
+  // gerekli alan kontrolü (personelId, kategori, tutar, tarih en azından)
+  const need = ["personelId","kategori","tutar","tarih"];
+  const ok = need.every(k=> m[k].value);
+  btnImport.disabled = !ok;
+}
+
+btnClear.onclick = ()=>{
+  parsed = { headers:[], rows:[] };
+  thead.innerHTML=""; tbody.innerHTML="";
+  stat.innerHTML=""; fileInput.value="";
+  mapIds.forEach(k=> m[k].innerHTML="");
+  btnImport.disabled = true;
+};
+
+// İçe aktarma
+btnImport.onclick = async ()=>{
+  const total = parsed.rows.length;
+  if(!total) return;
+
+  // auth kontrol & log
+  const user = auth.currentUser;
+  if(!user){ alert("Giriş yapmalısınız."); return; }
+  await db.collection("sayfa_erisimleri").add({
+    uid:user.uid, email:user.email, page:"veri-aktar.html",
+    zaman: firebase.firestore.FieldValue.serverTimestamp(),
+    islem:"import_start", adet: total
+  });
+
+  progWrap.style.display="block";
+  const chunkSize = 400; // Firestore batch sınırına uygun
+  let done = 0, yazilan=0, atlanan=0, hatali=0;
+
+  for(let i=0; i<total; i+=chunkSize){
+    const slice = parsed.rows.slice(i, i+chunkSize);
+    const batch = db.batch();
+
+    for(const row of slice){
+      try{
+        const rec = {
+          personelId: m.personelId.value ? String(row[m.personelId.value]).trim() : (user.uid),
+          personelAd: m.personelAd.value ? String(row[m.personelAd.value]).trim() : (user.displayName || user.email || "Bilinmiyor"),
+          kategori:   m.kategori.value   ? String(row[m.kategori.value]).trim()   : "Diğer",
+          faaliyet:   m.faaliyet.value   ? String(row[m.faaliyet.value]).trim()   : "",
+          aciklama:   m.aciklama.value   ? String(row[m.aciklama.value]).trim()   : "",
+          tutar:      normalizeMoney( m.tutar.value ? row[m.tutar.value] : 0 ),
+          tarih:      (()=>{ const d = parseDate(m.tarih.value ? row[m.tarih.value] : ""); return d ? firebase.firestore.Timestamp.fromDate(d) : firebase.firestore.Timestamp.now(); })(),
+          externalId: m.externalId.value ? String(row[m.externalId.value]).trim() : ""
+        };
+
+        // basit doğrulama
+        if(!rec.personelId || !rec.kategori || !rec.tutar){ atlanan++; continue; }
+
+        // aynı externalId varsa atla (idempotent)
+        if(rec.externalId){
+          const q = await db.collection("islemler").where("externalId","==",rec.externalId).limit(1).get();
+          if(!q.empty){ atlanan++; continue; }
+        }
+
+        const ref = db.collection("islemler").doc();
+        batch.set(ref, rec);
+        yazilan++;
+      }catch(e){
+        hatali++;
+      }
+    }
+
+    await batch.commit();
+    done += slice.length;
+    bar.style.width = Math.round(100*done/total) + "%";
+  }
+
+  await db.collection("sayfa_erisimleri").add({
+    uid:user.uid, email:user.email, page:"veri-aktar.html",
+    zaman: firebase.firestore.FieldValue.serverTimestamp(),
+    islem:"import_end", toplam: total, yazilan, atlanan, hatali
+  });
+
+  alert(`Tamamlandı.\nToplam: ${total}\nYazılan: ${yazilan}\nAtlanan: ${atlanan}\nHatalı: ${hatali}`);
+};
+  
+// Auth başlangıç
+auth.onAuthStateChanged(async (user)=>{
+  if(!user){ location.href="index.html"; return; }
+});
+
+</script>
+</body>
+</html>
