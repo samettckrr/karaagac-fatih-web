@@ -204,13 +204,32 @@
   /* telefonda daha dar min-width ver, yine de yatay kaydırma açık */
   #detayBody .m-table{ min-width:520px; }
 }
-
+.count-green{color:var(--good); font-weight:800}
+.count-red{color:var(--bad); font-weight:800}
+.iconbtn{
+  border:1px solid var(--stroke); background:#fff; border-radius:8px;
+  padding:4px 8px; cursor:pointer; font-weight:800
+}
+.iconbtn.danger{border-color:#fecaca; color:#991b1b}
+.iconbtn.good{border-color:#bbf7d0; color:#166534}
+.iconbtn.warn{border-color:#fde68a; color:#92400e}
+.kat-row{cursor:pointer}
+.kat-row:hover{background:rgba(2,6,23,.04)}
+.kat-details{background:#fafbff}
+.badge-ok{
+  display:inline-flex;align-items:center;gap:6px;border-radius:999px;
+  padding:4px 8px;font-weight:700;border:1px solid #bbf7d0;background:#ecfdf5;color:#166534
+}
+.badge-bad{
+  display:inline-flex;align-items:center;gap:6px;border-radius:999px;
+  padding:4px 8px;font-weight:700;border:1px solid #fecaca;background:#fef2f2;color:#991b1b
+}
   </style>
 </head>
 <body>
   <!-- APPBAR -->
   <div class="appbar">
-    <div class="brand" onclick="location.href='panel.html'">
+    <div class="brand" onclick="location.href='../../panel.html'">
       <img src="../../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
     </div>
     <nav class="nav-center"><ul class="nav-list" id="navMain"></ul></nav>
@@ -311,15 +330,15 @@
     <section id="tab-eksikler" style="display:none">
       <div class="table-wrap" role="region" aria-label="Eksikler">
         <table>
-          <thead>
-            <tr>
-              <th style="min-width:160px;">Kat</th>
-              <th style="min-width:120px;">Tarih</th>
-              <th style="min-width:260px;">Eksik</th>
-              <th style="min-width:180px;">Ekleyen</th>
-              <th style="min-width:140px;">Zaman</th>
-            </tr>
-          </thead>
+            <thead>
+              <tr>
+                <th>Kat</th>
+                <th>Toplam</th>
+                <th>Tamamlanan</th>
+                <th>Açık</th>
+                <th> </th>
+              </tr>
+            </thead>
           <tbody id="tbodyEksikler">
             <tr><td colspan="5" class="muted" style="padding:14px">Veriler yükleniyor…</td></tr>
           </tbody>
@@ -365,6 +384,24 @@
       </div>
     </div>
   </div>
+
+  <!-- GENEL Detay Modal -->
+<div id="modalGDetay" class="modal-backdrop" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="gdetayTitle">
+    <h3 id="gdetayTitle">Genel Temizlik Detayı</h3>
+    <div class="row">
+      <input id="gdetayKat" class="input" readonly />
+      <input id="gdetayTarih" type="date" class="input" />
+      <button id="gdetayGetir" class="btn2">Getir</button>
+    </div>
+    <div id="gdetayBody" class="muted" style="flex:1 1 auto; overflow:auto; -webkit-overflow-scrolling:touch; padding:8px; border:1px solid var(--stroke); border-radius:10px; background:var(--card); min-height:120px">
+      Veri bekleniyor…
+    </div>
+    <div class="actions">
+      <button id="gdetayKapat" class="btn2 outline">Kapat</button>
+    </div>
+  </div>
+</div>
 
   <!-- Seçim Modalı (Genel/Detaylı) -->
   <div id="modalChoice" class="modal-backdrop" aria-hidden="true">
@@ -525,6 +562,7 @@
     }
 
     /* ========= DOM ========= */
+    const ADMIN_EMAIL = 'samettckrr@gmail.com';
     const dateInput = document.getElementById('dateInput');
     const katSelect = document.getElementById('katSelect');
     const tbodyKats = document.getElementById('tbodyKats');
@@ -554,13 +592,25 @@
     };
     let ACTIVE_TAB = 'temizlik';
 
+    // === HERO başlık yanına sayaç rozeti ekle (init) ===
+    const heroH2 = document.querySelector('.hero h2');
+    const exHeaderTotals = document.createElement('span');
+    exHeaderTotals.id = 'exHeaderTotals';
+    exHeaderTotals.style.cssText = 'margin-left:8px; font-size:13px; font-weight:700; opacity:.9';
+    exHeaderTotals.hidden = true; // sadece "Eksikler" sekmesinde görünsün
+    heroH2.appendChild(exHeaderTotals);
+
+    // switchTab içinde (mevcut fonksiyonun içinde) şu satırları ekle:
     function switchTab(id){
       ACTIVE_TAB = id;
       tabsEl.querySelectorAll('.tabbtn').forEach(b=> b.classList.toggle('active', b.dataset.tab===id));
       Object.entries(sections).forEach(([k,el])=> el.style.display = (k===id ? '' : 'none'));
+      // --- ek ---
+      exHeaderTotals.hidden = (id!=='eksikler');
       if(id==='genel') loadGenel();
       if(id==='eksikler') loadEksikler();
     }
+
     tabsEl.addEventListener('click', (e)=>{
       const btn = e.target.closest('.tabbtn'); if(!btn) return;
       const id = btn.dataset.tab;
@@ -569,6 +619,16 @@
         if(!GENEL_TEMIZLIK_YETKI.has(String(email).toLowerCase())){ showToast('Genel Temizlik için yetkiniz yok.'); return; }
       }
       switchTab(id);
+    });
+
+        // tabsEl yüklendikten sonra, yetkisiz ise 'genel' tabını disable et
+    auth.onAuthStateChanged((u)=>{
+      const email = (u?.email||'').toLowerCase();
+      const genelBtn = tabsEl.querySelector('[data-tab="genel"]');
+      if(genelBtn && !GENEL_TEMIZLIK_YETKI.has(email)){
+        genelBtn.disabled = true;
+        genelBtn.title = 'Genel temizlik için yetkiniz yok';
+      }
     });
 
     // Select'i kullanıcı yetkisine göre doldur
@@ -867,49 +927,290 @@
         btnGenelSpin.style.display='none'; btnGenelYenile.setAttribute('aria-busy','false');
       }
     }
+    // === Eksikler üstüne "tip" filtresi ve altta "Tüm Eksikler" konteyneri ekle (init) ===
+    const eksiklerSection = document.getElementById('tab-eksikler');
+
+    // filtre barı (en üste)
+    let eksikFiltersBar = document.createElement('div');
+    eksikFiltersBar.className = 'filters';
+    eksikFiltersBar.style.marginTop = '10px';
+    eksikFiltersBar.innerHTML = `
+      <div class="group">
+        <label class="muted" style="font-weight:600;">Tip:</label>
+        <select id="tipFilter" class="input" style="min-width:160px"></select>
+      </div>
+      <div class="group">
+        <button id="btnEksikYenile" class="btn2"><span id="btnEksikSpin" style="display:none">⏳</span><span>Yenile</span></button>
+      </div>
+    `;
+    eksiklerSection.insertBefore(eksikFiltersBar, eksiklerSection.firstElementChild);
+
+    document.getElementById('btnEksikYenile').addEventListener('click', ()=>loadEksikler(true));
+
+    // “Tüm Eksikler” (düz liste) alanı – tablo altına gelecek
+    let allWrap = document.createElement('div');
+    allWrap.id = 'allEksikWrap';
+    allWrap.className = 'table-wrap';
+    allWrap.style.marginTop = '14px';
+    allWrap.innerHTML = `
+      <div style="padding:12px; border-bottom:1px solid var(--stroke); background:var(--surface); color:var(--muted); font-weight:700">
+        Tüm Eksikler (filtreye göre)
+      </div>
+      <div id="allEksikInner" style="overflow:auto"></div>
+    `;
+    eksiklerSection.appendChild(allWrap);
 
     /* ========= Eksikler ========= */
-    async function loadEksikler(){
-      try{
-        const snap = await db.collection('eksik_bildirim').where('status','in',['acik',null]).orderBy('createdAt','desc').limit(200).get();
-        if(snap.empty){
-          tbodyEksikler.innerHTML = `<tr><td colspan="5" class="muted" style="padding:14px">Açık eksik bulunamadı.</td></tr>`;
-          cardsEksikler.innerHTML = `<div class="kcat"><div class="muted">Açık eksik bulunamadı.</div></div>`;
-          return;
-        }
-        const rows=[];
-        const cards=[];
-        const namesCache = {};
-        for(const doc of snap.docs){
-          const d = doc.data()||{};
-          const nm = d.uid ? (namesCache[d.uid] || await nameByUid(d.uid)) : (d.email || '—');
-          namesCache[d.uid]=nm;
-          rows.push(`
-            <tr>
-              <td>${d.kat||'—'}</td>
-              <td>${d.tarih||'—'}</td>
-              <td>${(d.parca||d.aciklama||'—')}</td>
-              <td>${nm}</td>
-              <td>${fmtDate(d.createdAt)}</td>
-            </tr>
-          `);
-          cards.push(`
-            <div class="kcat">
-              <h4>🧹 ${d.kat||'—'} • <span class="muted">${d.tarih||'—'}</span></h4>
-              <div class="krow"><span class="lbl">Eksik:</span><strong>${(d.parca||d.aciklama||'—')}</strong></div>
-              <div class="krow"><span class="lbl">Ekleyen:</span><strong>${nm}</strong></div>
-              <div class="krow"><span class="lbl">Zaman:</span><strong>${fmtDate(d.createdAt)}</strong></div>
-            </div>
-          `);
-        }
-        tbodyEksikler.innerHTML = rows.join('');
-        cardsEksikler.innerHTML = cards.join('');
-      }catch(e){
-        console.warn(e);
-        tbodyEksikler.innerHTML = `<tr><td colspan="5" class="muted" style="padding:14px">Eksikler alınamadı.</td></tr>`;
-        cardsEksikler.innerHTML = `<div class="kcat"><div class="muted">Eksikler alınamadı.</div></div>`;
-      }
+// === YENİ: Eksikleri tek sorguda çek, tip filtresi uygula, özetleri ve listeleri üret ===
+async function loadEksikler(force=false){
+  try{
+    const user = auth.currentUser || {};
+    const emailLc = String(user.email||'').toLowerCase();
+    const isAdmin = (emailLc === ADMIN_EMAIL);
+
+    // UI busy
+    const spin = document.getElementById('btnEksikSpin');
+    const yenile = document.getElementById('btnEksikYenile');
+    if(spin && yenile){ spin.style.display='inline'; yenile.setAttribute('aria-busy','true'); }
+
+    const snap = await db.collection('eksik_bildirim')
+      .orderBy('createdAt','desc')
+      .limit(1000)
+      .get();
+
+    // veri yoksa
+    if(snap.empty){
+      tbodyEksikler.innerHTML = `<tr><td colspan="5" class="muted" style="padding:14px">Eksik kaydı bulunamadı.</td></tr>`;
+      cardsEksikler.innerHTML = '';
+      document.getElementById('allEksikInner').innerHTML = '';
+      exHeaderTotals.textContent = '';
+      return;
     }
+
+    // ham liste
+    const allItems = [];
+    const tipSet = new Set();
+
+    snap.forEach(doc=>{
+      const d = doc.data() || {};
+      const status = d.status ? String(d.status) : 'acik';
+      const tip = d.tip || d.tur || d.type || ''; // olası alan adları
+      if(tip) tipSet.add(String(tip));
+      allItems.push({ id: doc.id, ...d, status, tip });
+    });
+
+    // TIP filtresi dropdown'ını doldur
+    const tipFilter = document.getElementById('tipFilter');
+    const prev = tipFilter.dataset.sel || 'ALL';
+    const options = ['<option value="ALL">Tümü</option>']
+      .concat([...tipSet].sort().map(t=> `<option value="${t}">${t}</option>`))
+      .join('');
+    tipFilter.innerHTML = options;
+    // önceki seçim kalsın
+    if([...tipSet, 'ALL'].includes(prev)) tipFilter.value = prev;
+    tipFilter.onchange = ()=>{ tipFilter.dataset.sel = tipFilter.value; loadEksikler(); };
+    tipFilter.dataset.sel = tipFilter.value || 'ALL';
+
+    // filtreli liste
+    const selTip = tipFilter.value || 'ALL';
+    const filtered = (selTip==='ALL') ? allItems : allItems.filter(x=> String(x.tip)===selTip);
+
+    // üst toplamlar (filtreye göre)
+    const toplam = filtered.length;
+    const done = filtered.filter(x=> x.status==='tamamlandi').length;
+    const open = toplam - done;
+    exHeaderTotals.textContent = `• Toplam: ${toplam} • Tamamlanan: ${done} • Açık: ${open}`;
+
+    // kata göre gruplama (filtreli)
+    const groups = {};
+    filtered.forEach(v=>{
+      const kat = v.kat || '—';
+      if(!groups[kat]) groups[kat] = [];
+      groups[kat].push(v);
+    });
+
+    // masaüstü grup tablosu
+    const katNames = Object.keys(groups).sort();
+    if(!katNames.length){
+      tbodyEksikler.innerHTML = `<tr><td colspan="5" class="muted" style="padding:14px">Bu filtre için kayıt yok.</td></tr>`;
+    }else{
+      const rows = [];
+      katNames.forEach((kat, idx)=>{
+        const arr = groups[kat];
+        const t = arr.length;
+        const d = arr.filter(x=> x.status==='tamamlandi').length;
+        const o = t - d;
+        const detailId = `katdetail_${idx}`;
+        rows.push(`
+          <tr class="kat-row" data-target="${detailId}">
+            <td colspan="5">
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:12px">
+                <div><span class="chip">🧹 ${kat}</span></div>
+                <div style="display:flex; gap:18px; align-items:center">
+                  <div>Toplam: <strong>${t}</strong></div>
+                  <div>Tamamlanan: <span class="count-green">${d}</span></div>
+                  <div>Açık: <span class="count-red">${o}</span></div>
+                </div>
+              </div>
+            </td>
+          </tr>
+          <tr class="kat-details" id="${detailId}" style="display:none">
+            <td colspan="5">
+              ${renderEksikDetailsTable(arr, isAdmin)}
+            </td>
+          </tr>
+        `);
+      });
+      tbodyEksikler.innerHTML = rows.join('');
+
+      // satır toggle: tek açık kalsın + tekrar tıklayınca kapan
+      tbodyEksikler.querySelectorAll('.kat-row').forEach(tr=>{
+        tr.addEventListener('click', (e)=>{
+          if(e.target.closest('.iconbtn')) return;
+          const id = tr.getAttribute('data-target');
+          const det = document.getElementById(id);
+          const willOpen = (det.style.display==='none' || !det.style.display);
+          tbodyEksikler.querySelectorAll('.kat-details').forEach(x=> x.style.display='none');
+          det.style.display = willOpen ? '' : 'none';
+        });
+      });
+    }
+
+    // mobil akordeon
+    renderEksiklerMobile(groups, isAdmin);
+
+    // “Tüm Eksikler” düz liste (filtreye göre)
+    const allRows = filtered.map(v=>{
+      const when = (v.createdAt && v.createdAt.toDate) ? v.createdAt.toDate().toLocaleString('tr-TR') : '—';
+      const tipTxt = v.tip ? `<span class="chip">${String(v.tip)}</span>` : '';
+      const statusBadge = (v.status==='tamamlandi')
+        ? `<span class="badge-ok">tamamlandı</span>`
+        : `<span class="badge-bad">tamamlanmadı</span>`;
+      const who = v.ekleyen || v.email || '—';
+      return `<tr>
+        <td>${v.kat || '—'}</td>
+        <td>${(v.parca||v.aciklama||'—').replace(/</g,'&lt;')}</td>
+        <td>${tipTxt}</td>
+        <td>${when}</td>
+        <td>${who}</td>
+        <td>${statusBadge}</td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('allEksikInner').innerHTML = `
+      <table class="m-table" style="min-width:920px">
+        <thead>
+          <tr>
+            <th>Kat</th>
+            <th>Eksik</th>
+            <th>Tip</th>
+            <th>Oluşturulma</th>
+            <th>Ekleyen</th>
+            <th>Durum</th>
+          </tr>
+        </thead>
+        <tbody>${allRows}</tbody>
+      </table>
+    `;
+
+  }catch(e){
+    console.warn('loadEksikler hata:', e);
+    tbodyEksikler.innerHTML = `<tr><td colspan="5" class="muted" style="padding:14px">Eksikler alınamadı.</td></tr>`;
+    cardsEksikler.innerHTML = '';
+    document.getElementById('allEksikInner').innerHTML = '';
+    exHeaderTotals.textContent = '';
+  }finally{
+    const spin = document.getElementById('btnEksikSpin');
+    const yenile = document.getElementById('btnEksikYenile');
+    if(spin && yenile){ spin.style.display='none'; yenile.setAttribute('aria-busy','false'); }
+  }
+}
+
+// Detay tablosu (bir kata ait tek tek kayıtlar)
+function renderEksikDetailsTable(items, isAdmin){
+  const rows = items.map(v=>{
+    const stat = v.status || 'acik';
+    const statusBadge = (stat==='tamamlandi')
+      ? `<span class="badge-ok">tamamlandı</span>`
+      : `<span class="badge-bad">tamamlanmadı</span>`;
+    const who = v.ekleyen || v.email || '—';
+    const when = (v.createdAt && v.createdAt.toDate) ? v.createdAt.toDate().toLocaleString('tr-TR') : '—';
+    const tipTxt = v.tip ? `<span class="chip">${String(v.tip)}</span>` : '';
+
+    const actionHtml = isAdmin ? `
+      <div style="display:flex; gap:6px; flex-wrap:wrap">
+        <button class="iconbtn good"   title="Tamamlandı" onclick="window.__eksikMarkDone('${v.id}')">✓</button>
+        <button class="iconbtn warn"   title="Açık yap"    onclick="window.__eksikMarkOpen('${v.id}')">–</button>
+        <button class="iconbtn danger" title="Sil"         onclick="window.__eksikDelete('${v.id}')">×</button>
+      </div>` : '';
+
+    return `
+      <tr>
+        <td>${(v.parca||v.aciklama||'—').replace(/</g,'&lt;')}</td>
+        <td>${tipTxt}</td>
+        <td>${when}</td>
+        <td>${who}</td>
+        <td>${statusBadge}</td>
+        <td>${actionHtml}</td>
+      </tr>`;
+  }).join('');
+
+  return `
+    <div style="margin:8px 0 4px" class="muted">Bu kat için bildirilen eksikler:</div>
+    <div style="overflow:auto">
+      <table class="m-table" style="min-width:820px">
+        <thead>
+          <tr>
+            <th>Eksik</th>
+            <th>Tip</th>
+            <th>Oluşturulma</th>
+            <th>Ekleyen</th>
+            <th>Durum</th>
+            <th style="width:1%">İşlemler</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderEksiklerMobile(groups, isAdmin){
+  const katNames = Object.keys(groups).sort();
+  if(!katNames.length){ cardsEksikler.innerHTML = `<div class="kcat"><div class="muted">Kayıt bulunamadı.</div></div>`; return; }
+
+  const html = katNames.map((kat, idx)=>{
+    const arr = groups[kat];
+    const toplam = arr.length;
+    const done = arr.filter(x=> x.status==='tamamlandi').length;
+    const open = toplam - done;
+    const detailId = `m_katdetail_${idx}`;
+    return `
+      <div class="kcat">
+        <div class="krow" style="align-items:center">
+          <strong>🧹 ${kat}</strong>
+          <button class="btn2 outline" data-toggle="${detailId}">Detay</button>
+        </div>
+        <div class="krow"><span class="lbl">Toplam</span><strong>${toplam}</strong></div>
+        <div class="krow"><span class="lbl">Tamamlanan</span><strong class="count-green">${done}</strong></div>
+        <div class="krow"><span class="lbl">Açık</span><strong class="count-red">${open}</strong></div>
+        <div id="${detailId}" style="display:none; margin-top:8px">
+          ${renderEksikDetailsTable(arr, isAdmin)}
+        </div>
+      </div>
+    `;
+  }).join('');
+  cardsEksikler.innerHTML = html;
+
+  // akordeon toggles
+  cardsEksikler.querySelectorAll('[data-toggle]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.getAttribute('data-toggle');
+      const el = document.getElementById(id);
+      el.style.display = (el.style.display==='none' || !el.style.display) ? '' : 'none';
+    });
+  });
+}
 
     /* ========= Detay & Eksik & Choice ========= */
     const modalBk = document.getElementById('modalBk');
@@ -956,6 +1257,211 @@
         closeModalEksik();
       }catch(e){ console.warn(e); showToast('Kayıt başarısız'); }
     });
+    window.__eksikMarkDone = async function(docId){
+      const user = auth.currentUser;
+      if(!user || String(user.email||'').toLowerCase() !== ADMIN_EMAIL){ showToast('Yetkiniz yok.'); return; }
+      try{
+        await db.collection('eksik_bildirim').doc(docId).update({
+          status: 'tamamlandi',
+          completedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          completedByUid: user.uid || null,
+          completedByEmail: user.email || null
+        });
+        showToast('Eksik tamamlandı.');
+        loadEksikler();
+      }catch(e){ console.warn(e); showToast('İşlem başarısız'); }
+    };
+
+    window.__eksikMarkOpen = async function(docId){
+      const user = auth.currentUser;
+      if(!user || String(user.email||'').toLowerCase() !== ADMIN_EMAIL){ showToast('Yetkiniz yok.'); return; }
+      try{
+        await db.collection('eksik_bildirim').doc(docId).update({
+          status: 'acik',
+          completedAt: firebase.firestore.FieldValue.delete(),
+          completedByUid: firebase.firestore.FieldValue.delete(),
+          completedByEmail: firebase.firestore.FieldValue.delete()
+        });
+        showToast('Eksik tekrar açıldı.');
+        loadEksikler();
+      }catch(e){ console.warn(e); showToast('İşlem başarısız'); }
+    };
+
+    window.__eksikDelete = async function(docId){
+      const user = auth.currentUser;
+      if(!user || String(user.email||'').toLowerCase() !== ADMIN_EMAIL){ showToast('Yetkiniz yok.'); return; }
+      if(!confirm('Bu eksik kaydı tamamen silinsin mi?')) return;
+      try{
+        await db.collection('eksik_bildirim').doc(docId).delete();
+        showToast('Eksik silindi.');
+        loadEksikler();
+      }catch(e){ console.warn(e); showToast('Silme başarısız'); }
+    };
+
+
+// ===== GENEL Detay Modal =====
+const modalGDetay  = document.getElementById('modalGDetay');
+const gdetayKat    = document.getElementById('gdetayKat');
+const gdetayTarih  = document.getElementById('gdetayTarih');
+const gdetayGetir  = document.getElementById('gdetayGetir');
+const gdetayBody   = document.getElementById('gdetayBody');
+const gdetayKapat  = document.getElementById('gdetayKapat');
+
+function openGDetay(kat, tarih){
+  gdetayKat.value   = kat;
+  gdetayTarih.value = tarih || (document.getElementById('dateGenel')?.value || todayStr());
+  modalGDetay.style.display='flex';
+  modalGDetay.setAttribute('aria-hidden','false');
+}
+function closeGDetay(){
+  modalGDetay.style.display='none';
+  modalGDetay.setAttribute('aria-hidden','true');
+}
+modalGDetay.addEventListener('click',(e)=>{ if(e.target===modalGDetay) closeGDetay(); });
+gdetayKapat.addEventListener('click', closeGDetay);
+gdetayGetir.addEventListener('click', ()=>{
+  const d = gdetayTarih.value || todayStr();
+  loadGenelDetay(gdetayKat.value, d);
+});
+
+async function loadGenelDetay(kat, tarih){
+  gdetayBody.textContent='Yükleniyor…';
+
+  // 1) Koleksiyon referansları
+  const colGenel = db.collection('genel_temizlik_kontrol').doc(kat).collection(tarih);
+  const colDetay = db.collection('genel_temizlik_detay').doc(kat).collection(tarih);
+
+  // 2) Snapshotları çek (özet (_summary) hariç)
+  let [snapG, snapD] = await Promise.all([colGenel.get(), colDetay.get()]);
+  const docsG = snapG.docs.filter(d=>d.id!=='_summary');
+  const docsD = snapD.docs.filter(d=>d.id!=='_summary');
+
+  // 3) İsim cache & yardımcılar
+  const uidSet = new Set();
+  docsG.forEach(d=>{ const u=d.data()?.uid; if(u) uidSet.add(u); });
+  docsD.forEach(d=>{ const u=d.data()?.uid; if(u) uidSet.add(u); });
+  const uidArr = [...uidSet];
+  const nameMap = {};
+  for(const u of uidArr){ nameMap[u] = await nameByUid(u); }
+
+  const to100 = (v10, v100, v)=>
+    Number.isFinite(Number(v100)) ? Number(v100)
+    : Number.isFinite(Number(v10)) ? Math.round(Number(v10)*10)
+    : Number.isFinite(Number(v)) ? Number(v)
+    : null;
+
+  // 4) GENEL KONTROL – kişi bazlı özet + tekil satırlar
+  const genelTekiller = docsG.map(d=>{
+    const data=d.data()||{};
+    const not100 = to100(data.puan10, data.puan100, data.puan);
+    return {
+      id:d.id,
+      uid: data.uid || null,
+      ad : data.uid ? (nameMap[data.uid]||'—') : (data.personel||'—'),
+      not: Number.isFinite(not100)? not100 : null,
+      aciklama: data.aciklama || data.not || '',
+      ts: data.createdAt || data.kayit_zamani || null
+    };
+  });
+
+  // kişi bazlı ortalama (aynı kişi birden fazla doldurduysa)
+  const byPerson = {};
+  for(const row of genelTekiller){
+    const key=row.ad||'—';
+    if(!byPerson[key]) byPerson[key]={sum:0,count:0,notes:[]};
+    if(Number.isFinite(row.not)){ byPerson[key].sum += row.not; byPerson[key].count++; }
+    if(row.not!=null) byPerson[key].notes.push(row.not);
+  }
+  // “Ad1/Ad2 - 100/85” formatı
+  const headerPairs = Object.entries(byPerson).map(([ad,agg])=>{
+    // kişi birden fazla not girdiyse ayrı ayrı yaz (istenen görünüme daha yakın)
+    const notes = agg.notes.length ? agg.notes.join('/') : (agg.count? Math.round(agg.sum/agg.count): '—');
+    return `${ad} - ${notes}`;
+  });
+  const headerLine = headerPairs.length ? headerPairs.join(' / ') : '—';
+
+  const genelListHtml = genelTekiller.length
+    ? `
+      <table class="m-table">
+        <thead><tr><th>Personel</th><th>Not</th><th>Açıklama</th><th>Zaman</th></tr></thead>
+        <tbody>
+          ${genelTekiller.map(r=>{
+            const t = fmtDate(r.ts);
+            const n = Number.isFinite(r.not) ? r.not : '—';
+            const ac = (r.aciklama||'—').replace(/</g,'&lt;');
+            return `<tr><td>${r.ad}</td><td>${n}</td><td>${ac}</td><td>${t}</td></tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    ` : `<div class="muted">Bu tarihte GENEL kontrol kaydı yok.</div>`;
+
+  // 5) DETAYLI KONTROL – kalemler “tek tek alt alta”
+  const detayKalemler = docsD.map(d=>{
+    const data=d.data()||{};
+    const not100 = to100(data.puan10, data.puan100, data.puan);
+    return {
+      kalem: d.id, // doküman id’sini kalem adı varsayıyoruz
+      uid: data.uid || null,
+      ad : data.uid ? (nameMap[data.uid]||'—') : (data.personel||'—'),
+      not: Number.isFinite(not100)? not100 : null,
+      aciklama: data.aciklama || data.not || '',
+      ts: data.createdAt || data.kayit_zamani || null
+    };
+  });
+
+  const detayListHtml = detayKalemler.length
+    ? `
+      <table class="m-table">
+        <thead><tr><th>Kalem</th><th>Not</th><th>Açıklama</th><th>Personel</th><th>Zaman</th></tr></thead>
+        <tbody>
+          ${detayKalemler.map(r=>{
+            const n = Number.isFinite(r.not) ? r.not : '—';
+            const ac = (r.aciklama||'—').replace(/</g,'&lt;');
+            const t = fmtDate(r.ts);
+            return `<tr><td>${r.kalem}</td><td>${n}</td><td>${ac}</td><td>${r.ad}</td><td>${t}</td></tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    ` : `<div class="muted">Bu tarihte DETAYLI kontrol kaydı yok.</div>`;
+
+  // 6) Aynı güne ait eksikler (en alta)
+  let eksikHtml = `<div class="muted">Bu güne ait eksik bulunamadı.</div>`;
+  try{
+    const exSnap = await db.collection('eksik_bildirim')
+      .where('kat','==',kat).where('tarih','==',tarih).get();
+    if(!exSnap.empty){
+      const rows=[];
+      for(const d of exSnap.docs){
+        const v=d.data()||{};
+        const nm = v.uid ? await nameByUid(v.uid) : (v.email||'—');
+        rows.push(`<tr><td>${v.parca || v.aciklama || '—'}</td><td>${nm}</td><td>${fmtDate(v.createdAt)}</td></tr>`);
+      }
+      eksikHtml = `
+        <table class="m-table">
+          <thead><tr><th>Eksik</th><th>Ekleyen</th><th>Zaman</th></tr></thead>
+          <tbody>${rows.join('')}</tbody>
+        </table>`;
+    }
+  }catch(_){/* yut */}
+
+
+  // 7) Hepsini gövdeye bas
+  gdetayBody.innerHTML = `
+    <div style="margin-bottom:8px">
+      <div class="chip">🧭 GENEL KONTROL Özeti</div>
+      <div style="margin-top:6px"><strong>${headerLine}</strong></div>
+    </div>
+
+    <h4 style="margin:10px 0 6px">Genel Kontrol – Tekil Kayıtlar</h4>
+    ${genelListHtml}
+
+    <h4 style="margin:14px 0 6px">Detaylı Kontrol – Kalemler</h4>
+    ${detayListHtml}
+
+    <h4 style="margin:14px 0 6px">Bu Güne Ait Eksikler</h4>
+    ${eksikHtml}
+  `;
+}
 
     // Detay Modal (temizlik_kontrol)
     const modalDetay = document.getElementById('modalDetay');
@@ -1065,7 +1571,9 @@
     window.__detayGenel = function(kat){
       const email = (auth.currentUser && auth.currentUser.email || '').toLowerCase();
       if(!GENEL_TEMIZLIK_YETKI.has(email)){ showToast('Genel Temizlik için yetkiniz yok.'); return; }
-      openChoice(kat, 'detay');
+      const d = (document.getElementById('dateGenel')?.value || todayStr());
+      openGDetay(kat, d);
+      loadGenelDetay(kat, d);
     };
 
     /* ========= Auth & init ========= */
