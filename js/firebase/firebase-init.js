@@ -3,7 +3,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyDyzADuLzkszFMTnfKwiWgsVnY7CxDngv0",
   authDomain: "karaagacfthdaimi.firebaseapp.com",
   projectId: "karaagacfthdaimi",
-  storageBucket: "karaagacfthdaimi.appspot.com",
+  storageBucket: "karaagacfthdaimi.firebasestorage.app",
   messagingSenderId: "688702235131",
   appId: "1:688702235131:web:1ad367ea6fb5136e83ab5e"
 };
@@ -12,5 +12,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 
 // Firestore, Auth, Storage değişkenleri
-window.auth = firebase.auth();
-window.db = firebase.firestore();
+// firebase-init.js
+window.db      = window.db      || firebase.firestore();
+window.auth    = window.auth    || firebase.auth();
+window.storage = window.storage || firebase.storage();

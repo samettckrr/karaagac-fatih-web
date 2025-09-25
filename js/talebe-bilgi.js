@@ -1,7 +1,12 @@
+// ../js/talebe-bilgi.js
+
 function talebeBilgiFormuYukle() {
   console.log("🔥 talebeBilgiFormuYukle() çağrıldı");
 
-  const db = firebase.firestore();
+// EN ÜSTE EKLEYİN (veya mevcut firebase.* tanımlarını bununla değiştirin)
+const db = window.db;
+const auth = window.auth;
+const storage = window.storage;
   const kartAlani = document.getElementById("talebeKartAlani");
 
   if (!kartAlani) {
@@ -19,43 +24,59 @@ function talebeBilgiFormuYukle() {
     .then((snapshot) => {
       console.log("📦 Talebe sayısı:", snapshot.size);
 
+      const kartlar = [];
+
       snapshot.forEach((doc) => {
-        const data = doc.data();
+        const d = doc.data();
         const uid = doc.id;
 
         toplam++;
-        if (data.durum === "Ensar") ensar++;
-        else if (data.durum === "Muhacir") muhacir++;
+        if (d.durum === "Ensar") ensar++;
+        else if (d.durum === "Muhacir") muhacir++;
 
-const kart = document.createElement("div");
-kart.classList.add("talebe-kart");
-kart.innerHTML = `
-  <img src="${data.fotograf || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.kullAd || 'Talebe')}&background=random`}" 
-       alt="Fotoğraf" 
-       style="width: 70px; height: 70px; object-fit: cover; border-radius: 50%;">
-  <div class="isim">${data.kullAd || "İsimsiz"}</div>
-  <div class="durum">Durum: ${data.durum || '-'}</div>
-  <div class="kurs">Kurs: ${data.kurs || '-'}</div>
-`;
+        const adSoyad = d.kullAd || "İsimsiz";
+        const fotoURL = d.fotograf || `https://ui-avatars.com/api/?name=${encodeURIComponent(adSoyad)}&background=random`;
+        const alt = `${d.kurs || "-"} • ${d.durum || "-"}`;
 
-        kart.addEventListener("click", () => {
+        const card = document.createElement('div');
+        card.className = 'talebe-kart';
+        card.dataset.id = uid;
+        card.dataset.name = adSoyad;
+        card.innerHTML = `
+          <img class="talebe-foto" src="${fotoURL}" alt="" loading="lazy" width="52" height="52">
+          <div class="talebe-info">
+            <div class="talebe-ad">${adSoyad}</div>
+            <div class="talebe-alt">${alt}</div>
+          </div>
+        `;
+
+        // Eski akışı bozmadan modal aç: localStorage + modal görünür + içerik yükle
+        card.addEventListener('click', () => {
           localStorage.setItem("aktifTalebeUID", uid);
-          document.getElementById("talebeModal").style.display = "flex";
-          document.body.style.overflow = "hidden";
-          const icerik = document.getElementById("modalIcerik");
-          if (!icerik) return;
-          icerik.innerHTML = ""; // eski içeriği temizle
-          if (typeof yukleModalIcerik === "function") {
-            yukleModalIcerik();
+          const modal = document.getElementById("talebeModal");
+          if (modal) {
+            modal.classList.add('open'); // yeni tasarımla uyumlu
+            // eski stil için de destek (display:flex):
+            modal.style.display = "flex";
+            document.body.style.overflow = "hidden";
           }
+          if (typeof yukleModalIcerik === "function") yukleModalIcerik();
         });
 
-        kartAlani.appendChild(kart);
+        kartlar.push(card);
       });
 
-      document.getElementById("toplamSayisi").textContent = toplam;
-      document.getElementById("ensarSayisi").textContent = ensar;
-      document.getElementById("muhacirSayisi").textContent = muhacir;
+      // A→Z sırala (Türkçe)
+      kartlar.sort((a, b) => (a.dataset.name || '').localeCompare(b.dataset.name || '', 'tr'));
+      kartlar.forEach(c => kartAlani.appendChild(c));
+
+      // İstatistikleri yaz
+      const $top = document.getElementById("toplamSayisi");
+      const $en  = document.getElementById("ensarSayisi");
+      const $mu  = document.getElementById("muhacirSayisi");
+      if ($top) $top.textContent = toplam;
+      if ($en)  $en.textContent  = ensar;
+      if ($mu)  $mu.textContent  = muhacir;
     })
     .catch((error) => {
       console.error("❌ Talebeler çekilirken hata oluştu:", error);

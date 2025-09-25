@@ -3,78 +3,663 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Talebe Bilgi Formu</title>
-  <link rel="icon" type="image/png" href="img/logo.png">
+  <title>Talebe Bilgi Formu | Karaağaç Fatih</title>
+  <link rel="icon" type="image/png" href="../img/logo.png" />
+
+  <!-- ======================================
+       TASARIM DEĞİŞİMİ: ÜST PANEL + YENİ TEMA
+       ====================================== -->
+  <style>
+    :root{
+      --appbar-h:56px; --radius:14px; --shadow:0 12px 28px rgba(0,0,0,.14);
+      --bg:#0f172a; --bg2:#0b1324; --grad1:#0ea5e922; --grad2:#22d3ee22;
+      --card:rgba(15,23,42,.92); --stroke:rgba(148,163,184,.18);
+      --text:#e5e7eb; --muted:#9aa4b2; --brand:#38bdf8; --brand2:#0ea5e9;
+      --pill:#0b1220; --pill-hover:#101a2b; --link:#c7e9ff; --surface:rgba(2,6,23,.08);
+    }
+    @media (prefers-color-scheme: light){
+      :root{
+        --bg:#eef6ff;--bg2:#f7fbff;--grad1:#38bdf822;--grad2:#22d3ee22;
+        --card:rgba(255,255,255,.95);--stroke:rgba(15,23,42,.12);
+        --text:#0b1220;--muted:#4b5563;--brand:#0ea5e9;--brand2:#0284c7;
+        --pill:#f5f8ff;--pill-hover:#e9f2ff;--link:#0b5ea8;--surface:#eef3ff;
+      }
+    }
+    html[data-theme="dark"]{
+      --bg:#0f172a;--bg2:#0b1324;--grad1:#0ea5e922;--grad2:#22d3ee22;
+      --card:rgba(15,23,42,.92);--stroke:rgba(148,163,184,.18);
+      --text:#e5e7eb;--muted:#9aa4b2;--brand:#38bdf8;--brand2:#0ea5e9;
+      --pill:#0b1220;--pill-hover:#101a2b;--link:#c7e9ff;--surface:rgba(2,6,23,.08);
+    }
+    html[data-theme="light"]{
+      --bg:#eef6ff;--bg2:#f7fbff;--grad1:#38bdf822;--grad2:#22d3ee22;
+      --card:rgba(255,255,255,.95);--stroke:rgba(15,23,42,.12);
+      --text:#0b1220;--muted:#4b5563;--brand:#0ea5e9;--brand2:#0284c7;
+      --pill:#f5f8ff;--pill-hover:#e9f2ff;--link:#0b5ea8;--surface:#eef3ff;
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%; overflow-x:hidden;}
+    body{
+      margin:0; color:var(--text); font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Arial;
+      background:
+        radial-gradient(900px 680px at 12% 8%, var(--grad1), transparent 45%),
+        radial-gradient(800px 640px at 88% 92%, var(--grad2), transparent 50%),
+        linear-gradient(140deg, var(--bg), var(--bg2) 60%);
+    }
+    a{color:var(--link); text-decoration:none} a:hover{text-decoration:underline}
+
+    /* APPBAR */
+    .appbar{position:sticky; top:0; z-index:60; height:var(--appbar-h);
+      background:var(--card); backdrop-filter:blur(10px); border-bottom:1px solid var(--stroke);
+      display:flex; align-items:center; padding:0 12px;}
+    .brand{display:flex; align-items:center; gap:10px; cursor:pointer}
+    .brand img{width:24px; height:24px} .brand span{font-weight:900; color:var(--text)}
+    .nav-center{margin:0 auto; height:100%}
+    .nav-list{display:flex; gap:22px; align-items:center; height:100%; list-style:none; margin:0; padding:0}
+    .nav-item{position:relative; height:100%}
+    .nav-btn{height:100%; display:flex; align-items:center; gap:6px; color:var(--text); font-weight:600; cursor:pointer}
+    .nav-btn:hover{color:var(--brand)}
+    .dropdown{position:absolute; top:100%; left:0; min-width:240px; background:var(--card);
+      border:1px solid var(--stroke); border-radius:10px; box-shadow:var(--shadow); padding:8px; display:none}
+    .dropdown a{display:flex; gap:8px; padding:8px 10px; border-radius:8px; color:var(--text)}
+    .dropdown a:hover{background:var(--surface)}
+    .nav-item.open .dropdown{display:block}
+    .nav-right{display:flex; gap:8px; align-items:center}
+    .btn{border:1px solid var(--stroke); background:var(--card); color:var(--text); border-radius:999px; padding:8px 12px; cursor:pointer}
+    .hamb{display:none}
+    @media (max-width:640px){ .hamb{display:inline-block} .nav-center{display:none} }
+
+    /* DRAWER (mobil) */
+/* DRAWER (mobil) */
+.drawer{
+  position:fixed; top:var(--appbar-h); right:0; bottom:0;
+  width:78vw; max-width:420px;
+  transform:translateX(100%); transition:transform .25s ease;
+  background:var(--card); border-left:1px solid var(--stroke);
+  z-index:70; overflow:auto; padding:12px
+}
+.drawer.open{ transform:translateX(0) }
+
+/* Ekranın kalan %22'lik kısmı için karartma */
+.drawer-backdrop{
+  position:fixed; inset:0; top:var(--appbar-h);
+  background:rgba(2,6,23,.45); opacity:0; pointer-events:none;
+  transition:opacity .2s ease; z-index:65;
+}
+.drawer-backdrop.show{ opacity:1; pointer-events:auto }
+
+/* Drawer içi başlık/öğeler */
+.drawer .panel-head{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px; border:1px solid var(--stroke); border-radius:10px;
+  background:var(--pill); margin:6px 0; cursor:pointer; font-weight:800
+}
+.drawer .panel-head .caret{ opacity:.6; font-size:12px }
+.drawer .sublist{ margin:6px 0 10px 0; padding-left:8px; display:none }
+.drawer .sublist a{
+  display:block; padding:8px 10px; border-radius:8px; color:var(--text);
+  border:1px solid var(--stroke); background:var(--surface); margin:6px 0
+}
+.drawer .sublist a:hover{ background:var(--pill-hover) }
+
+/* Küçük ekran optimizasyonları */
+@media (max-width:640px){
+  /* Artık tam ekran değil; sol kenardan da başlayabilirsek:
+     İsterseniz sağdan yerine soldan açtırın → left:0; right:auto; */
+  .drawer{ width:82vw; }
+}
+
+    /* CONTENT */
+    .container{max-width:1150px; margin:0 auto; padding:16px 16px 24px}
+
+    /* HERO / başlık alanı */
+    .hero{display:flex; justify-content:space-between; align-items:flex-start; gap:16px;
+      background:var(--card); border:1px solid var(--stroke); border-radius:var(--radius);
+      padding:16px; margin:16px 0; box-shadow:var(--shadow)}
+    .hero h2{margin:0 0 6px; font-size:20px}
+    .hero-sub{color:var(--muted); font-size:13px}
+    .mini{display:flex; gap:8px; flex-wrap:wrap}
+    .pill{
+      display:inline-flex; align-items:center;
+      gap:6px; padding:6px 10px; border-radius:999px;
+      margin:6px 10px 0 0; line-height:1;
+    }
+    /* KART ZEMİNİ */
+    .card{background:var(--card); border:1px solid var(--stroke); border-radius:var(--radius); box-shadow:var(--shadow); padding:14px; margin-bottom:16px}
+    .card h3{margin:0 0 10px; font-size:16px; display:flex; justify-content:space-between; align-items:center}
+
+    /* İSTATİSTİK KUTULARI */
+    .istatistik-kutulari{display:flex; gap:10px; flex-wrap:wrap}
+    .istatistik-kutu{
+      position:relative;
+      background:linear-gradient(180deg, rgba(1, 112, 88, 0.35), rgba(1, 112, 88, 0.35));
+      border:1px solid var(--stroke);
+      border-radius:16px;
+      padding:14px 16px;
+      font-weight:800;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 6px 16px rgba(0,0,0,.10);
+      color:var(--text);
+    }    
+    .istatistik-kutu span{font-variant-numeric:tabular-nums; color:var(--brand2)}
+    #ozetKurslar, #ozetMemleket{
+      display:flex; flex-wrap:wrap; gap:8px 10px; align-items:center;
+    }
+    #ozetWrap .card{ padding-top:16px; padding-bottom:16px }
+    /* TALEBE KART ALANI */
+    .kartlar-alani{display:grid; gap:12px; grid-template-columns:repeat(5,1fr)}
+    @media (max-width:1200px){ .kartlar-alani{grid-template-columns:repeat(4,1fr)} }
+    @media (max-width:900px){ .kartlar-alani{grid-template-columns:repeat(3,1fr)} }
+    @media (max-width:640px){ .kartlar-alani{grid-template-columns:repeat(2,1fr)} }
+    @media (max-width:420px){ .kartlar-alani{grid-template-columns:1fr} }
+
+    .talebe-kart{
+      border:1px solid var(--stroke); background:var(--surface); border-radius:12px;
+      padding:10px; display:flex; gap:10px; align-items:center; cursor:pointer;
+      transition:transform .12s ease, box-shadow .12s ease;
+    }
+    .talebe-kart:hover{ transform:translateY(-1px); box-shadow:var(--shadow) }
+    .talebe-foto{ width:52px; height:52px; object-fit:cover; border-radius:10px; }
+    .talebe-info{flex:1 1 auto; min-width:0}
+    .talebe-ad{font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+    .talebe-alt{font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+
+    /* MODAL (taşma çözümü) */
+    .modal{position:fixed; inset:0; display:none; place-items:center; background:rgba(2,6,23,.55); z-index:120}
+    .modal.open{display:grid}
+    .modal-icerik{
+      max-width:980px; width:calc(100% - 24px);
+      max-height:calc(100dvh - 24px); overflow:auto;
+      background:var(--card); border:1px solid var(--stroke); border-radius:16px; box-shadow:var(--shadow);
+    }
+
+    /* TOAST */
+    .toast{
+      position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);
+      background:rgba(2,6,23,.95);color:#fff;border:1px solid rgba(255,255,255,.08);
+      border-radius:12px;padding:10px 12px;opacity:0;pointer-events:none;
+      transition:opacity .25s, transform .25s;z-index:200
+    }
+    /* Sadece mobilde appbar sticky olmasın */
+@media (max-width:640px){
+  .appbar{ position:static; }
+}
+/* Modal içi sekmeler + butonlar */
+.modal-tabs{display:flex; gap:8px; padding:12px; border-bottom:1px solid var(--stroke); position:sticky; top:0; background:var(--card); z-index:2}
+.tab-btn{padding:8px 12px; border-radius:999px; border:1px solid var(--stroke); background:var(--pill); cursor:pointer; font-weight:700}
+.tab-btn.active{background:linear-gradient(90deg,var(--brand2),var(--brand)); color:#fff; border-color:transparent}
+
+.modal-body{padding:14px}
+.form-grid{display:grid; gap:10px; grid-template-columns:repeat(2,1fr)}
+.form-grid .fld{display:flex; flex-direction:column; gap:6px}
+.fld label{font-size:12px; color:var(--muted); font-weight:700}
+.fld input,.fld select,.fld textarea{padding:10px; border:1px solid var(--stroke); border-radius:10px; background:var(--pill); color:var(--text)}
+.fld textarea{min-height:84px; resize:vertical}
+@media (max-width:640px){ .form-grid{grid-template-columns:1fr} }
+
+.modal-actions{display:flex; gap:8px; justify-content:flex-end; padding:12px; border-top:1px solid var(--stroke); background:var(--card); position:sticky; bottom:0; z-index:2}
+.btn-ghost{border:1px solid var(--stroke); background:var(--pill); padding:10px 12px; border-radius:10px; font-weight:800; cursor:pointer}
+.btn-primary{border:0; background:linear-gradient(90deg,var(--brand2),var(--brand)); color:#fff; padding:10px 14px; border-radius:10px; font-weight:900; cursor:pointer}
+.btn-danger{border:1px solid #7f1d1d; background:#450a0a; color:#fff; padding:10px 12px; border-radius:10px; font-weight:800; cursor:pointer}
+
+/* Görüntüle (pdf-sablon benzeri) */
+.view-wrap{display:grid; gap:10px}
+.view-head{display:flex; align-items:center; gap:12px}
+.view-photo{width:84px; height:84px; border-radius:12px; object-fit:cover; border:1px solid var(--stroke); background:#11182722}
+.view-name{font-weight:900; font-size:18px}
+.view-kutu{border:1px solid var(--stroke); border-radius:12px; padding:10px; background:var(--surface)}
+.view-grid{display:grid; gap:6px; grid-template-columns:repeat(2,1fr)}
+@media (max-width:640px){ .view-grid{grid-template-columns:1fr} }
+/* stat kutular için ufak renkler */
+.kutu-ok  { border-color:#10b98155; box-shadow:inset 0 0 0 1px rgba(16,185,129,.15), 0 6px 16px rgba(16,185,129,.12) }
+.kutu-warn{ border-color:#ef444455; box-shadow:inset 0 0 0 1px rgba(239,68,68,.16),  0 6px 16px rgba(239,68,68,.10) }
+
+/* progress bar (beklenen/mevcut) */
+.meter{ height:12px; border-radius:999px; border:1px solid var(--stroke);
+        background:var(--surface); overflow:hidden }
+.meter>.fill{ height:100%; width:0%; background:linear-gradient(90deg,var(--brand2),var(--brand)); transition:width .25s }
+.more-list{margin-top:6px}
+.more-btn{background:none;border:0;color:var(--link);cursor:pointer;font-weight:700;padding:0}
+  </style>
+
+  <!-- Mevcut CSS’leriniz (korundu) -->
   <link rel="stylesheet" href="../css/form.css" />
   <link rel="stylesheet" href="../css/stiller.css" />
 
-  <!-- Firebase core kütüphaneleri (compat sürüm) -->
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+  <!-- Firebase core (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+  <!-- Ortak Firebase config -->
+  <script src="../js/firebase/firebase-init.js"></script>
 
-<!-- Ortak Firebase config ve servis dosyası -->
-<script src="../js/firebase/firebase-init.js"></script>
-
+  <!-- Projenizin JS’leri (korundu) -->
   <script src="../js/ortak.js"></script>
   <script src="../js/icerikyukle.js"></script>
-  <script src="../js/talebe-bilgi.js?v=1.0.3"></script>
-  <script src="../js/talebe-modal.js?v=1.0.3"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
-  <!-- jsPDF Kütüphanesi -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-  <script src="https://unpkg.com/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
-  <script src="../js/pdf-cikti.js"></script>
+  <script src="../js/talebe-bilgi.js"></script>
+  <script src="../js/talebe-modal.js"></script>
 
+  <!-- PDF araçları (korundu) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="../js/pdf/pdf-cikti.js"></script>
 </head>
 <body>
-  <!-- Üst Panel -->
-  <div id="ust-panel"></div>
 
-  <!-- Yan Panel + İçerik Alanı -->
-  <div class="ana-kapsayici">
-    <div id="yan-panel"></div>
+<!-- APPBAR -->
+<div class="appbar">
+  <div class="brand" onclick="location.href='../panel.html'">
+    <img src="../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
+  </div>
+  <nav class="nav-center"><ul class="nav-list" id="navMain"></ul></nav>
+  <div class="nav-right">
+    <button class="btn hamb" id="hamburger">☰</button>
+    <button class="btn" id="themeToggle">🌗 <span id="themeLabel">Auto</span></button>
+    <button class="btn" onclick="logout()">Çıkış Yap</button>
+  </div>
+</div>
+<aside class="drawer" id="drawer"></aside>
+<div class="drawer-backdrop" id="drawerBackdrop"></div>
 
-    <div class="icerik-alani">
-      <h1 class="sayfa-baslik">Talebe Bilgi Formu</h1>
+<!-- CONTENT -->
+<main class="container">
+  <!-- Başlık / hero -->
+  <section class="hero">
+    <div>
+      <h2>Talebe Bilgi Formu</h2>
+      <div class="hero-sub">Genel özet ve profil kartları</div>
+  </section>
 
-      <!-- Sayısal Bilgiler -->
-      <div class="istatistik-kutulari">
-        <div class="istatistik-kutu toplam">Toplam Talebe: <span id="toplamSayisi">0</span></div>
-        <div class="istatistik-kutu ensar">Ensar: <span id="ensarSayisi">0</span></div>
-        <div class="istatistik-kutu muhacir">Muhacir: <span id="muhacirSayisi">0</span></div>
-      </div>
+  <!-- İstatistikler -->
+  <section class="card">
+    <h3><span>Özet</span></h3>
+<div id="ozetWrap" style="margin-top:12px">
+  <!-- üst satır -->
+  <div id="ozetTopSatir" class="istatistik-kutulari" style="gap:12px;flex-wrap:wrap">
+    <div id="tileToplam"  class="istatistik-kutu"></div>
+    <div id="tileEnsar"   class="istatistik-kutu"></div>
+    <div id="tileMuhacir" class="istatistik-kutu"></div>
+    <button id="ozetYenile" class="pill" style="cursor:pointer">↻ Yenile</button>
+  </div>
 
-      <!-- Talebe Kartları -->
-      <div id="talebeKartAlani" class="kartlar-alani">
-        <!-- JavaScript ile kartlar buraya eklenecek -->
-      </div>
+  <!-- beklenen / ilerleme -->
+  <div id="ozetBar" class="card" style="margin-top:10px">
+    <h3 style="margin:0 0 8px">Beklenen vs Mevcut</h3>
+    <div id="barWrap"></div>
+    <div id="ozetUyari" class="pill" style="display:none;margin-top:8px;border-color:#ef4444;color:#ef4444">
+      Uyarı: Beklenen sayılarla eşleşmiyor.
     </div>
   </div>
 
-<!-- Modal yapısı -->
+  <!-- dağılımlar -->
+  <div class="card" style="margin-top:12px">
+    <h3 style="margin:0 0 8px">Kurslara Göre Dağılım</h3>
+    <div id="ozetKurslar"></div>
+  </div>
+
+  <div class="card" style="margin-top:12px">
+    <h3 style="margin:0 0 8px">Memleket (İl/Ülke) Dağılımı</h3>
+    <div id="ozetMemleket"></div>
+  </div>
+</div>
+  </section>
+
+  <!-- Kartlar -->
+  <section class="card">
+    <h3><span>Talebe Kartları</span></h3>
+    <div id="talebeKartAlani" class="kartlar-alani"></div>
+  </section>
+
+  <div style="height:84px;margin-top:16px;border-top:1px solid var(--stroke)"></div>
+</main>
+
+<!-- Modal -->
 <div id="talebeModal" class="modal">
   <div class="modal-icerik" id="modalIcerik"></div>
 </div>
 
+<div class="toast" id="toast"></div>
+
 <script>
-  const GEREKEN_YETKI = "Talebe"; // ← bu kısmı her sayfa için değiştir
-
-  firebase.auth().onAuthStateChanged(async (user) => {
-    if (!user) {
-      window.location.href = "../index.html";
-      return;
+(function (db, auth, storage) {
+  /* ===== Tema kontrolü ===== */
+  (function(){
+    const root=document.documentElement, btn=document.getElementById('themeToggle');
+    const lab1=document.getElementById('themeLabel'), lab2=document.getElementById('themeLabel2');
+    const sysDark=()=>window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;
+    function apply(mode){
+      localStorage.setItem('kf_theme',mode);
+      const eff=(mode==='auto')?(sysDark()?'dark':'light'):mode;
+      root.setAttribute('data-theme',eff);
+      const txt=mode[0].toUpperCase()+mode.slice(1);
+      if(lab1) lab1.textContent=txt; if(lab2) lab2.textContent=txt;
+      const icon=mode==='dark'?'🌙':mode==='light'?'☀️':'🌗';
+      btn.innerHTML=icon+' <span id="themeLabel">'+txt+'</span>';
     }
+    apply(localStorage.getItem('kf_theme')||'auto');
+    btn.addEventListener('click',()=>{const cur=localStorage.getItem('kf_theme')||'auto'; apply(cur==='dark'?'light':(cur==='light'?'auto':'dark'));});
+    if(window.matchMedia){ const m=window.matchMedia('(prefers-color-scheme: dark)'); m.addEventListener?.('change',()=>{ if((localStorage.getItem('kf_theme')||'auto')==='auto') apply('auto'); }); }
+  })();
+
+  /* ===== Helpers ===== */
+  function showToast(m){
+    const t=document.getElementById('toast'); if(!t) return;
+    t.textContent=m; t.style.opacity=1; t.style.transform='translateX(-50%) translateY(0)';
+    clearTimeout(window.__to);
+    window.__to=setTimeout(()=>{t.style.opacity=0; t.style.transform='translateX(-50%) translateY(20px)';},2400);
+  }
+  const norm  = s => String(s||'').trim().toLowerCase();
+  const lower = s => (s==null?'':String(s)).trim().toLowerCase();
+
+  /* ===== Nav / Manifest / Yetki ===== */
+  let CURRENT_ALLOW=new Set(), CURRENT_DENY=new Set(), PERMS_READY=false;
+  const PANEL_ICON  = { 'Admin':'🎛️','Talebe':'📘','Personel':'👤','Muhasebe':'💰','Kermes':'🏪','Nehari':'🕌','Sistem Ayarları':'⚙️' };
+
+  function resolveHref(p){
+    if(!p) return '#';
+    if(/^(https?:)?\/\//i.test(p) || p.startsWith('/') || p.startsWith('./') || p.startsWith('../')) return p;
+    return '../' + p.replace(/^\/+/, '');
+  }
+
+  async function fetchPanels(allowSet, denySet){
+    const res=[];
+    try{
+      const snap=await db.collection('sayfa_manifesti').get();
+      snap.forEach(doc=>{
+        const d=doc.data()||{}, id=doc.id;
+        const panelTitle=d.title||id;
+        const panelGrant = allowSet.has(norm(id)) || allowSet.has(norm(panelTitle));
+        let pages = Array.isArray(d.pages)? d.pages : [];
+        pages = pages.filter(pg=>{
+          const keyNorm = norm(pg.key || pg.title || '');
+          const pageGrant = allowSet.has(keyNorm);
+          const denied    = denySet.has(keyNorm);
+          return !denied && (panelGrant || pageGrant);
+        }).map(pg=>({
+          baslik: pg.title || pg.key || 'Sayfa',
+          url: resolveHref(pg.path || '#'),
+          key: pg.key || pg.title || '',
+          sira: typeof pg.order==='number'?pg.order:9999
+        }))
+        .sort((a,b)=>a.sira-b.sira);
+        if(pages.length) res.push({ id, baslik:panelTitle, ikon:d.icon||PANEL_ICON[id]||'📁', sira: typeof d.order==='number'?d.order:9999, pages });
+      });
+      res.sort((a,b)=>a.sira-b.sira);
+    }catch(e){ console.warn(e); }
+    return res;
+  }
+
+  function renderNav(panels){
+    const ul=document.getElementById('navMain'),
+          drawer=document.getElementById('drawer');
+    ul.innerHTML=''; drawer.innerHTML='';
+
+    // Üst menü (desktop)
+    if(!panels.length){
+      ul.innerHTML='<li class="nav-item"><div class="nav-btn">Menü Yok</div></li>';
+    }else{
+      panels.forEach(p=>{
+        const li=document.createElement('li'); li.className='nav-item';
+        li.innerHTML=`<div class="nav-btn">${p.baslik} <span class="caret">▾</span></div>`;
+        const dd=document.createElement('div'); dd.className='dropdown';
+        (p.pages||[]).forEach(pg=>{
+          const a=document.createElement('a');
+          a.href=pg.url; a.textContent=pg.baslik;
+          a.dataset.key=pg.key||pg.baslik; a.dataset.panel=p.id; a.dataset.panelTitle=p.baslik;
+          dd.appendChild(a);
+        });
+        li.appendChild(dd);
+        li.querySelector('.nav-btn').addEventListener('click',(e)=>{
+          e.stopPropagation();
+          ul.querySelectorAll('.nav-item').forEach(x=>{ if(x!==li) x.classList.remove('open'); });
+          li.classList.toggle('open');
+        });
+        ul.appendChild(li);
+      });
+      document.addEventListener('click',(e)=>{ if(!ul.contains(e.target)) ul.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('open')); });
+    }
+
+    // Mobil drawer – akordeon
+    panels.forEach(p=>{
+      const head=document.createElement('div');
+      head.className='panel-head';
+      head.innerHTML = `<span>${p.baslik}</span><span class="caret">▾</span>`;
+
+      const sub=document.createElement('div');
+      sub.className='sublist';
+      (p.pages||[]).forEach(pg=>{
+        const a=document.createElement('a');
+        a.href=pg.url; a.textContent=pg.baslik;
+        a.dataset.key=pg.key||pg.baslik; a.dataset.panel=p.id; a.dataset.panelTitle=p.baslik;
+        sub.appendChild(a);
+      });
+
+      head.addEventListener('click', ()=>{
+        const open = sub.style.display==='block';
+        drawer.querySelectorAll('.sublist').forEach(x=>x.style.display='none');
+        drawer.querySelectorAll('.panel-head').forEach(x=>x.classList.remove('open'));
+        sub.style.display = open ? 'none' : 'block';
+        head.classList.toggle('open', !open);
+      });
+
+      drawer.appendChild(head);
+      if((p.pages||[]).length) drawer.appendChild(sub);
+    });
+  }
+
+  // Drawer open/close (tek yerde)
+  const drawerEl = document.getElementById('drawer');
+  const backEl   = document.getElementById('drawerBackdrop');
+  function openDrawer(){
+    drawerEl.classList.add('open'); backEl.classList.add('show');
+    document.documentElement.style.overflow='hidden';
+    document.body.style.overflow='hidden';
+  }
+  function closeDrawer(){
+    drawerEl.classList.remove('open'); backEl.classList.remove('show');
+    document.documentElement.style.overflow=''; document.body.style.overflow='';
+  }
+  document.getElementById('hamburger')?.addEventListener('click', openDrawer);
+  backEl?.addEventListener('click', closeDrawer);
+  drawerEl?.addEventListener('click', (e)=>{ const a=e.target.closest('a[href]'); if(a) closeDrawer(); });
+
+  /* ========= ÖZET ve A–Z SIRALAMA ========= */
+  const EXPECTED = { total: 33, ensar: 15, muhacir: 18 };
+  const TALEBE_COLLECTION_CANDIDATES = ['talebeler','talebe_kayit','talebeKayit','talebe_kayitlari','talebe_index'];
+  const FIELD_GRP = {
+    status:['status','durum','tip','kategori','grup','statü'],
+    kurs:['geldigiKurs','kurs','kaynakKurs','geldigikurs','gelenKurs'],
+    name:['adSoyad','isim','ad','fullName','ad_soyad','ad_soyad_tr'],
+    sehir:['memleket','sehir','il','ilce','yer'],
+    ulke:['ulke','ülke','country']
+  };
+
+  function pick(rec, keys){
+    for(const k of keys){ if(rec[k]!=null && String(rec[k]).trim()!=='') return rec[k]; }
+    return '';
+  }
+  function normStatus(s){
+    const t = lower(s);
+    if(t.includes('ensar')) return 'Ensar';
+    if(t.includes('muhacir') || t.includes('muhacır')) return 'Muhacir';
+    return 'Diğer';
+  }
+
+  function sortCardsAZ(){
+    const wrap = document.getElementById('talebeKartAlani'); if(!wrap) return;
+    const cards = Array.from(wrap.children); if(cards.length<2) return;
+    cards.sort((a,b)=>{
+      const aName=(a.querySelector?.('.talebe-ad')?.textContent||a.textContent||'').trim();
+      const bName=(b.querySelector?.('.talebe-ad')?.textContent||b.textContent||'').trim();
+      return aName.localeCompare(bName,'tr');
+    });
+    cards.forEach(c=>wrap.appendChild(c));
+  }
+  async function fetchAllTalebeler(){
+    for(const col of TALEBE_COLLECTION_CANDIDATES){
+      try{
+        const snap = await db.collection(col).get();
+        if(!snap.empty) return snap.docs.map(d=>({ id:d.id, ...d.data() }));
+      }catch(e){}
+    }
+    return [];
+  }
+async function buildOzet(){
+  try{
+    const list = await fetchAllTalebeler();
+
+    // Sayımlar
+    let total=0, ensar=0, muhacir=0;
+    const byKurs={}, byMem={};
+
+    for(const rec of list){
+      total++;
+      const status = normStatus(pick(rec, FIELD_GRP.status));
+      if(status==='Ensar') ensar++;
+      else if(status==='Muhacir') muhacir++;
+
+      const kurs = String(pick(rec, FIELD_GRP.kurs) || 'Belirtilmemiş').trim();
+      if(kurs) byKurs[kurs] = (byKurs[kurs]||0) + 1;
+
+      const sehir = String(pick(rec, FIELD_GRP.sehir)).trim();
+      const ulke  = String(pick(rec, FIELD_GRP.ulke)).trim();
+      const memLabel = (sehir && ulke) ? `${sehir} / ${ulke}` : (sehir || ulke || 'Belirtilmemiş');
+      byMem[memLabel] = (byMem[memLabel]||0) + 1;
+    }
+
+    // (Eski sayaçlar varsa güncellesin; yoksa atlar)
+    document.getElementById('toplamSayisi')?.replaceChildren(document.createTextNode(total));
+    document.getElementById('ensarSayisi')?.replaceChildren(document.createTextNode(ensar));
+    document.getElementById('muhacirSayisi')?.replaceChildren(document.createTextNode(muhacir));
+
+    // Üst 3 kutu
+    statTile(document.getElementById('tileToplam'),  'Toplam',  total,   EXPECTED.total);
+    statTile(document.getElementById('tileEnsar'),   'Ensar',   ensar,   EXPECTED.ensar);
+    statTile(document.getElementById('tileMuhacir'), 'Muhacir', muhacir, EXPECTED.muhacir);
+
+    // Progress bar
+    renderMeter(document.getElementById('barWrap'), total, EXPECTED.total);
+
+    // Uyarı
+    const mismatch = (total!==EXPECTED.total) || (ensar!==EXPECTED.ensar) || (muhacir!==EXPECTED.muhacir);
+    const warnEl = document.getElementById('ozetUyari');
+    if(warnEl) warnEl.style.display = mismatch ? 'inline-block' : 'none';
+
+    // Dağılımlar (top N + daha fazlası)
+    renderTopN(byKurs, document.getElementById('ozetKurslar'), 8);
+    renderTopN(byMem,  document.getElementById('ozetMemleket'), 8);
+
+    // Yenile
+    document.getElementById('ozetYenile')?.addEventListener('click', buildOzet, { once:true });
+
+  }catch(e){
+    console.error(e);
+    showToast?.('Özet hesaplanırken hata oluştu.');
+  }
+}
+
+  // talebeBilgiFormuYukle bittikten hemen sonra özeti çalıştır
+  (function hookOzetAfterLoad(){
+    const _orig = window.talebeBilgiFormuYukle;
+    if(typeof _orig==='function'){
+      window.talebeBilgiFormuYukle = async function(){
+        await _orig.apply(this, arguments);
+        setTimeout(buildOzet, 50);
+      };
+    }else{
+      document.addEventListener('DOMContentLoaded', ()=> setTimeout(buildOzet, 300));
+    }
+  })();
+
+function statTile(el, label, value, expected){
+  if(!el) return;
+  const ok = (expected==null) ? true : Number(value)===Number(expected);
+  el.classList.remove('kutu-ok','kutu-warn');
+  el.classList.add(ok ? 'kutu-ok' : 'kutu-warn');
+  el.innerHTML = `
+    <span style="opacity:.9">${label}:</span>
+    <b>${value}</b>
+    ${expected!=null ? `<span class="talebe-alt" style="margin-left:6px">/ beklenen ${expected}</span>` : ''}
+    ${ok ? '' : ''}
+  `;
+}
+
+function renderMeter(barWrap, value, expected){
+  if(!barWrap) return;
+  barWrap.innerHTML = `
+    <div class="meter"><div class="fill" style="width:0%"></div></div>
+    <div class="talebe-alt" style="margin-top:6px">
+      Mevcut <b>${value}</b> / Beklenen <b>${expected}</b> (${expected? Math.round(value*100/expected):0}%)
+    </div>`;
+  requestAnimationFrame(()=> barWrap.querySelector('.fill').style.width = `${Math.min(100, expected? (value*100/expected):0)}%`);
+}
+
+/* Top N + “daha fazla” davranışı */
+function renderTopN(mapObj, container, topN=8){
+  container.innerHTML='';
+  const arr = Object.entries(mapObj).sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0],'tr'));
+  if(!arr.length){ container.innerHTML='<span class="muted">Kayıt yok</span>'; return; }
+
+  const makePill = (k,v)=>`<span class="pill" title="${k}">${k}: <b>${v}</b></span>`;
+  const top = arr.slice(0, topN), rest = arr.slice(topN);
+
+  container.insertAdjacentHTML('beforeend', top.map(([k,v])=>makePill(k,v)).join(' '));
+
+  if(rest.length){
+    const more = document.createElement('div'); more.className='more-list';
+    const btn = document.createElement('button'); btn.className='more-btn'; btn.textContent=`+${rest.length} daha göster`;
+    const extra = document.createElement('div'); extra.style.display='none';
+    extra.innerHTML = rest.map(([k,v])=>makePill(k,v)).join(' ');
+    btn.addEventListener('click', ()=>{ extra.style.display='block'; btn.remove(); });
+    more.appendChild(btn); more.appendChild(extra); container.appendChild(more);
+  }
+}
+
+  /* Link engelleme – sadece izinler hazırsa */
+  document.addEventListener('click', (e) => {
+    const a=e.target.closest('a[data-key]'); if(!a) return;
+    const href=a.getAttribute('href')||'#';
+    if(href==='#'){ e.preventDefault(); return; }
+    if(!PERMS_READY) return;
+    const key=norm(a.dataset.key), pnl=norm(a.dataset.panel||''), pnlTitle=norm(a.dataset.panelTitle||'');
+    if(CURRENT_DENY.has(key)){ e.preventDefault(); showToast('Bu sayfa için yetkiniz yok.'); return; }
+    const allowed = CURRENT_ALLOW.has(key) || CURRENT_ALLOW.has(pnl) || CURRENT_ALLOW.has(pnlTitle);
+    if(!allowed){ e.preventDefault(); showToast('Bu sayfa için yetkiniz yok.'); }
   });
-</script>
 
-  <script>
-    if (typeof talebeBilgiFormuYukle === "function") {
-      talebeBilgiFormuYukle();
-    }
-  </script>
+  /* Logout */
+  function logout(){ auth.signOut().then(()=>location.replace("../index.html")) }
+  window.logout=logout;
+
+  /* ===== Auth + sayfa yükü ===== */
+  const GEREKEN_YETKI = "Talebe";
+  auth.onAuthStateChanged(async (user) => {
+    if (!user) { location.replace("../index.html"); return; }
+    try{
+      const uSnap = await db.collection('kullanicilar').doc(user.uid).get();
+      const data  = uSnap.exists ? uSnap.data() : {};
+      const rawPerms = Array.isArray(data.yetkiler) ? data.yetkiler : [];
+      CURRENT_ALLOW = new Set(rawPerms.filter(s=>!String(s).trim().startsWith('-') && !String(s).trim().startsWith('!')).map(norm));
+      CURRENT_DENY  = new Set(rawPerms.filter(s=>String(s).trim().startsWith('-') || String(s).trim().startsWith('!')).map(s=>norm(String(s).replace(/^[-!]\s*/,''))));
+      const panels = await fetchPanels(CURRENT_ALLOW, CURRENT_DENY);
+      renderNav(panels); PERMS_READY=true;
+
+      if (typeof talebeBilgiFormuYukle === "function") talebeBilgiFormuYukle();
+    }catch(e){ console.error(e); showToast('Veriler yüklenirken hata.'); }
+  });
+
+  /* Modal yardımcıları (talebe-modal.js ile uyumlu) */
+  window.openTalebeModal = function(html){
+    const m=document.getElementById('talebeModal'), c=document.getElementById('modalIcerik');
+    if(!m||!c) return;
+    c.innerHTML=html; m.classList.add('open');
+  };
+  window.closeTalebeModal = function(){
+    document.getElementById('talebeModal')?.classList.remove('open');
+  };
+  document.getElementById('talebeModal')?.addEventListener('click', (e)=>{ if(e.target.id==='talebeModal') window.closeTalebeModal(); });
+
+})(window.db, window.auth, window.storage);
+</script>
 </body>
 </html>
