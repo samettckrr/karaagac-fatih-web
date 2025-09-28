@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>İkamet Takip | Karaağaç Fatih</title>
+  <link rel="icon" type="image/png" href="../img/logo.png"/>
+
+  <!-- Firebase compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+  <script src="../js/firebase/firebase-init.js"></script>
+
+  <style>
+    :root{
+      --bg:#f6f7fb; --card:#fff; --text:#0f172a; --muted:#64748b; --stroke:#e5e7eb;
+      --brand:#2563eb; --ok:#10b981; --warn:#f59e0b; --danger:#ef4444; --dark:#0f172a;
+      --radius:16px; --shadow:0 14px 48px rgba(2,6,23,.08); --appbar-h:64px; --chip:#e2e8f0;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,Segoe UI,Arial}
+    .appbar{position:sticky;top:0;height:var(--appbar-h);display:flex;align-items:center;justify-content:space-between;
+      padding:0 16px;background:var(--card);border-bottom:1px solid var(--stroke); z-index:20}
+    .appbar h1{font-size:18px;margin:0}
+    .appbar .right{display:flex;gap:8px;align-items:center}
+    .container{max-width:1200px;margin:18px auto;padding:0 16px 32px}
+    .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:12px 0}
+    .card{background:var(--card);border:1px solid var(--stroke);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow)}
+    .kpi{display:flex;flex-direction:column;gap:6px}
+    .kpi .title{font-size:12px;color:var(--muted)}
+    .kpi .val{font-size:22px;font-weight:800}
+    .filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+    .filters > *{height:40px}
+    select,input,button{border:1px solid var(--stroke);background:#fff;border-radius:12px;padding:8px 12px;font-size:14px;color:var(--text)}
+    button.primary{background:var(--brand);color:#fff;border-color:transparent;font-weight:700;cursor:pointer}
+    button.ghost{background:#fff;color:var(--text);border:1px solid var(--stroke);cursor:pointer}
+    button.danger{background:var(--danger);color:#fff;border-color:transparent;cursor:pointer}
+    table{width:100%;border-collapse:separate;border-spacing:0;background:var(--card);border:1px solid var(--stroke);border-radius:16px;overflow:hidden}
+    th,td{padding:12px 10px;border-bottom:1px solid var(--stroke);text-align:left;font-size:14px;vertical-align:middle}
+    th{background:#f8fafc;color:#111827;font-weight:700}
+    tr:hover td{background:#fafafa}
+    .status{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;font-size:12px;border:1px solid var(--stroke);background:var(--chip)}
+    .ok{color:#065f46;border-color:#d1fae5;background:#ecfdf5}
+    .soon{color:#7c2d12;border-color:#fde68a;background:#fffbeb}
+    .urgent{color:#991b1b;border-color:#fecaca;background:#fef2f2}
+    .expired{color:#0f172a;border-color:#cbd5e1;background:#e2e8f0}
+    .chips{display:flex;flex-wrap:wrap;gap:6px}
+    .chip{padding:6px 10px;border-radius:999px;border:1px solid var(--stroke);background:var(--chip);font-size:12px}
+    .muted{color:var(--muted)}
+    .actions{display:flex;gap:6px}
+    .right .legend{display:flex;gap:8px}
+    .legend .status{border:none}
+    .hidden{display:none}
+    .note{font-size:12px;color:var(--muted)}
+    /* Modal */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.36);display:none;align-items:center;justify-content:center;z-index:50}
+    .modal{width:min(960px,95vw);max-height:85vh;overflow:auto;background:var(--card);border:1px solid var(--stroke);
+      border-radius:18px;box-shadow:var(--shadow);padding:14px}
+    .modal h2{margin:0 0 8px}
+    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+    .row{display:flex;gap:8px;align-items:center}
+    .field{display:flex;flex-direction:column;gap:6px}
+    label{font-size:12px;color:var(--muted)}
+    input[type="date"], input[type="text"], input[type="number"]{width:100%}
+    .hr{height:1px;background:var(--stroke);margin:12px 0}
+    @media (max-width:1000px){.cards{grid-template-columns:repeat(2,1fr)} .grid{grid-template-columns:1fr}}
+    @media (max-width:600px){.cards{grid-template-columns:1fr} .appbar h1{font-size:16px}}
+  </style>
+</head>
+<body>
+  <div class="appbar">
+    <h1>Karaağaç Fatih — İkamet Takip</h1>
+    <div class="right">
+      <div class="legend">
+        <span class="status ok">+60 gün</span>
+        <span class="status soon">30–60 gün</span>
+        <span class="status urgent">0–29 gün</span>
+        <span class="status expired">Süresi doldu</span>
+      </div>
+      <button id="btnSignOut" class="ghost">Çıkış</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- KPI'lar -->
+    <div class="cards">
+      <div class="card kpi"><div class="title">Toplam Talebe</div><div class="val" id="kpiTotal">0</div></div>
+      <div class="card kpi"><div class="title">Yaklaşan (≤ 60 gün)</div><div class="val" id="kpiSoon">0</div></div>
+      <div class="card kpi"><div class="title">Acil (≤ 29 gün)</div><div class="val" id="kpiUrgent">0</div></div>
+      <div class="card kpi"><div class="title">Süresi Dolmuş</div><div class="val" id="kpiExpired">0</div></div>
+    </div>
+
+    <!-- Filtreler -->
+    <div class="card">
+      <div class="filters">
+        <select id="devreSelect" title="Devre">
+          <option value="">Devre seçin…</option>
+        </select>
+        <select id="statusSelect" title="Durum">
+          <option value="">Durum: Hepsi</option>
+          <option value="ok">+60 gün (Yeşil)</option>
+          <option value="soon">30–60 gün (Sarı)</option>
+          <option value="urgent">0–29 gün (Kırmızı)</option>
+          <option value="expired">Süresi dolmuş (Siyah)</option>
+        </select>
+        <input id="searchInput" type="text" placeholder="Ara: ad, kurs, TCKN/YKN…"/>
+        <button id="btnRefresh" class="ghost">Yenile</button>
+        <div style="flex:1"></div>
+        <button id="btnYeni" class="primary">İkamet Kaydı / Düzenle</button>
+      </div>
+      <table id="tbl">
+        <thead>
+          <tr>
+            <th>Sıra</th><th>Ad Soyad</th><th>Kurs</th><th>TR Giriş</th>
+            <th>İkamet Bitiş</th><th>Başvuru Açılış</th><th>Kalan Gün</th><th>Durum</th>
+            <th>Randevu</th><th>İşlemler</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal: Detay/Düzenle -->
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal">
+      <div class="row" style="justify-content:space-between">
+        <h2 id="modalTitle">İkamet Kaydı</h2>
+        <button id="modalClose" class="ghost">Kapat</button>
+      </div>
+      <div class="hr"></div>
+
+      <!-- 0) SEÇİM ADIMI (Devre → Talebe[Muhacir]) -->
+      <div class="grid">
+        <div class="field">
+          <label>1) Devre Seçin</label>
+          <select id="mDevre"></select>
+          <div class="note">Devre listesi, <code>talebeler/{devre}</code> doc ID’lerinden gelir.</div>
+        </div>
+        <div class="field">
+          <label>2) Talebe Seçin (sadece Muhacir)</label>
+          <select id="mTalebe">
+            <option value="">Önce devre seçin…</option>
+          </select>
+          <div class="note">Liste, seçilen devrede <code>durum: "Muhacir"</code> olanlarla doldurulur.</div>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <!-- 1) TEMEL BİLGİLER (Otomatik dolacak) -->
+      <div class="grid">
+        <div class="field"><label>Talebe UID</label><input id="mUID" type="text" placeholder="Seçince otomatik dolar"/></div>
+        <div class="field"><label>Ad Soyad</label><input id="mAdSoyad" type="text" placeholder="Ad Soyad"/></div>
+        <div class="field"><label>Durum</label><input id="mDurum" type="text" placeholder="Muhacir" disabled/></div>
+        <div class="field"><label>Ülke</label><input id="mUlke" type="text" placeholder="Ülke"/></div>
+        <div class="field"><label>Geldiği Kurs</label><input id="mKurs" type="text" placeholder="Kurs adı"/></div>
+        <div class="field"><label>TCKN / YKN</label><input id="mKimlik" type="text" placeholder="TCKN veya Yabancı Kimlik No"/></div>
+        <div class="field"><label>İletişim (Tel/E-posta)</label><input id="mIletisim" type="text" placeholder="Telefon / e-posta"/></div>
+        <div class="field"><label>TR’ye Giriş Tarihi</label><input id="mTrGiris" type="date"/></div>
+      </div>
+
+      <div class="hr"></div>
+
+      <!-- 2) İKAMET BİLGİLERİ -->
+      <div class="grid">
+        <div class="field"><label>İkamet Bitiş Tarihi <span class="muted">(zorunlu)</span></label><input id="mBitis" type="date"/></div>
+        <div class="field"><label>Başvuru Yapıldı mı?</label>
+          <select id="mBasvuruYapildi"><option value="hayir">Hayır</option><option value="evet">Evet</option></select>
+        </div>
+        <div class="field"><label>Başvuru Tarihi</label><input id="mBasvuruTarihi" type="date"/></div>
+        <div class="field"><label>Başvuru Ücreti (USD)</label><input id="mBasvuruUcreti" type="number" min="0" step="0.01" placeholder="Örn: 50"/></div>
+        <div class="field"><label>Randevu Tarihi</label><input id="mRandevuTarihi" type="date"/></div>
+        <div class="field"><label>İkamet Kartı Teslim Tarihi</label><input id="mKartTeslim" type="date"/></div>
+        <div class="field"><label>Yeni İkamet Bitiş Tarihi (kart geldiyse)</label><input id="mYeniBitis" type="date"/></div>
+        <div class="field"><label>Dil Kursu Belgesi Gerekli mi?</label>
+          <select id="mDilKursuGerekli"><option value="hayir">Hayır</option><option value="evet">Evet</option></select>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <!-- 3) BELGELER -->
+      <div class="grid">
+        <div class="field">
+          <label>4 Adet Biyometrik Fotoğraf (çoklu)</label>
+          <input id="mFoto" type="file" multiple accept="image/*"/>
+          <div class="muted">Storage: <code>ikamet-dosyalar/{uid}/foto-*.jpg</code></div>
+        </div>
+        <div class="field">
+          <label>Ödeme Dekontu (PDF/JPG/PNG)</label>
+          <input id="mDekont" type="file" accept=".pdf,image/*"/>
+          <div class="muted">Storage: <code>ikamet-dosyalar/{uid}/dekont</code></div>
+        </div>
+        <div class="field">
+          <label>Dil Kursu Belgesi (opsiyonel)</label>
+          <input id="mDilBelge" type="file" accept=".pdf,image/*"/>
+          <div class="muted">Storage: <code>ikamet-dosyalar/{uid}/dil-kursu</code></div>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <!-- 4) ÖZET / HESAPLAMALAR -->
+      <div class="row" style="justify-content:space-between">
+        <div class="chips">
+          <span class="chip" id="mAcilikChip">Başvuru açılış: —</span>
+          <span class="chip" id="mKalanGunChip">Kalan gün: —</span>
+          <span class="chip" id="mCezaChip">Ceza: —</span>
+        </div>
+        <div class="actions">
+          <button id="btnSil" class="danger">Kaydı Sil</button>
+          <button id="btnKaydet" class="primary">Kaydet</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  /* ================== PARAMETRELER ================== */
+  const APPLICATION_OPEN_BY_MONTHS = 2;   // 2 ay önce
+  const LATE_BASE_USD = 10;               // ilk etap ceza
+  const LATE_DAILY_INCREMENT_USD = 10;    // her geciken gün artış
+
+  /* ================== YARDIMCI ================== */
+  const $ = (sel) => document.querySelector(sel);
+  function toDate(val){ if(!val) return null; const d=new Date(val); if(Number.isNaN(+d)) return null; d.setHours(12,0,0,0); return d; }
+  function fmt(d){ if(!d) return ""; const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${day}`; }
+  function addMonths(date, months){ const d=new Date(date); d.setMonth(d.getMonth()+months); if(d.getDate()!==date.getDate()){ d.setDate(0); } return d; }
+  function computeApplicationOpenDateByMonths(bitis){ if(!bitis) return null; return addMonths(bitis, -APPLICATION_OPEN_BY_MONTHS); }
+  function daysLeft(bitis){ if(!bitis) return null; const today=new Date(); today.setHours(0,0,0,0); const d=new Date(bitis); d.setHours(0,0,0,0); return Math.round((d - today)/86400000); }
+  function classify(days){ if(days===null) return "expired"; if(days<0) return "expired"; if(days<=29) return "urgent"; if(days<=60) return "soon"; return "ok"; }
+  function statusLabel(cls){ return {ok:"Yeşil",soon:"Sarı",urgent:"Kırmızı",expired:"Süresi doldu"}[cls]||"-"; }
+  function computeLatePenaltyUSD(bitis, basvuruTarihi){
+    if(!bitis || !basvuruTarihi) return 0;
+    const dBitis=new Date(bitis); dBitis.setHours(0,0,0,0);
+    const dBasv=new Date(basvuruTarihi); dBasv.setHours(0,0,0,0);
+    if(dBasv<=dBitis) return 0;
+    const gecikmeGun=Math.round((dBasv-dBitis)/86400000);
+    return LATE_BASE_USD + (gecikmeGun * LATE_DAILY_INCREMENT_USD);
+  }
+  function countdownLabel(randevu){
+    if(!randevu) return "-";
+    const d=new Date(randevu); d.setHours(0,0,0,0);
+    const t=new Date(); t.setHours(0,0,0,0);
+    const diff=Math.round((d - t)/86400000);
+    if(diff<0) return "Geçti"; if(diff===0) return "Bugün"; return `${diff}g`;
+  }
+
+  /* ================== AUTH / DB ================== */
+  const auth = firebase.auth();
+  const db = window.db;
+  const storage = firebase.storage();
+  let currentUser = null;
+
+  auth.onAuthStateChanged(async (u)=>{
+    if(!u){ location.href="../index.html"; return; }
+    currentUser = u;
+
+    // log
+    try{ await db.collection("sayfa_loglari").add({uid:u.uid,sayfa:"ikamet-takip",zaman:firebase.firestore.FieldValue.serverTimestamp(),userAgent:navigator.userAgent}); }catch(_){}
+
+    await initPage();
+  });
+
+  $("#btnSignOut").addEventListener("click", ()=>auth.signOut());
+
+  /* ================== SAYFA DURUMU ================== */
+  let DEVRE_LISTESI = [];  // talebeler/{devre} doc ID'leri
+  let aktifDevre = "";
+  let kayitlar = [];
+
+  async function initPage(){
+    await loadDevrelerFromTalebeler();
+    fillDevreSelects();
+    bindEvents();
+    await refreshData();
+  }
+
+  // talebeler/{devre} doc'ları listele
+  async function loadDevrelerFromTalebeler(){
+    DEVRE_LISTESI = [];
+    try{
+      const snap = await db.collection("talebeler").get();
+      snap.forEach(d=> DEVRE_LISTESI.push(d.id));
+      DEVRE_LISTESI.sort((a,b)=> a.localeCompare(b,'tr'));
+    }catch(e){ console.warn("Devre listesi okunamadı:", e); }
+    aktifDevre = DEVRE_LISTESI[0] || "";
+  }
+
+  function fillDevreSelects(){
+    const devreSelect = $("#devreSelect");
+    const mDevre = $("#mDevre");
+    devreSelect.innerHTML = `<option value="">Devre seçin…</option>`;
+    mDevre.innerHTML = ``;
+    DEVRE_LISTESI.forEach(d=>{
+      const o1=document.createElement("option"); o1.value=d; o1.textContent=d; devreSelect.appendChild(o1);
+      const o2=document.createElement("option"); o2.value=d; o2.textContent=d; mDevre.appendChild(o2);
+    });
+    devreSelect.value = aktifDevre || "";
+    mDevre.value = aktifDevre || "";
+  }
+
+  function bindEvents(){
+    $("#btnRefresh").addEventListener("click", refreshData);
+    $("#devreSelect").addEventListener("change", async (e)=>{ aktifDevre = e.target.value; await refreshData(); });
+    $("#statusSelect").addEventListener("change", renderTable);
+    $("#searchInput").addEventListener("input", renderTable);
+    $("#btnYeni").addEventListener("click", () => openModal());
+
+    $("#modalClose").addEventListener("click", closeModal);
+    $("#btnKaydet").addEventListener("click", saveModal);
+    $("#btnSil").addEventListener("click", deleteRecord);
+
+    // Modal içerisindeki iş akışı
+    $("#mDevre").addEventListener("change", async ()=>{
+      await populateTalebeListByDevre($("#mDevre").value);
+      resetTalebeDetailFields();
+    });
+    $("#mTalebe").addEventListener("change", async ()=>{
+      const uid = $("#mTalebe").value;
+      if(uid) await prefillFromSelectedTalebe($("#mDevre").value, uid);
+    });
+
+    $("#mBitis").addEventListener("change", updateChips);
+    $("#mBasvuruTarihi").addEventListener("change", updateChips);
+  }
+
+  async function refreshData(){
+    if(!aktifDevre){
+      $("#tbody").innerHTML = `<tr><td colspan="10">Lütfen devre seçin.</td></tr>`;
+      renderKPIs();
+      return;
+    }
+    const base = db.collection("talebeler").doc(aktifDevre).collection("ogrenciler");
+    const list = [];
+    const snap = await base.get();
+
+    for (const doc of snap.docs){
+      const uid = doc.id;
+      // temel
+      let temel = {};
+      try{
+        const b = await base.doc(uid).collection("bilgiler").doc("temel").get();
+        if(b.exists) temel = b.data();
+      }catch(_){}
+      // ikamet
+      let ik = {};
+      try{
+        const i = await base.doc(uid).collection("ikamet").doc("durum").get();
+        if(i.exists) ik = i.data();
+      }catch(_){}
+
+      const bitis = ik.bitisTarihi || null;
+      const dBitis = toDate(bitis);
+      const kalan = dBitis ? daysLeft(dBitis) : null;
+      const cls = classify(kalan);
+      const acilis = dBitis ? computeApplicationOpenDateByMonths(dBitis) : null;
+
+      list.push({
+        uid, devre: aktifDevre,
+        adSoyad: temel.adSoyad || "", kurs: temel.kurs || temel.geldigiKurs || "",
+        kimlik: temel.kimlik || temel.ykn || temel.tckn || "",
+        iletisim: temel.iletisim || temel.tel || temel.email || "",
+        trGiris: temel.trGiris || temel.turkiyeGirisTarihi || ik.trGiris || null,
+        durum: temel.durum || "", ulke: temel.ulke || "",
+        bitis, basvuruYapildi: !!ik.basvuruYapildi, basvuruTarihi: ik.basvuruTarihi||null,
+        basvuruUcreti: ik.basvuruUcreti ?? null,
+        randevuTarihi: ik.randevuTarihi||null, kartTeslim: ik.kartTeslimTarihi||null,
+        yeniBitis: ik.yeniBitisTarihi||null, dilKursuGerekli: !!ik.dilKursuGerekli,
+        acilis: acilis ? fmt(acilis) : "",
+        kalan, cls,
+        fotoUrls: ik.fotoUrls || [], dekontUrl: ik.dekontUrl || "", dilBelgeUrl: ik.dilBelgeUrl || ""
+      });
+    }
+
+    kayitlar = list.sort((a,b)=>{
+      const ak = a.kalan ?? 9999, bk = b.kalan ?? 9999;
+      if(ak!==bk) return ak-bk;
+      return (a.adSoyad||"").localeCompare(b.adSoyad||"","tr");
+    });
+
+    renderKPIs();
+    renderTable();
+  }
+
+  function renderKPIs(){
+    const total = kayitlar.length;
+    const soon = kayitlar.filter(x=> x.kalan !== null && x.kalan <= 60 && x.kalan >= 30).length;
+    const urgent = kayitlar.filter(x=> x.kalan !== null && x.kalan <= 29 && x.kalan >= 0).length;
+    const expired = kayitlar.filter(x=> x.kalan !== null && x.kalan < 0).length;
+    $("#kpiTotal").textContent = total;
+    $("#kpiSoon").textContent = soon;
+    $("#kpiUrgent").textContent = urgent;
+    $("#kpiExpired").textContent = expired;
+  }
+
+  function renderTable(){
+    const statusFilter = $("#statusSelect").value;
+    const q = ($("#searchInput").value||"").toLowerCase().trim();
+    const rows = kayitlar.filter(it=>{
+      if(statusFilter && it.cls !== statusFilter) return false;
+      if(q){
+        const haystack = [it.adSoyad||"",it.kurs||"",it.kimlik||"",it.iletisim||"",it.ulke||""].join(" ").toLowerCase();
+        if(!haystack.includes(q)) return false;
+      }
+      return true;
+    });
+
+    const tbody = $("#tbody");
+    if(rows.length===0){ tbody.innerHTML=`<tr><td colspan="10">Kayıt bulunamadı.</td></tr>`; return; }
+
+    tbody.innerHTML = rows.map((it,idx)=>{
+      const randevu = it.randevuTarihi ? `${it.randevuTarihi} (${countdownLabel(it.randevuTarihi)})` : "-";
+      const statusClass = `status ${it.cls}`;
+      const statusText = statusLabel(it.cls);
+      const kalan = (it.kalan===null) ? "-" : it.kalan+"g";
+      return `
+        <tr>
+          <td>${idx+1}</td>
+          <td><strong>${it.adSoyad||"-"}</strong><div class="muted">${it.kimlik||""}</div></td>
+          <td>${it.kurs||"-"}</td>
+          <td>${it.trGiris||"-"}</td>
+          <td>${it.bitis||"-"}</td>
+          <td>${it.acilis||"-"}</td>
+          <td>${kalan}</td>
+          <td><span class="${statusClass}">${statusText}</span></td>
+          <td>${randevu}</td>
+          <td class="actions">
+            <button class="ghost" data-action="detay" data-uid="${it.uid}">Detay</button>
+            <button class="primary" data-action="duzenle" data-uid="${it.uid}">Düzenle</button>
+          </td>
+        </tr>`;
+    }).join("");
+
+    tbody.querySelectorAll("button[data-action]").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const uid = btn.getAttribute("data-uid");
+        const rec = kayitlar.find(x=>x.uid===uid);
+        if(!rec) return;
+        openModal(rec, btn.getAttribute("data-action")==="detay");
+      });
+    });
+  }
+
+  /* ================== MODAL ================== */
+  let modalReadOnly = false;
+
+  async function populateTalebeListByDevre(devre){
+    const sel = $("#mTalebe");
+    sel.innerHTML = `<option value="">Yükleniyor…</option>`;
+    if(!devre){ sel.innerHTML = `<option value="">Önce devre seçin…</option>`; return; }
+
+    const base = db.collection("talebeler").doc(devre).collection("ogrenciler");
+    const snap = await base.get();
+    const items = [];
+    for (const d of snap.docs){
+      const uid = d.id;
+      let temel={};
+      try{
+        const t = await base.doc(uid).collection("bilgiler").doc("temel").get();
+        if(t.exists) temel=t.data();
+      }catch(_){}
+      const durum = (temel.durum||"").toLowerCase();
+      if(durum==="muhacir"){
+        items.push({uid, ad:(temel.adSoyad||"İsimsiz"), kimlik: temel.kimlik||temel.ykn||temel.tckn||""});
+      }
+    }
+    if(items.length===0){
+      sel.innerHTML = `<option value="">Muhacir talebe bulunamadı</option>`;
+      return;
+    }
+    items.sort((a,b)=> a.ad.localeCompare(b.ad,'tr'));
+    sel.innerHTML = `<option value="">Talebe seçin…</option>` + items.map(it=>`<option value="${it.uid}">${it.ad} ${it.kimlik?('('+it.kimlik+')'):''}</option>`).join("");
+  }
+
+  function resetTalebeDetailFields(){
+    $("#mUID").value = ""; $("#mAdSoyad").value=""; $("#mDurum").value="";
+    $("#mUlke").value=""; $("#mKurs").value=""; $("#mKimlik").value="";
+    $("#mIletisim").value=""; $("#mTrGiris").value="";
+    $("#mBitis").value=""; $("#mBasvuruYapildi").value="hayir"; $("#mBasvuruTarihi").value="";
+    $("#mBasvuruUcreti").value=""; $("#mRandevuTarihi").value=""; $("#mKartTeslim").value="";
+    $("#mYeniBitis").value=""; $("#mDilKursuGerekli").value="hayir";
+    $("#mFoto").value=""; $("#mDekont").value=""; $("#mDilBelge").value="";
+    updateChips();
+  }
+
+  async function prefillFromSelectedTalebe(devre, uid){
+    if(!devre || !uid) return;
+    const base = db.collection("talebeler").doc(devre).collection("ogrenciler").doc(uid);
+    let temel={}, ik={};
+    try{
+      const t = await base.collection("bilgiler").doc("temel").get();
+      if(t.exists) temel=t.data();
+    }catch(_){}
+    try{
+      const i = await base.collection("ikamet").doc("durum").get();
+      if(i.exists) ik=i.data();
+    }catch(_){}
+
+    $("#mUID").value = uid;
+    $("#mAdSoyad").value = temel.adSoyad || "";
+    $("#mDurum").value  = temel.durum || "Muhacir";
+    $("#mUlke").value   = temel.ulke || "";
+    $("#mKurs").value   = temel.kurs || temel.geldigiKurs || "";
+    $("#mKimlik").value = temel.kimlik || temel.ykn || temel.tckn || "";
+    $("#mIletisim").value = temel.iletisim || temel.tel || temel.email || "";
+    $("#mTrGiris").value  = temel.trGiris || temel.turkiyeGirisTarihi || "";
+
+    $("#mBitis").value = ik.bitisTarihi || "";
+    $("#mBasvuruYapildi").value = ik.basvuruYapildi ? "evet" : "hayir";
+    $("#mBasvuruTarihi").value = ik.basvuruTarihi || "";
+    $("#mBasvuruUcreti").value = (ik.basvuruUcreti ?? "");
+    $("#mRandevuTarihi").value = ik.randevuTarihi || "";
+    $("#mKartTeslim").value = ik.kartTeslimTarihi || "";
+    $("#mYeniBitis").value = ik.yeniBitisTarihi || "";
+    $("#mDilKursuGerekli").value = ik.dilKursuGerekli ? "evet" : "hayir";
+
+    updateChips();
+  }
+
+  function openModal(rec=null, readOnly=false){
+    modalReadOnly = !!readOnly;
+    $("#modalTitle").textContent = readOnly ? "İkamet Detayı" : (rec ? "İkamet Düzenle" : "İkamet Kaydı / Düzenle");
+    $("#modalBackdrop").style.display = "flex";
+
+    // Devre select doldur
+    const mDevre = $("#mDevre");
+    if(!mDevre.options.length){
+      DEVRE_LISTESI.forEach(d=>{ const o=document.createElement("option"); o.value=d; o.textContent=d; mDevre.appendChild(o); });
+    }
+    // Varsayılan: aktif devre
+    $("#mDevre").value = rec?.devre || aktifDevre || "";
+
+    // Talebe listesi (Muhacir filtresi)
+    populateTalebeListByDevre($("#mDevre").value).then(()=>{
+      if(rec?.uid){
+        $("#mTalebe").value = rec.uid;
+      }
+    });
+
+    if(rec){
+      // Var olan kayıtla alanları doldur
+      $("#mUID").value = rec.uid || "";
+      $("#mAdSoyad").value = rec.adSoyad || "";
+      $("#mDurum").value = rec.durum || "Muhacir";
+      $("#mUlke").value = rec.ulke || "";
+      $("#mKurs").value = rec.kurs || "";
+      $("#mKimlik").value = rec.kimlik || "";
+      $("#mIletisim").value = rec.iletisim || "";
+      $("#mTrGiris").value = rec.trGiris || "";
+      $("#mBitis").value = rec.bitis || "";
+      $("#mBasvuruYapildi").value = rec.basvuruYapildi ? "evet" : "hayir";
+      $("#mBasvuruTarihi").value = rec.basvuruTarihi || "";
+      $("#mBasvuruUcreti").value = (rec.basvuruUcreti ?? "");
+      $("#mRandevuTarihi").value = rec.randevuTarihi || "";
+      $("#mKartTeslim").value = rec.kartTeslim || "";
+      $("#mYeniBitis").value = rec.yeniBitis || "";
+      $("#mDilKursuGerekli").value = rec.dilKursuGerekli ? "evet" : "hayir";
+      updateChips();
+    }else{
+      resetTalebeDetailFields();
+    }
+
+    // Readonly kilidi
+    const disable = (sel, lock)=>{ const el=$(sel); if(el) el.disabled = lock; }
+    [
+      "#mDevre","#mTalebe","#mUID","#mAdSoyad","#mDurum","#mUlke","#mKurs","#mKimlik","#mIletisim",
+      "#mTrGiris","#mBitis","#mBasvuruYapildi","#mBasvuruTarihi","#mBasvuruUcreti",
+      "#mRandevuTarihi","#mKartTeslim","#mYeniBitis","#mDilKursuGerekli",
+      "#mFoto","#mDekont","#mDilBelge"
+    ].forEach(sel=>disable(sel, readOnly));
+    $("#btnKaydet").style.display = readOnly ? "none" : "inline-flex";
+    $("#btnSil").style.display = (readOnly || !rec) ? "none" : "inline-flex";
+  }
+
+  function closeModal(){ $("#modalBackdrop").style.display = "none"; }
+
+  function updateChips(){
+    const bitis = toDate($("#mBitis").value);
+    const basvuru = toDate($("#mBasvuruTarihi").value);
+    const acilis = bitis ? computeApplicationOpenDateByMonths(bitis) : null;
+    const kalan = bitis ? daysLeft(bitis) : null;
+    const ceza = computeLatePenaltyUSD(bitis, basvuru);
+    $("#mAcilikChip").textContent = `Başvuru açılış: ${acilis? fmt(acilis) : "—"}`;
+    $("#mKalanGunChip").textContent = `Kalan gün: ${kalan===null?"—":kalan}`;
+    $("#mCezaChip").textContent = `Ceza (öngörü): ${ceza ? (ceza+" USD") : "—"}`;
+  }
+
+  async function saveModal(){
+    const devre = $("#mDevre").value.trim();
+    let uid = $("#mUID").value.trim();
+    const adSoyad = $("#mAdSoyad").value.trim();
+    const durum = ($("#mDurum").value||"").trim() || "Muhacir";
+    const ulke = $("#mUlke").value.trim();
+    const kurs = $("#mKurs").value.trim();
+    const kimlik = $("#mKimlik").value.trim();
+    const iletisim = $("#mIletisim").value.trim();
+    const trGiris = $("#mTrGiris").value || null;
+
+    const bitis = $("#mBitis").value;
+    const basvuruYapildi = $("#mBasvuruYapildi").value === "evet";
+    const basvuruTarihi = $("#mBasvuruTarihi").value || null;
+    const basvuruUcreti = $("#mBasvuruUcreti").value ? Number($("#mBasvuruUcreti").value) : null;
+    const randevuTarihi = $("#mRandevuTarihi").value || null;
+    const kartTeslimTarihi = $("#mKartTeslim").value || null;
+    const yeniBitisTarihi = $("#mYeniBitis").value || null;
+    const dilKursuGerekli = $("#mDilKursuGerekli").value === "evet";
+
+    if(!devre){ alert("Devre seçiniz."); return; }
+    if(!bitis){ alert("İkamet bitiş tarihi zorunludur."); return; }
+
+    const base = db.collection("talebeler").doc(devre).collection("ogrenciler");
+
+    // UID yoksa yeni doc oluştur
+    if(!uid){ uid = base.doc().id; }
+
+    // Temel bilgiler (durum, ülke vb. dahil)
+    await base.doc(uid).collection("bilgiler").doc("temel").set({
+      adSoyad, durum, ulke, kurs, kimlik, iletisim, trGiris
+    }, {merge:true});
+
+    // İkamet
+    const ikRef = base.doc(uid).collection("ikamet").doc("durum");
+    const ikData = {
+      bitisTarihi: bitis,
+      basvuruYapildi,
+      basvuruTarihi,
+      basvuruUcreti,                  // <<< YENİ ALAN
+      randevuTarihi,
+      kartTeslimTarihi,
+      yeniBitisTarihi,
+      dilKursuGerekli
+    };
+    await ikRef.set(ikData, {merge:true});
+
+    // Belgeler
+    const fotoFiles = $("#mFoto").files;
+    const dekontFile = $("#mDekont").files[0] || null;
+    const dilBelgeFile = $("#mDilBelge").files[0] || null;
+
+    const urlAggregate = { fotoUrls:[], dekontUrl:null, dilBelgeUrl:null };
+
+    if(fotoFiles && fotoFiles.length){
+      const uploads = [];
+      for(let i=0;i<fotoFiles.length;i++){
+        const f=fotoFiles[i];
+        const path=`ikamet-dosyalar/${uid}/foto-${Date.now()}-${i}.${(f.name.split(".").pop()||"jpg")}`;
+        const ref=storage.ref(path);
+        uploads.push(ref.put(f).then(()=>ref.getDownloadURL()));
+      }
+      urlAggregate.fotoUrls = await Promise.all(uploads);
+    }
+    if(dekontFile){
+      const path=`ikamet-dosyalar/${uid}/dekont.${(dekontFile.name.split(".").pop()||"pdf")}`;
+      const ref=storage.ref(path); await ref.put(dekontFile); urlAggregate.dekontUrl=await ref.getDownloadURL();
+    }
+    if(dilBelgeFile){
+      const path=`ikamet-dosyalar/${uid}/dil-kursu.${(dilBelgeFile.name.split(".").pop()||"pdf")}`;
+      const ref=storage.ref(path); await ref.put(dilBelgeFile); urlAggregate.dilBelgeUrl=await ref.getDownloadURL();
+    }
+    if(urlAggregate.fotoUrls.length || urlAggregate.dekontUrl || urlAggregate.dilBelgeUrl){
+      await ikRef.set(urlAggregate,{merge:true});
+    }
+
+    // Log
+    await db.collection("islem_loglari").add({
+      uid: currentUser.uid, hedefUID: uid, devre, tur: "ikamet-kaydet",
+      zaman: firebase.firestore.FieldValue.serverTimestamp(),
+      detay: { adSoyad, bitis, basvuruUcreti }
+    });
+
+    alert("Kaydedildi.");
+    closeModal();
+    await refreshData();
+  }
+
+  async function deleteRecord(){
+    if(!confirm("Bu talebenin İKAMET kaydını silmek istiyor musunuz? (Temel bilgiler silinmez)")) return;
+    const devre = $("#mDevre").value.trim();
+    const uid = $("#mUID").value.trim();
+    if(!devre || !uid){ alert("Devre ve UID gerekli."); return; }
+    const ikRef = db.collection("talebeler").doc(devre).collection("ogrenciler").doc(uid).collection("ikamet").doc("durum");
+    await ikRef.delete();
+
+    await db.collection("islem_loglari").add({
+      uid: currentUser.uid, hedefUID: uid, devre, tur: "ikamet-sil",
+      zaman: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    alert("İkamet kaydı silindi.");
+    closeModal();
+    await refreshData();
+  }
+
+})();
+</script>
+</body>
+</html>

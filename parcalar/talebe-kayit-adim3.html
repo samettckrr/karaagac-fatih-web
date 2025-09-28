@@ -2,26 +2,16 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
-  <title>Adres Bilgileri - Talebe Kayıt</title>
+  <title>Adres Bilgileri - Talebe Kayıt (Adım 3)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Sadece mevcut form.css'i kullanıyoruz -->
   <link rel="stylesheet" href="../css/form.css" />
   <style>
-    .toast-bildirim {
-      display: none;
-      position: fixed;
-      bottom: 30px;
-      left: 50%;
-      transform: translateX(-50%);
-      background-color: #2d6a4f;
-      color: white;
-      padding: 12px 20px;
-      border-radius: 8px;
-      font-size: 15px;
-      z-index: 9999;
+    .toast-bildirim{
+      display:none; position:fixed; bottom:30px; left:50%; transform:translateX(-50%);
+      background:#2d6a4f; color:#fff; padding:12px 20px; border-radius:8px; font-size:15px; z-index:9999
     }
-    .toast-bildirim.hata {
-      background-color: #c0392b;
-    }
+    .toast-bildirim.hata{ background:#c0392b }
   </style>
 </head>
 <body>
@@ -32,7 +22,7 @@
     <p>3. Aşama – Adres Bilgileri</p>
   </div>
 
-  <div class="form-alani">
+  <div class="form-alani" id="adresForm">
     <label for="adresIl">İl</label>
     <input type="text" id="adresIl" placeholder="Örn: İstanbul" />
 
@@ -47,15 +37,133 @@
   </div>
 
   <div class="ilerleme-paneli">
-    <button type="button" class="geri-buton" onclick="geriGelAdim2()">◀ Geri</button>
+    <button type="button" class="geri-buton" id="btnGeri">◀ Geri</button>
     <div class="form-asama-gostergesi">Adım 3 / 6</div>
-    <button type="button" class="ileri-buton" onclick="ilerleAdim3()">İlerle ▶</button>
+    <button type="button" class="ileri-buton" id="btnIlerle">İlerle ▶</button>
   </div>
 </div>
 
 <div id="toast" class="toast-bildirim"></div>
 
-<script src="js/talebe-kayit-adim3.js"></script>
+<!-- Firebase compat -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="../js/firebase/firebase-init.js"></script>
+
+<script>
+/* =========================================================
+   Adım-3 — Adres Bilgileri (tek dosya, aynı UID/şema)
+   Firestore:
+     talebeler/{devre}/öğrenciler/{uid}              (meta merge)
+       └─ bilgiler/adres (doküman)
+   Yerel anahtarlar:
+     talebeUID_v1, talebeDevre_v1, talebeDraft_adres_v1
+========================================================= */
+(function(){
+  const UID_KEY   = 'talebeUID_v1';
+  const DEVRE_KEY = 'talebeDevre_v1';
+  const DRAFT_KEY = 'talebeDraft_adres_v1';
+
+  const db = window.db || firebase.firestore();
+  const $  = s => document.querySelector(s);
+
+  // Adım-1 yapılmadan gelindiyse geri gönder
+  const uid   = localStorage.getItem(UID_KEY);
+  const devre = localStorage.getItem(DEVRE_KEY);
+  if(!uid || !devre){
+    toast('Önce Adım 1’i tamamlayın.', true);
+    setTimeout(()=> location.href='talebe-kayit-adim1.html', 900);
+    return;
+  }
+
+  // Taslak yardımcıları
+  function getDraft(){ try{ return JSON.parse(localStorage.getItem(DRAFT_KEY)||'{}'); }catch(_){ return {}; } }
+  function setDraft(o){ localStorage.setItem(DRAFT_KEY, JSON.stringify(o||{})); }
+
+  // Alan eşlemesi
+  const fields = ['adresIl','adresIlce','adresMahalle','adresAcik'];
+
+  // Taslaktan doldur
+  (function restore(){
+    const d = getDraft();
+    fields.forEach(id=>{ const el = document.getElementById(id); if(el && d[id]!=null) el.value = d[id]; });
+  })();
+
+  // Otomatik taslak
+  fields.forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    ['input','change'].forEach(ev=>{
+      el.addEventListener(ev, ()=>{
+        const d = getDraft(); d[id] = el.value; setDraft(d);
+      });
+    });
+  });
+
+  // Firestore yardımcıları
+  function talebeKokRef(devre, uid){
+    return db.collection('talebeler').doc(devre).collection('öğrenciler').doc(uid);
+  }
+  function talebeAdresRef(devre, uid){
+    return talebeKokRef(devre, uid).collection('bilgiler').doc('adres');
+  }
+
+  // Geri / İleri
+  document.getElementById('btnGeri').addEventListener('click', ()=> location.href='talebe-kayit-adim2.html');
+  document.getElementById('btnIlerle').addEventListener('click', ilerleAdim3);
+
+  async function ilerleAdim3(){
+    const d = getDraft();
+    // Zorunlu alanlar
+    const required = {
+      adresIl: 'İl',
+      adresIlce: 'İlçe',
+      adresMahalle: 'Mahalle',
+      adresAcik: 'Açık Adres'
+    };
+    const eksikKey = Object.keys(required).find(k => !d[k] || String(d[k]).trim()==='');
+    if(eksikKey){ toast(`Lütfen zorunlu alanı doldurun: ${required[eksikKey]}`, true); return; }
+
+    const adres = {
+      uid, devre,
+      adresIl: d.adresIl || '',
+      adresIlce: d.adresIlce || '',
+      adresMahalle: d.adresMahalle || '',
+      adresAcik: d.adresAcik || '',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    try{
+      // 1) Kök dokümana kısa özet
+      await talebeKokRef(devre, uid).set({
+        adresIl: adres.adresIl,
+        adresIlce: adres.adresIlce,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge:true });
+
+      // 2) Ayrıntı doküman
+      await talebeAdresRef(devre, uid).set(adres, { merge:true });
+
+      toast('Adres bilgileri kaydedildi. Adım 4’e geçiliyor...');
+      setTimeout(()=> location.href='talebe-kayit-adim4.html', 500);
+    }catch(e){
+      console.error(e);
+      toast('Kayıt sırasında bir hata oluştu.', true);
+    }
+  }
+
+  function toast(msg, isErr=false){
+    const t = document.getElementById('toast'); if(!t) return alert(msg);
+    t.textContent = msg;
+    t.classList.toggle('hata', !!isErr);
+    t.style.display = 'block';
+    clearTimeout(window.__t3);
+    window.__t3 = setTimeout(()=> t.style.display='none', 1800);
+  }
+})();
+</script>
 
 </body>
 </html>

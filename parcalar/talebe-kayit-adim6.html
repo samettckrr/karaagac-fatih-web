@@ -1,4 +1,19 @@
-<link rel="stylesheet" href="../css/form.css" />
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Vazife Bilgileri - Talebe Kayıt (Adım 6)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="../css/form.css" />
+  <style>
+    .toast-bildirim{
+      display:none; position:fixed; left:50%; bottom:28px; transform:translateX(-50%);
+      background:#2d6a4f; color:#fff; padding:12px 18px; border-radius:10px; font-size:14px; z-index:9999
+    }
+    .toast-bildirim.hata{ background:#c0392b }
+  </style>
+</head>
+<body>
 
 <div class="kayıt-karti">
   <div class="kart-baslik">
@@ -10,15 +25,15 @@
     <div class="form-grup">
       <label>İhzari Dönemde Yaptığı Vazifeler</label>
       <div id="vazifeCheckboxGrup" class="checkbox-dikey">
-        <label><input type="checkbox" value="Başkan"> Başkan</label>
-        <label><input type="checkbox" value="Yemekhane Başkanı"> Yemekhane Başkanı</label>
-        <label><input type="checkbox" value="Çaycı"> Çaycı</label>
-        <label><input type="checkbox" value="Kantinci"> Kantinci</label>
-        <label><input type="checkbox" value="Nöbetçi"> Nöbetçi</label>
-        <label><input type="checkbox" value="Çamaşırhaneci"> Çamaşırhaneci</label>
-        <label><input type="checkbox" value="Diğer" id="digerCheckbox" onchange="digerGoster()"> Diğer</label>
+        <label><input type="checkbox" value="Başkan"              class="vazifeCB"> Başkan</label>
+        <label><input type="checkbox" value="Yemekhane Başkanı"   class="vazifeCB"> Yemekhane Başkanı</label>
+        <label><input type="checkbox" value="Çaycı"               class="vazifeCB"> Çaycı</label>
+        <label><input type="checkbox" value="Kantinci"            class="vazifeCB"> Kantinci</label>
+        <label><input type="checkbox" value="Nöbetçi"             class="vazifeCB"> Nöbetçi</label>
+        <label><input type="checkbox" value="Çamaşırhaneci"       class="vazifeCB"> Çamaşırhaneci</label>
+        <label><input type="checkbox" value="Diğer" id="digerCheckbox" class="vazifeCB"> Diğer</label>
       </div>
-      <input type="text" id="digerInput" placeholder="Diğer vazifeyi yazınız..." style="display:none;">
+      <input type="text" id="digerInput" placeholder="Diğer vazifeyi yazınız..." style="display:none; margin-top:8px;">
     </div>
 
     <div class="form-grup">
@@ -32,17 +47,163 @@
   </div>
 
   <div class="ilerleme-paneli">
-    <button class="geri-buton" onclick="geriGelAdim5()">⬅ Geri</button>
-    <button class="ileri-buton" onclick="ilerleAdim6()">Kaydı Bitir ➡</button>
+    <button class="geri-buton" id="btnGeri">⬅ Geri</button>
+    <button class="ileri-buton" id="btnBitir">Kaydı Bitir ➡</button>
   </div>
 
   <div id="toast" class="toast-bildirim"></div>
 </div>
 
+<!-- Firebase compat -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="../js/firebase/firebase-init.js"></script>
+
 <script>
-  function digerGoster() {
-    const diger = document.getElementById("digerCheckbox");
-    const input = document.getElementById("digerInput");
-    input.style.display = diger.checked ? "block" : "none";
+/* =========================================================
+   Adım-6 — Vazife Bilgileri (tek dosya, aynı UID/şema)
+   Firestore:
+     talebeler/{devre}/öğrenciler/{uid}                  (meta merge: cumaKilabilir, vazifeSayisi)
+       └─ bilgiler/vazife (doküman: vazifeler[], diger, cumaKilabilir)
+   LocalStorage:
+     talebeUID_v1, talebeDevre_v1, talebeDraft_vazife_v1
+   Notlar:
+     - Zorunlu alan yok; boş da kaydedilebilir.
+     - "Diğer" işaretliyse metni ayrıca kaydedilir.
+========================================================= */
+(function(){
+  const UID_KEY   = 'talebeUID_v1';
+  const DEVRE_KEY = 'talebeDevre_v1';
+  const DRAFT_KEY = 'talebeDraft_vazife_v1';
+
+  const db = window.db || firebase.firestore();
+  const $  = s => document.querySelector(s);
+  const $$ = s => Array.from(document.querySelectorAll(s));
+
+  // Adım-1 kontrolü
+  const uid   = localStorage.getItem(UID_KEY);
+  const devre = localStorage.getItem(DEVRE_KEY);
+  if(!uid || !devre){
+    toast('Önce Adım 1’i tamamlayın.', true);
+    setTimeout(()=> location.href='talebe-kayit.html', 900);
+    return;
   }
+
+  // Diğer input görünürlüğü
+  const digerCB = $('#digerCheckbox');
+  const digerInput = $('#digerInput');
+  function syncDigerVisibility(){
+    digerInput.style.display = digerCB.checked ? 'block' : 'none';
+  }
+  digerCB.addEventListener('change', ()=>{ syncDigerVisibility(); saveDraft(); });
+
+  // Taslak yardımcıları
+  function getDraft(){ try{ return JSON.parse(localStorage.getItem(DRAFT_KEY)||'{}'); }catch(_){ return {}; } }
+  function setDraft(o){ localStorage.setItem(DRAFT_KEY, JSON.stringify(o||{})); }
+
+  function readUIToDraft(){
+    const selected = $$('.vazifeCB').filter(cb => cb.checked).map(cb => cb.value);
+    const draft = {
+      vazifeler: selected,
+      diger: digerInput.value || '',
+      cumaKilabilir: $('#cumaKilabilir').value || ''
+    };
+    return draft;
+  }
+  function applyDraftToUI(d){
+    // checkboxlar
+    if(Array.isArray(d.vazifeler)){
+      $$('.vazifeCB').forEach(cb => cb.checked = d.vazifeler.includes(cb.value));
+    }
+    // diğer
+    if(d.diger != null) digerInput.value = d.diger;
+    syncDigerVisibility();
+    // cuma
+    if(d.cumaKilabilir != null) $('#cumaKilabilir').value = d.cumaKilabilir;
+  }
+  function saveDraft(){
+    setDraft(readUIToDraft());
+  }
+
+  // Restore
+  (function restore(){
+    const d = getDraft();
+    applyDraftToUI(d);
+  })();
+
+  // Autosave bağla
+  $$('.vazifeCB').forEach(cb => cb.addEventListener('change', saveDraft));
+  $('#cumaKilabilir').addEventListener('change', saveDraft);
+  $('#digerInput').addEventListener('input', saveDraft);
+
+  // Firestore yardımcıları
+  function talebeKokRef(devre, uid){
+    return db.collection('talebeler').doc(devre).collection('öğrenciler').doc(uid);
+  }
+  function talebeVazifeRef(devre, uid){
+    return talebeKokRef(devre, uid).collection('bilgiler').doc('vazife');
+  }
+
+  // Gezinti
+  $('#btnGeri').addEventListener('click', ()=> location.href='talebe-kayit-adim5.html');
+  $('#btnBitir').addEventListener('click', ilerleAdim6);
+
+  async function ilerleAdim6(){
+    const d = readUIToDraft();
+    // "Diğer" seçili değilse diğer metni sıfırla (temizlik)
+    if(!d.vazifeler.includes('Diğer')) d.diger = '';
+
+    // Ayrıntı doküman
+    const vazifeDoc = {
+      uid, devre,
+      vazifeler: d.vazifeler,
+      diger: d.diger,
+      cumaKilabilir: d.cumaKilabilir,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    try{
+      // 1) Meta özet
+      await talebeKokRef(devre, uid).set({
+        cumaKilabilir: d.cumaKilabilir || '',
+        vazifeSayisi: Array.isArray(d.vazifeler) ? d.vazifeler.length : 0,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge:true });
+
+      // 2) Ayrıntı: bilgiler/vazife
+      await talebeVazifeRef(devre, uid).set(vazifeDoc, { merge:true });
+
+      // Tüm adım taslaklarını temizle (yeni kayıt için)
+      clearAllDrafts();
+
+      toast('Kayıt tamamlandı. Yeni kayıt için Adım 1’e yönlendiriliyorsunuz…');
+      setTimeout(()=> location.href='talebe-kayit.html', 700);
+    }catch(e){
+      console.error(e);
+      toast('Kayıt sırasında bir hata oluştu.', true);
+    }
+  }
+
+  function clearAllDrafts(){
+    const keys = Object.keys(localStorage).filter(k => /^talebeDraft_/.test(k));
+    keys.forEach(k => localStorage.removeItem(k));
+    // İstersen UID/DEVRE de sıfırlanır (yeni kayda temiz başlamak için):
+    localStorage.removeItem('talebeUID_v1');
+    localStorage.removeItem('talebeDevre_v1');
+  }
+
+  function toast(msg, isErr=false){
+    const t = document.getElementById('toast'); if(!t) return alert(msg);
+    t.textContent = msg;
+    t.classList.toggle('hata', !!isErr);
+    t.style.display = 'block';
+    clearTimeout(window.__t6);
+    window.__t6 = setTimeout(()=> t.style.display='none', 1800);
+  }
+})();
 </script>
+
+</body>
+</html>

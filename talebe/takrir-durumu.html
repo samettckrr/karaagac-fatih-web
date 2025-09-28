@@ -1,83 +1,342 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8">
-  <title>Ezber Takibi</title>
-  <link rel="icon" type="image/png" href="img/logo.png">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', sans-serif;
-      background-color: #f4f6f9;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      padding: 20px;
-    }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Takrir Takibi | Karaağaç Fatih</title>
+<link rel="icon" type="image/png" href="../img/logo.png" />
 
-    .calisma-karti {
-      background-color: #fff;
-      border: 2px dashed #ced4da;
-      border-radius: 16px;
-      padding: 30px;
-      max-width: 700px;
-      width: 100%;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-      text-align: center;
-    }
+<style>
+  :root{
+    --appbar-h:56px; --radius:14px; --shadow:0 12px 28px rgba(0,0,0,.14);
+    --bg:#0f172a; --bg2:#0b1324; --card:rgba(15,23,42,.92); --stroke:rgba(148,163,184,.18);
+    --text:#e5e7eb; --muted:#9aa4b2; --brand:#38bdf8; --brand2:#0ea5e9; --surface:rgba(2,6,23,.08);
+  }
+  @media (prefers-color-scheme: light){
+    :root{--bg:#eef6ff;--bg2:#f7fbff;--card:rgba(255,255,255,.95);--stroke:rgba(15,23,42,.12);
+      --text:#0b1220;--muted:#4b5563;--brand:#0ea5e9;--brand2:#0284c7;--surface:#eef3ff;}
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%; overflow-x:hidden;}
+  body{
+    margin:0; color:var(--text); font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Arial;
+    background:linear-gradient(140deg, var(--bg), var(--bg2) 60%);
+  }
+  .appbar{position:sticky; top:0; z-index:60; height:var(--appbar-h);
+    background:var(--card); backdrop-filter:blur(10px); border-bottom:1px solid var(--stroke);
+    display:flex; align-items:center; gap:10px; padding:0 12px}
+  .brand{display:flex; gap:10px; align-items:center; cursor:pointer}
+  .brand img{width:24px;height:24px} .brand span{font-weight:900}
+  .btn{border:1px solid var(--stroke); background:var(--card); color:var(--text); border-radius:999px; padding:8px 12px; cursor:pointer}
 
-    .calisma-karti img {
-      width: 100px;
-      height: 100px;
-      margin-bottom: 20px;
-      opacity: 0.85;
-    }
+  .container{max-width:1150px; margin:0 auto; padding:16px}
+  .card{background:var(--card); border:1px solid var(--stroke); border-radius:16px; box-shadow:var(--shadow); padding:14px; margin:14px 0}
+  .toolbar{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+  .pill{padding:6px 10px; border-radius:999px; border:1px solid var(--stroke); background:rgba(2,6,23,.12); font-size:12px}
+  input,select{padding:10px; border:1px solid var(--stroke); border-radius:10px; background:rgba(2,6,23,.12); color:var(--text)}
+  .tabs{display:flex; gap:8px; flex-wrap:wrap}
+  .tab{border:1px solid var(--stroke); background:rgba(2,6,23,.12); padding:8px 12px; border-radius:10px; cursor:pointer; font-weight:800}
+  .tab.active{background:linear-gradient(90deg,var(--brand2),var(--brand)); color:#fff; border-color:transparent}
 
-    .calisma-karti h2 {
-      font-size: 24px;
-      margin-bottom: 10px;
-      color: #343a40;
-    }
+  .table-wrap{overflow:auto; -webkit-overflow-scrolling:touch; border-radius:12px}
+  table{width:100%; border-collapse:collapse; table-layout:fixed; min-width:720px}
+  th,td{border-bottom:1px solid var(--stroke); padding:10px 8px; text-align:center; white-space:nowrap}
+  thead th{font-size:12px; color:var(--muted)}
+  tbody td:first-child, thead th:first-child{position:sticky; left:0; background:var(--card); text-align:left; font-weight:800}
+  .name{display:flex; align-items:center; gap:8px}
+  .status{display:inline-flex; width:28px; height:28px; align-items:center; justify-content:center; border-radius:8px; border:1px solid var(--stroke); cursor:pointer; user-select:none; margin:0 auto}
+  .status.ok{background:#08331f; border-color:#0c6; }
+  .status.warn{background:#3a2c00; border-color:#eab30855}
+  .status.mid{background:#2d1f2d; border-color:#d946ef55}
+  .status.bad{background:#3b0a0a; border-color:#ef444455}
+  .status.empty{opacity:.5}
+  .legend{display:flex; gap:10px; flex-wrap:wrap; font-size:12px; color:var(--muted)}
+  .legend .chip{display:inline-flex; gap:6px; align-items:center}
+  .legend .box{width:12px; height:12px; border-radius:4px; border:1px solid var(--stroke)}
+  .box.ok{background:#0b3; border-color:#0b3}
+  .box.warn{background:#eab308}
+  .box.mid{background:#d946ef}
+  .box.bad{background:#ef4444}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:rgba(2,6,23,.95);color:#fff;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px 12px;opacity:0;pointer-events:none;transition:opacity .25s, transform .25s;z-index:200}
+  .note-btn{font-size:11px; opacity:.7; cursor:pointer; margin-left:4px}
+  .note{font-size:11px; color:var(--muted)}
+</style>
 
-    .calisma-karti p {
-      font-size: 16px;
-      color: #495057;
-      margin-bottom: 6px;
-    }
+<!-- Firebase compat -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
-    .calisma-karti .alt-bilgi {
-      margin-top: 25px;
-      font-size: 14px;
-      color: #adb5bd;
-    }
-
-    @media (max-width: 600px) {
-      .calisma-karti {
-        padding: 20px;
-      }
-
-      .calisma-karti h2 {
-        font-size: 20px;
-      }
-
-      .calisma-karti p {
-        font-size: 15px;
-      }
-    }
-  </style>
+<!-- Projenizin Firebase init'i -->
+<script src="../js/firebase/firebase-init.js"></script>
 </head>
 <body>
 
-  <div class="calisma-karti">
-    <img src="https://cdn-icons-png.flaticon.com/512/1486/1486423.png" alt="Hazırlanıyor">
-    <h2>Ezber ve Ders Takip Sistemi Geliştiriliyor</h2>
-    <p>Bu bölümde her talebenin günlük ve haftalık ezber durumu kayıt altına alınacaktır.</p>
-    <p>Takrir edilen dersler, eksik kalan kısımlar, devamsızlıklar ve tamamlanan bölümler sistemli olarak işlenecektir.</p>
-    <p>Talebe performanslarını karşılaştırmalı değerlendirmek, eksik alanlara müdahale etmek artık daha kolay olacak.</p>
-    <div class="alt-bilgi">Güncelleme Tarihi: Temmuz 2025</div>
+<!-- APPBAR -->
+<div class="appbar">
+  <div class="brand" onclick="location.href='../panel.html'">
+    <img src="../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
   </div>
+  <div style="margin-left:auto; display:flex; gap:8px">
+    <button class="btn" onclick="logout()">Çıkış Yap</button>
+  </div>
+</div>
 
+<main class="container">
+  <!-- FİLTRELER -->
+  <section class="card">
+    <div class="toolbar">
+      <label class="pill">Dönem
+        <select id="selDonem">
+          <option>2023-2024</option>
+          <option selected>2024-2025</option>
+          <option>2025-2026</option>
+        </select>
+      </label>
+
+      <label class="pill">Hafta
+        <input type="week" id="inpWeek">
+      </label>
+
+      <input id="inpAra" type="text" placeholder="Talebe ara…" style="min-width:220px">
+
+      <div class="legend" style="margin-left:auto">
+        <span class="chip"><span class="box ok"></span> Verdi</span>
+        <span class="chip"><span class="box warn"></span> Mülahaza</span>
+        <span class="chip"><span class="box mid"></span> Yarım</span>
+        <span class="chip"><span class="box bad"></span> Vermedi</span>
+      </div>
+    </div>
+
+    <div id="dersTabs" class="tabs" style="margin-top:10px"></div>
+  </section>
+
+  <!-- TABLO -->
+  <section class="card">
+    <h3 style="margin:0 0 10px"><span id="titleHafta">—</span></h3>
+    <div class="table-wrap">
+      <table id="takrirTable">
+        <thead>
+          <tr>
+            <th>Talebe</th>
+            <th>Pzt</th><th>Salı</th><th>Çar</th><th>Per</th><th>Cuma</th><th>Cts</th><th>Paz</th>
+          </tr>
+        </thead>
+        <tbody id="tblBody"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  // ===== Firebase refs
+  const db=firebase.firestore(), auth=firebase.auth();
+
+  // ===== Ayarlar (ders listesi, plan günleri)
+  const DERSLER = [
+    {id:'akaid',     ad:'Akaid',     plan:[1,3,5]}, // 1=Pzt
+    {id:'fikih',     ad:'Fıkıh',     plan:[2,4]},
+    {id:'tefsir',    ad:'Tefsir',    plan:[1,3]},
+    {id:'hadis',     ad:'Hadis',     plan:[2,4]},
+    {id:'sarf',      ad:'Sarf',      plan:[6]},
+    {id:'nahiv',     ad:'Nahiv',     plan:[6]},
+    {id:'kiraat',    ad:'Kıraat',    plan:[7]},
+  ];
+
+  // ===== UI elemanları
+  const selDonem = document.getElementById('selDonem');
+  const inpWeek  = document.getElementById('inpWeek');
+  const inpAra   = document.getElementById('inpAra');
+  const tabsEl   = document.getElementById('dersTabs');
+  const tbody    = document.getElementById('tblBody');
+  const titleH   = document.getElementById('titleHafta');
+  const toastEl  = document.getElementById('toast');
+
+  // ===== Yardımcılar
+  function showToast(m){ toastEl.textContent=m; toastEl.style.opacity=1; toastEl.style.transform='translateX(-50%) translateY(0)';
+    clearTimeout(window.__to); window.__to=setTimeout(()=>{toastEl.style.opacity=0; toastEl.style.transform='translateX(-50%) translateY(20px)';},1500); }
+  const DURUMLAR = ['','verdi','mulahaza','yarim','vermedi'];
+  const SIMGE    = {'':'', verdi:'✓', mulahaza:'~', yarim:'½', vermedi:'×'};
+  const CLS      = {'':'empty', verdi:'ok', mulahaza:'warn', yarim:'mid', vermedi:'bad'};
+  const trColl   = new Intl.Collator('tr');
+
+  function cycle(v){ const i=DURUMLAR.indexOf(v); return DURUMLAR[(i+1) % DURUMLAR.length]; }
+
+  function weekDatesFromInput(weekStr){ // "2025-W40"
+    const [y, w] = weekStr.split('-W').map(Number);
+    // ISO: hafta Pazartesi başlar. Basit yaklaşım:
+    const simple = new Date(Date.UTC(y,0,1));
+    const day = simple.getUTCDay() || 7;
+    const monday = new Date(simple); monday.setUTCDate(simple.getUTCDate() + (1 - day) + (w-1)*7);
+    const res=[]; for(let i=0;i<7;i++){ const d=new Date(monday); d.setUTCDate(monday.getUTCDate()+i); res.push(d); }
+    return res;
+  }
+  function fmtISO(d){ const y=d.getUTCFullYear(), m=String(d.getUTCMonth()+1).padStart(2,'0'), da=String(d.getUTCDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
+  function weekKeyFromDate(d){ // ISO week key
+    const date=new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    const nDay = date.getUTCDay() || 7; date.setUTCDate(date.getUTCDate()+4-nDay);
+    const yStart=new Date(Date.UTC(date.getUTCFullYear(),0,1));
+    const weekNo=Math.ceil((((date-yStart)/86400000)+1)/7);
+    return `${date.getUTCFullYear()}-W${String(weekNo).padStart(2,'0')}`;
+  }
+
+  // ===== Global durum
+  let CURRENT_DERS = DERSLER[0].id;
+  let TALebeler = []; // {id, ad}
+  let HAFTA_ISO = ''; // "YYYY-Www"
+  let GUNLER = [];    // Date[7]
+
+  // ===== Auth
+  auth.onAuthStateChanged(async u=>{
+    if(!u){ location.replace('../index.html'); return; }
+    init();
+  });
+
+  function setDefaultWeek(){
+    const now=new Date();
+    inpWeek.value = weekKeyFromDate(now);
+  }
+
+  async function init(){
+    // Ders sekmeleri
+    tabsEl.innerHTML='';
+    DERSLER.forEach(d=>{
+      const b=document.createElement('button');
+      b.className='tab'+(d.id===CURRENT_DERS?' active':'');
+      b.textContent=d.ad; b.onclick=()=>{ CURRENT_DERS=d.id; tabsEl.querySelectorAll('.tab').forEach(x=>x.classList.remove('active')); b.classList.add('active'); renderWeek(); };
+      tabsEl.appendChild(b);
+    });
+
+    // Hafta default
+    setDefaultWeek();
+
+    // Talebeleri çek
+    TALebeler = await fetchTalebeler();
+    renderWeek();
+
+    inpWeek.addEventListener('change', renderWeek);
+    selDonem.addEventListener('change', renderWeek);
+    inpAra.addEventListener('input', ()=> filterRows(inpAra.value));
+  }
+
+  async function fetchTalebeler(){
+    const list=[];
+    try{
+      const snap=await db.collection('talebeler').get(); // alan adı sizde farklıysa uyarlayın
+      snap.forEach(d=>{
+        const x=d.data();
+        const ad = x.kullAd || x.adSoyad || x.ad || x.isim || (x.email?x.email.split('@')[0]:'İsimsiz');
+        list.push({id:d.id, ad: String(ad).trim()});
+      });
+    }catch(e){ console.error(e); }
+    return list.sort((a,b)=> trColl.compare(a.ad,b.ad));
+  }
+
+  async function renderWeek(){
+    HAFTA_ISO = inpWeek.value || weekKeyFromDate(new Date());
+    GUNLER = weekDatesFromInput(HAFTA_ISO);
+    titleH.textContent = `${HAFTA_ISO} • ${DERSLER.find(d=>d.id===CURRENT_DERS)?.ad || ''} • ${selDonem.value}`;
+    tbody.innerHTML = '<tr><td colspan="8" class="note">Yükleniyor…</td></tr>';
+
+    // Bu hafta + bu derse ait mevcut kayıtları al
+    const existing = new Map(); // key: `${iso}_${talebeId}` -> {durum, not}
+    try{
+      const qs = await db.collection('takrir_gunluk')
+        .where('haftaKey','==', HAFTA_ISO)
+        .where('dersId','==', CURRENT_DERS)
+        .get();
+      qs.forEach(doc=>{
+        const x=doc.data();
+        existing.set(`${x.tarihISO}_${x.talebeId}`, {durum:x.durum||'', not:x.not||''});
+      });
+    }catch(e){ console.error(e); }
+
+    // Tablo gövdesi
+    const planDays = new Set(DERSLER.find(d=>d.id===CURRENT_DERS)?.plan || []);
+    const rows = TALebeler.map(t=>{
+      const tr=document.createElement('tr');
+      // ad hücresi
+      const tdName=document.createElement('td'); tdName.style.textAlign='left';
+      tdName.innerHTML = `<div class="name">${t.ad}</div>`;
+      tr.appendChild(tdName);
+
+      // 7 gün
+      for(let idx=0; idx<7; idx++){
+        const d=GUNLER[idx], iso=fmtISO(d); const weekday=(idx+1); // 1=Pzt
+        const key=`${iso}_${t.id}`;
+        const cur = existing.get(key) || {durum:''};
+        const td=document.createElement('td');
+
+        // planlı gün değilse hücreyi soluk yap
+        const planned = planDays.has(weekday);
+        const btn=document.createElement('div');
+        btn.className='status '+(CLS[cur.durum]||'empty');
+        btn.textContent = SIMGE[cur.durum] || '';
+        if(!planned) btn.style.opacity=.35;
+
+        // not butonu
+        const nbtn=document.createElement('span'); nbtn.className='note-btn'; nbtn.textContent='📝'; nbtn.title='Not ekle / görüntüle';
+        nbtn.onclick=async (ev)=>{
+          ev.stopPropagation();
+          const prev = (existing.get(key)?.not)||'';
+          const val = prompt(`${t.ad} • ${iso}\nNot:`, prev);
+          if(val===null) return;
+          await saveCell(t.id, iso, CURRENT_DERS, selDonem.value, existing.get(key)?.durum || '', val, planned);
+          existing.set(key, {durum: existing.get(key)?.durum||'', not:val});
+          showToast('Not kaydedildi');
+        };
+
+        btn.onclick = async ()=>{
+          const next = cycle(existing.get(key)?.durum || '');
+          btn.className='status '+(CLS[next]||'empty');
+          btn.textContent = SIMGE[next] || '';
+          await saveCell(t.id, iso, CURRENT_DERS, selDonem.value, next, existing.get(key)?.not||'', planned);
+          existing.set(key, {durum:next, not:existing.get(key)?.not||''});
+          if(next==='') showToast('Temizlendi'); else showToast('Kaydedildi');
+        };
+
+        td.appendChild(btn);
+        td.appendChild(nbtn);
+        tr.appendChild(td);
+      }
+      return tr;
+    });
+
+    tbody.innerHTML=''; rows.forEach(r=>tbody.appendChild(r));
+    filterRows(inpAra.value);
+  }
+
+  async function saveCell(talebeId, tarihISO, dersId, donem, durum, notText, planliMi){
+    const haftaKey = HAFTA_ISO; // zaten hesaplandı
+    const docId = `${tarihISO}_${dersId}_${talebeId}`;
+    try{
+      await db.collection('takrir_gunluk').doc(docId).set({
+        tarihISO, haftaKey, donem, dersId, talebeId,
+        durum: durum || '', not: notText || '',
+        planliMi: !!planliMi,
+        girenUid: auth.currentUser.uid,
+        girisTS: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge:true });
+    }catch(e){ console.error(e); showToast('Kaydedilemedi'); }
+  }
+
+  function filterRows(q){
+    q = String(q||'').trim().toLowerCase();
+    const trs=[...tbody.querySelectorAll('tr')];
+    if(!q){ trs.forEach(tr=>tr.style.display=''); return; }
+    trs.forEach(tr=>{
+      const name=tr.firstChild?.textContent?.toLowerCase()||'';
+      tr.style.display = name.includes(q) ? '' : 'none';
+    });
+  }
+
+  // Çıkış
+  window.logout = ()=> auth.signOut().then(()=>location.replace('../index.html'));
+
+})();
+</script>
 </body>
 </html>

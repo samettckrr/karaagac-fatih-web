@@ -1,4 +1,20 @@
-<link rel="stylesheet" href="../css/form.css" />
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Aile Bilgileri - Talebe Kayıt (Adım 4)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Sadece mevcut form.css kullanılacak -->
+  <link rel="stylesheet" href="../css/form.css" />
+  <style>
+    .toast-bildirim{
+      display:none; position:fixed; left:50%; bottom:28px; transform:translateX(-50%);
+      background:#2d6a4f; color:#fff; padding:12px 18px; border-radius:10px; font-size:14px; z-index:9999
+    }
+    .toast-bildirim.hata{ background:#c0392b }
+  </style>
+</head>
+<body>
 
 <div class="kayıt-karti">
   <div class="kart-baslik">
@@ -6,17 +22,17 @@
     <p>4. Aşama – Aile Bilgileri</p>
   </div>
 
-  <div class="form-alani">
+  <div class="form-alani" id="aileForm">
     <!-- BABA & ANNE BLOKLARI YAN YANA -->
     <div class="form-grup-iki">
       <!-- Baba Bilgileri -->
       <div class="form-grup">
         <label for="babaAd">Baba Adı</label>
         <input type="text" id="babaAd">
-        
+
         <label for="babaTel">Baba Telefon</label>
         <input type="tel" id="babaTel" placeholder="05XXXXXXXXX">
-        
+
         <label for="babaDurum">Baba Durumu</label>
         <select id="babaDurum">
           <option value="">Seçiniz...</option>
@@ -24,7 +40,7 @@
           <option>Muhibban</option>
           <option>Diğer</option>
         </select>
-        
+
         <label for="babaMeslek">Baba Mesleği</label>
         <input type="text" id="babaMeslek">
       </div>
@@ -33,10 +49,10 @@
       <div class="form-grup">
         <label for="anneAd">Anne Adı</label>
         <input type="text" id="anneAd">
-        
+
         <label for="anneTel">Anne Telefon</label>
         <input type="tel" id="anneTel" placeholder="05XXXXXXXXX">
-        
+
         <label for="anneDurum">Anne Durumu</label>
         <select id="anneDurum">
           <option value="">Seçiniz...</option>
@@ -44,7 +60,7 @@
           <option>Muhibban</option>
           <option>Diğer</option>
         </select>
-        
+
         <label for="anneMeslek">Anne Mesleği</label>
         <input type="text" id="anneMeslek">
       </div>
@@ -64,16 +80,12 @@
 
     <!-- Kardeş Sayıları -->
     <div class="form-grup-iki">
-      <div>
-        <label for="kardesSayisi">
-            Kardeş Sayısı<br>(Kendisi dahil)
-        </label>
+      <div class="form-grup">
+        <label for="kardesSayisi">Kardeş Sayısı<br>(Kendisi dahil)</label>
         <input type="number" id="kardesSayisi" min="0">
       </div>
-      <div>
-        <label for="kurstakiKardesSayisi"> 
-         Kursta Okuyan Kardeş Sayısı<br>(Kendisi hariç)
-        </label>
+      <div class="form-grup">
+        <label for="kurstakiKardesSayisi">Kursta Okuyan Kardeş Sayısı<br>(Kendisi hariç)</label>
         <input type="number" id="kurstakiKardesSayisi" min="0">
       </div>
     </div>
@@ -81,9 +93,146 @@
 
   <!-- İleri - Geri Butonları -->
   <div class="ilerleme-paneli">
-    <button class="geri-buton" onclick="geriGelAdim3()">← Geri</button>
-    <button class="ileri-buton" onclick="ilerleAdim4()">İleri →</button>
+    <button class="geri-buton" id="btnGeri">← Geri</button>
+    <div class="form-asama-gostergesi">Adım 4 / 6</div>
+    <button class="ileri-buton" id="btnIleri">İleri →</button>
   </div>
 </div>
 
 <div id="toast" class="toast-bildirim"></div>
+
+<!-- Firebase compat -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="../js/firebase/firebase-init.js"></script>
+
+<script>
+/* =========================================================
+   Adım-4 — Aile Bilgileri (tek dosya, aynı UID/şema) - PATCH
+========================================================= */
+(function(){
+  // ---- Ayarlar: sayfa yollarını burada düzelt
+  const BACK_URL = 'talebe-kayit-adim3.html';  // bulunduğun klasöre göre güncelle
+  const NEXT_URL = 'talebe-kayit-adim5.html';  // bulunduğun klasöre göre güncelle
+
+  const UID_KEY   = 'talebeUID_v1';
+  const DEVRE_KEY = 'talebeDevre_v1';
+  const DRAFT_KEY = 'talebeDraft_aile_v1';
+
+  const db = (window.db || firebase.firestore());
+  const $  = s => document.querySelector(s);
+
+  // Erken doğrulama: Adım-1 yapılmış mı?
+  const uid   = localStorage.getItem(UID_KEY);
+  const devre = localStorage.getItem(DEVRE_KEY);
+  if(!uid || !devre){
+    toast('Önce Adım 1’i tamamlayın.', true);
+    setTimeout(()=> location.href='talebe-kayit-adim1.html', 900);
+    return; // kritik: devam etmeyelim
+  }
+
+  // Taslak yardımcıları
+  function getDraft(){ try{ return JSON.parse(localStorage.getItem(DRAFT_KEY)||'{}'); }catch(_){ return {}; } }
+  function setDraft(o){ localStorage.setItem(DRAFT_KEY, JSON.stringify(o||{})); }
+
+  // Alan listesi
+  const fields = [
+    'babaAd','babaTel','babaDurum','babaMeslek',
+    'anneAd','anneTel','anneDurum','anneMeslek',
+    'maddiDurum','kardesSayisi','kurstakiKardesSayisi'
+  ];
+
+  // Restore + autosave
+  (function restore(){
+    const d = getDraft();
+    fields.forEach(id=>{
+      const el = document.getElementById(id);
+      if(!el) return;
+      if(d[id] != null) el.value = d[id];
+      ['input','change'].forEach(ev=>{
+        el.addEventListener(ev, ()=>{
+          const dd = getDraft(); dd[id] = el.value; setDraft(dd);
+        });
+      });
+    });
+  })();
+
+  // Firestore yardımcıları
+  function talebeKokRef(devre, uid){
+    return db.collection('talebeler').doc(devre).collection('öğrenciler').doc(uid);
+  }
+  function talebeAileRef(devre, uid){
+    return talebeKokRef(devre, uid).collection('bilgiler').doc('aile');
+  }
+
+  // Güvenli bağlama (elemansa bağla)
+  const btnGeri  = document.getElementById('btnGeri');
+  const btnIleri = document.getElementById('btnIleri');
+  if(btnGeri)  btnGeri.addEventListener('click', ()=> location.href = BACK_URL);
+  if(btnIleri) btnIleri.addEventListener('click', ilerleAdim4);
+
+  async function ilerleAdim4(){
+    try{
+      const d = getDraft();
+
+      // Telefon yazıldıysa 10-11 hane kontrolü
+      const phoneOk = v => !v || /^[0-9]{10,11}$/.test(String(v).replace(/\D/g,''));
+      if(!phoneOk(d.babaTel) || !phoneOk(d.anneTel)){
+        toast('Telefon formatı 10-11 hane olmalı (örn: 05XXXXXXXXX).', true);
+        return;
+      }
+
+      const aile = {
+        uid, devre,
+        babaAd: d.babaAd || '',
+        babaTel: (d.babaTel||'').replace(/\D/g,''),
+        babaDurum: d.babaDurum || '',
+        babaMeslek: d.babaMeslek || '',
+        anneAd: d.anneAd || '',
+        anneTel: (d.anneTel||'').replace(/\D/g,''),
+        anneDurum: d.anneDurum || '',
+        anneMeslek: d.anneMeslek || '',
+        maddiDurum: d.maddiDurum || '',
+        kardesSayisi: toInt(d.kardesSayisi),
+        kurstakiKardesSayisi: toInt(d.kurstakiKardesSayisi),
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      // 1) Meta özet
+      await talebeKokRef(devre, uid).set({
+        maddiDurum: aile.maddiDurum,
+        kardesSayisi: aile.kardesSayisi,
+        kurstakiKardesSayisi: aile.kurstakiKardesSayisi,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge:true });
+
+      // 2) Ayrıntı: bilgiler/aile
+      await talebeAileRef(devre, uid).set(aile, { merge:true });
+
+      toast('Aile bilgileri kaydedildi. Adım 5’e geçiliyor…');
+      setTimeout(()=> location.href = NEXT_URL, 500);
+
+    }catch(e){
+      console.error('Adım-4 hata:', e);
+      // Firestore yetki hatası vs. için daha net mesaj
+      const msg = (e && e.code) ? `Hata (${e.code})` : 'Kayıt sırasında bir hata oluştu.';
+      toast(msg, true);
+    }
+  }
+
+  function toInt(v){ const n = parseInt(v,10); return isNaN(n) ? 0 : Math.max(0,n); }
+
+  function toast(msg, isErr=false){
+    const t = document.getElementById('toast'); if(!t) return alert(msg);
+    t.textContent = msg;
+    t.classList.toggle('hata', !!isErr);
+    t.style.display = 'block';
+    clearTimeout(window.__t4);
+    window.__t4 = setTimeout(()=> t.style.display='none', 1800);
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,4 +1,19 @@
-<link rel="stylesheet" href="../css/form.css" />
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Sağlık Bilgileri - Talebe Kayıt (Adım 5)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="../css/form.css" />
+  <style>
+    .toast-bildirim{
+      display:none; position:fixed; left:50%; bottom:28px; transform:translateX(-50%);
+      background:#2d6a4f; color:#fff; padding:12px 18px; border-radius:10px; font-size:14px; z-index:9999
+    }
+    .toast-bildirim.hata{ background:#c0392b }
+  </style>
+</head>
+<body>
 
 <div class="kayıt-karti">
   <div class="kart-baslik">
@@ -6,22 +21,130 @@
     <p>5. Aşama – Sağlık Bilgileri</p>
   </div>
 
-  <div class="form-alani">
+  <div class="form-alani" id="saglikForm">
     <div class="form-grup">
       <label for="saglikNot">
-        Herhangi bir rahatsızlığı var mı?<br> Varsa rahatsızlıklarını veya sağlıkla ilgili dikkat edilmesi gereken durumları yazınız!
-    </label>
-      <input
-        type="text"
-        id="saglikNot"
-      />
+        Herhangi bir rahatsızlığı var mı?<br/>
+        Varsa rahatsızlıklarını veya sağlıkla ilgili dikkat edilmesi gereken durumları yazınız!
+      </label>
+      <input type="text" id="saglikNot" placeholder="Örn: Fıstık alerjisi, astım, düzenli ilaç..." />
     </div>
   </div>
 
   <div class="ilerleme-paneli">
-    <button class="geri-buton" onclick="geriGelAdim4()">⬅ Geri</button>
-    <button class="ileri-buton" onclick="ilerleAdim5()">İleri ➡</button>
+    <button class="geri-buton" id="btnGeri">⬅ Geri</button>
+    <div class="form-asama-gostergesi">Adım 5 / 6</div>
+    <button class="ileri-buton" id="btnIleri">İleri ➡</button>
   </div>
 
   <div id="toast" class="toast-bildirim"></div>
 </div>
+
+<!-- Firebase compat -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="../js/firebase/firebase-init.js"></script>
+
+<script>
+/* =========================================================
+   Adım-5 — Sağlık Bilgileri (tek dosya, aynı UID/şema)
+   Firestore:
+     talebeler/{devre}/öğrenciler/{uid}              (meta merge: saglikVar)
+       └─ bilgiler/saglik (doküman: saglikNot)
+   LocalStorage:
+     talebeUID_v1, talebeDevre_v1, talebeDraft_saglik_v1
+   Not: saglikNot ZORUNLU DEĞİL (boş geçilebilir)
+========================================================= */
+(function(){
+  const UID_KEY   = 'talebeUID_v1';
+  const DEVRE_KEY = 'talebeDevre_v1';
+  const DRAFT_KEY = 'talebeDraft_saglik_v1';
+
+  const db = window.db || firebase.firestore();
+  const $  = s => document.querySelector(s);
+
+  // Adım-1 kontrolü
+  const uid   = localStorage.getItem(UID_KEY);
+  const devre = localStorage.getItem(DEVRE_KEY);
+  if(!uid || !devre){
+    toast('Önce Adım 1’i tamamlayın.', true);
+    setTimeout(()=> location.href='talebe-kayit-adim1.html', 900);
+    return;
+  }
+
+  // Taslak
+  function getDraft(){ try{ return JSON.parse(localStorage.getItem(DRAFT_KEY)||'{}'); }catch(_){ return {}; } }
+  function setDraft(o){ localStorage.setItem(DRAFT_KEY, JSON.stringify(o||{})); }
+
+  // Restore
+  (function restore(){
+    const d = getDraft();
+    if(d.saglikNot != null) $('#saglikNot').value = d.saglikNot;
+  })();
+
+  // Autosave
+  ['saglikNot'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    ['input','change'].forEach(ev=>{
+      el.addEventListener(ev, ()=>{
+        const d = getDraft(); d[id] = el.value; setDraft(d);
+      });
+    });
+  });
+
+  // FS yardımcıları
+  function talebeKokRef(devre, uid){
+    return db.collection('talebeler').doc(devre).collection('öğrenciler').doc(uid);
+  }
+  function talebeSaglikRef(devre, uid){
+    return talebeKokRef(devre, uid).collection('bilgiler').doc('saglik');
+  }
+
+  // Navigasyon
+  document.getElementById('btnGeri').addEventListener('click', ()=> location.href='talebe-kayit-adim4.html');
+  document.getElementById('btnIleri').addEventListener('click', ilerleAdim5);
+
+  async function ilerleAdim5(){
+    const d = getDraft();
+    const notTxt = (d.saglikNot || '').trim();
+
+    const saglik = {
+      uid, devre,
+      saglikNot: notTxt,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    try{
+      // 1) Meta: yalnızca bayrak (listelemelerde iş görür)
+      await talebeKokRef(devre, uid).set({
+        saglikVar: notTxt.length > 0,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge:true });
+
+      // 2) Ayrıntı: bilgiler/saglik
+      await talebeSaglikRef(devre, uid).set(saglik, { merge:true });
+
+      toast('Sağlık bilgileri kaydedildi. Adım 6’ya geçiliyor…');
+      setTimeout(()=> location.href='talebe-kayit-adim6.html', 500);
+    }catch(e){
+      console.error(e);
+      toast('Kayıt sırasında bir hata oluştu.', true);
+    }
+  }
+
+  function toast(msg, isErr=false){
+    const t = document.getElementById('toast'); if(!t) return alert(msg);
+    t.textContent = msg;
+    t.classList.toggle('hata', !!isErr);
+    t.style.display = 'block';
+    clearTimeout(window.__t5);
+    window.__t5 = setTimeout(()=> t.style.display='none', 1800);
+  }
+})();
+</script>
+
+</body>
+</html>

@@ -1,4 +1,12 @@
-<link rel="stylesheet" href="../css/form.css" />
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Yeni Talebe Kaydı — Adım 2 (Okul Bilgileri)</title>
+  <link rel="stylesheet" href="../css/form.css"/>
+</head>
+<body>
 
 <div class="kayıt-karti">
   <div class="kart-baslik">
@@ -31,7 +39,7 @@
     </select>
 
     <!-- Üniversite Bilgileri -->
-    <div id="universiteAlani" style="display: none;">
+    <div id="universiteAlani" style="display:none">
       <label>Üniversite Türü</label>
       <select id="universiteTuru">
         <option value="">Seçiniz...</option>
@@ -40,13 +48,13 @@
       </select>
 
       <label>Üniversite Adı</label>
-      <input type="text" id="universiteAdi" placeholder="Örn: İstanbul Üniversitesi" />
+      <input type="text" id="universiteAdi" placeholder="Örn: İstanbul Üniversitesi"/>
 
       <label>Bölüm</label>
-      <input type="text" id="bolum" placeholder="Örn: İş Sağlığı ve Güvenliği" />
+      <input type="text" id="bolum" placeholder="Örn: İş Sağlığı ve Güvenliği"/>
 
       <label>Üniversite Sınıf</label>
-      <input type="text" id="uniSinif" placeholder="Örn: 2. Sınıf" />
+      <input type="text" id="uniSinif" placeholder="Örn: 2. Sınıf"/>
     </div>
   </div>
 
@@ -56,4 +64,134 @@
     <button class="ileri-buton" onclick="ilerleAdim2()">İlerle ▶</button>
   </div>
 </div>
+
 <div id="toast" class="toast-bildirim"></div>
+
+<!-- Firebase compat -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="../js/firebase/firebase-init.js"></script>
+
+<script>
+/* ================================================
+   Adım-2 — Okul Bilgileri (aynı UID/şema)
+================================================ */
+(function(){
+  const UID_KEY   = 'talebeUID_v1';
+  const DEVRE_KEY = 'talebeDevre_v1';
+  const DRAFT_KEY = 'talebeDraft_adim2_v1'; // sadece adım-2 için
+
+  const db = window.db || firebase.firestore();
+  const $  = s => document.querySelector(s);
+
+  // --- ÖNCE TANIMLA: Üniversite alanı aç/kapa
+  function toggleUni(){
+    const val = $('#ogrenimSeviyesi')?.value || '';
+    const box = $('#universiteAlani');
+    if(box) box.style.display = (val === 'Üniversite') ? 'block' : 'none';
+  }
+  // HTML'deki onchange="okulSeviyesiDegisti()" için dışarı ver
+  window.okulSeviyesiDegisti = toggleUni;
+
+  // Adım-1 yapılmadan gelindiyse uyar
+  const uid   = localStorage.getItem(UID_KEY);
+  const devre = localStorage.getItem(DEVRE_KEY);
+  if(!uid || !devre){
+    toast('Önce Adım 1’i tamamlayın.');
+    setTimeout(()=>{ location.href = 'talebe-kayit-adim1.html'; }, 900);
+    return; // kritik: devam etmeyelim
+  }
+
+  // Taslak yardımcıları
+  function getDraft(){ try{ return JSON.parse(localStorage.getItem(DRAFT_KEY)||'{}'); }catch(_){ return {}; } }
+  function setDraft(o){ localStorage.setItem(DRAFT_KEY, JSON.stringify(o||{})); }
+
+  // Alanları taslaktan doldur
+  (function restore(){
+    const d = getDraft();
+    const map = {
+      ogrenimSeviyesi: '#ogrenimSeviyesi',
+      mezuniyetDurumu: '#mezuniyetDurumu',
+      egitimTuru: '#egitimTuru',
+      universiteTuru: '#universiteTuru',
+      universiteAdi:  '#universiteAdi',
+      bolum:          '#bolum',
+      uniSinif:       '#uniSinif'
+    };
+    Object.keys(map).forEach(k=>{
+      const el = $(map[k]);
+      if(el && d[k] != null) el.value = d[k];
+    });
+    // Artık güvenle çağırabiliriz
+    toggleUni();
+  })();
+
+  // Otomatik taslak kaydı
+  ['ogrenimSeviyesi','mezuniyetDurumu','egitimTuru',
+   'universiteTuru','universiteAdi','bolum','uniSinif'
+  ].forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    ['input','change'].forEach(ev=> el.addEventListener(ev, ()=>{
+      const d = getDraft(); d[id] = el.value; setDraft(d);
+      if(id==='ogrenimSeviyesi') toggleUni();
+    }));
+  });
+
+  // Firestore yardımcı
+  function talebeKokRef(devre, uid){
+    return db.collection('talebeler').doc(devre).collection('öğrenciler').doc(uid);
+  }
+  function talebeOkulRef(devre, uid){
+    return talebeKokRef(devre, uid).collection('bilgiler').doc('okul');
+  }
+
+  // Gezinti
+  window.geriGelAdim1 = function(){ location.href = 'talebe-kayit-adim1.html'; };
+
+  // İlerle (kayıt)
+  window.ilerleAdim2 = async function(){
+    const d = getDraft();
+
+    const okul = {
+      uid, devre,
+      ogrenimSeviyesi: d.ogrenimSeviyesi || '',
+      mezuniyetDurumu: d.mezuniyetDurumu || '',
+      egitimTuru: d.egitimTuru || '',
+      universiteTuru: d.universiteTuru || '',
+      universiteAdi:  d.universiteAdi  || '',
+      bolum:          d.bolum          || '',
+      uniSinif:       d.uniSinif       || '',
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    try{
+      await talebeKokRef(devre, uid).set({
+        ogrenimSeviyesi: okul.ogrenimSeviyesi,
+        mezuniyetDurumu: okul.mezuniyetDurumu,
+        egitimTuru: okul.egitimTuru,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge:true });
+
+      await talebeOkulRef(devre, uid).set(okul, { merge:true });
+
+      toast('Okul bilgileri kaydedildi. Adım 3’e geçiliyor...');
+      location.href = 'talebe-kayit-adim3.html';
+    }catch(e){
+      console.error(e);
+      toast('Kayıt sırasında bir hata oluştu.');
+    }
+  };
+
+  function toast(m){
+    const t = document.getElementById('toast'); if(!t) return alert(m);
+    t.textContent = m; t.classList.add('show');
+    clearTimeout(window.__tto2);
+    window.__tto2 = setTimeout(()=> t.classList.remove('show'), 1600);
+  }
+})();
+</script>
+</body>
+</html>

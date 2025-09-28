@@ -134,7 +134,28 @@
 .meta{font-size:15px;color:var(--muted)}
 .bar{height:6px;border-radius:999px;background:var(--surface);overflow:hidden;margin-top:6px}
 .bar>span{display:block;height:100%;background:linear-gradient(90deg,var(--brand),var(--brand2));width:0}
+/* Devre seçici (başlık içinde metin gibi) */
+.devre-pill{
+  display:inline-flex; align-items:center; gap:6px;
+  font-weight:800; cursor:pointer; user-select:none;
+  padding:2px 6px; border-radius:8px;
+}
+.devre-pill::after{ content:"▾"; font-size:12px; opacity:.7; }
+.devre-pill:hover{ background:var(--surface); }
 
+.devre-dd{
+  position:absolute; margin-top:6px; padding:6px;
+  background:var(--card); border:1px solid var(--stroke);
+  border-radius:10px; box-shadow:var(--shadow); z-index:30;
+}
+#statHdr{ position:relative; }
+.devre-dd button{
+  display:block; width:100%; text-align:left;
+  background:transparent; border:none; color:var(--text);
+  padding:8px 10px; border-radius:8px; cursor:pointer; font-weight:700;
+}
+.devre-dd button:hover{ background:var(--surface); }
+.devre-dd .active{ background:var(--surface); }
   </style>
 
   <!-- Firebase (compat) -->
@@ -198,7 +219,11 @@
     <div class="grid">
       <!-- Talebe istatistiği -->
       <div class="card col-4">
-        <h3>Talebe İstatistiği</h3>
+      <h3 id="statHdr">
+        Talebe İstatistiği –
+        <span id="devreBtn" class="devre-pill" role="button" aria-haspopup="listbox" aria-expanded="false">—</span>
+        <div id="devreDd" class="devre-dd" hidden role="listbox" aria-label="Devre seçimi"></div>
+      </h3>
         <div class="kpi">
           <div><div class="val" id="kpiTalebe">--</div><div class="sub">Toplam Talebe</div></div>
           <div>👥</div>
@@ -449,6 +474,154 @@
       }catch(_){}
       return 0;
     }
+/* ===== Talebe İstatistiği — devreli (yeni/eski şema uyumlu) ===== */
+
+/** Yeni şemada alt koleksiyon adı (öğrenciler | ogrenciler) */
+async function resolveSubcolName(devre){
+  const base = db.collection('talebeler').doc(devre);
+  for (const name of ['öğrenciler','ogrenciler']){
+    try{
+      const s = await base.collection(name).limit(1).get();
+      if(!s.empty) return name;
+    }catch(_){}
+  }
+  return null;
+}
+
+/** Yeni şema sayımı: talebeler/{devre}/{öğrenciler|ogrenciler} */
+async function countNewSchema(devre){
+  const base = db.collection('talebeler').doc(devre);
+  const sub  = await resolveSubcolName(devre);
+  if(!sub) return null;
+
+  const snap = await base.collection(sub).get();
+  let toplam = 0, ensar = 0, muhacir = 0;
+
+  snap.forEach(doc=>{
+    const d = doc.data() || {};
+    toplam++;
+    const durum = String(d.durum || d.profil?.durum || '').toLowerCase();
+    if(durum==='ensar') ensar++;
+    else if(durum==='muhacir') muhacir++;
+  });
+
+  return { toplam, ensar, muhacir };
+}
+
+/** Eski şema sayımı: devre alanına göre (birkaç olası koleksiyonda) */
+async function countOldSchema(devre){
+  const CANDS = ['talebe_index','talebe_kayitlari','talebe_kayit','talebeKayit','talebeler'];
+  let toplam=0, ensar=0, muhacir=0, found=false;
+
+  // devre alanı olan belgeleri sorgulamayı dene
+  for(const col of CANDS){
+    try{
+      const q = await db.collection(col).where('devre','==',devre).get();
+      if(!q.empty){
+        found = true;
+        q.forEach(doc=>{
+          const d = doc.data() || {};
+          toplam++;
+          const durum = String(d.durum || d.profil?.durum || '').toLowerCase();
+          if(durum==='ensar') ensar++;
+          else if(durum==='muhacir') muhacir++;
+        });
+      }
+    }catch(_){}
+  }
+  if(!found) return null;
+  return { toplam, ensar, muhacir };
+}
+
+/** Devre listesi: yeni şemada talebeler/{devre} ID’leri; yoksa varsayılanlar */
+async function getDevreList(){
+  try{
+    const snap = await db.collection('talebeler').get();
+    const ids = [];
+    snap.forEach(d=> ids.push(d.id));
+    // Sadece 5/6/7.devre gibi olanları öne al, diğerlerini sona ekle
+    const pref = ['5.Devre','6.Devre','7.Devre'];
+    const ordered = [
+      ...pref.filter(x=>ids.includes(x)),
+      ...ids.filter(x=>!pref.includes(x))
+    ];
+    return ordered.length ? ordered : pref;
+  }catch(e){ return ['5.Devre','6.Devre','7.Devre']; }
+}
+
+/** UI: başlıktaki devre menüsünü kur */
+async function initDevreSelector(){
+  const btn = document.getElementById('devreBtn');
+  const dd  = document.getElementById('devreDd');
+  if(!btn || !dd) return;
+
+  const list = await getDevreList();
+  const stored = localStorage.getItem('kf_devre');
+  let current = list.includes(stored) ? stored : (list[0]||'6.Devre');
+
+  function renderDd(){
+    dd.innerHTML = '';
+    list.forEach(dev=>{
+      const b = document.createElement('button');
+      b.textContent = dev;
+      if(dev===current) b.classList.add('active');
+      b.dataset.devre = dev;
+      b.addEventListener('click', async ()=>{
+        current = dev;
+        localStorage.setItem('kf_devre', current);
+        btn.textContent = current;
+        dd.hidden = true; btn.setAttribute('aria-expanded','false');
+        await loadTalebeStatsByDevre(current);
+      });
+      dd.appendChild(b);
+    });
+  }
+
+  btn.textContent = current;
+  renderDd();
+
+  btn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    const open = dd.hidden === false;
+    dd.hidden = open ? true : false;
+    btn.setAttribute('aria-expanded', String(!open));
+  });
+  document.addEventListener('click', (e)=>{
+    if(!dd.contains(e.target) && e.target!==btn){ dd.hidden = true; btn.setAttribute('aria-expanded','false'); }
+  });
+
+  // ilk yük
+  await loadTalebeStatsByDevre(current);
+}
+
+/** Seçili devreye göre sayımları yükle (yeni → eski fallback) */
+async function loadTalebeStatsByDevre(devre){
+  const elT = document.getElementById('kpiTalebe');
+  const elE = document.getElementById('kpiEnsar');
+  const elM = document.getElementById('kpiMuhacir');
+  if(elT) elT.textContent='—';
+  if(elE) elE.textContent='—';
+  if(elM) elM.textContent='—';
+
+  try{
+    let res = await countNewSchema(devre);
+    if(!res) res = await countOldSchema(devre);
+    if(!res){ elT.textContent='0'; elE.textContent='0'; elM.textContent='0'; return; }
+    elT.textContent = res.toplam || 0;
+    elE.textContent = res.ensar  || 0;
+    elM.textContent = res.muhacir|| 0;
+
+    // Başlıktaki metin “Talebe İstatistiği – {devre}”
+    const btn = document.getElementById('devreBtn');
+    if(btn) btn.textContent = devre;
+
+  }catch(e){
+    console.error('Talebe sayıları yüklenemedi:', e);
+    if(elT) elT.textContent='--';
+    if(elE) elE.textContent='--';
+    if(elM) elM.textContent='--';
+  }
+}
 
     // 1) TEMİZLİK KONTROLÜ — tek kat, tek gün
     async function fetchTemizlikKontrolKatGun(kat, dateStr){
@@ -560,24 +733,6 @@
 
       return { date: dateStr, temizlik: tk, genel, detay, eksik };
     }
-
- /* ===== Talebe Sayıları (değişmedi) ===== */
-  async function loadTalebeStats(){
-    try{
-      const snap = await db.collection('talebeler').get();
-      let toplam=0, ensar=0, muhacir=0;
-      snap.forEach(doc=>{
-        toplam++;
-        const d=doc.data()||{};
-        const durum=String(d.durum||'').toLowerCase();
-        if(durum==='ensar') ensar++;
-        else if(durum==='muhacir') muhacir++;
-      });
-      document.getElementById('kpiTalebe').textContent = toplam;
-      document.getElementById('kpiEnsar').textContent  = ensar;
-      document.getElementById('kpiMuhacir').textContent= muhacir;
-    }catch(e){ console.error(e); }
-  }
 
   /* ===== Talebe Temizlik Puanı (Bugün) – kat kat + genel ortalama ===== */
   async function loadTalebeTemizlik(){
@@ -960,13 +1115,12 @@ async function loadAylik(){
 
       const panels = await fetchPanels(CURRENT_ALLOW, CURRENT_DENY);
       renderNav(panels);
-
+    await initDevreSelector();   // ↩️ başlık içi devre seçici + sayımlar
     await Promise.all([
       loadAlacak(),
       loadAylik(),
       loadNobet(),
       loadNotifications(),
-      loadTalebeStats(),
       loadTalebeTemizlik(),   // ↩️ yeni sürüm
       loadGenelTemizlik(),    // ↩️ yeni sürüm
       loadEksikler()          // ↩️ fetchEksikler kullanan sürüm
