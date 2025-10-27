@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Ders Performansı | Karaağaç Fatih</title>
+  <link rel="icon" type="image/png" href="../img/logo.png" />
+
+  <style>
+    :root{
+      --appbar-h:56px; --radius:14px; --shadow:0 12px 28px rgba(0,0,0,.14);
+      --bg:#0f172a; --bg2:#0b1324; --grad1:#0ea5e922; --grad2:#22d3ee22;
+      --card:rgba(15,23,42,.92); --stroke:rgba(148,163,184,.18);
+      --text:#e5e7eb; --muted:#9aa4b2; --brand:#38bdf8; --brand2:#0ea5e9;
+      --pill:#0b1220; --pill-hover:#101a2b; --link:#c7e9ff; --surface:rgba(2,6,23,.08);
+    }
+    @media (prefers-color-scheme: light){
+      :root{
+        --bg:#eef6ff;--bg2:#f7fbff;--grad1:#38bdf822;--grad2:#22d3ee22;
+        --card:rgba(255,255,255,.95);--stroke:rgba(15,23,42,.12);
+        --text:#0b1220;--muted:#4b5563;--brand:#0ea5e9;--brand2:#0284c7;
+        --pill:#f5f8ff;--pill-hover:#e9f2ff;--link:#0b5ea8;--surface:#eef3ff;
+      }
+    }
+    html[data-theme="dark"]{
+      --bg:#0f172a;--bg2:#0b1324;--grad1:#0ea5e922;--grad2:#22d3ee22;
+      --card:rgba(15,23,42,.92);--stroke:rgba(148,163,184,.18);
+      --text:#e5e7eb;--muted:#9aa4b2;--brand:#38bdf8;--brand2:#0ea5e9;
+      --pill:#0b1220;--pill-hover:#101a2b;--link:#c7e9ff;--surface:rgba(2,6,23,.08);
+    }
+    html[data-theme="light"]{
+      --bg:#eef6ff;--bg2:#f7fbff;--grad1:#38bdf822;--grad2:#22d3ee22;
+      --card:rgba(255,255,255,.95);--stroke:rgba(15,23,42,.12);
+      --text:#0b1220;--muted:#4b5563;--brand:#0ea5e9;--brand2:#0284c7;
+      --pill:#f5f8ff;--pill-hover:#e9f2ff;--link:#0b5ea8;--surface:#eef3ff;
+    }
+    html[data-theme="light"] .banner{ border-color:#fde68a; background:#fff7cc; }
+
+    *{box-sizing:border-box}
+    html,body{height:100%; overflow-x:hidden;}
+    body{
+      margin:0; color:var(--text); font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Arial;
+      background:
+        radial-gradient(900px 680px at 12% 8%, var(--grad1), transparent 45%),
+        radial-gradient(800px 640px at 88% 92%, var(--grad2), transparent 50%),
+        linear-gradient(140deg, var(--bg), var(--bg2) 60%);
+    }
+    a{color:var(--link); text-decoration:none} a:hover{text-decoration:underline}
+
+    /* APPBAR */
+    .appbar{position:sticky; top:0; z-index:60; height:var(--appbar-h);
+      background:var(--card); backdrop-filter:blur(10px); border-bottom:1px solid var(--stroke);
+      display:flex; align-items:center; padding:0 12px;}
+    .brand{display:flex; align-items:center; gap:10px; cursor:pointer}
+    .brand img{width:24px; height:24px} .brand span{font-weight:900}
+    .nav-center{margin:0 auto; height:100%; display:flex; align-items:center;}
+    .breadcrumb{font-size:13px; color:var(--muted)}
+    .nav-right{display:flex; gap:8px; align-items:center}
+    .btn{border:1px solid var(--stroke); background:var(--card); color:var(--text); border-radius:999px; padding:8px 12px; cursor:pointer}
+    .hamb{display:none}
+    @media (max-width:720px){ .nav-center{display:none} .hamb{display:inline-block} }
+
+    /* CONTENT */
+    .container{max-width:1150px; margin:0 auto; padding:16px 16px 24px}
+    .card{background:var(--card); border:1px solid var(--stroke); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px 18px; margin-bottom:16px}
+    .card .btn{min-height:38px}
+
+    .grid-3{display:grid; gap:16px; grid-template-columns:repeat(3,1fr)}
+    @media (max-width:980px){ .grid-3{grid-template-columns:repeat(2,1fr)} }
+    @media (max-width:640px){ .grid-3{grid-template-columns:1fr} }
+
+    .fld{display:flex; flex-direction:column; gap:6px}
+    .fld label{font-size:12px; color:var(--muted); font-weight:800}
+    select, input[type="date"], input[type="number"], textarea{
+      width:100%; padding:12px 14px; border-radius:12px;
+      border:1px solid var(--stroke); background:var(--pill); color:var(--text)
+    }
+
+    /* KPI, FILTER, CHARTS */
+    .kpi{display:grid; gap:14px; grid-template-columns:repeat(4,1fr)}
+    @media (max-width:960px){ .kpi{grid-template-columns:repeat(2,1fr)} }
+    @media (max-width:520px){ .kpi{grid-template-columns:1fr} }
+    .kpi-item{border:1px solid var(--stroke); border-radius:14px; padding:14px 16px; background:var(--surface); min-height:92px}
+    .kpi-title{font-size:12px; color:var(--muted); font-weight:800}
+    .kpi-value{font-size:26px; font-weight:900; line-height:1.1; margin-top:6px}
+
+    .row-6{
+      display:grid; gap:12px;
+      grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+    }
+
+    .charts{display:grid; gap:12px; grid-template-columns:1fr 1fr}
+    @media (max-width:900px){ .charts{grid-template-columns:1fr} }
+    canvas{width:100%; height:300px}
+
+    table{width:100%; border-collapse:collapse; font-size:14px}
+    th,td{border-bottom:1px solid var(--stroke); padding:10px; text-align:left}
+    th{color:var(--muted); font-weight:800}
+    tr:hover td{background:var(--surface)}
+
+    /* Banner */
+    .banner{
+      display:none; align-items:center; gap:10px;
+      padding:12px 14px; border-radius:12px;
+      border:1px solid rgba(245,158,11,.4);
+      background:rgba(245,158,11,.12);
+      color:inherit; font-weight:600; margin-bottom:12px; line-height:1.35;
+    }
+    .banner .icon{font-size:16px}
+    .banner .text{white-space:normal; overflow:hidden; text-overflow:ellipsis; max-width:100%}
+    .banner.show{display:flex}
+
+    /* Modal */
+    .modal{position:fixed; inset:0; display:none; place-items:center; background:rgba(2,6,23,.65); z-index:200}
+    .modal.open{display:grid}
+    .modal-card{
+      width:min(960px, calc(100% - 24px));
+      max-height:calc(100svh - 24px); /* keyboard-aware */
+      overflow:auto;
+      background:var(--card); border:1px solid var(--stroke); border-radius:16px; box-shadow:var(--shadow)
+    }
+    .modal-header{display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-bottom:1px solid var(--stroke); position:sticky; top:0; background:var(--card); z-index:2}
+    .modal-body{padding:12px}
+    .modal-actions{display:flex; gap:8px; justify-content:flex-end; padding:10px 14px; border-top:1px solid var(--stroke); background:var(--card); position:sticky; bottom:0}
+
+    /* Students (form modal) */
+    .student-list{ display:grid; gap:10px; padding:8px; max-height:52dvh; overflow:auto; border:1px solid var(--stroke); border-radius:14px }
+    .student-card{ border:1px solid var(--stroke); border-radius:14px; background:var(--surface); padding:10px 12px; display:grid; gap:8px }
+    .student-card .s-name{ font-weight:900 }
+    .student-card .cat-grid{ display:grid; gap:6px; grid-template-columns:repeat(2,1fr) }
+    .student-card .cat{ padding:8px 10px; border-radius:10px; border:1px solid var(--stroke); background:var(--pill); font-weight:800; cursor:pointer; text-align:center }
+    .student-card .cat.active{ background:linear-gradient(90deg,#2563eb,#60a5fa); color:#fff; border-color:transparent }
+    .student-card .cat.disabled{ opacity:.5; pointer-events:none }
+    .student-card .note-toggle{ justify-self:start; padding:6px 10px; border-radius:999px; border:1px dashed var(--stroke); background:transparent; font-size:12px }
+    .student-card .s-note{ display:none }
+
+    /* Toast & Loading */
+    .toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:rgba(2,6,23,.95); color:#fff; border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:10px 12px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:220}
+    .toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+    .loading{display:none; position:fixed; inset:0; background:rgba(2,6,23,.4); z-index:210; place-items:center}
+    .loading.show{display:grid}
+    .spinner{width:44px; height:44px; border:5px solid var(--pill); border-top-color:var(--brand); border-radius:50%; animation:spin 1s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- Firebase compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+  <!-- Proje Firebase init (window.db, window.auth sağlamalı) -->
+  <script src="../js/firebase/firebase-init.js"></script>
+</head>
+<body>
+
+<!-- APPBAR -->
+<div class="appbar">
+  <div class="brand" onclick="location.href='../panel.html'">
+    <img src="../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
+  </div>
+  <div class="nav-center">
+    <div class="breadcrumb">Anasayfa / Akademi / Ders Performansı</div>
+  </div>
+  <div class="nav-right">
+    <button class="btn hamb" id="hamburger">☰</button>
+    <button class="btn" id="themeToggle">🌗 <span id="themeLabel">Auto</span></button>
+    <button class="btn" id="btnLogout">Çıkış Yap</button>
+  </div>
+</div>
+
+<main class="container">
+
+  <!-- ÜST KARTLAR -->
+  <section class="grid-3">
+    <div class="card">
+      <div class="fld">
+        <label>Devre</label>
+        <select id="selDevre"></select>
+      </div>
+    </div>
+    <div class="card">
+      <div class="fld">
+        <label>Dersler</label>
+        <button class="btn" id="btnDersYonet">Dersleri Yönet</button>
+        <small style="color:var(--muted); display:block; margin-top:6px">Ders listesi buradan düzenlenir.</small>
+      </div>
+    </div>
+    <div class="card">
+      <div class="fld">
+        <label>Form</label>
+        <button class="btn" id="btnFormAc" style="background:linear-gradient(90deg,var(--brand2),var(--brand)); color:#fff; border:0">Formu Aç</button>
+        <small style="color:var(--muted); display:block; margin-top:6px">Form modalda açılır; sekme yok.</small>
+      </div>
+    </div>
+  </section>
+
+  <!-- RAPORLAMA KONTROLLERİ -->
+  <section class="card">
+    <h3 style="margin:0 0 10px">Raporlama</h3>
+    <div class="row-6">
+      <div>
+        <label>Mod</label>
+        <select id="rMode">
+          <option value="by_date">Tarihe göre (tüm dersler)</option>
+          <option value="by_lesson">Derse göre</option>
+        </select>
+      </div>
+      <div id="rLessonCol" style="display:none">
+        <label>Ders</label>
+        <select id="rDers"></select>
+      </div>
+      <div>
+        <label>Başlangıç</label>
+        <input type="date" id="rStart"/>
+      </div>
+      <div>
+        <label>Bitiş</label>
+        <input type="date" id="rEnd"/>
+      </div>
+      <div style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap">
+        <button class="btn" data-range="gun">Gün</button>
+        <button class="btn" data-range="hafta">Hafta</button>
+        <button class="btn" data-range="ay">Ay</button>
+        <button class="btn" data-range="yil">Yıl</button>
+      </div>
+      <div style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap">
+        <button class="btn" id="btnRaporla" style="background:linear-gradient(90deg,var(--brand2),var(--brand)); color:#fff; border:0">Raporla</button>
+        <button class="btn" id="btnCSV">CSV İndir</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- KPI -->
+  <section class="card">
+    <div class="kpi">
+      <div class="kpi-item"><div class="kpi-title">Genel Puan Ort.</div><div class="kpi-value" id="mGDP">—</div></div>
+      <div class="kpi-item"><div class="kpi-title">İştirak Ort.</div><div class="kpi-value" id="mIst">—</div></div>
+      <div class="kpi-item"><div class="kpi-title">Düzen Ort.</div><div class="kpi-value" id="mDzn">—</div></div>
+      <div class="kpi-item"><div class="kpi-title">Kayıt Sayısı</div><div class="kpi-value" id="mCnt">—</div></div>
+    </div>
+  </section>
+
+  <!-- CHARTS -->
+  <section class="charts">
+    <div class="card"><canvas id="chTrend"></canvas></div>
+    <div class="card"><canvas id="chCats"></canvas></div>
+  </section>
+
+  <!-- TABLO -->
+  <section class="card">
+    <h3 style="margin:0 0 10px">Özet Liste</h3>
+    <div style="overflow:auto">
+      <table id="raporTable">
+        <thead><tr>
+          <th>Tarih</th><th>Ders</th><th>Genel</th>
+          <th>İştirak</th><th>Düzen</th>
+          <th>Zayıf</th><th>Orta</th><th>İyi</th><th>Çok İyi</th>
+          <th>Oluşturan</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<!-- FORM MODAL -->
+<div class="modal" id="formModal" aria-modal="true" role="dialog">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div style="font-weight:900">Ders Performansı — Form</div>
+      <button class="btn" id="fmClose">Kapat</button>
+    </div>
+    <div class="modal-body">
+      <div id="sameWarn" class="banner"></div>
+
+      <div class="row-6">
+        <div>
+          <label>Devre</label>
+          <select id="fDevre"></select>
+        </div>
+        <div>
+          <label>Ders</label>
+          <select id="fDers"></select>
+        </div>
+        <div>
+          <label>Tarih</label>
+          <input type="date" id="fDate"/>
+        </div>
+        <div>
+          <label>Genel Ders Durumu</label>
+          <select id="fGenel">
+            <option value="zayif">Zayıf (25)</option>
+            <option value="orta">Orta (50)</option>
+            <option value="iyi">İyi (75)</option>
+            <option value="pekiyi">Pekiyi (100)</option>
+          </select>
+        </div>
+        <div>
+          <label>Derse iştirak (1–10)</label>
+          <input type="number" id="fIst" min="1" max="10" value="7"/>
+        </div>
+        <div>
+          <label>Ders düzeni (1–10)</label>
+          <input type="number" id="fDzn" min="1" max="10" value="7"/>
+        </div>
+      </div>
+
+      <div style="margin-top:10px">
+        <label>Genel Mülahaza</label>
+        <textarea id="fMul" placeholder="Dersle ilgili genel notlar…"></textarea>
+      </div>
+
+      <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap">
+        <span class="btn">Zayıf: <b id="statZ">0</b></span>
+        <span class="btn">Orta: <b id="statO">0</b></span>
+        <span class="btn">İyi: <b id="statI">0</b></span>
+        <span class="btn">Çok İyi: <b id="statC">0</b></span>
+      </div>
+
+      <div class="student-list" id="studentList" style="margin-top:10px"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="btnPreview">Önizleme</button>
+      <button class="btn" id="btnSave" style="background:#10b981; color:#062013; border:0">Kaydet</button>
+      <button class="btn" id="btnDelete" style="background:#ef4444; color:#fff; border:0" disabled>Sil (Soft)</button>
+    </div>
+  </div>
+</div>
+
+<!-- ÖNİZLEME MODAL -->
+<div class="modal" id="previewModal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div style="font-weight:900">Önizleme</div>
+      <button class="btn" id="pmClose">Kapat</button>
+    </div>
+    <div class="modal-body" id="pmBody"></div>
+  </div>
+</div>
+
+<!-- DERS YÖNETİMİ MODAL -->
+<div class="modal" id="dersModal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div style="font-weight:900">Dersleri Yönet</div>
+      <div style="display:flex; gap:8px">
+        <button class="btn" id="btnDersEkle">Ekle</button>
+        <button class="btn" id="btnDersYenile">Yenile</button>
+        <button class="btn" id="dmClose">Kapat</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div id="dersList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Loader & Toast -->
+<div class="loading" id="loading"><div class="spinner"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ====== ENV ====== */
+var db = window.db;
+var auth = window.auth;
+
+/* ====== Tema ====== */
+(function(){
+  var root=document.documentElement, btn=document.getElementById('themeToggle');
+  var lab=document.getElementById('themeLabel');
+  function sysDark(){ return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches; }
+  function apply(mode){
+    localStorage.setItem('kf_theme', mode);
+    var eff=(mode==='auto')?(sysDark()?'dark':'light'):mode;
+    root.setAttribute('data-theme', eff);
+    var txt=mode.charAt(0).toUpperCase()+mode.slice(1);
+    lab.textContent=txt;
+    var icon=mode==='dark'?'🌙':(mode==='light'?'☀️':'🌗');
+    btn.innerHTML=icon+' <span id="themeLabel">'+txt+'</span>';
+  }
+  apply(localStorage.getItem('kf_theme')||'auto');
+  btn.addEventListener('click', function(){
+    var cur=localStorage.getItem('kf_theme')||'auto';
+    apply(cur==='dark'?'light':(cur==='light'?'auto':'dark'));
+  });
+  if(window.matchMedia){
+    var m=window.matchMedia('(prefers-color-scheme: dark)');
+    if(m.addEventListener){ m.addEventListener('change', function(){ if((localStorage.getItem('kf_theme')||'auto')==='auto') apply('auto'); }); }
+  }
+})();
+
+/* ====== Helpers ====== */
+function $(s){ return document.querySelector(s); }
+function $all(s){ return Array.prototype.slice.call(document.querySelectorAll(s)); }
+function showToast(m){ var el=$('#toast'); el.textContent=m; el.classList.add('show'); clearTimeout(window.__t); window.__t=setTimeout(function(){ el.classList.remove('show'); }, 2000); }
+function loading(v){ $('#loading').classList.toggle('show', !!v); }
+function fmtDate(d){ return d.toISOString().slice(0,10); }
+function todayLocal(){ var d=new Date(); return new Date(d.getTime()-d.getTimezoneOffset()*60000); }
+function addDays(d,n){ var x=new Date(d); x.setDate(x.getDate()+n); return x; }
+function getISOWeek(date){ var d=new Date(Date.UTC(date.getFullYear(),date.getMonth(),date.getDate())); var day=d.getUTCDay()||7; d.setUTCDate(d.getUTCDate()+4-day); var ys=new Date(Date.UTC(d.getUTCFullYear(),0,1)); return Math.ceil((((d-ys)/86400000)+1)/7); }
+var GENEL_PUAN={zayif:25, orta:50, iyi:75, pekiyi:100};
+function fillSelect(el, arr){ el.innerHTML=''; arr.forEach(function(v){ var op=document.createElement('option'); op.value=v; op.textContent=v; el.appendChild(op); }); }
+
+/* ====== Auth ====== */
+var currentUser=null, userRole='hoca', userUid='', userName='';
+auth.onAuthStateChanged(function(u){
+  if(!u){ location.replace('../index.html'); return; }
+  currentUser=u; userUid=u.uid; userName=u.displayName||u.email||'';
+  u.getIdTokenResult(true).then(function(tok){ userRole=(tok && tok.claims && tok.claims.role) || 'hoca'; });
+});
+
+/* ====== Devre & Dersler ====== */
+var STUDENTS_SUB_NAMES=['öğrenciler','ogrenciler','students','ogrenci'];
+var CURRENT_DEVRE=localStorage.getItem('kf_devre')||'6.Devre';
+var DERS_META_DOC = db.collection('ders_performansi_meta').doc('dersler');
+var DERSLER=[], students=[], selectedCats=new Map(), studentNotes=new Map(), mevcutOturum=null;
+
+async function loadDevreler(){
+  const sel = document.getElementById('selDevre');
+  sel.innerHTML = '<option>Yükleniyor…</option>';
+
+  let list=[];
+  try{
+    const qs = await db.collection('talebeler').get();
+    list = qs.docs.map(d=>d.id).filter(Boolean);
+  }catch(e){}
+  if(!list.length) list=['5.Devre','6.Devre','7.Devre'];
+
+  fillSelect(sel, list);
+  CURRENT_DEVRE = list.includes(CURRENT_DEVRE) ? CURRENT_DEVRE : list[0];
+  sel.value = CURRENT_DEVRE;
+  fillSelect(document.getElementById('fDevre'), list);
+
+  sel.addEventListener('change', async ()=>{
+    CURRENT_DEVRE = sel.value;
+    localStorage.setItem('kf_devre', CURRENT_DEVRE);
+
+    const fm = document.getElementById('formModal');
+    if (fm && fm.classList.contains('open')) {
+      document.getElementById('fDevre').value = CURRENT_DEVRE;
+      await loadStudents();
+      await checkSameWarn();
+    }
+    document.getElementById('btnRaporla').click();
+  });
+}
+
+async function ensureDersMeta(){
+  var doc=await DERS_META_DOC.get();
+  if(!doc.exists){ await DERS_META_DOC.set({items:["Kıraat","Fıkıh","Tefsir","Hadis","Arapça","Ahlak","Genel Tekrar"]}); }
+}
+async function loadDersler(){
+  await ensureDersMeta();
+  var doc=await DERS_META_DOC.get(); DERSLER=(doc.data() && doc.data().items)||[];
+  fillSelect($('#rDers'), DERSLER);
+  fillSelect($('#fDers'), DERSLER);
+}
+
+/* ====== Form Modal ====== */
+document.getElementById('btnFormAc').addEventListener('click', async function(){
+  document.getElementById('fDevre').value = CURRENT_DEVRE;
+  if (DERSLER.length && !document.getElementById('fDers').value){
+    document.getElementById('fDers').value = DERSLER[0];
+  }
+  document.getElementById('fDate').value = fmtDate(todayLocal());
+  await loadStudents();
+  await checkSameWarn();
+  document.getElementById('formModal').classList.add('open');
+});
+document.getElementById('fmClose').addEventListener('click', function(){ document.getElementById('formModal').classList.remove('open'); });
+
+/* ====== Ders Yönetimi ====== */
+document.getElementById('btnDersYonet').addEventListener('click', async function(){ await loadDersler(); renderDersList(); document.getElementById('dersModal').classList.add('open'); });
+document.getElementById('dmClose').addEventListener('click', function(){ document.getElementById('dersModal').classList.remove('open'); });
+document.getElementById('btnDersYenile').addEventListener('click', async function(){ await loadDersler(); renderDersList(); showToast('Dersler yenilendi'); });
+document.getElementById('btnDersEkle').addEventListener('click', async function(){
+  var ad=prompt('Yeni ders adı:'); if(!ad) return;
+  if(DERSLER.indexOf(ad)>-1){ showToast('Zaten var'); return; }
+  try{
+    loading(true);
+    await DERS_META_DOC.update({items: firebase.firestore.FieldValue.arrayUnion(ad)});
+    await loadDersler(); renderDersList(); showToast('Eklendi');
+  }catch(e){ console.error(e); showToast('Ekleme hatası'); }
+  finally{ loading(false); }
+});
+function renderDersList(){
+  var root=document.getElementById('dersList'); root.innerHTML='';
+  if(!DERSLER.length){ root.textContent='Ders yok'; return; }
+  DERSLER.forEach(function(ad){
+    var row=document.createElement('div');
+    row.style.display='grid'; row.style.gridTemplateColumns='1fr auto auto'; row.style.gap='8px'; row.style.margin='6px 0';
+    var name=document.createElement('input'); name.value=ad;
+    var btnSil=document.createElement('button'); btnSil.className='btn'; btnSil.style.background='#ef4444'; btnSil.style.color='#fff'; btnSil.textContent='Sil';
+    var btnKaydet=document.createElement('button'); btnKaydet.className='btn'; btnKaydet.style.background='#10b981'; btnKaydet.style.color='#062013'; btnKaydet.textContent='Adı Güncelle';
+    btnSil.onclick=async function(){
+      if(!confirm('Silinsin mi: '+ad+'?')) return;
+      try{ loading(true); await DERS_META_DOC.update({items: firebase.firestore.FieldValue.arrayRemove(ad)}); await loadDersler(); renderDersList(); showToast('Silindi'); }
+      catch(e){ console.error(e); showToast('Silme hatası'); }
+      finally{ loading(false); }
+    };
+    btnKaydet.onclick=async function(){
+      var yeni=name.value.trim(); if(!yeni || yeni===ad) return;
+      if(DERSLER.indexOf(yeni)>-1){ showToast('Bu ad zaten var'); return; }
+      try{
+        loading(true);
+        await db.runTransaction(async function(tr){
+          var d=await tr.get(DERS_META_DOC); var arr=(d.data() && d.data().items)||[];
+          var idx=arr.indexOf(ad); if(idx>-1){ arr[idx]=yeni; }
+          tr.set(DERS_META_DOC,{items:arr});
+        });
+        await loadDersler(); renderDersList(); showToast('Güncellendi');
+      }catch(e){ console.error(e); showToast('Güncelleme hatası'); }
+      finally{ loading(false); }
+    };
+    row.appendChild(name); row.appendChild(btnKaydet); row.appendChild(btnSil); root.appendChild(row);
+  });
+}
+
+/* ====== Talebeler ====== */
+async function loadStudents(){
+  var devre = document.getElementById('fDevre').value || CURRENT_DEVRE;
+  var listEl=document.getElementById('studentList');
+  if (!devre){ listEl.innerHTML=''; return; }
+  loading(true);
+  try{
+    var data=[];
+    for (var i=0;i<STUDENTS_SUB_NAMES.length;i++){
+      var sub=STUDENTS_SUB_NAMES[i];
+      try{
+        var base = db.collection('talebeler').doc(devre).collection(sub);
+        var snap = await base.where('aktif','==', true).get();
+        if(!snap || snap.empty){ snap = await base.get(); }
+        if(snap && !snap.empty){ data = snap.docs.map(function(d){ return {uid:d.id, data:d.data()}; }); break; }
+      }catch(e){}
+    }
+    if (!data.length){
+      listEl.innerHTML = '<div style="padding:12px">Bu devre için öğrenci bulunamadı.</div>';
+      students = []; selectedCats=new Map(); studentNotes=new Map(); updateStats(); return;
+    }
+    students = data.map(function(s){
+      var rec=s.data||{};
+      var ad = rec.adSoyad || rec.ad || rec.isim || rec.fullName || rec.kullAd || s.uid;
+      rec.uid = s.uid; rec.adSoyad = ad;
+      return rec;
+    }).sort(function(a,b){ return (a.adSoyad||'').localeCompare(b.adSoyad||'','tr'); });
+
+    selectedCats=new Map(); studentNotes=new Map();
+    renderStudents(); updateStats();
+  }catch(e){ console.error(e); showToast('Talebeler yüklenemedi'); }
+  finally{ loading(false); }
+}
+function renderStudents(){
+  const root = document.getElementById('studentList');
+  root.innerHTML = '';
+  students.forEach(s=>{
+    const card = document.createElement('div');
+    card.className = 'student-card';
+
+    const name = document.createElement('div');
+    name.className = 's-name';
+    name.textContent = s.adSoyad || s.uid;
+
+    const grid = document.createElement('div');
+    grid.className = 'cat-grid';
+
+    const mk = (key, label) => {
+      const b = document.createElement('button');
+      b.className = 'cat'; b.dataset.key = key; b.textContent = label;
+      b.onclick = () => {
+        const cur = selectedCats.get(s.uid) || null;
+        selectedCats.set(s.uid, cur === key ? null : key);
+        grid.querySelectorAll('.cat').forEach(btn=>{
+          const k = btn.dataset.key;
+          btn.classList.toggle('active', selectedCats.get(s.uid) === k);
+          if (selectedCats.get(s.uid) && k !== selectedCats.get(s.uid)) btn.classList.add('disabled');
+          else btn.classList.remove('disabled');
+        });
+        updateStats();
+      };
+      return b;
+    };
+    grid.append(mk('zayif','Zayıf'), mk('orta','Orta'), mk('iyi','İyi'), mk('cokIyi','Çok İyi'));
+
+    const noteToggle = document.createElement('button');
+    noteToggle.className = 'note-toggle';
+    noteToggle.textContent = 'Not';
+    const noteBox = document.createElement('div');
+    noteBox.className = 's-note';
+    noteBox.innerHTML = '<textarea placeholder="Talebe notu…"></textarea>';
+    const ta = noteBox.querySelector('textarea');
+    ta.addEventListener('input', e=>{
+      const v = e.target.value.trim();
+      if (v) studentNotes.set(s.uid, v); else studentNotes.delete(s.uid);
+    });
+    noteToggle.onclick = ()=> noteBox.style.display = (noteBox.style.display==='block'?'none':'block');
+
+    card.append(name, grid, noteToggle, noteBox);
+    root.append(card);
+  });
+}
+function updateStats(){
+  var z=0,o=0,i=0,c=0;
+  selectedCats.forEach(function(val){
+    if(val==='zayif') z++; if(val==='orta') o++; if(val==='iyi') i++; if(val==='cokIyi') c++;
+  });
+  document.getElementById('statZ').textContent=z;
+  document.getElementById('statO').textContent=o;
+  document.getElementById('statI').textContent=i;
+  document.getElementById('statC').textContent=c;
+}
+
+/* ====== Aynı gün + ders uyarı ====== */
+['change'].forEach(function(evt){
+  document.getElementById('fDevre').addEventListener(evt, checkSameWarn);
+  document.getElementById('fDers').addEventListener(evt, checkSameWarn);
+  document.getElementById('fDate').addEventListener(evt, checkSameWarn);
+});
+async function checkSameWarn(){
+  const warn = document.getElementById('sameWarn');
+  warn.classList.remove('show'); warn.innerHTML='';
+  mevcutOturum = null;
+  document.getElementById('btnDelete').disabled = true;
+
+  const devre = document.getElementById('fDevre').value;
+  const ders  = document.getElementById('fDers').value;
+  const tarih = document.getElementById('fDate').value;
+  if(!devre || !ders || !tarih) return;
+
+  try{
+    const ref = db.collection('ders_performansi_by_date').doc(devre)
+      .collection('gunler').doc(tarih).collection('dersler').doc(ders)
+      .collection('oturumlar');
+
+    const snap = await ref.limit(1).get();
+    if(!snap.empty){
+      const d = snap.docs[0].data();
+      const olusturan = d.olusturanAd || d.olusturanUid || '—';
+      warn.innerHTML = `
+        <span class="icon">⚠️</span>
+        <span class="text"><b>${tarih}</b> tarihli “${ders}” kaydı var — ${olusturan}. İsterseniz yeni bir kayıt daha ekleyebilirsiniz.</span>
+      `;
+      warn.classList.add('show');
+
+      const id = snap.docs[0].id;
+      mevcutOturum = {
+        byDatePath: ref.doc(id).path,
+        byLessonPath: `ders_performansi_by_lesson/${devre}/dersler/${ders}/gunler/${tarih}/oturumlar/${id}`,
+        oturumId: id
+      };
+      document.getElementById('btnDelete').disabled = (userRole!=='admin');
+    }
+  }catch(e){ console.error(e); }
+}
+
+/* ====== Önizleme ====== */
+document.getElementById('btnPreview').addEventListener('click', function(){
+  var p=collectForm(false); if(!p) return;
+  document.getElementById('pmBody').innerHTML =
+    '<div class="card"><b>Devre:</b> '+p.devre+' • <b>Ders:</b> '+p.ders+' • <b>Tarih:</b> '+p.tarih+'</div>'+
+    '<div class="card"><b>Genel:</b> '+p.genelDurum.kategori+' ('+p.genelDurum.puan+') — <b>İştirak:</b> '+p.kriterler.istirak+' — <b>Düzen:</b> '+p.kriterler.duzen+'</div>'+
+    '<div class="card"><b>Kategoriler:</b> Zayıf '+p.kategoriler.zayif.length+' | Orta '+p.kategoriler.orta.length+' | İyi '+p.kategoriler.iyi.length+' | Çok İyi '+p.kategoriler.cokIyi.length+'</div>'+
+    '<div class="card"><b>Mülahaza:</b><br>'+((p.mulahaza||'—').replace(/</g,'&lt;'))+'</div>';
+  document.getElementById('previewModal').classList.add('open');
+});
+document.getElementById('pmClose').addEventListener('click', function(){ document.getElementById('previewModal').classList.remove('open'); });
+
+/* ====== Kaydet (ikili ayna) ====== */
+document.getElementById('btnSave').addEventListener('click', saveRecord);
+async function saveRecord(){
+  if(!currentUser){ showToast('Giriş gerekli'); return; }
+  if(['hoca','admin'].indexOf(userRole)===-1){ showToast('Yetki yok'); return; }
+  var p=collectForm(true); if(!p) return;
+
+  var ts=Date.now(), d=new Date(ts), yil=d.getFullYear(), ay=d.getMonth()+1, hafta=getISOWeek(d);
+  var oturumId = (mevcutOturum && mevcutOturum.oturumId) || db.collection('_seq').doc().id;
+  var byDate   = db.collection('ders_performansi_by_date').doc(p.devre).collection('gunler').doc(p.tarih).collection('dersler').doc(p.ders).collection('oturumlar').doc(oturumId);
+  var byLesson = db.collection('ders_performansi_by_lesson').doc(p.devre).collection('dersler').doc(p.ders).collection('gunler').doc(p.tarih).collection('oturumlar').doc(oturumId);
+  var base = {
+    oturumId:oturumId, devre:p.devre, ders:p.ders, tarih:p.tarih, ts:ts, yil:yil, ay:ay, hafta:hafta,
+    genelDurum:p.genelDurum, kriterler:p.kriterler, kategoriler:p.kategoriler,
+    mulahaza:p.mulahaza,
+    notlarByTalebe: (function(){ var o={}; studentNotes.forEach(function(v,k){ o[k]=v; }); return o; })(),
+    olusturanUid:userUid, olusturanAd:userName, silindi:false,
+    mirror:{type:'by_lesson', path: byLesson.path}
+  };
+  try{
+    loading(true);
+    var batch=db.batch();
+    if(mevcutOturum){
+      batch.update(byDate, Object.assign({}, base, {updatedAt:firebase.firestore.FieldValue.serverTimestamp(), rev:firebase.firestore.FieldValue.increment(1)}));
+      batch.update(byLesson, Object.assign({}, base, {updatedAt:firebase.firestore.FieldValue.serverTimestamp(), rev:firebase.firestore.FieldValue.increment(1)}));
+    }else{
+      batch.set(byDate,   Object.assign({}, base, {createdAt:firebase.firestore.FieldValue.serverTimestamp(), updatedAt:firebase.firestore.FieldValue.serverTimestamp(), rev:1}));
+      batch.set(byLesson, Object.assign({}, base, {createdAt:firebase.firestore.FieldValue.serverTimestamp(), updatedAt:firebase.firestore.FieldValue.serverTimestamp(), rev:1}));
+    }
+    await batch.commit();
+    showToast(mevcutOturum?'Güncellendi':'Kaydedildi');
+    mevcutOturum={byDatePath:byDate.path, byLessonPath:byLesson.path, oturumId:oturumId};
+    document.getElementById('btnDelete').disabled=(userRole!=='admin');
+    document.getElementById('btnRaporla').click();
+  }catch(e){ console.error(e); showToast('Kaydetme hatası'); }
+  finally{ loading(false); }
+}
+
+/* Soft Delete — tek handler */
+document.getElementById('btnDelete').addEventListener('click', onSoftDelete);
+async function onSoftDelete(){
+  if (userRole !== 'admin') return showToast('Yetki yok');
+
+  if (!mevcutOturum){
+    await checkSameWarn();
+    if (!mevcutOturum) return showToast('Silinecek kayıt bulunamadı');
+  }
+  if (!confirm('Bu kaydı "silindi: true" yapalım mı?')) return;
+
+  try{
+    loading(true);
+    const byDate   = pathToDoc(mevcutOturum.byDatePath);
+    const byLesson = pathToDoc(mevcutOturum.byLessonPath);
+    const batch = db.batch();
+    batch.update(byDate,   { silindi:true, updatedAt:firebase.firestore.FieldValue.serverTimestamp() });
+    batch.update(byLesson, { silindi:true, updatedAt:firebase.firestore.FieldValue.serverTimestamp() });
+    await batch.commit();
+    mevcutOturum = null;
+    document.getElementById('btnDelete').disabled = true;
+    showToast('Silindi');
+    document.getElementById('btnRaporla').click();
+  }catch(e){ console.error(e); showToast('Silme hatası'); }
+  finally{ loading(false); }
+}
+function pathToDoc(path){
+  var seg=path.split('/'); var ref=db;
+  for(var i=0;i<seg.length;i+=2){ ref=ref.collection(seg[i]).doc(seg[i+1]); }
+  return ref;
+}
+
+/* ====== Form toplama ====== */
+function collectForm(strict){
+  var devre=(document.getElementById('fDevre').value||'').trim();
+  var ders =(document.getElementById('fDers').value||'').trim();
+  var tarih=document.getElementById('fDate').value;
+  var gen  =document.getElementById('fGenel').value;
+  var ist  =Number(document.getElementById('fIst').value);
+  var dzn  =Number(document.getElementById('fDzn').value);
+  var mul  =(document.getElementById('fMul').value||'').trim();
+  if(!devre||!ders||!tarih){ showToast('Devre/Ders/Tarih zorunlu'); return null; }
+  if(!GENEL_PUAN.hasOwnProperty(gen)){ showToast('Genel durum seçin'); return null; }
+  if(strict && !(ist>=1&&ist<=10)){ showToast('İştirak 1–10'); return null; }
+  if(strict && !(dzn>=1&&dzn<=10)){ showToast('Düzen 1–10'); return null; }
+  var z=[],o=[],i=[],c=[];
+  students.forEach(function(s){
+    var v=selectedCats.get(s.uid)||null;
+    if(v==='zayif') z.push(s.uid); if(v==='orta') o.push(s.uid); if(v==='iyi') i.push(s.uid); if(v==='cokIyi') c.push(s.uid);
+  });
+  var seen={}; [z,o,i,c].forEach(function(arr){
+    arr.forEach(function(uid){ if(seen[uid]){ /* aynı talebe birden çok */ } seen[uid]=true; });
+  });
+  return {
+    devre:devre, ders:ders, tarih:tarih,
+    genelDurum:{kategori:gen, puan:GENEL_PUAN[gen]},
+    kriterler:{istirak:ist, duzen:dzn},
+    kategoriler:{zayif:z, orta:o, iyi:i, cokIyi:c},
+    mulahaza:mul
+  };
+}
+
+/* ====== Raporlama ====== */
+var chTrend=null, chCats=null;
+
+var rModeEl = document.getElementById('rMode');
+var rLessonCol = document.getElementById('rLessonCol');
+rModeEl.addEventListener('change', function(){
+  rLessonCol.style.display = rModeEl.value==='by_lesson' ? '' : 'none';
+});
+
+$all('[data-range]').forEach(function(b){
+  b.addEventListener('click', function(){
+    var r=b.getAttribute('data-range');
+    var end=todayLocal(); var start=end;
+    if(r==='gun') start=end;
+    if(r==='hafta') start=addDays(end,-6);
+    if(r==='ay') start=new Date(end.getFullYear(), end.getMonth(), 1);
+    if(r==='yil') start=new Date(end.getFullYear(), 0, 1);
+    document.getElementById('rStart').value=fmtDate(start);
+    document.getElementById('rEnd').value=fmtDate(end);
+  });
+});
+
+document.getElementById('btnRaporla').addEventListener('click', runReport);
+
+async function runReport(){
+  var devre=CURRENT_DEVRE;
+  var mode=document.getElementById('rMode').value;
+  var ders=document.getElementById('rDers').value;
+  var s=document.getElementById('rStart').value;
+  var e=document.getElementById('rEnd').value;
+  if(!devre||!s||!e){ showToast('Devre ve tarih aralığı seçin'); return; }
+  if(mode==='by_lesson' && !ders){ showToast('Ders seçin'); return; }
+
+  loading(true);
+  try{
+    var rows=[];
+    var days=enumerateDays(s,e);
+    for(var i=0;i<days.length;i++){
+      var gun=days[i];
+      if(mode==='by_date'){
+        var derslerSnap=await db.collection('ders_performansi_by_date').doc(devre).collection('gunler').doc(gun).collection('dersler').get();
+        for(var d=0; d<derslerSnap.docs.length; d++){
+          var ddoc=derslerSnap.docs[d];
+          var otSnap=await ddoc.ref.collection('oturumlar').where('silindi','==', false).get();
+          otSnap.forEach(function(o){ rows.push(o.data()); });
+        }
+      }else{
+        var ref=db.collection('ders_performansi_by_lesson').doc(devre).collection('dersler').doc(ders).collection('gunler').doc(gun).collection('oturumlar');
+        var otSnap=await ref.where('silindi','==', false).get();
+        otSnap.forEach(function(o){ rows.push(o.data()); });
+      }
+    }
+    updateReport(rows);
+    showToast('Rapor hazır');
+  }catch(e){ console.error(e); showToast('Rapor hatası'); }
+  finally{ loading(false); }
+}
+function enumerateDays(s,e){
+  var start=new Date(s+'T00:00:00'); var end=new Date(e+'T00:00:00'); var arr=[];
+  for(var d=new Date(start); d<=end; d.setDate(d.getDate()+1)){
+    var tz=new Date(d.getTime()-d.getTimezoneOffset()*60000); arr.push(fmtDate(tz));
+  }
+  return arr;
+}
+function updateReport(rows){
+  var n=rows.length; document.getElementById('mCnt').textContent = n || '—';
+  var sumGDP=0,sumIst=0,sumDzn=0;
+  var tb=document.querySelector('#raporTable tbody'); tb.innerHTML='';
+  var trend=new Map(); var catTotals={zayif:0, orta:0, iyi:0, cokIyi:0};
+
+  rows.sort(function(a,b){ return (a.tarih||'').localeCompare(b.tarih||''); });
+
+  rows.forEach(function(r){
+    sumGDP += (r.genelDurum && r.genelDurum.puan) || 0;
+    sumIst += (r.kriterler && r.kriterler.istirak) || 0;
+    sumDzn += (r.kriterler && r.kriterler.duzen)   || 0;
+    catTotals.zayif  += ((r.kategoriler && r.kategoriler.zayif)  ? r.kategoriler.zayif.length : 0);
+    catTotals.orta   += ((r.kategoriler && r.kategoriler.orta)   ? r.kategoriler.orta.length : 0);
+    catTotals.iyi    += ((r.kategoriler && r.kategoriler.iyi)    ? r.kategoriler.iyi.length : 0);
+    catTotals.cokIyi += ((r.kategoriler && r.kategoriler.cokIyi) ? r.kategoriler.cokIyi.length : 0);
+
+    var tr=document.createElement('tr');
+    tr.innerHTML =
+      '<td>'+(r.tarih||'')+'</td>'+
+      '<td>'+(r.ders||'')+'</td>'+
+      '<td>'+((r.genelDurum && r.genelDurum.kategori)||'')+' ('+((r.genelDurum && r.genelDurum.puan)||0)+')</td>'+
+      '<td>'+((r.kriterler && r.kriterler.istirak)!=null ? r.kriterler.istirak : '')+'</td>'+
+      '<td>'+((r.kriterler && r.kriterler.duzen)!=null ? r.kriterler.duzen : '')+'</td>'+
+      '<td>'+((r.kategoriler && r.kategoriler.zayif)? r.kategoriler.zayif.length : 0)+'</td>'+
+      '<td>'+((r.kategoriler && r.kategoriler.orta)?  r.kategoriler.orta.length : 0)+'</td>'+
+      '<td>'+((r.kategoriler && r.kategoriler.iyi)?   r.kategoriler.iyi.length : 0)+'</td>'+
+      '<td>'+((r.kategoriler && r.kategoriler.cokIyi)?r.kategoriler.cokIyi.length : 0)+'</td>'+
+      '<td>'+(r.olusturanAd||'')+'</td>';
+    tb.appendChild(tr);
+
+    var key=r.tarih||'';
+    if(!trend.has(key)) trend.set(key,{cnt:0,ist:0,dzn:0,gdp:0});
+    var t=trend.get(key); t.cnt++; t.ist+=(r.kriterler && r.kriterler.istirak)||0; t.dzn+=(r.kriterler && r.kriterler.duzen)||0; t.gdp+=(r.genelDurum && r.genelDurum.puan)||0;
+  });
+
+  document.getElementById('mGDP').textContent = n ? (sumGDP/n).toFixed(1) : '—';
+  document.getElementById('mIst').textContent = n ? (sumIst/n).toFixed(2): '—';
+  document.getElementById('mDzn').textContent = n ? (sumDzn/n).toFixed(2): '—';
+
+  var labels=Array.from(trend.keys()).sort();
+  var tIst=labels.map(function(k){ var t=trend.get(k); return (t.ist / t.cnt).toFixed(2); });
+  var tDzn=labels.map(function(k){ var t=trend.get(k); return (t.dzn / t.cnt).toFixed(2); });
+  var tGdp=labels.map(function(k){ var t=trend.get(k); return (t.gdp / t.cnt).toFixed(2); });
+  drawTrend(labels, tIst, tDzn, tGdp);
+  drawCats(catTotals);
+}
+function drawTrend(labels, ist, dzn, gdp){
+  if(chTrend) chTrend.destroy();
+  chTrend=new Chart(document.getElementById('chTrend'), {
+    type:'line',
+    data:{ labels:labels, datasets:[
+      {label:'İştirak', data:ist},
+      {label:'Düzen', data:dzn},
+      {label:'Genel Puan', data:gdp}
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:true } } }
+  });
+}
+function drawCats(tot){
+  if(chCats) chCats.destroy();
+  chCats=new Chart(document.getElementById('chCats'), {
+    type:'bar',
+    data:{ labels:['Zayıf','Orta','İyi','Çok İyi'],
+      datasets:[{ label:'Toplam', data:[tot.zayif, tot.orta, tot.iyi, tot.cokIyi] }] },
+    options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:true } } }
+  });
+}
+
+/* ====== CSV ====== */
+document.getElementById('btnCSV').addEventListener('click', function(){
+  var rows=[['Tarih','Ders','Genel','İştirak','Düzen','Zayıf','Orta','İyi','Çok İyi','Oluşturan']];
+  Array.prototype.forEach.call(document.querySelectorAll('#raporTable tbody tr'), function(tr){
+    var arr=[]; Array.prototype.forEach.call(tr.children, function(td){ arr.push(td.textContent.replace(/,/g,' ')); });
+    rows.push(arr);
+  });
+  var csv=rows.map(function(r){return r.join(',');}).join('\n');
+  var blob=new Blob([csv],{type:'text/csv'}); var url=URL.createObjectURL(blob);
+  var a=document.createElement('a'); a.href=url; a.download='ders-performans.csv'; a.click(); URL.revokeObjectURL(url);
+  showToast('CSV indirildi');
+});
+
+/* ====== INIT ====== */
+window.addEventListener('load', async function(){
+  try{
+    loading(true);
+    await loadDevreler();
+    await loadDersler();
+    document.getElementById('rStart').value=fmtDate(todayLocal());
+    document.getElementById('rEnd').value=fmtDate(todayLocal());
+    document.getElementById('btnRaporla').click();
+  }catch(e){ console.error(e); showToast('Sayfa yükleme hatası'); }
+  finally{ loading(false); }
+});
+
+/* Klavye açılınca odak görünür kalsın */
+document.addEventListener('focus', (e)=>{
+  const t=e.target;
+  if(!t || !['INPUT','TEXTAREA','SELECT'].includes(t.tagName)) return;
+  const mc=document.querySelector('#formModal .modal-card');
+  if(mc && mc.contains(t)) t.scrollIntoView({behavior:'smooth', block:'center'});
+}, true);
+
+/* Logout */
+document.getElementById('btnLogout').addEventListener('click', async function(){
+  try{ await auth.signOut(); location.replace('../index.html'); }
+  catch(e){ showToast('Çıkış hatası'); }
+});
+</script>
+</body>
+</html>

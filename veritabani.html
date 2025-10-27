@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Şema Görüntüleyici</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --card-bg: #ffffff;
+            --border-color: #dee2e6;
+            --text-color: #212529;
+            --text-muted: #6c757d;
+            --primary-blue: #0052cc;
+            --firebase-orange: #FFCA28; /* Firebase Rengi */
+            --code-bg: #282a36; /* Dracula/VS Code Koyu Tema */
+            --code-text: #f8f8f2;
+            --font-body: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --font-code: 'JetBrains Mono', 'Courier New', Courier, monospace;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 24px;
+        }
+        
+        /* Ana içerik alanı */
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 2.25rem;
+            font-weight: 600;
+            color: var(--text-color);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 12px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+        }
+        h1::before {
+            /* Küçük Firebase Logosu (CSS ile) */
+            content: '';
+            display: inline-block;
+            width: 28px;
+            height: 38px;
+            margin-right: 12px;
+            background: linear-gradient(-135deg, #FFCA28 0 33.3%, #FFA000 33.3% 66.6%, #F57C00 66.6% 100%);
+            -webkit-clip-path: polygon(0 0, 100% 30%, 100% 70%, 0 100%, 0 70%, 40% 50%, 0 30%);
+            clip-path: polygon(0 0, 100% 30%, 100% 70%, 0 100%, 0 70%, 40% 50%, 0 30%);
+        }
+
+        #search-box {
+            width: 100%;
+            padding: 14px 18px;
+            font-size: 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 24px;
+            box-sizing: border-box;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        #search-box:focus {
+            outline: none;
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 3px rgba(0, 82, 204, 0.2);
+        }
+
+        .collection-container {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.03);
+            transition: box-shadow 0.2s ease;
+        }
+        .collection-container:hover {
+            box-shadow: 0 5px 12px rgba(0,0,0,0.06);
+        }
+
+        .collection-title {
+            padding: 18px 24px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .collection-title h2 {
+            margin: 0;
+            color: var(--primary-blue);
+            font-size: 1.25rem;
+            font-weight: 500;
+            font-family: var(--font-code); /* Koleksiyon yollarını kod gibi göster */
+        }
+        
+        .toggle-icon {
+            font-size: 1.75rem;
+            font-weight: 400;
+            color: var(--text-muted);
+            transition: transform 0.2s ease;
+            user-select: none; /* Seçilemez yap */
+        }
+        .collection-title.active .toggle-icon {
+            transform: rotate(45deg);
+            color: var(--primary-blue);
+        }
+
+        .schema-content {
+            display: none; /* Varsayılan olarak kapalı */
+            padding: 0 24px 24px 24px;
+            border-top: 1px solid #f1f3f5;
+        }
+        
+        .schema-content pre {
+            background-color: var(--code-bg);
+            color: var(--code-text);
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: var(--font-code);
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .subcollections h3 {
+            color: var(--text-color);
+            font-size: 1rem;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+            margin-top: 24px;
+            margin-bottom: 12px;
+        }
+        .subcollections ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        .subcollections li {
+            background-color: #e7f5ff; /* Açık mavi */
+            color: #0052cc;
+            padding: 10px 14px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-family: var(--font-code);
+            font-size: 0.9rem;
+            border-left: 4px solid var(--primary-blue);
+        }
+        
+        .empty-collection {
+            color: var(--text-muted);
+            font-style: italic;
+            padding: 20px 0;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Firebase Veritabanı Şeması</h1>
+        <input type="text" id="search-box" placeholder="Koleksiyon adı ara...">
+        <div id="schema-container"></div>
+    </div>
+
+    <script>
+        // BURASI SİZİN VERİTABANI ŞEMANIZ
+        // Bu kısmı, script'i her çalıştırdığınızda güncelleyebilirsiniz.
+        const schemaData = {
+ "aidat_kitap": {
+    "_schema": {
+      "isim": "string",
+      "islemTuru": "string",
+      "miktar": "number",
+      "odemeYontemi": "string",
+      "tarih": "string"
+    },
+    "_subcollections": {}
+  },
+  "butce_planlari": {
+    "_schema": {
+      "versiyon": "number",
+      "kalemler": "array",
+      "published_at": "timestamp"
+    },
+    "_subcollections": {}
+  },
+  "ders_performansi_by_date": {
+    "_schema": "ŞEMA (BİLİNMİYOR - Muhtemelen sadece alt koleksiyon içeriyor)",
+    "_subcollections": {
+      "gunler": "ders_performansi_by_date/6.Devre/gunler"
+    }
+  },
+  "ders_performansi_by_date/6.Devre/gunler": {
+    "_schema": "ŞEMA (BİLİNMİYOR - Muhtemelen sadece alt koleksiyon içeriyor)",
+    "_subcollections": {
+      "dersler": "ders_performansi_by_date/6.Devre/gunler/2025-09-28/dersler"
+    }
+  },
+  "ders_performansi_by_date/6.Devre/gunler/2025-09-28/dersler": {
+    "_schema": "ŞEMA (BİLİNMİYOR - Muhtemelen sadece alt koleksiyon içeriyor)",
+    "_subcollections": {
+      "oturumlar": "ders_performansi_by_date/6.Devre/gunler/2025-09-28/dersler/Kıraat/oturumlar"
+    }
+  },
+  "ders_performansi_by_date/6.Devre/gunler/2025-09-28/dersler/Kıraat/oturumlar": {
+    "_schema": {
+      "ders": "string",
+      "mulahaza": "string",
+      "hafta": "number",
+      "tarih": "string",
+      "olusturanAd": "string",
+      "yil": "number",
+      "notlarByTalebe": {},
+      "oturumId": "string",
+      "silindi": "boolean",
+      "ay": "number",
+      "mirror": {
+        "path": "string",
+        "type": "string"
+      },
+      "olusturanUid": "string",
+      "devre": "string",
+      "createdAt": "timestamp",
+      "genelDurum": {
+        "kategori": "string",
+        "puan": "number"
+      },
+      "rev": "number",
+      "kategoriler": {
+        "cokIyi": "array",
+        "zayif": "array",
+        "orta": "array",
+        "iyi": "array"
+      },
+      "kriterler": {
+        "istirak": "number",
+        "duzen": "number"
+      },
+      "ts": "number",
+      "updatedAt": "timestamp"
+    },
+    "_subcollections": {}
+  },
+  "ders_performansi_by_lesson": {
+    "_schema": "ŞEMA (BİLİNMİYOR - Muhtemelen sadece alt koleksiyon içeriyor)",
+    "_subcollections": {
+      "dersler": "ders_performansi_by_lesson/6.Devre/dersler"
+    }
+  },
+  "ders_performansi_by_lesson/6.Devre/dersler": {
+    "_schema": "ŞEMA (BİLİNMİYOR - Muhtemelen sadece alt koleksiyon içeriyor)",
+    "_subcollections": {
+      "gunler": "ders_performansi_by_lesson/6.Devre/dersler/Kıraat/gunler"
+    }
+  },
+  "ders_performansi_by_lesson/6.Devre/dersler/Kıraat/gunler": {
+    "_schema": "ŞEMA (BİLİNMİYOR - Muhtemelen sadece alt koleksiyon içeriyor)",
+    "_subcollections": {
+      "oturumlar": "ders_performansi_by_lesson/6.Devre/dersler/Kıraat/gunler/2025-09-28/oturumlar"
+    }
+  },
+  "ders_performansi_by_lesson/6.Devre/dersler/Kıraat/gunler/2025-09-28/oturumlar": {
+    "_schema": {
+      "olusturanAd": "string",
+      "tarih": "string",
+      "notlarByTalebe": {},
+      "yil": "number",
+      "ders": "string",
+      "ay": "number",
+      "hafta": "number",
+      "oturumId": "string",
+      "mulahaza": "string",
+      "silindi": "boolean",
+      "olusturanUid": "string",
+      "devre": "string",
+      "mirror": {
+        "path": "string",
+        "type": "string"
+      },
+      "createdAt": "timestamp",
+      "genelDurum": {
+        "puan": "number",
+        "kategori": "string"
+      },
+      "rev": "number",
+      "kategoriler": {
+        "zayif": "array",
+        "iyi": "array",
+        "cokIyi": "array",
+        "orta": "array"
+      },
+      "kriterler": {
+        "duzen": "number",
+        "istirak": "number"
+      },
+      "ts": "number",
+      "updatedAt": "timestamp"
+    },
+    "_subcollections": {}
+  },
+  "ders_performansi_meta": {
+    "_schema": {
+      "items": "array"
+    },
+    "_subcollections": {}
+  },
+  "eksik_bildirim": {
+    "_schema": {
+      "userAgent": "string",
+      "parca": "string",
+      "email": "string",
+      "kat": "string",
+      "tarih": "string",
+      "status": "string",
+      "uid": "string",
+      "createdAt": "timestamp"
+    },
+    "_subcollections": {}
+  },
+  "genel_temizlik_detay": {
+    "_schema": "ŞEMA (BİLİNMİYOR - Muhtemelen sadece alt koleksiyon içeriyor)",
+    "_subcollections": {
+      "2025-10-04": "genel_temizlik_detay/1.Kat - Etüt/2025-10-04"
+    }
+  },
+  "genel_temizlik_detay/1.Kat - Etüt/2025-10-04": {
+    "_schema": {
+      "puan100": "number",
+      "eksik_var": "boolean",
+      "email": "string",
+      "kaydeden_uid": "string",
+      "kayit_zamani": "timestamp"
+    },
+    "_subcollections": {
+      "mahaller": "genel_temizlik_detay/1.Kat - Etüt/2025-10-04/NJIeYc1hisUwxp5vlr1Q5yZ7BlJ3/mahaller"
+    }
+  },
+  "genel_temizlik_detay/1.Kat - Etüt/2025-10-04/NJIeYc1hisUwxp5vlr1Q5yZ7BlJ3/mahaller": {
+    "_schema": {
+      "tip": "string",
+      "kriter": {
+        "supur": "boolean",
+        "paspas": "boolean",
+        "toz": "boolean",
+        "cop": "boolean",
+        "cam": "boolean",
+        "duzen": "boolean"
+      },
+      "puan100": "number",
+      "aciklama": "string"
+    },
+    "_subcollections": {}
+  },
+  "genel_temizlik_kontrol": {
+    "_schema": "ŞEMA (BİLİNMİYOR - Muhtemelen sadece alt koleksiyon içeriyor)",
+    "_subcollections": {
+      "2025-10-04": "genel_temizlik_kontrol/1.Kat - Etüt/2025-10-04"
+    }
+  },
+  "genel_temizlik_kontrol/1.Kat - Etüt/2025-10-04": {
+    "_schema": {
+      "islak": {
+        "g_camasir": "boolean",
+        "g_izgara": "boolean",
+        "g_pecete": "boolean",
+        "g_sabun": "boolean",
+        "g_koku": "boolean",
+        "g_paspas": "boolean",
+        "g_kose": "boolean"
+      },
+      "kuru": {
+        "g_supur": "boolean",
+        "g_paspas": "boolean",
+        "g_toz": "boolean",
+        "g_cop": "boolean",
+        "g_cam": "boolean",
+        "g_duzen": "boolean"
+      },
+      "puan10": "number",
+      "eksik_var": "boolean",
+      "aciklama": "string",
+      "email": "string",
+      "kaydeden_uid": "string",
+      "kayit_zamani": "timestamp"
+    },
+    "_subcollections": {}
+  },
+  "hedefler": {
+    "_schema": {
+      "hedef": "number",
+      "uid": "string",
+      "updatedBy": "string",
+      "personel": "string",
+      "kategori": "string",
+      "updatedAt": "timestamp"
+    },
+    "_subcollections": {}
+  },
+  "islemler": {
+    "_schema": {
+      "durum": "string",
+      "gun": "string",
+      "row_uid": "string",
+      "bagisci_vendor_id": "string",
+      "kategori_path": "string",
+      "etiketler": "array",
+      "para_birimi": "string",
+      "personel_id": "string",
+      "kategori_id": "null",
+      "aciklama": "null",
+      "kaynak": "string",
+      "tarih": "timestamp",
+      "ay": "number",
+      "tahakkuk": "boolean",
+      "tip": "string",
+      "varlik_id": "null",
+      "hafta": "number",
+      "tutar": "number",
+      "yil": "number",
+      "adet": "null",
+      "iliski_id": "string"
+    },
+    "_subcollections": {}
+  },
+  "izin_giris": {
+    "_schema": "ŞEMA (BİLİNMİYOR - Muhtemelen sadece alt koleksiyon içeriyor)",
+    "_subcollections": {
+      "ayarlar": "izin_giris/2025-08-04/ayarlar",
+      "log": "izin_giris/2025-08-04/log",
+      "talebeler": "izin_giris/2025-08-04/talebeler"
+    }
+  },
+  "izin_giris/2025-08-04/ayarlar": {
+    "_schema": {
+      "donusSaati": "string"
+    },
+    "_subcollections": {}
+  },
+  "izin_giris/2025-08-04/log": {
+    "_schema": {
+      "talebe": "string",
+      "islem": "string",
+      "yeniDurum": "string",
+      "saat": "string",
+      "kayitZaman": "timestamp"
+    },
+    "_subcollections": {}
+  },
+  "izin_giris/2025-08-04/talebeler": {
+    "_schema": {
+      "mulahaza": "string",
+      "kayitPersonel": "string",
+      "izinSaati": "string",
+      "izinPersonel": "string",
+      "durum": "string",
+      "kayitZaman": "timestamp",
+      "giris": "string"
+    },
+    "_subcollections": {}
+  },
+  "kategoriler": {
+    "_schema": {
+      "ad": "string",
+      "tip": "string",
+      "parent_id": "null",
+      "path": "string",
+      "seviye": "number",
+      "aktif": "boolean",
+      "sira": "number"
+    },
+    "_subcollections": {}
+  },
+  "kermes_menu": {
+    "_schema": {
+      "ad": "string",
+      "kategori": "string",
+      "fiyat": "number"
+    },
+    "_subcollections": {}
+  },
+  "kullanici_ayar": {
+    "_schema": {
+      "tema": "string",
+      "temaUpdatedAt": "timestamp"
+    },
+    "_subcollections": {}
+  },
+  "kullanici_log": {
+    "_schema": {
+      "uid": "string",
+      "email": "string",
+      "sayfa": "string",
+      "path": "string",
+      "agent": "string",
+      "ts": "timestamp"
+    },
+    "_subcollections": {}
+  },
+  "kullanicilar": {
+    "_schema": {
+      "adSoyad": "string",
+      "email": "string",
+      "gorev": "string",
+      "eklenmeTarihi": "string",
+      "aktif": "boolean",
+      "rol": "string",
+      "yetkiler": "array"
+    },
+    "_subcollections": {}
+  },
+  "nobet_ayar": {
+    "_schema": {
+      "bekarlar": "array",
+      "ihvan": "string",
+      "otoPazar": "string",
+      "evliler": "array"
+    },
+    "_subcollections": {}
+  },
+  "nobet_index": {
+    "_schema": {
+      "person": "string",
+      "day": "string",
+      "type": "string",
+      "date": "string",
+      "role": "string",
+      "weekKey": "string",
+      "monthKey": "string",
+      "saat": "string",
+      "year": "string",
+      "createdAt": "timestamp"
+    },
+    "_subcollections": {}
+  },
+  "nobet_planlari": {
+    "_schema": {
+      "pazarEvli": "null",
+      "createdAt": "timestamp",
+      "isoYear": "number",
+      "createdBy": "string",
+      "isSpecialPazar": "boolean",
+      "weekNo": "number",
+      "weekKey": "string",
+      "rows": "array",
+      "isPazarTehir": "boolean"
+    },
+    "_subcollections": {}
+  },
+  "personel_odeme": {
+    "_schema": {
+      "ay": "number",
+      "yil": "number",
+      "haberlesme": "number",
+      "hediye": "number",
+      "cocuk": "number",
+      "toplam": "number",
+      "ssk": "number",
+      "kira": "number",
+      "tarih": "timestamp",
+      "yol": "number",
+      "maas": "string",
+      "ad": "string",
+      "odemeler": {
+        "kira": "boolean",
+        "cocuk": "boolean",
+        "ssk": "boolean",
+        "yol": "boolean",
+        "haberlesme": "boolean",
+        "hediye": "boolean"
+      }
+    },
+    "_subcollections": {}
+  },
+  "sayaclar": {
+    "_schema": {
+      "updated_at": "timestamp",
+      "seq": "number"
+    },
+    "_subcollections": {}
+  },
+  "sayfa_erisimleri": {
+    "_schema": {
+      "uid": "string",
+      "email": "string",
+      "page": "string",
+      "userAgent": "string",
+      "zaman": "timestamp"
+    },
+    "_subcollections": {}
+  },
+  "sayfa_loglari": {
+    "_schema": {
+      "sayfa": "string",
+      "uid": "string",
+      "zaman": "timestamp",
+      "ua": "string"
+    },
+    "_subcollections": {}
+  },
+  "sayfa_manifesti": {
+    "_schema": {
+      "title": "string",
+      "order": "number",
+      "pages": "array"
+    },
+    "_subcollections": {}
+  },
+  "tahakkuklar": {
+    "_schema": {
+      "yil": "number",
+      "faaliyet": "string",
+      "personel": "string",
+      "borclu": "string",
+      "tahakkuk": "number",
+      "aciklama": "string",
+      "createdAt": "string"
+    },
+    "_subcollections": {}
+  },
+  "tahsilatlar": {
+    "_schema": {
+      "tahakkukId": "string",
+      "yil": "number",
+      "faaliyet": "string",
+      "personel": "string",
+      "borclu": "string",
+      "tutar": "number",
+      "odeyen": "string",
+      "yontem": "string",
+      "tarih": "timestamp",
+      "createdAt": "timestamp"
+    },
+    "_subcollections": {}
+  },
+  "takrir_gunluk": {
+    "_schema": {
+      "haftaKey": "string",
+      "not": "string",
+      "dersId": "string",
+      "tarihISO": "string",
+      "girenUid": "string",
+      "planliMi": "boolean",
+      "talebeId": "string",
+      "donem": "string",
+      "durum": "string",
+      "girisTS": "timestamp"
+    },
+    "_subcollections": {}
+  },
+  "talebe_borclar": {
+    "_schema": {
+      "isim": "string",
+      "toplamAidat": "number",
+      "toplamKitap": "number",
+      "tarih": "string"
+    },
+    "_subcollections": {}
+  },
+  "talebeler": {
+    "_schema": "ŞEMA (BİLİNMİYOR - Muhtemelen sadece alt koleksiyon içeriyor)",
+    "_subcollections": {
+      "öğrenciler": "talebeler/6.Devre/öğrenciler"
+    }
+  },
+  "talebeler/6.Devre/öğrenciler": {
+    "_schema": {
+      "fotoURL": "string",
+      "durum": "string",
+      "uid": "string",
+      "createdAt": "timestamp",
+      "kullAd": "string",
+      "devre": "string",
+      "kurs": "string",
+      "kimlikAd": "string",
+      "egitimTuru": "string",
+      "mezuniyetDurumu": "string",
+      "ogrenimSeviyesi": "string",
+      "adresIl": "string",
+      "adresIlce": "string",
+      "kardesSayisi": "number",
+      "kurstakiKardesSayisi": "number",
+      "maddiDurum": "string",
+      "saglikVar": "boolean",
+      "cumaKilabilir": "string",
+      "vazifeSayisi": "number",
+      "updatedAt": "timestamp"
+    },
+    "_subcollections": {
+      "bilgiler": "talebeler/6.Devre/öğrenciler/0063130e-6c26-4717-ae85-43aebf1d7041/bilgiler"
+    }
+  },
+  "talebeler/6.Devre/öğrenciler/0063130e-6c26-4717-ae85-43aebf1d7041/bilgiler": {
+    "_schema": {
+      "uid": "string",
+      "createdAt": "timestamp",
+      "adresAcik": "string",
+      "adresMahalle": "string",
+      "adresIl": "string",
+      "adresIlce": "string",
+      "devre": "string",
+      "updatedAt": "timestamp"
+    },
+    "_subcollections": {}
+  },
+  "temizlik_katlari": {
+    "_schema": {
+      "guncelleme": "timestamp",
+      "mahalleler": "array"
+    },
+    "_subcollections": {}
+  },
+  "temizlik_kontrol": {
+    "_schema": "ŞEMA (BİLİNMİYOR - Muhtemelen sadece alt koleksiyon içeriyor)",
+    "_subcollections": {
+      "2025-08-15": "temizlik_kontrol/-1.Kat - Yatakhane/2025-08-15",
+      "2025-08-17": "temizlik_kontrol/-1.Kat - Yatakhane/2025-08-17",
+      "2025-09-09": "temizlik_kontrol/-1.Kat - Yatakhane/2025-09-09",
+      "2025-09-10": "temizlik_kontrol/-1.Kat - Yatakhane/2025-09-10",
+      "2025-09-11": "temizlik_kontrol/-1.Kat - Yatakhane/2025-09-11",
+      "2025-10-03": "temizlik_kontrol/-1.Kat - Yatakhane/2025-10-03",
+      "2025-09-13": "temizlik_kontrol/-2.Kat - Yemekhane/2025-09-13",
+      "2025-10-04": "temizlik_kontrol/-2.Kat - Yemekhane/2025-10-04",
+      "2025-09-12": "temizlik_kontrol/0.Kat - Giriş/2025-09-12",
+      "2025-08-31": "temizlik_kontrol/1.Kat - Etüt/2025-08-31",
+      "2025-08-16": "temizlik_kontrol/2.Kat - Lokal/2025-08-16",
+      "2025-09-06": "temizlik_kontrol/2.Kat - Lokal/2025-09-06",
+      "2025-10-08": "temizlik_kontrol/2.Kat - Lokal/2025-10-08",
+      "2025-10-10": "temizlik_kontrol/2.Kat - Lokal/2025-10-10"
+    }
+  },
+  "temizlik_kontrol/-1.Kat - Yatakhane/2025-08-15": {
+    "_schema": {
+      "talebe": "string",
+      "aciklama": "string",
+      "puan": "number",
+      "puan10": "number",
+      "kaydeden_uid": "string",
+      "temiz": "boolean",
+      "kayit_zamani": "timestamp"
+    },
+    "_subcollections": {}
+  },
+  "temizlik_kontrol/-1.Kat - Yatakhane/2025-08-17": {
+    "_schema": {
+      "talebe": "string",
+      "aciklama": "string",
+      "kayit_zamani": "timestamp",
+      "puan": "number",
+      "puan10": "number",
+      "kaydeden_uid": "string",
+      "temiz": "boolean"
+    },
+    "_subcollections": {}
+  },
+  "temizlik_kontrol/-1.Kat - Yatakhane/2025-09-09": {
+    "_schema": {
+      "talebe": "string",
+      "aciklama": "string",
+      "kayit_zamani": "timestamp",
+      "puan": "number",
+      "puan10": "number",
+      "kaydeden_uid": "string",
+      "temiz": "boolean"
+    },
+    "_subcollections": {}
+  },
+  "temizlik_kontrol/-1.Kat - Yatakhane/2025-09-10": {
+    "_schema": {
+      "talebe": "string",
+      "aciklama": "string",
+      "kayit_zamani": "timestamp",
+      "puan": "number",
+      "puan10": "number",
+      "kaydeden_uid": "string",
+      "temiz": "boolean"
+    },
+    "_subcollections": {}
+  },
+  "temizlik_kontrol/-1.Kat - Yatakhane/2025-09-11": {
+    "_schema": {
+      "talebe": "string",
+      "aciklama": "string",
+      "puan": "number",
+      "kayit_zamani": "timestamp",
+      "puan10": "number",
+      "kaydeden_uid": "string",
+      "temiz": "boolean"
+    },
+    "_subcollections": {}
+  },
+  "temizlik_kontrol/-1.Kat - Yatakhane/2025-10-03": {
+    "_schema": {
+      "talebe": "string",
+      "aciklama": "string",
+      "puan": "number",
+      "kayit_zamani": "timestamp",
+      "puan10": "number",
+      "kaydeden_uid": "string",
+      "temiz": "boolean"
+    },
+    "_subcollections": {}
+  },
+  "temizlik_kontrol/-2.Kat - Yemekhane/2025-09-13": {
+    "_schema": {
+      "talebe": "string",
+      "aciklama": "string",
+      "puan": "number",
+      "puan10": "number",
+      "kaydeden_uid": "string",
+      "temiz": "boolean",
+      "kayit_zamani": "timestamp"
+    },
+    "_subcollections": {}
+  },
+  "temizlik_kontrol/-2.Kat - Yemekhane/2025-10-04": {
+    "_schema": {
+      "talebe": "string",
+      "aciklama": "string",
+      "puan": "number",
+      "kayit_zamani": "timestamp",
+      "puan10": "number",
+      "kaydeden_uid": "string",
+      "temiz": "boolean"
+    },
+    "_subcollections": {}
+  },
+  "temizlik_kontrol/0.Kat - Giriş/2025-09-12": {
+    "_schema": {
+      "talebe": "string",
+      "aciklama": "string",
+      "puan": "number",
+      "kayit_zamani": "timestamp",
+      "puan10": "number",
+      "kaydeden_uid": "string",
+      "temiz": "boolean"
+    },
+    "_subcollections": {}
+  },
+  "temizlik_kontrol/1.Kat - Etüt/2025-08-31": {
+    "_schema": {
+      "talebe": "string",
+      "aciklama": "string",
+      "puan": "number",
+      "kayit_zamani": "timestamp",
+      "puan10": "number",
+      "kaydeden_uid": "string",
+      "temiz": "boolean"
+    },
+    "_subcollections": {}
+  },
+  "temizlik_kontrol/2.Kat - Lokal/2025-08-16": {
+    "_schema": {
+      "talebe": "string",
+      "aciklama": "string",
+      "puan": "number",
+      "kaydeden_uid": "string",
+      "temiz": "boolean",
+      "kayit_zamani": "timestamp"
+    },
+    "_subcollections": {}
+  },
+  "temizlik_kontrol/2.Kat - Lokal/2025-09-06": {
+    "_schema": {
+      "talebe": "string",
+      "aciklama": "string",
+      "puan": "number",
+      "kayit_zamani": "timestamp",
+      "puan10": "number",
+      "kaydeden_uid": "string",
+      "temiz": "boolean"
+    },
+    "_subcollections": {}
+  },
+  "temizlik_kontrol/2.Kat - Lokal/2025-10-08": {
+    "_schema": {
+      "talebe": "string",
+      "aciklama": "string",
+      "puan": "number",
+      "puan10": "number",
+      "kaydeden_uid": "string",
+      "temiz": "boolean",
+      "kayit_zamani": "timestamp"
+    },
+    "_subcollections": {}
+  },
+  "temizlik_kontrol/2.Kat - Lokal/2025-10-10": {
+    "_schema": {
+      "talebe": "string",
+      "aciklama": "string",
+      "puan": "number",
+      "kayit_zamani": "timestamp",
+      "puan10": "number",
+      "kaydeden_uid": "string",
+      "temiz": "boolean"
+    },
+    "_subcollections": {}
+  },
+  "veriler": {
+    "_schema": {
+      "kategori": "string",
+      "personel": "string",
+      "adSoyad": "string",
+      "miktar": "number",
+      "nereyeGeldi": "string",
+      "tur": "string",
+      "aciklama": "string",
+      "tarih": "string",
+      "ay": "null",
+      "yil": "null",
+      "ayYilKey": "null",
+      "makbuzNo": "null",
+      "telefon": "null",
+      "createdBy": "null",
+      "uid": "null",
+      "userAgent": "string",
+      "cihaz": "string",
+      "createdAt": "timestamp"
+    },
+    "_subcollections": {}
+  }
+};
+
+        const container = document.getElementById('schema-container');
+        const searchBox = document.getElementById('search-box');
+        let collectionElements = []; 
+
+        function renderSchema(data) {
+            container.innerHTML = '';
+            collectionElements = [];
+
+            const sortedKeys = Object.keys(data).sort();
+
+            for (const collectionPath of sortedKeys) {
+                const collectionData = data[collectionPath];
+                const collectionDiv = document.createElement('div');
+                collectionDiv.className = 'collection-container';
+
+                const titleDiv = document.createElement('div');
+                titleDiv.className = 'collection-title';
+                // İkonu '+' olarak güncelledik
+                titleDiv.innerHTML = `<h2>${collectionPath}</h2><span class="toggle-icon">+</span>`;
+                
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'schema-content';
+
+                if (collectionData._schema === 'KOLEKSİYON (BOŞ)') {
+                    contentDiv.innerHTML = '<p class="empty-collection">Bu koleksiyon (veya örnek dokümanı) boş.</p>';
+                } else {
+                    const schemaPre = document.createElement('pre');
+                    schemaPre.textContent = JSON.stringify(collectionData._schema, null, 2);
+                    contentDiv.appendChild(schemaPre);
+                }
+
+                const subcollections = collectionData._subcollections;
+                if (Object.keys(subcollections).length > 0) {
+                    const subDiv = document.createElement('div');
+                    subDiv.className = 'subcollections';
+                    subDiv.innerHTML = '<h3>Alt Koleksiyonlar:</h3>';
+                    
+                    const subList = document.createElement('ul');
+                    for (const subName in subcollections) {
+                        const subItem = document.createElement('li');
+                        // Alt koleksiyon yolunu daha belirgin hale getirdik
+                        subItem.innerHTML = `<strong>${subName}</strong> &rarr; <span>${subcollections[subName]}</span>`;
+                        subList.appendChild(subItem);
+                    }
+                    subDiv.appendChild(subList);
+                    contentDiv.appendChild(subDiv);
+                }
+
+                collectionDiv.appendChild(titleDiv);
+                collectionDiv.appendChild(contentDiv);
+                container.appendChild(collectionDiv);
+                
+                collectionElements.push({
+                    path: collectionPath,
+                    element: collectionDiv
+                });
+
+                // Açma/kapama ve ikon değiştirme
+                titleDiv.addEventListener('click', () => {
+                    const isVisible = contentDiv.style.display === 'block';
+                    contentDiv.style.display = isVisible ? 'none' : 'block';
+                    titleDiv.classList.toggle('active');
+                    // '−' (eksi işareti) ve '+' (artı işareti) arasında geçiş yap
+                    titleDiv.querySelector('.toggle-icon').textContent = isVisible ? '+' : '−';
+                });
+            }
+        }
+
+        searchBox.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            collectionElements.forEach(item => {
+                const isVisible = item.path.toLowerCase().includes(searchTerm);
+                item.element.style.display = isVisible ? '' : 'none';
+            });
+        });
+
+        renderSchema(schemaData);
+    </script>
+</body>
+</html>
