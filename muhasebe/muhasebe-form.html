@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-<title>KF | Aidat·Kitap · Hedef·Teberru</title>
+<title>KF | Aidat·Kitap · Hedef·Teberru·Kurban</title>
 <link rel="icon" type="image/png" href="../img/logo.png" />
 
 <style>
@@ -82,7 +82,6 @@
   @media (max-width: 640px){
     .row{grid-template-columns:repeat(4,minmax(0,1fr))}
     .col-6,.col-4,.col-3,.col-12{grid-column:span 4}
-    .tabs{overflow:auto; -webkit-overflow-scrolling:touch}
   }
 
   .muted{color:var(--muted)}
@@ -98,16 +97,69 @@
   input:focus,select:focus,textarea:focus{ box-shadow:0 0 0 3px rgba(14,165,233,.25); border-color:#0ea5e9; background:var(--surface) }
   .hint{font-size:12px; color:var(--muted)}
 
-  /* ========== Tabs & Segment ========== */
-  .tabs{display:flex; gap:10px; flex-wrap:wrap}
-  .tab{border:1px solid var(--stroke); background:var(--surface2); color:var(--text); padding:10px 16px; border-radius:999px; font-weight:800; cursor:pointer; white-space:nowrap}
-  .tab.active{background:linear-gradient(180deg,var(--brand),var(--brand2)); color:#fff; border-color:transparent}
-
-  .seg{ display:flex; flex-wrap:wrap; gap:8px; }
-  .seg .seg-btn{
-    border:1px solid var(--stroke); background:var(--card); color:var(--text); border-radius:999px; padding:8px 14px; font-weight:700; cursor:pointer; white-space:nowrap
+  /* ========== Minimal Tabs (üst) ========== */
+  .mini-tabs{
+    display:flex; gap:16px; align-items:center;
+    border-bottom:1px solid rgba(148,163,184,.16);
+    overflow-x:auto; scrollbar-width:none;
   }
-  .seg .seg-btn.active{ background:linear-gradient(180deg,var(--brand),var(--brand2)); color:#fff; border-color:transparent; }
+  .mini-tabs::-webkit-scrollbar{display:none}
+  .mini-tab{
+    background:none; border:none; padding:10px 0; font-weight:700; color:var(--muted); cursor:pointer;
+    position:relative; white-space:nowrap; font-size:14px;
+  }
+  .mini-tab.active{color:var(--text)}
+  .mini-tab.active::after{
+    content:''; position:absolute; left:0; right:0; bottom:-1px; height:2px;
+    background:linear-gradient(90deg,var(--brand),var(--brand2));
+    border-radius:99px;
+  }
+
+  /* ========== Hedef-Teberru alt tabbar ========== */
+  .sub-tabs{
+    display:flex; gap:14px; margin-bottom:8px;
+    overflow-x:auto; scrollbar-width:none;
+    padding:3px 3px 2px;
+    background:rgba(15,23,42,.04);
+    border:1px solid rgba(148,163,184,.08);
+    border-radius:999px;
+  }
+  .sub-tabs::-webkit-scrollbar{display:none}
+
+  .sub-tab{
+    background:transparent;
+    border:none;
+    padding:7px 14px 8px;
+    font-weight:600;
+    color:var(--muted);
+    cursor:pointer;
+    white-space:nowrap;
+    position:relative;
+    font-size:13px;
+    border-radius:999px;
+    transition:.15s ease-out;
+  }
+
+  .sub-tab:hover{
+    background:rgba(148,163,184,.07);
+    color:var(--text);
+  }
+
+  .sub-tab.active{
+    color:var(--text);
+    background:rgba(14,165,233,.16);
+    box-shadow:0 8px 18px rgba(14,165,233,.22);
+  }
+
+  .sub-tab.active::after{
+    content:'';
+    position:absolute;
+    right:10px;
+    top:8px;
+    width:6px; height:6px;
+    background:var(--brand);
+    border-radius:999px;
+  }
 
   /* ========== Buttons ========== */
   .actions{display:flex; gap:10px; flex-wrap:wrap}
@@ -141,6 +193,16 @@
     animation: spin .8s linear infinite;
   }
   @keyframes spin{ to{ transform: rotate(360deg); } }
+
+  .btn-ghost{
+    background:transparent; border:1px solid rgba(148,163,184,.16); border-radius:999px;
+    padding:4px 10px; font-size:12px; cursor:pointer; color:var(--text);
+  }
+
+  @media (max-width:720px){
+    .mini-tabs{gap:10px}
+    .sub-tabs{gap:10px}
+  }
 </style>
 
 <!-- Firebase (compat) -->
@@ -185,26 +247,25 @@
 
 <!-- CONTENT -->
 <main class="container stack-lg">
-  <!-- Başlık -->
-  <section class="card stack">
+  <!-- Başlık + Üst Seçim -->
+  <section class="card stack" id="ustKart">
     <div class="row">
-      <div class="col-12"><h2 style="margin:0">Finans Veri Girişleri</h2></div>
-      <div class="col-12 muted">Kayıt yolları korunur • Ek meta alanlar eklenir</div>
+      <div class="col-12">
+        <h2 style="margin:0">Form Girişi & Düzenleme</h2>
+      </div>
+      <div class="col-12 muted">Aidat, kitap, hedef, teberru ve kurban için formları aynı panelden yönetin.</div>
     </div>
-  </section>
-
-  <!-- Üst Sekmeler -->
-  <section class="card">
-    <div class="tabs" id="topTabs">
-      <button class="tab active" data-tab="aidat-kitap">Aidat · Kitap</button>
-      <button class="tab" data-tab="hedef-teberru">Hedef · Teberru</button>
+    <!-- Üst minimal tabs (Aidat & Kitap | Hedef & Teberru) -->
+    <div class="mini-tabs" id="mainFormTabs">
+      <button class="mini-tab active" data-target="aidatKitapWrap">Aidat &amp; Kitap</button>
+      <button class="mini-tab" data-target="hedefTeberruWrap">Hedef &amp; Teberru</button>
     </div>
   </section>
 
   <!-- Aidat · Kitap -->
-  <section class="card stack" id="aidat-kitap">
+  <section class="card stack" id="aidatKitapWrap">
     <h3 style="margin:0">Aidat · Kitap</h3>
-    <div class="muted">Koleksiyonlar: <strong>talebe_borclar</strong> & <strong>aidat_kitap</strong></div>
+    <div class="muted">Koleksiyonlar: <strong>talebe_borclar</strong> &amp; <strong>aidat_kitap</strong></div>
 
     <div class="row">
       <!-- Borç Tanımlama -->
@@ -297,16 +358,17 @@
   </section>
 
   <!-- Hedef · Teberru -->
-  <section class="card stack" id="hedef-teberru" style="display:none">
+  <section class="card stack" id="hedefTeberruWrap" style="display:none">
     <h3 style="margin:0">Hedef · Teberru</h3>
-    <div class="muted">Koleksiyonlar: <strong>hedefler</strong> & <strong>veriler</strong></div>
+    <div class="muted">Koleksiyonlar: <strong>hedefler</strong>, <strong>veriler</strong>, <strong>kategoriler</strong></div>
 
-    <!-- Segment -->
-    <div class="seg" id="htSeg">
-      <button type="button" class="seg-btn active" data-open="sec-ht">Hedef Tanımla</button>
-      <button type="button" class="seg-btn" data-open="sec-hd">Hedef Düzenle</button>
-      <button type="button" class="seg-btn" data-open="sec-vg">Veri Girişi</button>
-      <button type="button" class="seg-btn" data-open="sec-vd">Veri Düzeltme</button>
+    <!-- alt mini tabs -->
+    <div class="sub-tabs" id="htSubTabs">
+      <button type="button" class="sub-tab active" data-open="sec-ht">Hedef Tanımlama</button>
+      <button type="button" class="sub-tab" data-open="sec-hd">Hedef Düzenleme</button>
+      <button type="button" class="sub-tab" data-open="sec-vg">Veri Girişi</button>
+      <button type="button" class="sub-tab" data-open="sec-vd">Veri Düzeltme</button>
+      <button type="button" class="sub-tab" data-open="sec-kg">Kategori Yönetimi</button>
     </div>
 
     <!-- 1) Hedef Tanımla -->
@@ -315,12 +377,7 @@
         <div class="col-12 field">
           <label>Kategori</label>
           <select id="kategoriHT">
-            <option value="">Seçiniz</option>
-            <option value="Kitap Kampanyası">Kitap Kampanyası</option>
-            <option value="Mevlid Kandili">Mevlid Kandili</option>
-            <option value="Eylül Kermesi">Eylül Kermesi</option>
-            <option value="Araç">Kurs Arabası</option>
-            <option value="Talebeye İkram">Talebeye İkram</option>
+            <option value="">Yükleniyor…</option>
           </select>
         </div>
       </div>
@@ -341,12 +398,7 @@
         <div class="col-6 field">
           <label>Kategori</label>
           <select id="kategoriHD">
-            <option value="">Seçiniz</option>
-            <option value="Kitap Kampanyası">Kitap Kampanyası</option>
-            <option value="Mevlid Kandili">Mevlid Kandili</option>
-            <option value="Eylül Kermesi">Eylül Kermesi</option>
-            <option value="Araç">Kurs Arabası</option>
-            <option value="Talebeye İkram">Talebeye İkram</option>
+            <option value="">Yükleniyor…</option>
           </select>
         </div>
         <div class="col-6 field">
@@ -373,71 +425,144 @@
 
     <!-- 3) Veri Girişi -->
     <section id="sec-vg" class="stack" style="display:none">
-      <!-- MOD: Hedef / Teberru seçimi -->
-      <div class="seg" id="vgMode">
-        <button type="button" class="seg-btn active" data-mode="hedef">Hedef</button>
-        <button type="button" class="seg-btn" data-mode="teberru">Teberru</button>
+      <!-- MOD: Hedef / Teberru / Kurban seçimi -->
+      <div class="sub-tabs" id="vgMode">
+        <button type="button" class="sub-tab active" data-mode="hedef">Hedef</button>
+        <button type="button" class="sub-tab" data-mode="teberru">Teberru</button>
+        <button type="button" class="sub-tab" data-mode="kurban">Kurban</button>
       </div>
 
-      <!-- Hedef modu: Kategori + Personel -->
-      <div id="vgKatRow" class="row">
-        <div class="col-6 field">
-          <label>Kategori</label>
-          <select id="kategoriVG">
-            <option value="">Seçiniz</option>
-            <option value="Kitap Kampanyası">Kitap Kampanyası</option>
-            <option value="Mevlid Kandili">Mevlid Kandili</option>
-            <option value="Eylül Kermesi">Eylül Kermesi</option>
-            <option value="Araç">Kurs Arabası</option>
-            <option value="Talebeye İkram">Talebeye İkram</option>
-          </select>
+      <!-- HEDEF FORMU -->
+      <div id="formHedef" class="stack">
+        <div class="row" id="vgKatRow">
+          <div class="col-6 field">
+            <label>Kategori</label>
+            <select id="kategoriVG">
+              <option value="">Yükleniyor…</option>
+            </select>
+          </div>
+          <div class="col-6 field">
+            <label>Personel</label>
+            <select id="giris-personel"></select>
+          </div>
         </div>
-        <div class="col-6 field">
-          <label>Personel</label>
-          <select id="giris-personel"></select>
-        </div>
-      </div>
 
-      <!-- Teberru modu: Ay + Yıl (kategori yok) -->
-      <div id="vgAyYilRow" class="row" style="display:none">
-        <div class="col-6 field">
-          <label>Ay</label>
-          <select id="vgAy"></select>
+        <div class="field">
+          <label>Parayı Verenin Adı Soyadı</label>
+          <input id="giris-veren" placeholder="Örn: Mehmet Yılmaz" />
         </div>
-        <div class="col-6 field">
-          <label>Yıl</label>
-          <select id="vgYil"></select>
-        </div>
-      </div>
 
-      <div class="field">
-        <label>Parayı Verenin Adı Soyadı</label>
-        <input id="giris-veren" placeholder="Örn: Mehmet Yılmaz" />
-      </div>
-
-      <div class="row">
-        <div class="col-6 field">
-          <label>Miktar (₺)</label>
-          <input type="number" id="giris-miktar" min="0" />
+        <div class="row">
+          <div class="col-6 field">
+            <label>Miktar (₺)</label>
+            <input type="number" id="giris-miktar" min="0" />
+          </div>
+          <div class="col-6 field">
+            <label>Para Nereye Geldi?</label>
+            <select id="giris-turu">
+              <option value="Nakit">Nakit</option>
+              <option value="Banka">Banka</option>
+            </select>
+          </div>
         </div>
-        <div class="col-6 field">
-          <label>Para Nereye Geldi?</label>
-          <select id="giris-turu">
-            <option value="Nakit">Nakit</option>
-            <option value="Banka">Banka</option>
-          </select>
+
+        <div class="row">
+          <div class="col-6 field">
+            <label>Açıklama (opsiyonel)</label>
+            <input id="giris-aciklama" placeholder="-" />
+          </div>
+          <div class="col-6 field">
+            <label>Tarih/Saat (ops.)</label>
+            <input type="datetime-local" id="giris-tarih" />
+          </div>
         </div>
       </div>
 
-      <!-- AÇIKLAMA (opsiyonel) ve ek meta alanlar (opsiyonel) -->
-      <div class="row">
-        <div class="col-6 field">
-          <label>Açıklama (opsiyonel)</label>
-          <input id="giris-aciklama" placeholder="-" />
+      <!-- TEBERRU FORMU (revize) -->
+      <div id="formTeberru" class="stack" style="display:none">
+        <div class="row">
+          <div class="col-6 field">
+            <label>Tarih (Ay / Yıl)</label>
+            <input type="month" id="tbr-tarih" />
+          </div>
+          <div class="col-6 field">
+            <label>Seçilen Dönem</label>
+            <input id="tbr-tarih-goster" readonly placeholder="Kasım 2025 gibi" />
+          </div>
         </div>
-        <div class="col-6 field">
-          <label>Tarih/Saat (ops.)</label>
-          <input type="datetime-local" id="giris-tarih" />
+
+        <div class="row">
+          <div class="col-6 field">
+            <label>Personel</label>
+            <select id="tbr-personel"></select>
+          </div>
+          <div class="col-6 field">
+            <label>Parayı Verenin Adı Soyadı</label>
+            <input id="tbr-veren" placeholder="Örn: Mehmet Yılmaz" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-6 field">
+            <label>Miktar (₺)</label>
+            <input type="number" id="tbr-miktar" min="0" />
+          </div>
+          <div class="col-6 field">
+            <label>Para Nereye Geldi?</label>
+            <select id="tbr-nereye">
+              <option value="Nakit">Nakit</option>
+              <option value="Banka">Banka</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-6 field">
+            <label>Açıklama (ops.)</label>
+            <input id="tbr-aciklama" placeholder="-" />
+          </div>
+          <div class="col-6 field">
+            <label>Tarih (ops.)</label>
+            <input type="datetime-local" id="tbr-tarih-ops" />
+          </div>
+        </div>
+      </div>
+
+      <!-- KURBAN FORMU (güncel) -->
+      <div id="formKurban" class="stack" style="display:none">
+        <div class="row">
+          <div class="col-4 field">
+            <label>Kategori</label>
+            <!-- değerler artık sorgu ile aynı -->
+            <select id="krb-kategori">
+              <option value="kucukbas">Küçükbaş</option>
+              <option value="buyukbas">Büyükbaş</option>
+            </select>
+          </div>
+          <div class="col-4 field">
+            <label>Personel</label>
+            <select id="krb-personel"></select>
+          </div>
+          <div class="col-4 field">
+            <label>Kurban Sahibinin Adı Soyadı</label>
+            <input id="krb-sahip" placeholder="Ad Soyad" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-6 field">
+            <label>Kesim Yeri</label>
+            <input id="krb-kesim-yeri" placeholder="Örn: Kurs / Mezbahane" />
+          </div>
+          <div class="col-6 field">
+            <label>Kesim Tarihi</label>
+            <input type="date" id="krb-kesim-tarih" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Açıklama</label>
+          <input id="krb-aciklama" placeholder="Opsiyonel" />
         </div>
       </div>
 
@@ -450,14 +575,7 @@
         <div class="col-6 field">
           <label>Kategori</label>
           <select id="kategoriVD">
-            <option value="">Seçiniz</option>
-            <option value="Kitap Kampanyası">Kitap Kampanyası</option>
-            <option value="Mevlid Kandili">Mevlid Kandili</option>
-            <option value="Eylül Kermesi">Eylül Kermesi</option>
-            <option value="Araç">Kurs Arabası</option>
-            <option value="Talebeye İkram">Talebeye İkram</option>
-                        <!-- VD kategorisine ek seçenek -->
-            <option value="Teberru">Teberru (Genel)</option>
+            <option value="">Yükleniyor…</option>
           </select>
         </div>
         <div class="col-6 field">
@@ -479,7 +597,40 @@
       <!-- Liste -->
       <div id="vd-liste" class="table-wrap" style="margin-top:10px"></div>
     </section>
-  </section> <!-- <<< KAPANIŞ: hedef-teberru -->
+
+    <!-- 5) Kategori Yönetimi -->
+    <section id="sec-kg" class="stack" style="display:none">
+      <div class="row">
+        <div class="col-4 field">
+          <label>Kategori Adı</label>
+          <input type="text" id="kgAd" placeholder="Örn: Kitap Kampanyası" />
+        </div>
+        <div class="col-3 field">
+          <label>Tip</label>
+          <select id="kgTip">
+            <option value="hedef">Hedef</option>
+            <option value="teberru">Teberru</option>
+            <option value="herikisi">Her ikisi</option>
+          </select>
+        </div>
+        <div class="col-3 field" style="align-self:flex-end">
+          <button class="cta" id="kgKaydetBtn" type="button">Kategori Kaydet</button>
+        </div>
+      </div>
+      <p class="muted" style="margin:0">Kaydedilen tüm kategoriler diğer formlardaki "Kategori" alanlarına otomatik düşer. Kayıt tarihleri de tutulur.</p>
+      <div class="table-wrap" style="margin-top:10px">
+        <table>
+          <thead>
+            <tr><th>Ad</th><th>Tip</th><th>Kayıt Tarihi</th><th>İşlem</th></tr>
+          </thead>
+          <tbody id="kgListe">
+            <tr><td colspan="4" class="muted">Kategoriler yükleniyor…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </section> <!-- /hedefTeberruWrap -->
 
   <div style="height:40px"></div>
 </main>
@@ -528,6 +679,8 @@
         <select id="vdTur">
           <option value="hedef">Hedef</option>
           <option value="teberru">Teberru</option>
+          <option value="kucukbas">Kurban – Küçükbaş</option>
+          <option value="buyukbas">Kurban – Büyükbaş</option>
         </select>
       </div>
     </div>
@@ -543,6 +696,30 @@
   </div>
 </div>
 
+<!-- Kategori Düzenle Modal -->
+<div class="modal" id="kgModal" role="dialog" aria-modal="true">
+  <div class="modal-icerik">
+    <button class="modal-kapat" id="kgModalKapat" type="button">✖</button>
+    <h3 style="margin:0">Kategori Düzenle</h3>
+    <input type="hidden" id="kgEditId" />
+    <div class="field">
+      <label>Kategori Adı</label>
+      <input id="kgEditAd" />
+    </div>
+    <div class="field">
+      <label>Tip</label>
+      <select id="kgEditTip">
+        <option value="hedef">Hedef</option>
+        <option value="teberru">Teberru</option>
+        <option value="herikisi">Her ikisi</option>
+      </select>
+    </div>
+    <div class="actions" style="justify-content:flex-end">
+      <button class="cta" id="kgEditKaydet">Kaydet</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <script>
 /* ===== Helpers ===== */
@@ -554,8 +731,16 @@ const norm=(s)=> String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').t
 function toast(msg){const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(window.__to); window.__to=setTimeout(()=>t.classList.remove('show'),2400);}
 function toNum(v){ if (typeof v === 'number') return v; if (typeof v === 'string'){ const n=Number(v.replace(/\./g,'').replace(',', '.')); return isNaN(n)?0:n; } return 0; }
 function normalizeUrl(u){ if(!u) return '#'; if(/^https?:\/\//i.test(u)) return u; if(u.startsWith('/')) return u; return '/'+u.replace(/^\.?\//,''); }
+const MONTHS_TR=["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
+function formatMonthLabel(val){
+  if(!val) return '';
+  const [y, m] = val.split('-');
+  const mi = Number(m);
+  const ad = MONTHS_TR[mi-1] || m;
+  return ad + ' ' + y;
+}
 
-/* ===== NAV (manifest) — değişmedi ===== */
+/* ===== NAV (manifest) ===== */
 let CURRENT_ALLOW=new Set(), CURRENT_DENY=new Set();
 async function fetchPanels(allowSet, denySet){
   const res=[]; try{
@@ -636,35 +821,32 @@ document.addEventListener('click',(e)=>{
   });
 })();
 
-/* ===== Üst sekmeler ===== */
-const tabs=document.querySelectorAll('.tab');
-tabs.forEach(t=>t.addEventListener('click',()=>{
-  tabs.forEach(x=>x.classList.remove('active'));
-  t.classList.add('active');
-  const id=t.dataset.tab;
-  document.getElementById('aidat-kitap').style.display = (id==='aidat-kitap')?'':'none';
-  document.getElementById('hedef-teberru').style.display = (id==='hedef-teberru')?'':'none';
-  if(id==='hedef-teberru'){ // VD sekmesinde otomatik listeleme için default tetikle
-    setTimeout(()=>{ autoListVD(); }, 50);
-  }
-}));
-
-/* ===== Hedef·Teberru segment ===== */
+/* ===== Üst minimal sekmeler ===== */
 (function(){
-  const wrap = document.getElementById('htSeg');
+  const tabs=document.querySelectorAll('#mainFormTabs .mini-tab');
+  tabs.forEach(t=>t.addEventListener('click',()=>{
+    tabs.forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    const target=t.dataset.target;
+    document.getElementById('aidatKitapWrap').style.display = (target==='aidatKitapWrap')?'':'none';
+    document.getElementById('hedefTeberruWrap').style.display = (target==='hedefTeberruWrap')?'':'none';
+  }));
+})();
+
+/* ===== Hedef·Teberru alt sekmeler ===== */
+(function(){
+  const wrap = document.getElementById('htSubTabs');
   if(!wrap) return;
-  function openSection(id){
-    ['sec-ht','sec-hd','sec-vg','sec-vd'].forEach(sec=>{
-      const el=document.getElementById(sec);
-      if(el) el.style.display = (sec===id) ? '' : 'none';
-    });
-    if(id==='sec-vd') autoListVD();
-  }
-  wrap.addEventListener('click', (e)=>{
-    const btn=e.target.closest('.seg-btn'); if(!btn) return;
-    wrap.querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('active'));
+  wrap.addEventListener('click',(e)=>{
+    const btn=e.target.closest('.sub-tab'); if(!btn) return;
+    wrap.querySelectorAll('.sub-tab').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
-    openSection(btn.dataset.open);
+    const openId=btn.dataset.open;
+    ['sec-ht','sec-hd','sec-vg','sec-vd','sec-kg'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.style.display = (id===openId)?'':'none';
+    });
+    if(openId==='sec-vd') autoListVD();
   });
 })();
 
@@ -697,7 +879,7 @@ auth.onAuthStateChanged(async (user)=>{
   }catch(e){ console.error(e); }
 });
 
-/* ===== Bildirim rozeti (opsiyonel) ===== */
+/* ===== Bildirimler (ops.) ===== */
 (async function(){
   try{
     const snap=await db.collection('duyurular').orderBy('createdAt','desc').limit(5).get();
@@ -748,7 +930,7 @@ document.getElementById('btnBorcuKaydet').addEventListener('click', async ()=>{
       isim: ad,
       toplamAidat: aidatOdenecek,
       toplamKitap: kitapOdenecek,
-      tarih: tsISO(), // korunuyor
+      tarih: tsISO(),
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       createdBy: currentUser?.email || null,
       uid: currentUser?.uid || null,
@@ -785,9 +967,9 @@ document.getElementById('btnOdemeKaydet').addEventListener('click', async ()=>{
   try{
     await db.collection('aidat_kitap').add({
       isim: ad,
-      islemTuru: tur,       // korunuyor
+      islemTuru: tur,
       miktar: miktar,
-      odemeYontemi: yontem, // korunuyor
+      odemeYontemi: yontem,
       tarih: tsISO(),
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       createdBy: currentUser?.email || null,
@@ -800,7 +982,7 @@ document.getElementById('btnOdemeKaydet').addEventListener('click', async ()=>{
   }catch(e){ console.error(e); toast('Tahsilat kaydedilemedi.'); }
 });
 
-/* ===== Hedef · Teberru ===== */
+/* ===== Hedef · Teberru · Kurban ===== */
 const personeller = [
   "Muhsin Çelik","Faruk Nafiz Özgan","İbrahim Ay","Samet Çakır",
   "Kerem Kocaoğlu","Serhan Durak","Mahmut Solmaz","Mehmet Taha Keskin","Ahmetali Emre Şahin"
@@ -808,6 +990,8 @@ const personeller = [
 function fillSelect(id, arr){ const el=document.getElementById(id); if(!el) return; el.innerHTML = arr.map(p=>`<option value="${p}">${p}</option>`).join(''); }
 fillSelect('hd-personel', personeller);
 fillSelect('giris-personel', personeller);
+fillSelect('tbr-personel', personeller);
+fillSelect('krb-personel', personeller);
 const vdPersonel = document.getElementById('vd-personel');
 if(vdPersonel) vdPersonel.innerHTML = '<option value="">(Tümü)</option>' + personeller.map(p=>`<option value="${p}">${p}</option>`).join('');
 
@@ -849,7 +1033,7 @@ async function hedefleriKaydet(liste){
   try{
     const batch=db.batch();
     liste.forEach(h=>{
-      const ref=db.collection('hedefler').doc(`${h.kategori}_${h.personel}`); // korunuyor
+      const ref=db.collection('hedefler').doc(`${h.kategori}_${h.personel}`);
       batch.set(ref,{
         kategori:h.kategori, personel:h.personel, hedef:toNum(h.hedef),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -898,145 +1082,253 @@ async function hedefDuzenleKaydet(h){
   finally{ modalClose(); hedefMevcutGetir(); }
 }
 
-/* ===== Veri Girişi ===== */
-// ---- Mod: Hedef / Teberru toggle ----
+/* ===== Veri Girişi (3 mod) ===== */
 (function(){
   const vgMode = document.getElementById('vgMode');
-  const vgKatRow = document.getElementById('vgKatRow');
-  const vgAyYilRow = document.getElementById('vgAyYilRow');
+  const formHedef = document.getElementById('formHedef');
+  const formTeberru = document.getElementById('formTeberru');
+  const formKurban = document.getElementById('formKurban');
+  const tbrTarih = document.getElementById('tbr-tarih');
+  const tbrTarihGoster = document.getElementById('tbr-tarih-goster');
 
-  // Ay-Yıl selectlerini doldur
-  const monthsTR=["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
-  const aySel = document.getElementById('vgAy');
-  const yilSel = document.getElementById('vgYil');
-  if (aySel && yilSel) {
-    const now=new Date(), y0=now.getFullYear()-3, y1=now.getFullYear()+3;
-    monthsTR.forEach((m,i)=> aySel.add(new Option(m,i+1)));
-    for(let y=y0;y<=y1;y++) yilSel.add(new Option(y,y));
-    aySel.value = String(now.getMonth()+1);
-    yilSel.value = String(now.getFullYear());
+  // varsayılan teberru ay-yıl = bugün
+  if(tbrTarih){
+    const now = new Date();
+    const iso = now.toISOString().slice(0,7); // YYYY-MM
+    tbrTarih.value = iso;
+    tbrTarihGoster.value = formatMonthLabel(iso);
+    tbrTarih.addEventListener('change', ()=>{
+      tbrTarihGoster.value = formatMonthLabel(tbrTarih.value);
+    });
   }
 
-  // Buton tıklamaları: görünür alanları değiştir
   vgMode?.addEventListener('click', (e)=>{
-    const btn = e.target.closest('.seg-btn'); if(!btn) return;
-    vgMode.querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('active'));
+    const btn = e.target.closest('.sub-tab'); if(!btn) return;
+    vgMode.querySelectorAll('.sub-tab').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
-
-    const mode = btn.dataset.mode; // 'hedef' | 'teberru'
+    const mode = btn.dataset.mode;
     if(mode==='hedef'){
-      vgKatRow.style.display='grid';
-      vgAyYilRow.style.display='none';
+      formHedef.style.display='grid';
+      formTeberru.style.display='none';
+      formKurban.style.display='none';
+    }else if(mode==='teberru'){
+      formHedef.style.display='none';
+      formTeberru.style.display='grid';
+      formKurban.style.display='none';
     }else{
-      vgKatRow.style.display='none';
-      vgAyYilRow.style.display='grid';
+      formHedef.style.display='none';
+      formTeberru.style.display='none';
+      formKurban.style.display='grid';
     }
   });
 })();
 
-// ---- Veri Girişi Kaydet (Özet + Kaydet) ----
+/* ===== Veri Girişi Kaydet ===== */
 document.getElementById('btnVeriGirisOnay').addEventListener('click', ()=>{
-  const mode = document.querySelector('#vgMode .seg-btn.active')?.dataset.mode || 'hedef';
+  const mode = document.querySelector('#vgMode .sub-tab.active')?.dataset.mode || 'hedef';
 
-  // Ortak alanlar
-  const personel = document.getElementById('giris-personel').value;
-  const veren    = (document.getElementById('giris-veren').value || '').trim();
-  const miktar   = toNum(document.getElementById('giris-miktar').value);
-  const nereyeGeldi = document.getElementById('giris-turu').value;
-  const aciklama = (document.getElementById('giris-aciklama').value || '').trim();
+  /* ===== HEDEF ===== */
+  if(mode === 'hedef'){
+    const kategori = (document.getElementById('kategoriVG').value || '').trim();
+    const personel = document.getElementById('giris-personel').value;
+    const veren    = (document.getElementById('giris-veren').value || '').trim();
+    const miktar   = toNum(document.getElementById('giris-miktar').value);
+    const nereyeGeldi = document.getElementById('giris-turu').value;
+    const aciklama = (document.getElementById('giris-aciklama').value || '').trim();
+    const tarihSel = document.getElementById('giris-tarih')?.value || '';
 
-  // Ek meta (opsiyonel – data yolunu bozmaz)
-  const makbuz   = (document.getElementById('giris-makbuz')?.value || '').trim();
-  const telefon  = (document.getElementById('giris-telefon')?.value || '').trim();
-  const tarihSel = document.getElementById('giris-tarih')?.value || ''; // 'YYYY-MM-DDTHH:mm' (local)
-
-  // Mode’a göre kategori/ay/yıl ayarla
-  let kategori, tur, ay=null, yil=null, ayYilKey=null;
-  if(mode==='hedef'){
-    kategori = (document.getElementById('kategoriVG').value || '').trim();
-    tur = 'hedef';
     if(!kategori) return toast('Kategori seçiniz.');
-  }else{
-    // TEVERRU: kategori sabit, ay-yıl zorunlu
-    kategori = 'Teberru';
-    tur = 'teberru';
-    ay  = +document.getElementById('vgAy').value;
-    yil = +document.getElementById('vgYil').value;
-    if(!ay || !yil) return toast('Ay ve Yıl seçiniz.');
-    ayYilKey = `${yil}-${String(ay).padStart(2,'0')}`;
-  }
-
-  // Zorunlular (ortak)
-  if(!personel || !veren || !miktar || !nereyeGeldi){
-    return toast('Tüm zorunlu alanları doldurunuz.');
-  }
-
-  // Modal özet
-  const modalBaslik = document.getElementById('modal-baslik');
-  const modalVeriler = document.getElementById('modal-veriler');
-  const modalKaydetBtn = document.getElementById('modal-kaydet-btn');
-  const onayModal = document.getElementById('onayModali');
-
-  modalBaslik.textContent = `Veri Girişi > ${mode==='hedef' ? kategori : `Teberru ${ayYilKey}`}`;
-  modalVeriler.innerHTML = `
-    <p>Tür: <strong>${tur==='teberru'?'Teberru':'Hedef'}</strong></p>
-    ${mode==='hedef' ? `<p>Kategori: ${kategori}</p>` : `<p>Dönem: ${String(ay).padStart(2,'0')}/${yil}</p>`}
-    <p>Personel: ${personel}</p>
-    <p>Veren: ${veren}</p>
-    <p>Miktar: ${miktar.toLocaleString('tr-TR')} ₺</p>
-    <p>Giriş: ${nereyeGeldi}</p>
-    ${aciklama ? `<p>Açıklama: ${aciklama}</p>`:''}
-    ${tarihSel ? `<p>Kayıt Zamanı: ${tarihSel.replace('T',' ')}</p>`:''}
-  `;
-
-  modalKaydetBtn.onclick = async ()=>{
-    try{
-      // Firestore’a ekle – data yolları KORUNDU
-      const payload = {
-        kategori,                 // (hedef: seçilen kategori) (teberru: 'Teberru')
-        personel,
-        adSoyad: veren,
-        miktar,
-        nereyeGeldi,
-        tur,                      // 'hedef' | 'teberru' (DEĞİŞMEDİ)
-        aciklama: aciklama || '',
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        tarih: tarihSel ? new Date(tarihSel).toISOString() : new Date().toISOString(), // eski alanı da doldur
-        // ek meta (opsiyonel)
-        ay: ay || null,
-        yil: yil || null,
-        ayYilKey: ayYilKey || null,
-        makbuzNo: makbuz || null,
-        telefon: telefon || null,
-        createdBy: (window.currentUser?.email) || null,
-        uid: (window.currentUser?.uid) || null,
-        userAgent: navigator.userAgent || '',
-        cihaz: (window.innerWidth<700?'mobile':(window.innerWidth<960?'tablet':'desktop'))
-      };
-
-      await db.collection('veriler').add(payload);
-      toast('✅ Veri kaydedildi.');
-
-      // Form temizleme (temel alanlar)
-      ['giris-veren','giris-miktar','giris-aciklama','giris-makbuz','giris-telefon','giris-tarih'].forEach(id=>{
-        const el=document.getElementById(id); if(el) el.value='';
-      });
-
-    }catch(e){
-      console.error(e);
-      toast('Veri kaydı sırasında hata oluştu.');
-    }finally{
-      onayModal.classList.remove('show');
+    if(!personel || !veren || !miktar || !nereyeGeldi){
+      return toast('Tüm zorunlu alanları doldurunuz.');
     }
-  };
 
-  onayModal.classList.add('show');
+    modalBaslik.textContent = `Veri Girişi > ${kategori}`;
+    modalVeriler.innerHTML = `
+      <p>Tür: <strong>Hedef</strong></p>
+      <p>Kategori: ${kategori}</p>
+      <p>Personel: ${personel}</p>
+      <p>Veren: ${veren}</p>
+      <p>Miktar: ${miktar.toLocaleString('tr-TR')} ₺</p>
+      <p>Giriş: ${nereyeGeldi}</p>
+      ${aciklama ? `<p>Açıklama: ${aciklama}</p>`:''}
+      ${tarihSel ? `<p>Kayıt Zamanı: ${tarihSel.replace('T',' ')}</p>`:''}
+    `;
+
+    modalKaydetBtn.onclick = async ()=>{
+      try{
+        const payload = {
+          kategori,
+          personel,
+          adSoyad: veren,
+          miktar,
+          nereyeGeldi,
+          tur: 'hedef',
+          aciklama: aciklama || '',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          tarih: tarihSel ? new Date(tarihSel).toISOString() : new Date().toISOString(),
+          createdBy: (window.currentUser?.email) || null,
+          uid: (window.currentUser?.uid) || null,
+          userAgent: navigator.userAgent || '',
+          cihaz: cihazTipi()
+        };
+        await db.collection('veriler').add(payload);
+        toast('✅ Veri (hedef) kaydedildi.');
+        ['giris-veren','giris-miktar','giris-aciklama','giris-tarih'].forEach(id=>{
+          const el=document.getElementById(id); if(el) el.value='';
+        });
+      }catch(e){
+        console.error(e);
+        toast('Veri kaydı sırasında hata oluştu.');
+      }finally{
+        onayModal.classList.remove('show');
+      }
+    };
+    onayModal.classList.add('show');
+  }
+
+  /* ===== TEBERRU ===== */
+  else if(mode === 'teberru'){
+    const donemVal = document.getElementById('tbr-tarih').value;
+    const donemLabel = formatMonthLabel(donemVal);
+    const personel = document.getElementById('tbr-personel').value;
+    const veren = (document.getElementById('tbr-veren').value || '').trim();
+    const miktar = toNum(document.getElementById('tbr-miktar').value);
+    const nereye = document.getElementById('tbr-nereye').value;
+    const aciklama = (document.getElementById('tbr-aciklama').value || '').trim();
+    const tarihOps = document.getElementById('tbr-tarih-ops').value;
+
+    if(!donemVal) return toast('Tarih (Ay/Yıl) seçiniz.');
+    if(!personel || !veren || !miktar || !nereye){
+      return toast('Tarih, personel, veren, miktar ve giriş alanları zorunlu.');
+    }
+    const [yilStr, ayStr] = donemVal.split('-');
+    const yil = Number(yilStr);
+    const ay = Number(ayStr);
+
+    modalBaslik.textContent = `Veri Girişi > Teberru (${donemLabel})`;
+    modalVeriler.innerHTML = `
+      <p>Tür: <strong>Teberru</strong></p>
+      <p>Dönem: ${donemLabel}</p>
+      <p>Personel: ${personel}</p>
+      <p>Veren: ${veren}</p>
+      <p>Miktar: ${miktar.toLocaleString('tr-TR')} ₺</p>
+      <p>Giriş: ${nereye}</p>
+      ${aciklama ? `<p>Açıklama: ${aciklama}</p>`:''}
+      ${tarihOps ? `<p>Kayıt Zamanı: ${tarihOps.replace('T',' ')}</p>`:''}
+    `;
+
+    modalKaydetBtn.onclick = async ()=>{
+      try{
+        const payload = {
+          kategori: 'Teberru',
+          personel: personel,
+          adSoyad: veren,
+          miktar: miktar,
+          nereyeGeldi: nereye,
+          tur: 'teberru',
+          aciklama: aciklama || '',
+          ay: ay,
+          yil: yil,
+          ayYilKey: donemVal,
+          ayYilLabel: donemLabel,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          tarih: tarihOps ? new Date(tarihOps).toISOString() : new Date().toISOString(),
+          createdBy: (window.currentUser?.email) || null,
+          uid: (window.currentUser?.uid) || null,
+          userAgent: navigator.userAgent || '',
+          cihaz: cihazTipi()
+        };
+        await db.collection('veriler').add(payload);
+        toast('✅ Teberru kaydedildi.');
+        ['tbr-veren','tbr-miktar','tbr-aciklama','tbr-tarih-ops'].forEach(id=>{
+          const el=document.getElementById(id); if(el) el.value='';
+        });
+      }catch(e){
+        console.error(e);
+        toast('Teberru kaydı sırasında hata.');
+      }finally{
+        onayModal.classList.remove('show');
+      }
+    };
+    onayModal.classList.add('show');
+  }
+
+  /* ===== KURBAN ===== */
+  else if(mode === 'kurban'){
+    const kategori = document.getElementById('krb-kategori').value; // kucukbas | buyukbas
+    const personel = document.getElementById('krb-personel').value;
+    const sahip = (document.getElementById('krb-sahip').value || '').trim();
+    const kesimYeri = (document.getElementById('krb-kesim-yeri').value || '').trim();
+    const kesimTarih = document.getElementById('krb-kesim-tarih').value;
+    const aciklama = (document.getElementById('krb-aciklama').value || '').trim();
+
+    if(!kategori) return toast('Kurban kategorisi seçiniz.');
+    if(!personel) return toast('Personel seçiniz.');
+    if(!sahip) return toast('Kurban sahibinin adını giriniz.');
+
+    // kesim tarihi yoksa bugün
+    const kesimISO = kesimTarih ? new Date(kesimTarih+'T00:00:00').toISOString() : new Date().toISOString();
+    const kesimDate = new Date(kesimISO);
+    const yil = kesimDate.getFullYear();
+    const ay = kesimDate.getMonth()+1;
+    const ayKey = kesimDate.toISOString().slice(0,7);
+    const ayLabel = formatMonthLabel(ayKey);
+
+    modalBaslik.textContent = `Veri Girişi > Kurban (${kategori === 'kucukbas' ? 'Küçükbaş' : 'Büyükbaş'})`;
+    modalVeriler.innerHTML = `
+      <p>Tür: <strong>Kurban</strong></p>
+      <p>Kategori: ${kategori === 'kucukbas' ? 'Küçükbaş' : 'Büyükbaş'}</p>
+      <p>Personel: ${personel}</p>
+      <p>Kurban Sahibi: ${sahip}</p>
+      <p>Kesim Yeri: ${kesimYeri || '-'}</p>
+      <p>Kesim Tarihi: ${kesimTarih ? kesimTarih : 'Bugün (otomatik)'} </p>
+      ${aciklama ? `<p>Açıklama: ${aciklama}</p>`:''}
+      <p>Miktar: 1</p>
+      <p>Dönem: ${ayLabel}</p>
+    `;
+
+    modalKaydetBtn.onclick = async ()=>{
+      try{
+        const payload = {
+          kategori: 'Kurban',
+          kurbanKategori: kategori,      // eski alanı da yazıyoruz
+          personel: personel,
+          adSoyad: sahip,
+          kesimYeri: kesimYeri || '',
+          kesimTarihi: kesimISO,
+          miktar: 1,
+          tur: kategori,                 // >>> ÖNEMLİ: kucukbas | buyukbas
+          ay: ay,
+          yil: yil,
+          ayYilKey: ayKey,
+          ayYilLabel: ayLabel,
+          aciklama: aciklama || '',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          tarih: new Date().toISOString(),
+          createdBy: (window.currentUser?.email) || null,
+          uid: (window.currentUser?.uid) || null,
+          userAgent: navigator.userAgent || '',
+          cihaz: cihazTipi()
+        };
+        await db.collection('veriler').add(payload);
+        toast('✅ Kurban kaydedildi.');
+        ['krb-sahip','krb-kesim-yeri','krb-kesim-tarih','krb-aciklama'].forEach(id=>{
+          const el=document.getElementById(id); if(el) el.value='';
+        });
+      }catch(e){
+        console.error(e);
+        toast('Kurban kaydedilemedi.');
+      }finally{
+        onayModal.classList.remove('show');
+      }
+    };
+
+    onayModal.classList.add('show');
+  }
 });
 
-// "Yükle" butonunu bağla
+/* ===== Veri Listeleme / Düzenleme ===== */
 document.getElementById('vdYukleBtn').addEventListener('click', ()=> verileriListele(true));
-
-// Kategori/personel değişince otomatik tetiklemek istersen (opsiyonel):
 document.getElementById('kategoriVD').addEventListener('change', ()=> verileriListele(true));
 document.getElementById('vd-personel').addEventListener('change', ()=> verileriListele(true));
 
@@ -1054,7 +1346,6 @@ async function verileriListele(showLoading = false){
     return;
   }
 
-  // UI: yükleniyor
   if(showLoading){
     loader.style.display = 'flex';
     btn.disabled = true;
@@ -1062,17 +1353,14 @@ async function verileriListele(showLoading = false){
   }
   kon.innerHTML = '';
 
-  // Sorguyu kur
   let q = db.collection('veriler').where('kategori','==', kat);
   if (per) q = q.where('personel','==', per);
 
-  // 1. Deneme: indeksli sorgu (createdAt DESC)
   let rows = null;
   try {
     const snap = await q.orderBy('createdAt','desc').limit(300).get();
     rows = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (err) {
-    // failed-precondition => composite index yok. Fallback: orderBy'sız çek, JS’de sırala.
     if (err?.code === 'failed-precondition' || /index/i.test(err?.message||'')) {
       try {
         const snap = await q.limit(300).get();
@@ -1080,7 +1368,7 @@ async function verileriListele(showLoading = false){
           .sort((a,b)=>{
             const ta = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (a.tarih ? new Date(a.tarih).getTime() : 0);
             const tb = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (b.tarih ? new Date(b.tarih).getTime() : 0);
-            return tb - ta; // DESC
+            return tb - ta;
           });
       } catch (e2) {
         console.error(e2);
@@ -1094,7 +1382,6 @@ async function verileriListele(showLoading = false){
     }
   }
 
-  // Tabloyu yaz
   if (!rows || rows.length === 0) {
     kon.innerHTML = '<div class="muted" style="padding:8px">Kayıt bulunamadı.</div>';
   } else {
@@ -1107,14 +1394,19 @@ async function verileriListele(showLoading = false){
     rows.forEach(d=>{
       const t = d.createdAt?.toDate ? d.createdAt.toDate() : (d.tarih ? new Date(d.tarih) : null);
       const tStr = t ? t.toLocaleString('tr-TR') : '-';
+      // tur gösterimi
+      let turGoster = d.tur || 'hedef';
+      if (turGoster === 'kucukbas') turGoster = 'Kurban (Küçükbaş)';
+      else if (turGoster === 'buyukbas') turGoster = 'Kurban (Büyükbaş)';
+
       html += `
         <tr data-id="${d.id}">
           <td>${tStr}</td>
           <td>${d.personel || '-'}</td>
-          <td>${d.adSoyad || d.veren || '-'}</td>
-          <td>₺${(Number(d.miktar||0)).toLocaleString('tr-TR')}</td>
+          <td>${d.adSoyad || d.veren || d.kurbanSahibi || '-'}</td>
+          <td>${d.miktar !== undefined ? '₺'+(Number(d.miktar||0)).toLocaleString('tr-TR') : '-'}</td>
           <td>${d.nereyeGeldi || '-'}</td>
-          <td>${d.tur || 'hedef'}</td>
+          <td>${turGoster}</td>
           <td>${d.aciklama || '-'}</td>
           <td>
             <button class="btn-ghost duzenle">Düzenle</button>
@@ -1125,7 +1417,6 @@ async function verileriListele(showLoading = false){
     html += `</tbody></table>`;
     kon.innerHTML = html;
 
-    // Event delegation (düzenle/sil)
     kon.querySelector('tbody').addEventListener('click', (e)=>{
       const tr = e.target.closest('tr'); if(!tr) return;
       const id = tr.getAttribute('data-id');
@@ -1134,7 +1425,6 @@ async function verileriListele(showLoading = false){
     });
   }
 
-  // UI: yükleniyor kapat
   if(showLoading){
     loader.style.display = 'none';
     btn.disabled = false;
@@ -1156,7 +1446,9 @@ async function veriDuzenleAc(docId){
     document.getElementById('vdAdSoyad').value=d.adSoyad || d.veren || '';
     document.getElementById('vdMiktar').value=toNum(d.miktar);
     document.getElementById('vdNereyeGeldi').value=d.nereyeGeldi || 'Nakit';
-    document.getElementById('vdTur').value=(d.tur || 'hedef');
+    // tur bilinmiyorsa hedef
+    const turVal = d.tur || 'hedef';
+    document.getElementById('vdTur').value = (turVal === 'kucukbas' || turVal === 'buyukbas') ? turVal : turVal;
     document.getElementById('vdAciklama').value=d.aciklama || '';
     vdModal.classList.add('show');
   }catch(e){ console.error(e); toast('Kayıt getirilemedi.'); }
@@ -1185,8 +1477,152 @@ async function veriSil(docId){
   catch(e){ console.error(e); toast('Silme sırasında hata.'); }
 }
 
-/* ===== Aidat/Ödeme önizleme ilk yük ===== */
-setTimeout(()=>{ kayitPreviewGuncelle(); odemePreviewGuncelle(); }, 0);
+/* ===== KATEGORİ YÖNETİMİ ===== */
+let KATEGORILER = [];
+async function kategorileriYukle(){
+  try{
+    const snap = await db.collection('kategoriler').orderBy('ad','asc').get();
+    KATEGORILER = [];
+    snap.forEach(doc=>{
+      const d=doc.data()||{};
+      KATEGORILER.push({
+        id:doc.id,
+        ad:d.ad || d.isim || 'Adsız',
+        tip:d.tip || 'hedef',
+        kayitTarihi:d.kayitTarihi || d.createdAt?.toDate?.()?.toISOString?.() || null,
+        createdAt:d.createdAt || null
+      });
+    });
+  }catch(e){
+    console.error(e);
+    KATEGORILER = [
+      {id:'static1',ad:'Kitap Kampanyası',tip:'hedef',kayitTarihi:null},
+      {id:'static2',ad:'Mevlid Kandili',tip:'hedef',kayitTarihi:null},
+      {id:'static3',ad:'Eylül Kermesi',tip:'hedef',kayitTarihi:null},
+      {id:'static4',ad:'Kurs Arabası',tip:'hedef',kayitTarihi:null},
+      {id:'static5',ad:'Talebeye İkram',tip:'hedef',kayitTarihi:null},
+      {id:'static6',ad:'Teberru',tip:'teberru',kayitTarihi:null}
+    ];
+  }
+  renderKategoriList();
+  kategorileriFormlaraYay();
+}
+function renderKategoriList(){
+  const tb = document.getElementById('kgListe');
+  if(!tb) return;
+  if(!KATEGORILER.length){
+    tb.innerHTML = `<tr><td colspan="4" class="muted">Kategori bulunamadı.</td></tr>`;
+    return;
+  }
+  tb.innerHTML = KATEGORILER.map(k=>{
+    const t = k.kayitTarihi ? new Date(k.kayitTarihi).toLocaleString('tr-TR') : '-';
+    return `<tr data-id="${k.id}">
+      <td>${k.ad}</td>
+      <td>${k.tip}</td>
+      <td>${t}</td>
+      <td>
+        <button class="btn-ghost kg-edit">Düzenle</button>
+        <button class="btn-ghost kg-del" style="color:#ef4444;border-color:#ef444422">Sil</button>
+      </td>
+    </tr>`;
+  }).join('');
+  tb.querySelectorAll('.kg-edit').forEach(btn=>{
+    btn.addEventListener('click',(e)=>{
+      const id=e.target.closest('tr').dataset.id;
+      kategoriEditAc(id);
+    });
+  });
+  tb.querySelectorAll('.kg-del').forEach(btn=>{
+    btn.addEventListener('click',async (e)=>{
+      const id=e.target.closest('tr').dataset.id;
+      await kategoriSil(id);
+    });
+  });
+}
+function kategorileriFormlaraYay(){
+  const hedefKats = KATEGORILER.filter(k=>k.tip==='hedef' || k.tip==='herikisi');
+  const teberruKats = KATEGORILER.filter(k=>k.tip==='teberru' || k.tip==='herikisi');
+  const elHT = document.getElementById('kategoriHT');
+  if(elHT){
+    elHT.innerHTML = '<option value="">Seçiniz</option>' + hedefKats.map(k=>`<option value="${k.ad}">${k.ad}</option>`).join('');
+  }
+  const elHD = document.getElementById('kategoriHD');
+  if(elHD){
+    elHD.innerHTML = '<option value="">Seçiniz</option>' + hedefKats.map(k=>`<option value="${k.ad}">${k.ad}</option>`).join('');
+  }
+  const elVG = document.getElementById('kategoriVG');
+  if(elVG){
+    elVG.innerHTML = '<option value="">Seçiniz</option>' + hedefKats.map(k=>`<option value="${k.ad}">${k.ad}</option>`).join('');
+  }
+  const elVD = document.getElementById('kategoriVD');
+  if(elVD){
+    elVD.innerHTML = '<option value="">Seçiniz</option>'
+      + hedefKats.map(k=>`<option value="${k.ad}">${k.ad}</option>`).join('')
+      + `<option value="Teberru">Teberru</option>`
+      + `<option value="Kurban">Kurban</option>`;
+  }
+}
+document.getElementById('kgKaydetBtn').addEventListener('click', async ()=>{
+  const ad=(document.getElementById('kgAd').value||'').trim();
+  const tip=(document.getElementById('kgTip').value||'hedef');
+  if(!ad) return toast('Kategori adı boş olamaz.');
+  try{
+    await db.collection('kategoriler').add({
+      ad, tip,
+      aktif:true,
+      kayitTarihi: new Date().toISOString(),
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdBy: currentUser?.email || null,
+      uid: currentUser?.uid || null,
+      userAgent, cihaz: cihazTipi()
+    });
+    toast('✅ Kategori eklendi.');
+    document.getElementById('kgAd').value='';
+    await kategorileriYukle();
+  }catch(e){ console.error(e); toast('Kategori kaydedilemedi.'); }
+});
+const kgModal=document.getElementById('kgModal');
+document.getElementById('kgModalKapat').addEventListener('click',()=>kgModal.classList.remove('show'));
+kgModal.addEventListener('click',(e)=>{ if(e.target===kgModal) kgModal.classList.remove('show'); });
+function kategoriEditAc(id){
+  const k = KATEGORILER.find(x=>x.id===id);
+  if(!k) return;
+  document.getElementById('kgEditId').value = k.id;
+  document.getElementById('kgEditAd').value = k.ad;
+  document.getElementById('kgEditTip').value = k.tip;
+  kgModal.classList.add('show');
+}
+document.getElementById('kgEditKaydet').addEventListener('click', async ()=>{
+  const id=document.getElementById('kgEditId').value;
+  const ad=(document.getElementById('kgEditAd').value||'').trim();
+  const tip=document.getElementById('kgEditTip').value;
+  if(!id || !ad) return toast('Eksik bilgi.');
+  try{
+    await db.collection('kategoriler').doc(id).set({
+      ad, tip,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedBy: currentUser?.email || null
+    }, {merge:true});
+    toast('✅ Kategori güncellendi.');
+    kgModal.classList.remove('show');
+    await kategorileriYukle();
+  }catch(e){ console.error(e); toast('Kategori güncellenemedi.'); }
+});
+async function kategoriSil(id){
+  if(!confirm('Bu kategoriyi silmek istiyor musunuz?')) return;
+  try{
+    await db.collection('kategoriler').doc(id).delete();
+    toast('🗑️ Kategori silindi.');
+    await kategorileriYukle();
+  }catch(e){ console.error(e); toast('Kategori silinemedi.'); }
+}
+
+/* ===== İlk yük ===== */
+(async function initOnce(){
+  await kategorileriYukle();
+  kayitPreviewGuncelle();
+  odemePreviewGuncelle();
+})();
 </script>
 </body>
 </html>

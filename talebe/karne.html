@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Talebe Karne / Keyfiyet</title>
+<link rel="icon" type="image/png" href="../img/logo.png" />
+
+<style>
+  :root{
+    --appbar-h:56px;
+    --radius:14px; --shadow:0 12px 28px rgba(0,0,0,.14);
+    --bg:#0f172a; --bg2:#0b1324;
+    --grad1:#0ea5e922; --grad2:#22d3ee22;
+    --card:rgba(15,23,42,.92); --stroke:rgba(148,163,184,.18);
+    --text:#e5e7eb; --muted:#9aa4b2;
+    --brand:#38bdf8; --brand2:#0ea5e9;
+    --pill:#0b1220; --pill-hover:#101a2b; --surface:rgba(2,6,23,.08);
+    --danger:#ef4444; --success:#22c55e;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#eef6ff; --bg2:#f7fbff; --grad1:#38bdf822; --grad2:#22d3ee22;
+      --card:rgba(255,255,255,.96); --stroke:rgba(15,23,42,.12);
+      --text:#0b1220; --muted:#4b5563; --brand:#0ea5e9; --brand2:#0284c7;
+      --pill:#f5f8ff; --pill-hover:#e9f2ff; --surface:#eef3ff;
+      --danger:#b91c1c; --success:#16a34a;
+    }
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;padding:0;font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;background:var(--bg);color:var(--text)}
+  a{color:#c7e9ff; text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* APPBAR */
+  .appbar{
+    position:sticky; top:0; z-index:60; height:var(--appbar-h);
+    background:var(--card); backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--stroke);
+    display:flex; align-items:center; gap:10px; padding:0 12px;
+  }
+  .brand{display:flex; align-items:center; gap:10px; cursor:pointer}
+  .brand img{width:24px; height:24px}
+  .brand span{font-weight:900; letter-spacing:.02em}
+  .nav-center{margin:0 auto; height:100%}
+  .nav-list{display:flex; gap:22px; align-items:center; height:100%; list-style:none; margin:0; padding:0}
+  .nav-item{position:relative; height:100%}
+  .nav-btn{height:100%; display:flex; align-items:center; gap:6px; font-weight:800; cursor:pointer}
+  .nav-btn:hover{color:var(--brand)}
+  .caret{font-size:12px; opacity:.6}
+  .dropdown{position:absolute; top:100%; left:0; min-width:240px; background:var(--card); border:1px solid var(--stroke); border-radius:10px; box-shadow:var(--shadow); padding:8px; display:none}
+  .dropdown a{display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px; color:var(--text); text-decoration:none}
+  .dropdown a:hover{background:var(--surface)}
+  .nav-item.open .dropdown{display:block}
+  .nav-right{display:flex; gap:8px; align-items:center}
+  .btn{border:1px solid var(--stroke); background:var(--card); color:var(--text); border-radius:999px; padding:8px 12px; cursor:pointer; white-space:nowrap}
+  .hamb{display:none}
+  .iconbtn{position:relative; border:1px solid var(--stroke); background:var(--card); color:var(--text); border-radius:999px; padding:8px 12px; cursor:pointer; display:flex; align-items:center; gap:8px}
+  .badge{position:absolute; top:-6px; right:-6px; background:var(--danger); color:#fff; font-size:11px; padding:2px 6px; border-radius:999px; border:2px solid var(--card)}
+  .drop-right{left:auto; right:0}
+  .avatar{width:22px;height:22px;border-radius:999px;background:linear-gradient(180deg,#94a3b8,#64748b)}
+  @media (max-width: 960px){ .nav-center{display:none} .hamb{display:inline-flex} }
+
+  /* Drawer */
+  .drawer{position:fixed; top:var(--appbar-h); right:0; bottom:0; left:30%; transform:translateX(100%); transition:.25s; background:var(--card); border-left:1px solid var(--stroke); z-index:70; overflow:auto; padding:12px}
+  .drawer.open{transform:translateX(0)}
+  .drawer .panel-title{margin:14px 4px 6px; font-weight:800; color:var(--muted); font-size:13px}
+  .drawer a{display:block; padding:10px; border-radius:10px; border:1px solid var(--stroke); margin:6px 0; color:var(--text); background:var(--pill)}
+  .drawer a:hover{background:var(--pill-hover)}
+
+  /* CONTENT */
+  .container{max-width:1200px; margin:0 auto; padding:16px}
+  .card{background:var(--card); border:1px solid var(--stroke); border-radius:14px; box-shadow:var(--shadow); padding:14px}
+  .muted{color:var(--muted)}
+
+  /* HEADER */
+  .header-card{display:flex; justify-content:space-between; align-items:center; gap:16px; margin:16px 0}
+  .header-left h2{margin:0 0 6px; font-size:18px}
+  .primary-actions{display:flex; gap:10px; flex-wrap:wrap}
+  .cta{border:1px solid var(--stroke); background:linear-gradient(180deg,var(--brand),var(--brand2)); color:#fff; border-radius:999px; padding:10px 16px; cursor:pointer; font-weight:800; white-space:nowrap}
+  .btn-ghost{border:1px solid var(--stroke); background:var(--pill); border-radius:999px; padding:10px 14px; cursor:pointer; white-space:nowrap}
+
+  /* Filters */
+  .filters-card{margin:10px 0 14px}
+  .controls-grid{
+    display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); gap:10px; align-items:center;
+  }
+  .ctrl{grid-column:span 3; display:flex; align-items:center; gap:10px; padding:6px 10px; border:1px solid var(--stroke); background:var(--pill); border-radius:999px; height:40px; min-width:0}
+  .ctrl span{white-space:nowrap; font-size:13px; font-weight:600}
+  .ctrl select{appearance:none; background:transparent; color:var(--text); border:none; outline:none; font-weight:700; height:26px; line-height:26px; width:100%}
+  .ctrl input{background:transparent; border:none; outline:none; color:var(--text); font-weight:600; width:100%}
+  .ctrl.wide{grid-column:span 6}
+
+  /* 2 kolon içerik */
+  .two-col{
+    display:grid;
+    grid-template-columns: 320px minmax(0, 1fr);
+    gap:16px;
+    align-items:flex-start;
+  }
+  @media (max-width: 980px){
+    .controls-grid{grid-template-columns:repeat(6,minmax(0,1fr))}
+    .ctrl{grid-column:span 3}
+    .ctrl.wide{grid-column:span 6}
+    .two-col{grid-template-columns:1fr}
+  }
+
+  /* Sol: Talebe listesi */
+  .talebe-card{
+    max-height:520px;
+    overflow:auto;
+  }
+  .talebe-item{
+    display:flex; align-items:center; gap:8px;
+    padding:6px 8px;
+    border:1px solid transparent;
+    border-radius:10px;
+    cursor:pointer;
+  }
+  .talebe-item .name{font-weight:600}
+  .talebe-item small{color:var(--muted); font-size:12px}
+  .talebe-item .status{margin-left:auto; font-size:12px}
+  .talebe-item.active{
+    background:var(--pill-hover);
+    border-color:var(--stroke);
+  }
+
+  /* Sağ: Karne paneli içerikleri */
+  .section-title{font-weight:700; margin-bottom:10px; display:flex; gap:6px; align-items:center}
+  .sys-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(160px,1fr));
+    gap:10px;
+  }
+  .sys-card{
+    background:var(--pill); border:1px solid var(--stroke); border-radius:12px; padding:10px 12px;
+  }
+  .sys-card h4{margin:0 0 4px; font-size:13px}
+  .sys-score{font-size:22px; font-weight:800}
+  .sys-meta{font-size:12px; color:var(--muted); margin-top:2px}
+  .tag-yellow{display:inline-block; background:rgba(250,204,21,.12); border:1px solid rgba(250,204,21,.3); color:#facc15; font-size:10px; padding:2px 6px; border-radius:999px; margin-top:4px}
+
+  .form-row{display:flex; align-items:center; gap:10px; margin-bottom:8px}
+  .form-row label{width:160px; font-size:13px}
+  .form-row select{
+    background:#fff; color:#0f172a; border:1px solid #d1d5db; border-radius:10px;
+    padding:4px 10px; width:110px; font-weight:600;
+  }
+  .auto-note{background:rgba(250,204,21,.15); border:1px solid rgba(250,204,21,.25); padding:3px 8px; border-radius:999px; font-size:11px; color:#854d0e}
+  textarea#hocaYorum{
+    width:100%; background:#fff; color:#0f172a; border:1px solid #d1d5db; border-radius:12px; padding:6px 8px; min-height:70px;
+  }
+
+  .summary-card{
+    display:flex; gap:14px; align-items:center; justify-content:space-between;
+    background:linear-gradient(160deg, rgba(14,165,233,.15), rgba(34,197,235,0));
+    border:1px solid rgba(14,165,233,.35);
+    border-radius:14px; padding:10px 12px;
+  }
+  .summary-score{font-size:32px; font-weight:900}
+  .summary-sub{font-size:12px; color:var(--muted); white-space:pre-line}
+  .summary-actions{display:flex; gap:8px; flex-wrap:wrap}
+
+  /* toast */
+  .toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:rgba(2,6,23,.95); color:#fff; border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:10px 12px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:200}
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+</style>
+
+<!-- Firebase (compat) -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="../js/firebase/firebase-init.js"></script>
+</head>
+<body>
+
+<!-- APPBAR -->
+<div class="appbar">
+  <div class="brand" onclick="location.href='../panel.html'">
+    <img src="../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
+  </div>
+
+  <nav class="nav-center"><ul class="nav-list" id="navMain"></ul></nav>
+
+  <div class="nav-right">
+    <button class="btn hamb" id="hamburger" title="Menü">☰</button>
+
+    <div class="nav-item">
+      <button class="iconbtn" id="btnNotif" title="Bildirimler">🔔
+        <span class="badge" id="notifBadge" style="display:none">0</span>
+      </button>
+      <div class="dropdown drop-right" id="notifDropdown">
+        <div class="muted" style="padding:6px 8px">Son bildirimler</div>
+        <div id="notifList" style="max-height:300px;overflow:auto"></div>
+      </div>
+    </div>
+
+    <div class="nav-item">
+      <button class="iconbtn" id="btnProfile" title="Profil">
+        <span class="avatar"></span> <span id="profName" class="muted">Profil</span>
+      </button>
+      <div class="dropdown drop-right" id="profDropdown">
+        <a href="/diger/kullanici-yonetimi.html" >👤 Profil</a>
+        <a href="/diger/sistem-ayarlari.html" >⚙️ Ayarlar</a>
+        <a href="#" id="btnLogout">🚪 Çıkış Yap</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<aside class="drawer" id="drawer"></aside>
+
+<main class="container">
+
+  <!-- HEADER -->
+  <section class="card header-card">
+    <div class="header-left">
+      <h2>Talebe Karne / Keyfiyet</h2>
+      <div class="muted">Seçili dönem: <span id="seciliDonemText">—</span></div>
+    </div>
+    <div class="primary-actions">
+      <button class="btn-ghost" onclick="yenidenHesapla()">↻ Yeniden Hesapla</button>
+      <button class="cta" onclick="kaydetKarne()">💾 Kaydet</button>
+    </div>
+  </section>
+
+  <!-- FİLTRELER -->
+  <section class="card filters-card">
+    <div class="controls-grid">
+      <div class="ctrl">
+        <span>Devre</span>
+        <select id="devreSelect" onchange="filtreDevreDegisti()">
+          <option value="">Tümü</option>
+        </select>
+      </div>
+      <div class="ctrl">
+        <span>Ay</span>
+        <select id="aySelect"></select>
+      </div>
+      <div class="ctrl">
+        <span>Yıl</span>
+        <select id="yilSelect"></select>
+      </div>
+      <div class="ctrl wide">
+        🔎 <input id="araInput" type="text" placeholder="Talebe adı ara…" oninput="filtreTalebe(this.value)">
+      </div>
+    </div>
+  </section>
+
+  <!-- İKİ KOLON -->
+  <section class="two-col">
+    <!-- SOL: TALEBE LİSTESİ -->
+    <div class="card talebe-card" id="talebeCard">
+      <div class="section-title">Talebeler</div>
+      <div id="talebeList"></div>
+      <div class="muted" style="margin-top:8px; font-size:12px">🟢 kaydedilmiş • ⚪ henüz kaydedilmemiş</div>
+    </div>
+
+    <!-- SAĞ: İÇERİK -->
+    <div class="card">
+      <!-- Sistem verileri -->
+      <div class="section-title">Sistem Verileri <span class="muted">(%60)</span></div>
+      <div class="sys-grid" id="sistemGrid">
+        <!-- js dolduracak -->
+      </div>
+
+      <hr style="margin:16px 0;border-color:rgba(148,163,184,.12)">
+
+      <!-- Hoca formu -->
+      <div class="section-title">Hoca Değerlendirmesi <span class="muted">(%40 – boşlar otomatik 4)</span></div>
+      <div id="hocaForm">
+        <div class="form-row">
+          <label for="hazirlik">Derse hazırlık</label>
+          <select id="hazirlik">
+            <option value="">(boş bırak)</option>
+            <option value="5">5 - Çok iyi</option>
+            <option value="4">4 - İyi</option>
+            <option value="3">3 - Orta</option>
+            <option value="2">2 - Zayıf</option>
+            <option value="1">1 - Çok zayıf</option>
+          </select>
+          <span class="auto-note">boş → 4</span>
+        </div>
+        <div class="form-row">
+          <label for="dikkat">Dikkat</label>
+          <select id="dikkat">
+            <option value="">(boş bırak)</option>
+            <option value="5">5 - Çok iyi</option>
+            <option value="4">4 - İyi</option>
+            <option value="3">3 - Orta</option>
+            <option value="2">2 - Zayıf</option>
+            <option value="1">1 - Çok zayıf</option>
+          </select>
+          <span class="auto-note">boş → 4</span>
+        </div>
+        <div class="form-row">
+          <label for="katilim">Katılım</label>
+          <select id="katilim">
+            <option value="">(boş bırak)</option>
+            <option value="5">5 - Çok iyi</option>
+            <option value="4">4 - İyi</option>
+            <option value="3">3 - Orta</option>
+            <option value="2">2 - Zayıf</option>
+            <option value="1">1 - Çok zayıf</option>
+          </select>
+          <span class="auto-note">boş → 4</span>
+        </div>
+        <div class="form-row">
+          <label for="edep">Edep & arkadaşlık</label>
+          <select id="edep">
+            <option value="">(boş bırak)</option>
+            <option value="5">5 - Çok iyi</option>
+            <option value="4">4 - İyi</option>
+            <option value="3">3 - Orta</option>
+            <option value="2">2 - Zayıf</option>
+            <option value="1">1 - Çok zayıf</option>
+          </select>
+          <span class="auto-note">boş → 4</span>
+        </div>
+        <div class="form-row">
+          <label for="program">Programa riayet</label>
+          <select id="program">
+            <option value="">(boş bırak)</option>
+            <option value="5">5 - Çok iyi</option>
+            <option value="4">4 - İyi</option>
+            <option value="3">3 - Orta</option>
+            <option value="2">2 - Zayıf</option>
+            <option value="1">1 - Çok zayıf</option>
+          </select>
+          <span class="auto-note">boş → 4</span>
+        </div>
+        <div class="form-row" style="align-items:flex-start">
+          <label for="hocaYorum">Hoca notu</label>
+          <textarea id="hocaYorum" placeholder="Bu talebe hakkında ek not..."></textarea>
+        </div>
+      </div>
+
+      <hr style="margin:16px 0;border-color:rgba(148,163,184,.12)">
+
+      <!-- ÖZET -->
+      <div class="summary-card">
+        <div>
+          <div class="muted" style="font-size:12px">Genel Karne Puanı</div>
+          <div class="summary-score" id="genelPuan100">--</div>
+          <div class="muted" id="genelPuan5">-- / 5</div>
+        </div>
+        <div class="summary-sub" id="hesapDetay">Sistem: -- × 0.60 = --
+Hoca: -- × 0.40 = --
+Toplam: --</div>
+        <div class="summary-actions">
+          <button class="btn-ghost" onclick="yenidenHesapla()">↻ Yeniden Hesapla</button>
+          <button class="cta" onclick="kaydetKarne()">💾 Kaydet</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div style="height:120px"></div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ortak db & auth
+  const db   = window.db   || firebase.firestore();
+  const auth = window.auth || firebase.auth();
+
+  const AY_KEY = getCurrentYearMonth();
+
+  let AKTIF_USER    = null;
+  let TUM_TALEBELER = [];
+  let FILTRE_DEVRE  = "";
+  let SECILI_TALEBE = null;
+
+  document.getElementById("seciliDonemText").textContent = ayLabelFromKey(AY_KEY);
+
+  // ay / yıl selectlerini doldur
+  (function(){
+    const aySel  = document.getElementById("aySelect");
+    const yilSel = document.getElementById("yilSelect");
+    const d = new Date();
+    const yNow = d.getFullYear();
+    const aylar = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
+
+    aylar.forEach((a,i)=>{
+      const opt = document.createElement("option");
+      opt.value = String(i+1).padStart(2,"0");
+      opt.textContent = a;
+      aySel.appendChild(opt);
+    });
+    for(let y=yNow-1; y<=yNow+1; y++){
+      const opt = document.createElement("option");
+      opt.value = y;
+      opt.textContent = y;
+      yilSel.appendChild(opt);
+    }
+    aySel.value  = AY_KEY.split("-")[1];
+    yilSel.value = AY_KEY.split("-")[0];
+  })();
+
+  // giriş kontrol
+  auth.onAuthStateChanged(async (user)=>{
+    if(!user){
+      location.href = "../index.html";
+      return;
+    }
+    AKTIF_USER = user;
+
+    // kullanıcı adı yaz
+    try{
+      const uDoc = await db.collection("kullanicilar").doc(user.uid).get();
+      if(uDoc.exists){
+        const d = uDoc.data();
+        document.getElementById("profName").textContent = d.adSoyad ? d.adSoyad.split(" ")[0] : "Profil";
+      }
+    }catch(e){
+      console.warn("kullanıcı okunamadı:", e);
+    }
+
+    // asıl: talebeleri yükle
+    await loadTalebeler();
+  });
+
+  // === TALABELERİ ÇEK ===
+// === TALABELERİ ÇEK (collectionGroup ile) ===
+async function loadTalebeler(){
+  const devreSel = document.getElementById("devreSelect");
+  devreSel.innerHTML = `<option value="">Tümü</option>`;
+  TUM_TALEBELER = [];
+
+  // 1) önce bütün "öğrenciler" alt koleksiyonlarını tek seferde dene
+  let cgSnap = null;
+  try {
+    // asıl isimli olan
+    cgSnap = await db.collectionGroup("öğrenciler").get();
+  } catch (e) {
+    console.warn("collectionGroup('öğrenciler') okunamadı:", e);
+  }
+
+  // eğer bu boş döndüyse bir de ingilizce/ş'siz hali deneyelim
+  if (!cgSnap || cgSnap.empty) {
+    try {
+      cgSnap = await db.collectionGroup("ogrenciler").get();
+    } catch (e) {
+      console.warn("collectionGroup('ogrenciler') okunamadı:", e);
+    }
+  }
+
+  if (cgSnap && !cgSnap.empty) {
+    // buraya girdiysek iş bitti: tüm talebeleri tek seferde aldık
+    const devreSet = new Set();
+
+    cgSnap.forEach(doc => {
+      const d = doc.data() || {};
+      // doc.ref.parent  -> "öğrenciler"
+      // doc.ref.parent.parent -> "6.Devre"
+      const devreId = doc.ref.parent && doc.ref.parent.parent
+        ? doc.ref.parent.parent.id
+        : "Devre-yok";
+
+      devreSet.add(devreId);
+
+      TUM_TALEBELER.push({
+        id   : doc.id,
+        ad   : d.kullAd || d.ad || d.isim || d.kimlikAd || "İsimsiz",
+        devre: devreId
+      });
+    });
+
+    // devre selecti doldur
+    [...devreSet].sort().forEach(dv => {
+      const opt = document.createElement("option");
+      opt.value = dv;
+      opt.textContent = dv;
+      devreSel.appendChild(opt);
+    });
+
+    // alfabetik sırala ve bastır
+    TUM_TALEBELER.sort((a,b)=> a.ad.localeCompare(b.ad, "tr"));
+    renderTalebeList(TUM_TALEBELER);
+
+    if (TUM_TALEBELER.length) {
+      secTalebe(TUM_TALEBELER[0].id);
+    }
+    return; // ✅ buradaysak artık aşağıdaki eski yönteme gerek yok
+  }
+
+  // 2) collectionGroup da boşsa: eski (tek tek devre) yönteme düş
+  console.warn("collectionGroup boş geldi, eski yönteme geçiyorum…");
+
+  try{
+    const devreSnap = await db.collection("talebeler").get();
+    if (devreSnap.empty) {
+      ["6.Devre","7.Devre"].forEach(dv => {
+        const opt = document.createElement("option");
+        opt.value = dv;
+        opt.textContent = dv;
+        devreSel.appendChild(opt);
+      });
+      renderTalebeList([]);
+      return;
+    }
+
+    const tumPromises = [];
+    devreSnap.forEach(doc => {
+      const devreId = doc.id;
+      const opt = document.createElement("option");
+      opt.value = devreId;
+      opt.textContent = devreId;
+      devreSel.appendChild(opt);
+
+      const p = (async () => {
+        let ogrSnap = await db.collection("talebeler").doc(devreId).collection("öğrenciler").get();
+        if (ogrSnap.empty) {
+          ogrSnap = await db.collection("talebeler").doc(devreId).collection("ogrenciler").get();
+        }
+        if (ogrSnap.empty) {
+          ogrSnap = await db.collection("talebeler").doc(devreId).collection("ogrenci").get();
+        }
+
+        ogrSnap.forEach(ogrDoc => {
+          const d = ogrDoc.data() || {};
+          TUM_TALEBELER.push({
+            id   : ogrDoc.id,
+            ad   : d.kullAd || d.ad || d.isim || d.kimlikAd || "İsimsiz",
+            devre: devreId
+          });
+        });
+      })();
+      tumPromises.push(p);
+    });
+
+    await Promise.all(tumPromises);
+  } catch (err) {
+    console.error("talebeler okunamadı:", err);
+    ["6.Devre","7.Devre"].forEach(dv => {
+      const opt = document.createElement("option");
+      opt.value = dv;
+      opt.textContent = dv;
+      devreSel.appendChild(opt);
+    });
+    renderTalebeList([]);
+    return;
+  }
+
+  // son hal
+  TUM_TALEBELER.sort((a,b)=> a.ad.localeCompare(b.ad,"tr"));
+  renderTalebeList(TUM_TALEBELER);
+  if (TUM_TALEBELER.length) {
+    secTalebe(TUM_TALEBELER[0].id);
+  } else {
+    document.getElementById("talebeList").innerHTML =
+      `<div class="muted" style="font-size:12px">Bu devrede talebe bulunamadı.</div>`;
+  }
+}
+
+// === LİSTEYİ BAS ===
+function renderTalebeList(liste){
+  const div = document.getElementById("talebeList");
+  div.innerHTML = "";
+  liste.forEach(t=>{
+    const row = document.createElement("div");
+    row.className = "talebe-item";
+    row.dataset.id = t.id;
+    row.innerHTML = `
+      <div>
+        <div class="name">${t.ad}</div>
+        <small>${t.devre || ""}</small>
+      </div>
+      <div class="status" id="durum-${t.id}">⚪</div>
+    `;
+    row.onclick = () => secTalebe(t.id);
+    div.appendChild(row);
+  });
+}
+
+// === ARAMA (normalize’lı) ===
+function normStr(s){
+  return String(s||"")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .replace(/ı/g,"i").replace(/İ/g,"i")
+    .toLowerCase().trim();
+}
+
+function filtreTalebe(q){
+  const qn = normStr(q);
+  const f = TUM_TALEBELER.filter(t=>{
+    const devreOk = FILTRE_DEVRE ? t.devre === FILTRE_DEVRE : true;
+    if (!devreOk) return false;
+    return !qn || normStr(t.ad).includes(qn);
+  });
+  renderTalebeList(f);
+}
+
+function filtreDevreDegisti(){
+  FILTRE_DEVRE = document.getElementById("devreSelect").value;
+  filtreTalebe(document.getElementById("araInput").value);
+}
+
+  window.filtreTalebe = filtreTalebe;
+  window.filtreDevreDegisti = filtreDevreDegisti;
+
+  // === TALEBE SEÇ ===
+  async function secTalebe(uid){
+    SECILI_TALEBE = TUM_TALEBELER.find(t=>t.id === uid) || null;
+
+    document.querySelectorAll(".talebe-item").forEach(el=>{
+      el.classList.toggle("active", el.dataset.id === uid);
+    });
+
+    if (!SECILI_TALEBE) {
+      toast("Talebe bulunamadı.");
+      return;
+    }
+
+    const sistem = await okuSistemVeri(uid);
+    const hoca   = await okuHocaVeri(uid);
+    renderSistem(sistem);
+    renderHocaForm(hoca);
+    hesaplaVeGoster(sistem, hoca);
+  }
+
+  // === SİSTEM VERİLERİ OKU ===
+  async function okuSistemVeri(uid){
+    const ayKey = AY_KEY;
+    let takrir = 4, izin = 4, temizlik = 4, namaz = 4;
+
+    // takrir
+    try{
+      const doc = await db.collection("takrir_takibi_aylik").doc(ayKey).collection("talebeler").doc(uid).get();
+      if(doc.exists){
+        const d = doc.data();
+        const oran = d.oran || d.doldurmaOrani || 1;
+        takrir = oranTo5(oran);
+      }
+    }catch(e){}
+
+    // izin
+    try{
+      const doc = await db.collection("izin_takip_aylik").doc(ayKey).collection("talebeler").doc(uid).get();
+      if(doc.exists){
+        const d = doc.data();
+        const ihlal = d.ihlalSayisi || 0;
+        if(ihlal===0) izin = 5;
+        else if(ihlal===1) izin = 4;
+        else if(ihlal<=3) izin = 3;
+        else if(ihlal<=5) izin = 2;
+        else izin = 1;
+      }
+    }catch(e){}
+
+    // temizlik
+    try{
+      const doc = await db.collection("temizlik_puan_aylik").doc(ayKey).collection("talebeler").doc(uid).get();
+      if(doc.exists){
+        const d = doc.data();
+        const ort = d.ortalama || d.puan || 80;
+        if(ort>=90) temizlik=5;
+        else if(ort>=75) temizlik=4;
+        else if(ort>=60) temizlik=3;
+        else if(ort>=40) temizlik=2;
+        else temizlik=1;
+      }
+    }catch(e){}
+
+    // namaz-yoklama
+    try{
+      const doc = await db.collection("namaz_yoklama_aylik").doc(ayKey).collection("talebeler").doc(uid).get();
+      if(doc.exists){
+        const d = doc.data();
+        const oran = d.oran || d.katilimOrani || 1;
+        namaz = oranTo5(oran);
+      }
+    }catch(e){}
+
+    return {takrir, izin, temizlik, namaz};
+  }
+
+  function oranTo5(oran){
+    if(oran>=0.98) return 5;
+    if(oran>=0.80) return 4;
+    if(oran>=0.60) return 3;
+    if(oran>=0.40) return 2;
+    return 1;
+  }
+
+  function renderSistem(s){
+    const box = document.getElementById("sistemGrid");
+    box.innerHTML = "";
+    const items = [
+      {k:"takrir",   ad:"Takrir",          acik:"Günlük takrir performansı", puan:s.takrir},
+      {k:"izin",     ad:"İzin / Devam",    acik:"Geç kalma / devamsızlık",   puan:s.izin},
+      {k:"temizlik", ad:"Temizlik",        acik:"Vazife / oda / kat",        puan:s.temizlik},
+      {k:"namaz",    ad:"Namaz & Yoklama", acik:"Vakit ders yoklama",        puan:s.namaz},
+    ];
+    items.forEach(it=>{
+      const div = document.createElement("div");
+      div.className="sys-card";
+      div.innerHTML = `
+        <h4>${it.ad}</h4>
+        <div class="sys-score">${it.puan} / 5</div>
+        <div class="sys-meta">${it.acik}</div>
+        ${it.puan===4 ? `<div class="tag-yellow">veri yok → 4</div>`:""}
+      `;
+      box.appendChild(div);
+    });
+  }
+
+  async function okuHocaVeri(uid){
+    try{
+      const doc = await db.collection("karneler").doc(AY_KEY).collection("talebeler").doc(uid).get();
+      if(doc.exists){
+        const d = doc.data();
+        return d.hocaPuanlari || {};
+      }
+    }catch(e){}
+    return {};
+  }
+
+  function renderHocaForm(h){
+    ["hazirlik","dikkat","katilim","edep","program"].forEach(a=>{
+      document.getElementById(a).value = h[a] ? h[a] : "";
+    });
+    document.getElementById("hocaYorum").value = h.yorum || "";
+  }
+
+  async function hesaplaVeGoster(sistem, hoca){
+    const {hocaObj, bos} = hazirlaHocaObjesi(hoca);
+    const sysOrt  = (sistem.takrir + sistem.izin + sistem.temizlik + sistem.namaz)/4;
+    const hocaOrt = (hocaObj.hazirlik + hocaObj.dikkat + hocaObj.katilim + hocaObj.edep + hocaObj.program)/5;
+    const genel5  = (sysOrt*0.60) + (hocaOrt*0.40);
+    const genel100 = Math.round((genel5/5)*100);
+
+    document.getElementById("genelPuan100").textContent = genel100 + " / 100";
+    document.getElementById("genelPuan5").textContent   = genel5.toFixed(2) + " / 5";
+    document.getElementById("hesapDetay").textContent =
+`Sistem: ${sysOrt.toFixed(2)} × 0.60 = ${(sysOrt*0.60).toFixed(2)}
+Hoca: ${hocaOrt.toFixed(2)} × 0.40 = ${(hocaOrt*0.40).toFixed(2)}
+Toplam: ${genel5.toFixed(2)} → ${genel100}`;
+
+    if(bos.length){
+      toast(bos.length + " alan otomatik 4 olarak alındı.");
+    }
+  }
+
+  function hazirlaHocaObjesi(onceki){
+    const alanlar = ["hazirlik","dikkat","katilim","edep","program"];
+    const obj = {};
+    const bos = [];
+    alanlar.forEach(a=>{
+      const val = document.getElementById(a).value;
+      if(val){
+        obj[a] = Number(val);
+      }else if(onceki && onceki[a]){
+        obj[a] = Number(onceki[a]);
+      }else{
+        obj[a] = 4;
+        bos.push(a);
+      }
+    });
+    obj.yorum = document.getElementById("hocaYorum").value || (onceki ? onceki.yorum || "" : "");
+    return {hocaObj:obj, bos};
+  }
+
+  async function kaydetKarne(){
+    if(!SECILI_TALEBE){ toast("Önce talebe seç."); return; }
+
+    const grid = document.querySelectorAll("#sistemGrid .sys-card .sys-score");
+    const sistem = {
+      takrir  : parseInt(grid[0].textContent),
+      izin    : parseInt(grid[1].textContent),
+      temizlik: parseInt(grid[2].textContent),
+      namaz   : parseInt(grid[3].textContent),
+    };
+    const {hocaObj} = hazirlaHocaObjesi({});
+    const sysOrt  = (sistem.takrir + sistem.izin + sistem.temizlik + sistem.namaz)/4;
+    const hocaOrt = (hocaObj.hazirlik + hocaObj.dikkat + hocaObj.katilim + hocaObj.edep + hocaObj.program)/5;
+    const genel5  = (sysOrt*0.60) + (hocaOrt*0.40);
+    const genel100 = Math.round((genel5/5)*100);
+
+    const kayit = {
+      talebeUid  : SECILI_TALEBE.id,
+      talebeAd   : SECILI_TALEBE.ad,
+      talebeDevre: SECILI_TALEBE.devre,
+      ay         : AY_KEY,
+      sistemPuanlari: sistem,
+      hocaPuanlari  : hocaObj,
+      genelPuan     : { puan5:genel5, puan100:genel100 },
+      meta: {
+        kaydedenUid : AKTIF_USER ? AKTIF_USER.uid   : null,
+        kaydedenMail: AKTIF_USER ? AKTIF_USER.email : null,
+        ts: firebase.firestore.FieldValue.serverTimestamp()
+      }
+    };
+
+    await db.collection("karneler").doc(AY_KEY).collection("talebeler").doc(SECILI_TALEBE.id).set(kayit,{merge:true});
+    const st = document.getElementById("durum-"+SECILI_TALEBE.id);
+    if(st) st.textContent = "🟢";
+    toast("Karne kaydedildi.");
+  }
+
+  // küçük yardımcılar
+  function toast(msg){
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    setTimeout(()=>t.classList.remove("show"),2500);
+  }
+  function getCurrentYearMonth(){
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+  }
+  function ayLabelFromKey(key){
+    const [y,m] = key.split("-");
+    const aylar = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
+    return `${aylar[parseInt(m,10)-1]} ${y}`;
+  }
+</script>
+</body>
+</html>
