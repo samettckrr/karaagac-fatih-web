@@ -423,12 +423,83 @@
     const arr = (snap.exists && Array.isArray(snap.data().kitaplar)) ? snap.data().kitaplar : [];
     return arr.sort((a,b)=>a.localeCompare(b,'tr'));
   }
-  async function addKitap(devre, kitap){
-    if(!kitap) return;
-    await ensureIndexForDevre(devre);
-    await db.collection(PATHS.index).doc(devre).set({kitaplar: firebase.firestore.FieldValue.arrayUnion(kitap)}, {merge:true});
-    await db.collection(PATHS.main).doc(devre).collection(kitap).doc('__meta__').set({created: new Date().toISOString()},{merge:true});
+
+let __ME  = '';      // oturum adı buraya yazılacak
+let __UID = null;    // uid buraya yazılacak
+
+async function getAuthUserSafe(){
+  // auth.currentUser yoksa kısa süre bekleyip tekrar dene
+  if (firebase.auth().currentUser) return firebase.auth().currentUser;
+
+  await new Promise(r => setTimeout(r, 60));
+  if (firebase.auth().currentUser) return firebase.auth().currentUser;
+
+  // yine yoksa bir kez daha dene
+  await new Promise(r => setTimeout(r, 120));
+  return firebase.auth().currentUser || null;
+}
+
+async function ensureUserCtx(){
+  const u = await getAuthUserSafe();
+  if (!u) throw new Error('no-auth');
+
+  // UID
+  __UID = u.uid;
+
+  // İsim öncelik: kullanicilar/{uid}.adSoyad -> displayName -> mail prefix -> '—'
+  if (!__ME) {
+    try {
+      const snap = await db.collection('kullanicilar').doc(u.uid).get();
+      const d = snap.exists ? (snap.data() || {}) : {};
+      __ME = (d.adSoyad && String(d.adSoyad).trim())
+         || (u.displayName && String(u.displayName).trim())
+         || (u.email ? String(u.email).split('@')[0] : '')
+         || '—';
+    } catch (_) {
+      __ME = (u.displayName && String(u.displayName).trim())
+         || (u.email ? String(u.email).split('@')[0] : '')
+         || '—';
+    }
   }
+  return { uid: __UID, name: __ME };
+}
+
+// Cihaz bilgisi
+function getDeviceInfo(){
+  const nav = window.navigator || {};
+  const ua  = nav.userAgent || '';
+  const plt = nav.platform || '';
+  const lng = nav.language || nav.userLanguage || '';
+  const scr = (window.screen ? `${screen.width}x${screen.height}` : '');
+  return `${ua} | ${plt} | ${lng} | ${scr}`;
+}
+
+// --- GÜNCELLE: addKitap ---
+async function addKitap(devre, kitap){
+  if (!kitap) return;
+  const { uid, name } = await ensureUserCtx();   // <-- kritik
+  const nowISO = new Date().toISOString();
+  const device = getDeviceInfo();
+
+  // index
+  await ensureIndexForDevre(devre);
+  await db.collection(PATHS.index).doc(devre)
+    .set({
+      kitaplar: firebase.firestore.FieldValue.arrayUnion(kitap),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge:true });
+
+  // müfredat meta
+  await db.collection(PATHS.main).doc(devre).collection(kitap).doc('__meta__')
+    .set({
+      created: nowISO,                 // geriye uyum
+      createdClientISO: nowISO,
+      createdServerTS: firebase.firestore.FieldValue.serverTimestamp(),
+      createdBy: name,                 // <-- oturum adı
+      createdUid: uid,                 // <-- oturum uid
+      createdDevice: device
+    }, { merge:true });
+}
   async function listDerslerWithMeta(devre, kitap){
     if(!kitap) return [];
     const qs = await db.collection(PATHS.main).doc(devre).collection(kitap).get();
@@ -443,15 +514,37 @@
     rows.sort((a,b)=>((b.ilkKayitISO||'').localeCompare(a.ilkKayitISO||'')));
     return rows;
   }
-  async function addDers(devre, kitap, ders, personel){
-    if(!ders) return;
-    const nowISO=new Date().toISOString();
-    await db.collection(PATHS.index).doc(devre).collection('dersler').doc(kitap)
-      .set({ dersler: firebase.firestore.FieldValue.arrayUnion(ders) }, {merge:true});
-    await db.collection(PATHS.main).doc(devre).collection(kitap).doc(ders)
-      .set({ created: nowISO, ilkKayitISO: nowISO, ilkKayitBy: personel||'—' }, {merge:true});
-    state.dersKayitISO = nowISO;
-  }
+// --- GÜNCELLE: addDers ---
+async function addDers(devre, kitap, ders){
+  if (!ders) return;
+  const { uid, name } = await ensureUserCtx();   // <-- kritik
+  const nowISO = new Date().toISOString();
+  const device = getDeviceInfo();
+
+  // index/ders
+  await db.collection(PATHS.index).doc(devre)
+    .collection('dersler').doc(kitap)
+    .set({
+      dersler: firebase.firestore.FieldValue.arrayUnion(ders),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge:true });
+
+  // ders dokümanı
+  await db.collection(PATHS.main).doc(devre).collection(kitap).doc(ders)
+    .set({
+      created: nowISO,
+      ilkKayitISO: nowISO,
+      ilkKayitBy: name,                // <-- oturum adı
+      createdClientISO: nowISO,
+      createdServerTS: firebase.firestore.FieldValue.serverTimestamp(),
+      createdBy: name,                 // aynı değeri ayrıca tut
+      createdUid: uid,                 // <-- oturum uid
+      createdDevice: device
+    }, { merge:true });
+
+  state.dersKayitISO = nowISO;
+}
+
   async function loadTalebeler(devre){
     const list=[]; const base=db.collection(PATHS.talebeler).doc(devre).collection('öğrenciler');
     const qs=await base.get();
@@ -511,7 +604,6 @@
   }
 
   /* UI state */
-  let __ME='';
   let state={ devre:'6.Devre', kitap:'', ders:'', dersKayitISO:null, mode:'rapor', talebeler:[], durumMap:{} };
   let modalCtx={ uid:null, ad:'', pre:STAT_NONE };
 
@@ -894,20 +986,28 @@
   // Ekle butonları
   $('btnKitapEkleToggle').addEventListener('click', ()=>{ const w=$('kitapEkleWrap'); w.style.display=w.style.display==='none'?'flex':'none'; });
   $('btnDersEkleToggle').addEventListener('click', ()=>{ const w=$('dersEkleWrap'); w.style.display=w.style.display==='none'?'flex':'none'; });
-  $('btnKitapKaydet').addEventListener('click', async ()=>{
-    const kitap=($('inpKitap').value||'').trim(); if(!kitap){ $('kitapMsg').textContent='Kitap adı boş olamaz.'; return; }
+$('btnKitapKaydet').addEventListener('click', async ()=>{
+  try{
+    await ensureUserCtx();                               // <-- eklendi
+    const kitap = ($('inpKitap').value||'').trim();
+    if(!kitap){ $('kitapMsg').textContent='Kitap adı boş olamaz.'; return; }
     $('kitapMsg').textContent='Kaydediliyor...';
-    try{ await addKitap(state.devre, kitap); $('inpKitap').value=''; $('kitapMsg').textContent='Eklendi.'; await refreshKitap(false); }
-    catch(e){ console.error(e); $('kitapMsg').textContent='Hata (yetki/bağlantı).'; }
-  });
-  $('btnDersKaydet').addEventListener('click', async ()=>{
-    const ders=($('inpDers').value||'').trim();
+    await addKitap(state.devre, kitap);
+    $('inpKitap').value=''; $('kitapMsg').textContent='Eklendi.'; await refreshKitap(false);
+  }catch(e){ console.error(e); $('kitapMsg').textContent = (e.message==='no-auth'?'Giriş gerekli.':'Hata (yetki/bağlantı).'); }
+});
+
+$('btnDersKaydet').addEventListener('click', async ()=>{
+  try{
+    await ensureUserCtx();                               // <-- eklendi
+    const ders = ($('inpDers').value||'').trim();
     if(!state.kitap){ $('dersMsg').textContent='Önce kitap seçiniz.'; return; }
     if(!ders){ $('dersMsg').textContent='Ders adı boş olamaz.'; return; }
     $('dersMsg').textContent='Kaydediliyor...';
-    try{ await addDers(state.devre, state.kitap, ders, __ME||'—'); $('inpDers').value=''; $('dersMsg').textContent='Eklendi.'; await refreshDers(); }
-    catch(e){ console.error(e); $('dersMsg').textContent='Hata (yetki/bağlantı).'; }
-  });
+    await addDers(state.devre, state.kitap, ders);
+    $('inpDers').value=''; $('dersMsg').textContent='Eklendi.'; await refreshDers();
+  }catch(e){ console.error(e); $('dersMsg').textContent = (e.message==='no-auth'?'Giriş gerekli.':'Hata (yetki/bağlantı).'); }
+});
   $('selSort').addEventListener('change', ()=>renderTalebeList());
   $('btnListeYenile').addEventListener('click', ()=>renderTalebeList());
 
