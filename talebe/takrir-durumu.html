@@ -64,7 +64,11 @@
     @media (max-width: 960px){ .nav-center{display:none} .hamb{display:inline-flex} }
 
     /* Drawer */
-    .drawer{position:fixed; top:var(--appbar-h); right:0; bottom:0; left:30%; transform:translateX(100%); transition:.25s; background:var(--card); border-left:1px solid var(--stroke); z-index:70; overflow:auto; padding:12px}
+    .drawer{
+      position:fixed; top:var(--appbar-h); right:0; bottom:0; left:30%;
+      transform:translateX(100%); transition:.25s; background:var(--card);
+      border-left:1px solid var(--stroke); z-index:70; overflow:auto; padding:12px
+    }
     .drawer.open{transform:translateX(0)}
     .drawer .panel-title{margin:14px 4px 6px; font-weight:800; color:var(--muted); font-size:13px}
     .drawer a{display:block; padding:10px; border-radius:10px; border:1px solid var(--stroke); margin:6px 0; color:var(--text); background:var(--pill)}
@@ -139,20 +143,11 @@
     .loadpct{min-width:46px; font-weight:800}
     .loadlbl{color:var(--muted); font-size:12.5px}
 
-    /* Kitap & Ders Modal (düzenlenmiş) */
-    #kdModal .modal-content{
-      max-width:880px; width:100%; max-height:80vh; overflow:auto;
-    }
-    .kd-grid{
-      display:grid; grid-template-columns:280px 1fr; gap:12px;
-    }
-    .kd-col{
-      border:1px solid var(--stroke); border-radius:10px; background:var(--pill); padding:6px;
-      max-height:60vh; overflow:auto;
-    }
-    .kd-item{
-      border:1px solid transparent; border-radius:8px; padding:6px 8px; margin:4px 0; cursor:pointer;
-    }
+    /* Kitap & Ders Modal */
+    #kdModal .modal-content{ max-width:880px; width:100%; max-height:80vh; overflow:auto; }
+    .kd-grid{ display:grid; grid-template-columns:280px 1fr; gap:12px; }
+    .kd-col{ border:1px solid var(--stroke); border-radius:10px; background:var(--pill); padding:6px; max-height:60vh; overflow:auto; }
+    .kd-item{ border:1px solid transparent; border-radius:8px; padding:6px 8px; margin:4px 0; cursor:pointer; }
     .kd-item.active{border-color:var(--brand); background:rgba(56,189,248,.12);}
     @media (max-width: 720px){
       #kdModal{align-items:center; justify-content:center;}
@@ -209,7 +204,6 @@
 <aside class="drawer" id="drawer"></aside>
 
 <main class="container">
-
   <!-- HEADER -->
   <section class="card header-card">
     <div class="header-left">
@@ -302,7 +296,6 @@
       <div id="talebeList"></div>
     </div>
   </section>
-
 </main>
 
 <!-- İŞLEM MODAL -->
@@ -319,14 +312,12 @@
   </div>
 </div>
 
-<!-- RAPOR TALEBE MODAL (yeni) -->
+<!-- RAPOR TALEBE MODAL -->
 <div class="modal" id="raporTalebeModal">
-  <div class="modal-content" id="raporTalebeContent">
-    <!-- js dolduruyor -->
-  </div>
+  <div class="modal-content" id="raporTalebeContent"></div>
 </div>
 
-<!-- KİTAP & DERS MODAL (düzeltilmiş) -->
+<!-- KİTAP & DERS MODAL -->
 <div class="modal" id="kdModal">
   <div class="modal-content">
     <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px">
@@ -350,22 +341,16 @@
     document.getElementById('todayText').textContent=`${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()} • ${days[d.getDay()]}`;
   })();
 
-  /* === Firebase & helpers === */
+  /* Firebase & helpers */
   const db=firebase.firestore(), auth=firebase.auth();
   const $=(id)=>document.getElementById(id);
   function toast(msg){const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(window.__to); window.__to=setTimeout(()=>t.classList.remove('show'),2500);}
-  const norm=(s)=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 
-  const PATHS={
-    users:'kullanicilar',
-    manifest:'sayfa_manifesti',
-    talebeler:'talebeler',
-    main:'takrir takibi',
-    byDate:'takrir takibi tarih',
-    index:'takrir_index'
-  };
+  const PATHS={ users:'kullanicilar', manifest:'sayfa_manifesti', talebeler:'talebeler', main:'takrir takibi', byDate:'takrir takibi tarih', index:'takrir_index' };
 
   const STAT_NONE='none', STAT_VERDI='verdi', STAT_VEREMEDI='veremedi', STAT_YARIM='yarım kaldı';
+  const norm = (s)=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+
   function rowClassByStat(s){
     if(s===STAT_VERDI) return 'st-verdi';
     if(s===STAT_VEREMEDI) return 'st-veremedi';
@@ -388,7 +373,6 @@
     }
     if (veremediHit) return STAT_VEREMEDI;
     if (yarimHit) return STAT_YARIM;
-
     return STAT_NONE;
   }
   function toISO10(any){
@@ -405,11 +389,10 @@
     return diff > 0 ? diff : 0;
   }
 
-  /* ===== Yükleniyor %0-100 ===== */
+  /* Loading bar */
   let __loading = { box:null, bar:null, pct:null, lbl:null, timer:null, softCap:85, value:0 };
-
   function loadingStart(label='Veriler getiriliyor…', softCap=85){
-    loadingEnd(); // varsa temizle
+    loadingEnd();
     const wrap = document.createElement('div'); wrap.className='loadbox';
     wrap.innerHTML = `
       <div class="loadrow">
@@ -419,52 +402,16 @@
       <div class="loadlbl" id="ldLbl"></div>`;
     const host = document.getElementById('outArea') || document.body;
     host.prepend(wrap);
-
-    __loading = {
-      box:wrap,
-      bar:wrap.querySelector('#ldBar'),
-      pct:wrap.querySelector('#ldP'),
-      lbl:wrap.querySelector('#ldLbl'),
-      timer:null,
-      softCap:softCap,
-      value:0
-    };
+    __loading = { box:wrap, bar:wrap.querySelector('#ldBar'), pct:wrap.querySelector('#ldP'), lbl:wrap.querySelector('#ldLbl'), timer:null, softCap, value:0 };
     __loading.lbl.textContent = label;
-
-    __loading.timer = setInterval(()=>{
-      if(!__loading) return;
-      const cap = __loading.softCap;
-      if(__loading.value < cap){
-        setLoading(Math.min(cap, __loading.value + 0.6));
-      }
-    }, 90);
+    __loading.timer = setInterval(()=>{ if(__loading.value < __loading.softCap){ setLoading(Math.min(__loading.softCap, __loading.value + 0.6)); } }, 90);
   }
+  function setLoading(p){ if(!__loading.bar) return; const v=Math.max(0,Math.min(100,p)); __loading.value=v; __loading.bar.style.width=v.toFixed(0)+'%'; __loading.pct.textContent=v.toFixed(0)+'%'; }
+  function bumpLoading(to){ if(!__loading.bar) return; if(to>__loading.value) setLoading(to); }
+  function loadingLabel(t){ if(__loading.lbl) __loading.lbl.textContent=t; }
+  function loadingEnd(){ if(__loading.timer){ clearInterval(__loading.timer); __loading.timer=null; } if(__loading.bar){ setLoading(100);} if(__loading.box){ const b=__loading.box; setTimeout(()=>b.remove(),350);} __loading={ box:null, bar:null, pct:null, lbl:null, timer:null, softCap:85, value:0 }; }
 
-  function setLoading(p){
-    if(!__loading.bar) return;
-    const v = Math.max(0, Math.min(100, p));
-    __loading.value = v;
-    __loading.bar.style.width = v.toFixed(0) + '%';
-    __loading.pct.textContent = v.toFixed(0) + '%';
-  }
-
-  function bumpLoading(to){
-    if(!__loading.bar) return;
-    if(to > __loading.value) setLoading(to);
-  }
-
-  function loadingLabel(t){ if(__loading.lbl) __loading.lbl.textContent = t; }
-
-  function loadingEnd(){
-    if(__loading.timer){ clearInterval(__loading.timer); __loading.timer=null; }
-    if(__loading.bar){ setLoading(100); }
-    if(__loading.box){
-      const b = __loading.box;
-      setTimeout(()=>{ b.remove(); }, 350);
-    }
-    __loading = { box:null, bar:null, pct:null, lbl:null, timer:null, softCap:85, value:0 };
-  }
-
+  /* Index & data ops */
   async function ensureIndexForDevre(devre){
     const ref = db.collection(PATHS.index).doc(devre);
     const doc = await ref.get();
@@ -479,8 +426,7 @@
   async function addKitap(devre, kitap){
     if(!kitap) return;
     await ensureIndexForDevre(devre);
-    const ref = db.collection(PATHS.index).doc(devre);
-    await ref.set({kitaplar: firebase.firestore.FieldValue.arrayUnion(kitap)}, {merge:true});
+    await db.collection(PATHS.index).doc(devre).set({kitaplar: firebase.firestore.FieldValue.arrayUnion(kitap)}, {merge:true});
     await db.collection(PATHS.main).doc(devre).collection(kitap).doc('__meta__').set({created: new Date().toISOString()},{merge:true});
   }
   async function listDerslerWithMeta(devre, kitap){
@@ -500,8 +446,8 @@
   async function addDers(devre, kitap, ders, personel){
     if(!ders) return;
     const nowISO=new Date().toISOString();
-    const ref = db.collection(PATHS.index).doc(devre).collection('dersler').doc(kitap);
-    await ref.set({ dersler: firebase.firestore.FieldValue.arrayUnion(ders) }, {merge:true});
+    await db.collection(PATHS.index).doc(devre).collection('dersler').doc(kitap)
+      .set({ dersler: firebase.firestore.FieldValue.arrayUnion(ders) }, {merge:true});
     await db.collection(PATHS.main).doc(devre).collection(kitap).doc(ders)
       .set({ created: nowISO, ilkKayitISO: nowISO, ilkKayitBy: personel||'—' }, {merge:true});
     state.dersKayitISO = nowISO;
@@ -519,16 +465,19 @@
     const dersKey = encodeURIComponent(`${kitap}__${ders}`);
     const nowISOClient = new Date().toISOString();
 
-    const dersTalebeDoc = db.collection(PATHS.main).doc(devre).collection(kitap).doc(ders).collection('talebeler').doc(uid);
-    await dersTalebeDoc.set({ durum, personel, dersGunu: dersDay, islemISO: firebase.firestore.FieldValue.serverTimestamp() }, { merge:true });
+    await db.collection(PATHS.main).doc(devre).collection(kitap).doc(ders)
+      .collection('talebeler').doc(uid)
+      .set({ durum, personel, dersGunu: dersDay, islemISO: firebase.firestore.FieldValue.serverTimestamp() }, { merge:true });
 
     const byDateDocLesson = db.collection(PATHS.byDate).doc(devre).collection(dersDay).doc(uid);
     await byDateDocLesson.set({ kayitlar: firebase.firestore.FieldValue.arrayUnion({ kitap, ders, durum, personel, islemISOStr: nowISOClient }) }, { merge:true });
-    await byDateDocLesson.collection('dersler').doc(dersKey).set({ kitap, ders, durum, personel, dersGun: dersDay, islemISO: firebase.firestore.FieldValue.serverTimestamp() }, { merge:true });
+    await byDateDocLesson.collection('dersler').doc(dersKey)
+      .set({ kitap, ders, durum, personel, dersGun: dersDay, islemISO: firebase.firestore.FieldValue.serverTimestamp() }, { merge:true });
 
     const byDateDocOp = db.collection(PATHS.byDate).doc(devre).collection(opDay).doc(uid);
     await byDateDocOp.set({ _exists:true }, { merge:true });
-    await byDateDocOp.collection('dersler').doc(dersKey).set({ kitap, ders, durum, personel, dersGun: dersDay, opGun: opDay, islemISO: firebase.firestore.FieldValue.serverTimestamp() }, { merge:true });
+    await byDateDocOp.collection('dersler').doc(dersKey)
+      .set({ kitap, ders, durum, personel, dersGun: dersDay, opGun: opDay, islemISO: firebase.firestore.FieldValue.serverTimestamp() }, { merge:true });
 
     return { dersDay, opDay, dersKey, islemISOClient: nowISOClient };
   }
@@ -561,8 +510,8 @@
     return out;
   }
 
-  /* === UI Durumu === */
-  let __ME=''; 
+  /* UI state */
+  let __ME='';
   let state={ devre:'6.Devre', kitap:'', ders:'', dersKayitISO:null, mode:'rapor', talebeler:[], durumMap:{} };
   let modalCtx={ uid:null, ad:'', pre:STAT_NONE };
 
@@ -579,13 +528,11 @@
     if(!state.kitap){ dersSel.innerHTML=`<option value="">— Ders Seç —</option>`; state.ders=''; return; }
     const dersler=await listDerslerWithMeta(state.devre, state.kitap);
     dersSel.innerHTML=`<option value="">— Ders Seç —</option>`+dersler.map(d=>{
-      const t=d.ilkKayitISO?` (${d.ilkKayitISO.slice(0,10)})`:'';
-      return `<option value="${d.ad}"${state.ders===d.ad?' selected':''}>${d.ad}${t}</option>`;
+      const t=d.ilkKayitISO?` (${d.ilkKayitISO.slice(0,10)})`:''; return `<option value="${d.ad}"${state.ders===d.ad?' selected':''}>${d.ad}${t}</option>`;
     }).join('');
     if(!state.ders) state.ders=dersSel.value||'';
   }
 
-  // ortak özet tablo
   function buildSummaryHTML(counts, total){
     return `
       <div class="table">
@@ -595,11 +542,9 @@
             const oran=((val/(total||1))*100).toFixed(1)+'%';
             return `<div class="trow"><div>${lbl}</div><div>${val}</div><div>${oran}</div></div>`;
           }).join('')}
-      </div>
-    `;
+      </div>`;
   }
 
-  // rapor talebe modal
   function openRaporTalebeModal({ad, durum, personel, dersGun, islemISO, gecikme}){
     const box=$('raporTalebeContent');
     const iso10 = islemISO ? toISO10(islemISO) : '—';
@@ -611,18 +556,14 @@
       <p class="tiny" style="margin-bottom:8px">Personel: <strong>${personel||'—'}</strong></p>
       <p class="tiny" style="margin-bottom:8px">Kayıt Zamanı: <strong>${fullTime}</strong> ${iso10 && iso10!==dersGun ? `<span class="tiny">(! ${iso10} kaydedildi)</span>`:''}</p>
       ${gecikme>0 ? `<p class="tiny" style="color:#f97316">Bu dersi ${gecikme} gün gecikmeli verdi.</p>` : ''}
-      <div class="modal-buttons">
-        <button class="btn-ghost" onclick="document.getElementById('raporTalebeModal').style.display='none'">Kapat</button>
-      </div>
-    `;
+      <div class="modal-buttons"><button class="btn-ghost" onclick="document.getElementById('raporTalebeModal').style.display='none'">Kapat</button></div>`;
     $('raporTalebeModal').style.display='flex';
   }
 
   async function showRapor(){
     if (!state.dersKayitISO) {
       try {
-        const mdoc = await db.collection(PATHS.main)
-          .doc(state.devre).collection(state.kitap).doc(state.ders).get();
+        const mdoc = await db.collection(PATHS.main).doc(state.devre).collection(state.kitap).doc(state.ders).get();
         const m = mdoc.exists ? mdoc.data() : {};
         state.dersKayitISO = m.ilkKayitISO || m.created || new Date().toISOString();
       } catch(_) {
@@ -632,6 +573,7 @@
     $('islemSection').style.display='none';
     bumpLoading(10);
     loadingLabel('Durumlar okunuyor…');
+
     const sabitGun = state.dersKayitISO ? state.dersKayitISO.slice(0,10) : '—';
     $('outTitle').textContent = `Rapor • ${state.devre} • ${state.kitap} • ${state.ders||'—'} • ${sabitGun}`;
 
@@ -670,14 +612,7 @@
       const personelInfo = rec.personel ? `<div class="tiny">👤 ${rec.personel}</div>` : '';
       const row=document.createElement('div'); row.className='sRow '+rowClassByStat(st);
       row.innerHTML=`<div><div>${t.ad}</div>${lateInfo}${personelInfo}</div><div class="statBadge">${st===STAT_NONE?'—':st}</div>`;
-      row.onclick=()=>openRaporTalebeModal({
-        ad:t.ad,
-        durum:st,
-        personel:rec.personel||'—',
-        dersGun:sabitGun,
-        islemISO:rec.islemISO||null,
-        gecikme:late
-      });
+      row.onclick=()=>openRaporTalebeModal({ ad:t.ad, durum:st, personel:rec.personel||'—', dersGun:sabitGun, islemISO:rec.islemISO||null, gecikme:late });
       body.appendChild(row);
       const p = start + ((i+1)/total) * (end - start);
       bumpLoading(p);
@@ -692,8 +627,7 @@
   async function showIslem(){
     if (!state.dersKayitISO) {
       try {
-        const mdoc = await db.collection(PATHS.main)
-          .doc(state.devre).collection(state.kitap).doc(state.ders).get();
+        const mdoc = await db.collection(PATHS.main).doc(state.devre).collection(state.kitap).doc(state.ders).get();
         const m = mdoc.exists ? mdoc.data() : {};
         state.dersKayitISO = m.ilkKayitISO || m.created || new Date().toISOString();
       } catch(_) {
@@ -759,6 +693,117 @@
     });
   }
 
+  /* NAV helpers (tek kopya) */
+  function normalizeUrl(u){
+    if(!u) return '#';
+    if(/^https?:\/\//i.test(u)) return u;
+    if(u.startsWith('/')) return u;
+    return '/'+u.replace(/^\.?\//,'');
+  }
+  let CURRENT_ALLOW=new Set(), CURRENT_DENY=new Set();
+
+  async function fetchPanels(allowSet, denySet){
+    const res=[];
+    try{
+      const snap=await db.collection('sayfa_manifesti').get();
+      snap.forEach(doc=>{
+        const d=doc.data()||{}, id=doc.id, panelTitle=d.title||id;
+        const panelGrant = allowSet.has(norm(id)) || allowSet.has(norm(panelTitle));
+        let pages = Array.isArray(d.pages)? d.pages : [];
+        pages = pages
+          .filter(pg=>{
+            const keyNorm=norm(pg.key||pg.title||'');
+            const pageGrant=allowSet.has(keyNorm), denied=denySet.has(keyNorm);
+            return !denied && (panelGrant || pageGrant);
+          })
+          .map(pg=>({ baslik: pg.title||pg.key||'Sayfa', url: pg.path||pg.url||'#', key: pg.key||pg.title||'', sira: typeof pg.order==='number' ? pg.order : 9999 }))
+          .sort((a,b)=>a.sira-b.sira);
+        if(pages.length) res.push({ id, baslik:panelTitle, sira: typeof d.order==='number'? d.order:9999, pages });
+      });
+      res.sort((a,b)=>a.sira-b.sira);
+    }catch(e){ console.error(e); toast('Menü manifesti yüklenemedi.'); }
+    return res;
+  }
+
+  function renderNav(panels){
+    const ul=$('navMain'), drawer=$('drawer');
+    ul.innerHTML=''; drawer.innerHTML='';
+    if(!panels.length){
+      ul.innerHTML='<li class="nav-item"><div class="nav-btn">Hiç panel yok</div></li>';
+      drawer.innerHTML='<div style="color:var(--muted);padding:8px">Hiç panel bulunamadı</div>';
+      return;
+    }
+    panels.forEach(p=>{
+      const li=document.createElement('li'); li.className='nav-item';
+      li.innerHTML=`<div class="nav-btn">${p.baslik} <span class="caret">▾</span></div>`;
+      const dd=document.createElement('div'); dd.className='dropdown';
+      (p.pages||[]).forEach(pg=>{
+        const a=document.createElement('a');
+        const url = normalizeUrl(pg.url || '#');
+        a.href = url;
+        a.textContent = pg.baslik;
+        a.dataset.key=pg.key||pg.baslik; a.dataset.panel=p.id; a.dataset.panelTitle=p.baslik;
+        dd.appendChild(a);
+      });
+      li.appendChild(dd);
+      li.querySelector('.nav-btn').addEventListener('click',(e)=>{
+        e.stopPropagation();
+        ul.querySelectorAll('.nav-item').forEach(x=>{ if(x!==li) x.classList.remove('open'); });
+        li.classList.toggle('open');
+      });
+      ul.appendChild(li);
+
+      const h=document.createElement('div'); h.className='panel-title'; h.textContent=p.baslik; drawer.appendChild(h);
+      (p.pages||[]).forEach(pg=>{
+        const a=document.createElement('a');
+        const url = normalizeUrl(pg.url || '#');
+        a.href = url;
+        a.textContent = pg.baslik;
+        a.dataset.key=pg.key||pg.baslik; a.dataset.panel=p.id; a.dataset.panelTitle=p.baslik;
+        drawer.appendChild(a);
+      });
+    });
+
+    document.addEventListener('click',(e)=>{ if(!ul.contains(e.target)) ul.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('open')); });
+  }
+
+  // Hamburger / Drawer
+  (function(){
+    const hamb=$('hamburger'), drawer=$('drawer');
+    if(!hamb) return;
+    hamb.addEventListener('click',()=>drawer.classList.toggle('open'));
+    document.addEventListener('click',(e)=>{ if(!drawer.contains(e.target) && !hamb.contains(e.target)) drawer.classList.remove('open'); });
+  })();
+
+  // Bildirim/Profil dropdown + Logout
+  (function(){
+    const notifBtn=$('btnNotif'), notifDD=$('notifDropdown');
+    const profBtn=$('btnProfile'), profDD=$('profDropdown');
+    function closeAll(e){
+      if(notifDD && !notifDD.contains(e.target) && e.target!==notifBtn) notifDD.parentElement.classList.remove('open');
+      if(profDD && !profDD.contains(e.target)  && e.target!==profBtn)  profDD.parentElement.classList.remove('open');
+    }
+    document.addEventListener('click', closeAll);
+    notifBtn?.addEventListener('click',(e)=>{ e.stopPropagation(); notifDD.parentElement.classList.toggle('open'); profDD.parentElement.classList.remove('open'); });
+    profBtn ?.addEventListener('click',(e)=>{ e.stopPropagation(); profDD.parentElement.classList.toggle('open'); notifDD.parentElement.classList.remove('open'); });
+
+    $('btnLogout')?.addEventListener('click', async (e) => {
+      e.preventDefault();
+      try { await auth.signOut(); location.assign('/index.html'); }
+      catch (err) { console.error(err); toast('Çıkış yapılamadı'); }
+    });
+  })();
+
+  // Link guard (yetki)
+  document.addEventListener('click',(e)=>{
+    const a=e.target.closest('a[data-key]'); if(!a) return;
+    const key=norm(a.dataset.key), pnl=norm(a.dataset.panel||''), pnlTitle=norm(a.dataset.panelTitle||'');
+    if(CURRENT_DENY.has(key)){ e.preventDefault(); toast('Bu sayfa için yetkiniz yok.'); return; }
+    const allowed = CURRENT_ALLOW.has(key) || CURRENT_ALLOW.has(pnl) || CURRENT_ALLOW.has(pnlTitle);
+    if(!allowed){ e.preventDefault(); toast('Bu sayfa için yetkiniz yok.'); }
+  });
+
+  // İşlem modal
   function openModal(r){
     modalCtx={ uid:r.uid, ad:r.ad, pre:r.stat };
     $('mHead').textContent=r.ad;
@@ -783,9 +828,8 @@
     }catch(err){ console.error(err); alert('Kaydedilemedi'); }
   });
 
-  // kitap & ders modal
-  const kdModal=$('kdModal');
-  const kdClose=$('kdClose');
+  // Kitap & Ders modal
+  const kdModal=$('kdModal'), kdClose=$('kdClose');
   function openKD(){ kdModal.style.display='flex'; }
   function closeKD(){ kdModal.style.display='none'; }
   kdClose.addEventListener('click', closeKD);
@@ -826,43 +870,30 @@
         ? dersler.map(d=>`<div class="kd-item" style="cursor:default">${d.ad}${d.ilkKayitISO?` <span class="tiny">${d.ilkKayitISO.slice(0,10)}</span>`:''}</div>`).join('')
         : '<div class="muted" style="padding:4px">Bu kitapta ders yok.</div>';
     }
-
     openKD();
   });
 
   // Seçimler
   $('selDevre').addEventListener('change', async ()=>{ state.devre=$('selDevre').value; await refreshKitap(true); clearOutput(); });
   $('selKitap').addEventListener('change', async ()=>{ state.kitap=$('selKitap').value||''; await refreshDers(); clearOutput(); });
-  $('selDers').addEventListener('change', async ()=>{
-    state.ders=$('selDers').value||''; state.dersKayitISO=null;
-  });
+  $('selDers').addEventListener('change', async ()=>{ state.ders=$('selDers').value||''; state.dersKayitISO=null; });
   document.querySelectorAll('input[name="mode"]').forEach(r=> r.addEventListener('change', ()=> state.mode=r.value));
 
-  // GÖSTER butonu (eski bug düzeltildi)
+  // Göster
   $('btnGit').addEventListener('click', async ()=>{
-    $('goMsg').textContent='';
-    $('islemSection').style.display='none';
-    $('outArea').innerHTML='';
-
+    $('goMsg').textContent=''; $('islemSection').style.display='none'; $('outArea').innerHTML='';
     const currentMode=(document.querySelector('input[name="mode"]:checked')?.value)||'rapor';
     state.mode=currentMode;
-
     if(!state.kitap){ $('goMsg').textContent='Kitap seçiniz.'; return; }
     if(!state.ders){ $('goMsg').textContent='Ders seçiniz.'; return; }
-
     loadingStart('Veriler getiriliyor…', 88);
-    try{
-      if(state.mode==='rapor') await showRapor();
-      else await showIslem();
-    } finally {
-      loadingEnd();
-    }
+    try{ if(state.mode==='rapor') await showRapor(); else await showIslem(); }
+    finally{ loadingEnd(); }
   });
 
-  // kitap/ders ekle butonları
+  // Ekle butonları
   $('btnKitapEkleToggle').addEventListener('click', ()=>{ const w=$('kitapEkleWrap'); w.style.display=w.style.display==='none'?'flex':'none'; });
   $('btnDersEkleToggle').addEventListener('click', ()=>{ const w=$('dersEkleWrap'); w.style.display=w.style.display==='none'?'flex':'none'; });
-
   $('btnKitapKaydet').addEventListener('click', async ()=>{
     const kitap=($('inpKitap').value||'').trim(); if(!kitap){ $('kitapMsg').textContent='Kitap adı boş olamaz.'; return; }
     $('kitapMsg').textContent='Kaydediliyor...';
@@ -877,99 +908,29 @@
     try{ await addDers(state.devre, state.kitap, ders, __ME||'—'); $('inpDers').value=''; $('dersMsg').textContent='Eklendi.'; await refreshDers(); }
     catch(e){ console.error(e); $('dersMsg').textContent='Hata (yetki/bağlantı).'; }
   });
-
   $('selSort').addEventListener('change', ()=>renderTalebeList());
   $('btnListeYenile').addEventListener('click', ()=>renderTalebeList());
 
-  // Rapor talebe modal kapatma
-  $('raporTalebeModal').addEventListener('click',(e)=>{
-    if(e.target.id==='raporTalebeModal') e.target.style.display='none';
-  });
+  // Rapor talebe modal close
+  $('raporTalebeModal').addEventListener('click',(e)=>{ if(e.target.id==='raporTalebeModal') e.target.style.display='none'; });
 
-  /* === Auth + Menü === */
+  /* Auth + Menü */
   try{ firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL); }catch(e){}
   auth.onAuthStateChanged(async (user)=>{
     if(!user){ setTimeout(()=>{ if(!auth.currentUser) location.replace('../index.html'); },150); return; }
     try{
-      const uSnap=await db.collection(PATHS.users).doc(user.uid).get();
+      const uSnap=await db.collection('kullanicilar').doc(user.uid).get();
       const data=uSnap.exists?uSnap.data():{};
-      __ME = data.adSoyad || user.displayName || (user.email? user.email.split('@')[0]:'');
-      $('profName').textContent = __ME ? (__ME.split(' ')[0]) : 'Profil';
+      $('profName').textContent = data.adSoyad ? (data.adSoyad.split(' ')[0]) : 'Profil';
 
       const rawPerms=Array.isArray(data.yetkiler)? data.yetkiler : [];
-      const CURRENT_ALLOW=new Set(rawPerms.filter(s=>!String(s).trim().startsWith('-') && !String(s).trim().startsWith('!')).map(norm));
-      const CURRENT_DENY =new Set(rawPerms.filter(s=> String(s).trim().startsWith('-') || String(s).trim().startsWith('!')).map(s=>norm(String(s).replace(/^[-!]\s*/,''))));
+      CURRENT_ALLOW=new Set(rawPerms.filter(s=>!String(s).trim().startsWith('-') && !String(s).trim().startsWith('!')).map(norm));
+      CURRENT_DENY =new Set(rawPerms.filter(s=> String(s).trim().startsWith('-') || String(s).trim().startsWith('!')).map(s=>norm(String(s).replace(/^[-!]\s*/,''))));
 
-      // menü
-      const ul=$('navMain'), drawer=$('drawer');
-      ul.innerHTML=''; drawer.innerHTML='';
-      try{
-        const snap=await db.collection('sayfa_manifesti').get();
-        const panels=[];
-        snap.forEach(doc=>{
-          const d=doc.data()||{}, id=doc.id, panelTitle=d.title||id;
-          let pages = Array.isArray(d.pages)? d.pages : [];
-          pages = pages.filter(pg=>{
-            const keyNorm=norm(pg.key||pg.title||'');
-            const denied=CURRENT_DENY.has(keyNorm);
-            const granted = CURRENT_ALLOW.size===0 ? true : CURRENT_ALLOW.has(keyNorm) || CURRENT_ALLOW.has(norm(id)) || CURRENT_ALLOW.has(norm(panelTitle));
-            return !denied && granted;
-          });
-          if(pages.length) panels.push({ id, baslik:panelTitle, pages });
-        });
-        panels.sort((a,b)=>(a.sira||9999)-(b.sira||9999));
+      const panels=await fetchPanels(CURRENT_ALLOW, CURRENT_DENY);
+      renderNav(panels);
 
-        if(!panels.length){
-          ul.innerHTML='<li class="nav-item"><div class="nav-btn">Hiç panel yok</div></li>';
-          drawer.innerHTML='<div style="color:var(--muted);padding:8px">Hiç panel bulunamadı</div>';
-        }else{
-          panels.forEach(p=>{
-            const li=document.createElement('li'); li.className='nav-item';
-            li.innerHTML=`<div class="nav-btn">${p.baslik} <span class="caret">▾</span></div>`;
-            const dd=document.createElement('div'); dd.className='dropdown';
-            (p.pages||[]).forEach(pg=>{
-              const a=document.createElement('a');
-              const url = (pg.path||pg.url||'#');
-              a.href=url; a.textContent=pg.title||pg.key||'Sayfa';
-              a.dataset.key=pg.key||pg.title||''; a.dataset.panel=p.id; a.dataset.panelTitle=p.baslik;
-              dd.appendChild(a);
-            });
-            li.appendChild(dd);
-            li.querySelector('.nav-btn').addEventListener('click',(e)=>{
-              e.stopPropagation();
-              ul.querySelectorAll('.nav-item').forEach(x=>{ if(x!==li) x.classList.remove('open'); });
-              li.classList.toggle('open');
-            });
-            ul.appendChild(li);
-
-            const h=document.createElement('div'); h.className='panel-title'; h.textContent=p.baslik; drawer.appendChild(h);
-            (p.pages||[]).forEach(pg=>{
-              const a=document.createElement('a');
-              const url = (pg.path||pg.url||'#');
-              a.href=url; a.textContent=pg.title||pg.key||'Sayfa';
-              a.dataset.key=pg.key||pg.title||''; a.dataset.panel=p.id; a.dataset.panelTitle=p.baslik;
-              drawer.appendChild(a);
-            });
-          });
-          document.addEventListener('click',(e)=>{ if(!ul.contains(e.target)) ul.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('open')); });
-        }
-      }catch(e){ console.error(e); }
-
-      // hamburger
-      const hamb=$('hamburger');
-      if(hamb){
-        hamb.addEventListener('click',()=>$('drawer').classList.toggle('open'));
-        document.addEventListener('click',(e)=>{ if(!$('drawer').contains(e.target) && e.target!==hamb) $('drawer').classList.remove('open'); });
-      }
-
-      // çıkış
-      $('btnLogout')?.addEventListener('click', async (e)=>{
-        e.preventDefault();
-        try { await auth.signOut(); location.assign('/index.html'); }
-        catch (err) { console.error(err); toast('Çıkış yapılamadı'); }
-      });
-
-      // başlangıç
+      // Başlangıç değerleri
       state.devre = $('selDevre').value;
       await refreshKitap(true);
     }catch(e){ console.error(e); toast('Veriler yüklenirken hata.'); }

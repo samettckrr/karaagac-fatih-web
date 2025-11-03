@@ -91,7 +91,8 @@
     .grid{ display:grid; grid-template-columns:1fr; gap:12px }
     @media (min-width:760px){ .grid{ grid-template-columns:1fr 1fr } }
     @media (min-width:1040px){ .grid{ grid-template-columns:1fr 1fr 1fr } }
-    .tCard{ border:1px solid var(--stroke); border-radius:12px; padding:12px; background:#fff; cursor:pointer }
+    .tCard{ border:1px solid var(--stroke); border-radius:12px; padding:12px; background:#fff; cursor:pointer; transition:transform .06s ease }
+    .tCard:active{ transform:scale(.995) }
     .tHeader{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px }
     .tHeader .name{ font-weight:900; }
     .tHeader .perc{ font-weight:900; font-variant-numeric: tabular-nums; }
@@ -133,7 +134,6 @@
       backdrop-filter:saturate(140%) blur(6px);
       z-index:60; display:flex; align-items:center; justify-content:center;
     }
-
     .tabbar .rail{ display:flex; align-items:center; gap:6px; max-width:1100px; width:100%; overflow-x:auto; padding:0 10px; scroll-snap-type:x proximity; }
     .tabbar .tbtn{ flex:0 0 auto; scroll-snap-align:center; display:flex; flex-direction:column; align-items:center; gap:2px; min-width:68px; padding:6px 8px; color:var(--muted); text-decoration:none; border-radius:12px; }
     .tabbar .tbtn.active{ color:var(--brand); }
@@ -168,65 +168,49 @@
     .edge-hint.right .ring::after{ content:""; position:absolute; top:50%; transform:translateY(-50%); width:10px; height:10px; border-top:2px solid var(--brand); border-right:2px solid var(--brand) }
     .edge-hint.left .ring::after{ left:50%; transform:translate(-50%,-50%) rotate(225deg) }
     .edge-hint.right .ring::after{ right:50%; transform:translate(50%,-50%) rotate(45deg) }
+
     /* ====== Loader & Connection Hint ====== */
-.loaderOverlay{
-  position:fixed; inset:0;
-  background:rgba(255,255,255,.8);
-  backdrop-filter:blur(4px);
-  display:flex; align-items:center; justify-content:center;
-  flex-direction:column;
-  z-index:999;
-  transition:opacity .3s ease;
-  opacity:0; pointer-events:none;
-}
-.loaderOverlay.show{opacity:1; pointer-events:auto;}
+    .loaderOverlay{
+      position:fixed; inset:0;
+      background:rgba(255,255,255,.8);
+      backdrop-filter:blur(4px);
+      display:flex; align-items:center; justify-content:center;
+      flex-direction:column;
+      z-index:999;
+      transition:opacity .3s ease;
+      opacity:0; pointer-events:none;
+    }
+    .loaderOverlay.show{opacity:1; pointer-events:auto;}
+    .loaderSpinner{
+      width:44px; height:44px;
+      border:4px solid #d0eae4;
+      border-top-color:var(--brand);
+      border-radius:50%;
+      animation:spin 1s linear infinite;
+      margin-bottom:12px;
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .loaderText{ font-weight:700; color:var(--text); font-size:14px; text-align:center; }
 
-.loaderSpinner{
-  width:44px; height:44px;
-  border:4px solid #d0eae4;
-  border-top-color:var(--brand);
-  border-radius:50%;
-  animation:spin 1s linear infinite;
-  margin-bottom:12px;
-}
-@keyframes spin{to{transform:rotate(360deg)}}
-
-.loaderText{
-  font-weight:700;
-  color:var(--text);
-  font-size:14px;
-  text-align:center;
-}
-
-/* Bağlantı uyarısı (toast benzeri) */
-.netHint{
-  position:fixed; left:50%; bottom:calc(var(--tabbar-h) + 16px);
-  transform:translateX(-50%);
-  background:#fff;
-  border:1px solid var(--stroke);
-  border-radius:999px;
-  box-shadow:0 6px 20px rgba(0,0,0,.1);
-  font-size:13px;
-  padding:8px 16px;
-  color:var(--muted);
-  z-index:1000;
-  opacity:0;
-  pointer-events:none;
-  transition:opacity .3s ease, transform .3s ease;
-}
-.netHint.show{
-  opacity:1;
-  transform:translate(-50%, -4px);
-}
-.netHint.bad{
-  background:#ffdddd; color:#8a0000; border-color:#f5aaaa;
-}
-.netHint.warn{
-  background:#fff7e0; color:#8a6d00; border-color:#f1d48c;
-}
-.netHint.ok{
-  background:#e6ffea; color:#0b7a35; border-color:#b9e5c4;
-}
+    .netHint{
+      position:fixed; left:50%; bottom:calc(var(--tabbar-h) + 16px);
+      transform:translateX(-50%);
+      background:#fff;
+      border:1px solid var(--stroke);
+      border-radius:999px;
+      box-shadow:0 6px 20px rgba(0,0,0,.1);
+      font-size:13px;
+      padding:8px 16px;
+      color:var(--muted);
+      z-index:1000;
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .3s ease, transform .3s ease;
+    }
+    .netHint.show{ opacity:1; transform:translate(-50%, -4px); }
+    .netHint.bad{  background:#ffdddd;  color:#8a0000; border-color:#f5aaaa; }
+    .netHint.warn{ background:#fff7e0; color:#8a6d00; border-color:#f1d48c; }
+    .netHint.ok{   background:#e6ffea; color:#0b7a35; border-color:#b9e5c4; }
   </style>
 </head>
 <body>
@@ -321,7 +305,7 @@
     </div>
   </div>
 
-  <!-- Sheet -->
+  <!-- Panel Sheet -->
   <div class="sheet-backdrop" id="sheetBackdrop"></div>
   <div class="sheet" id="panelSheet">
     <div class="grip"></div>
@@ -393,13 +377,13 @@
   </div>
 
   <!-- Loader -->
-<div id="loader" class="loaderOverlay" aria-hidden="true">
-  <div class="loaderSpinner"></div>
-  <div class="loaderText" id="loaderText">Hazırlanıyor...</div>
-</div>
+  <div id="loader" class="loaderOverlay" aria-hidden="true">
+    <div class="loaderSpinner"></div>
+    <div class="loaderText" id="loaderText">Hazırlanıyor...</div>
+  </div>
 
-<!-- Internet hint -->
-<div id="netHint" class="netHint" aria-hidden="true">Bağlantı kontrol ediliyor...</div>
+  <!-- Internet hint -->
+  <div id="netHint" class="netHint" aria-hidden="true">Bağlantı kontrol ediliyor...</div>
 
 <script>
 /* ====== Bağlantılar & Kısayollar ====== */
@@ -419,56 +403,19 @@ const ICONS = {Talebe:"👨‍🎓",Personel:"👥",Nehari:"📚",Kermes:"🧺",
 const PANEL_ALIAS = {"Sistem Ayarları":"Ayarlar","Sistem Ayarlari":"Ayarlar","Sistem Ayarları ":"Ayarlar"};
 function normPanelName(x){ const t=(x||'').trim(); return PANEL_ALIAS[t] || t; }
 
-// Firebase kısaltmaları
-const AU = firebase.firestore.FieldValue.arrayUnion;
-
-// 1) Satırlar işlenirken Unique set’leri topla
-const kitapSet = new Set();                 // "devre" altında hangi kitaplar var
-const dersMap  = new Map();                 // kitap -> Set(ders)
-
-function markIndex(devre, kitap, ders){
-  kitapSet.add(kitap);
-  if(!dersMap.has(kitap)) dersMap.set(kitap, new Set());
-  dersMap.get(kitap).add(ders);
-}
-
-// satır işlerken… (devre, kitap, ders alanlarını okuduğun yerde)
-markIndex(devre, kitap, ders);
-
-// 2) Tüm satırlar bittiğinde index’i tek seferde güncelle
-async function updateTakrirIndex(devre){
-  const batch = db.batch();
-
-  // root doc: takrir_index/{devre} → kitaplar[]
-  const rootRef = db.collection('takrir_index').doc(devre);
-  // arrayUnion çoklu değeri tek set’te yazmak için spread
-  if(kitapSet.size){
-    batch.set(rootRef, { kitaplar: AU(...[...kitapSet]) }, { merge:true });
-  }
-
-  // alt: takrir_index/{devre}/dersler/{kitap} → dersler[]
-  for(const [kitap, dset] of dersMap.entries()){
-    if(!dset.size) continue;
-    const ref = rootRef.collection('dersler').doc(kitap);
-    batch.set(ref, { dersler: AU(...[...dset]) }, { merge:true });
-  }
-
-  await batch.commit();
-}
-
-/* ====== Tarih göstergesi (başlıktaki bugünün adı) ====== */
+/* ====== Tarih göstergesi ====== */
 function fmtHeader(d=new Date()){
   const short = ['Pzt','Sal','Çar','Per','Cum','Cts','Paz']; const i=(d.getDay()+6)%7;
   return { gunKisa: short[i], tarihTR: d.toLocaleDateString('tr-TR',{day:'2-digit',month:'long',year:'numeric'}) };
 }
 (function setHeaderToday(){ const {gunKisa,tarihTR}=fmtHeader(new Date()); $('gun').textContent=gunKisa; $('tarih').textContent=tarihTR; })();
 
-/* TR tarih etiketleyici (23.10.2025 Perşembe) */
+/* TR tarih etiketi */
 function trDayLabel(iso10){
   if(!iso10) return '—';
   const d = new Date(iso10+'T00:00:00');
   const gunler=['Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi','Pazar'];
-  const gun = gunler[(d.getDay()+6)%7]; // Pazartesi=0
+  const gun = gunler[(d.getDay()+6)%7];
   const dd = String(d.getDate()).padStart(2,'0');
   const mm = String(d.getMonth()+1).padStart(2,'0');
   const yyyy = d.getFullYear();
@@ -567,7 +514,7 @@ sheetBackdrop?.addEventListener('click', closeSheet);
 })();
 
 /* ====== Durum sabitleri ====== */
-const STAT_VERDI='verdi', STAT_VEREMEDI='veremedi', STAT_YARIM='yarım kaldı';
+const STAT_VERDI='verdi', STAT_VEREMEDI='vermedi', STAT_YARIM='yarım kaldı';
 
 /* ====== State ====== */
 let __ME=''; let __UID=null;
@@ -576,10 +523,12 @@ let state={
   kitap:'__ALL__',
   talebeler:[],          // {uid, ad}
   dersMeta: {},          // kitap -> [{ad,ilkKayitISO,ilkKayitBy}]
-  dersGrid: []           // [{kitap,ders,gunISO}]
+  dersGrid: [],          // [{kitap,ders,gunISO}]
+  lastRows: null,        // son rapor kart verileri
+  lastContext: ''        // başlık bağlamı (kitap adı / tüm kitaplar)
 };
 
-/* ====== Yardımcılar (index okuma) ====== */
+/* ====== Index okuma ====== */
 async function listKitaplar(devre){
   const doc=await db.collection(PATHS.index).doc(devre).get();
   const arr=(doc.exists && Array.isArray(doc.data().kitaplar))? doc.data().kitaplar : [];
@@ -610,40 +559,35 @@ async function loadTalebeler(devre){
 }
 const pct = (x)=> (x*100).toFixed(1)+'%';
 function sortRows(rows, how){
-  if(how==='alpha') return rows.sort((a,b)=>a.ad.localeCompare(b.ad,'tr'));
-  if(how==='asc')   return rows.sort((a,b)=>a.p-b.p || a.ad.localeCompare(b.ad,'tr'));
-  return rows.sort((a,b)=>b.p-a.p || a.ad.localeCompare(b.ad,'tr'));
+  if(how==='alpha') return rows.slice().sort((a,b)=>a.ad.localeCompare(b.ad,'tr'));
+  if(how==='asc')   return rows.slice().sort((a,b)=>a.p-b.p || a.ad.localeCompare(b.ad,'tr'));
+  return rows.slice().sort((a,b)=>b.p-a.p || a.ad.localeCompare(b.ad,'tr'));
 }
 
-/* ====== Müfredat toplamı (yüzde için sabit payda) ====== */
+/* ====== Müfredat kapsamı ====== */
 async function buildScopeAndMeta(){
-  // scope kitaplar
   const kitaplar = (state.kitap==='__ALL__') ? await listKitaplar(state.devre) : [state.kitap];
-  // meta + grid
   state.dersMeta = {};
   state.dersGrid = [];
   for(const k of kitaplar){
     const meta = await listDerslerWithMeta(state.devre, k);
     if(!meta.length){
-      // meta yoksa sadece adları al
       const names = await listDersler(state.devre, k);
       state.dersMeta[k] = names.map(n=>({ad:n, ilkKayitISO:null, ilkKayitBy:'—'}));
     }else{
       state.dersMeta[k] = meta;
     }
-    // ders grid
     (state.dersMeta[k]||[]).forEach(d=>{
       state.dersGrid.push({kitap:k, ders:d.ad, gunISO:(d.ilkKayitISO||'').slice(0,10)||''});
     });
   }
-  // grid sıralı
   state.dersGrid.sort((a,b)=> (a.kitap+a.ders).localeCompare(b.kitap+b.ders,'tr'));
 }
 function mufredatToplam(){
   return Object.values(state.dersMeta).reduce((n,arr)=> n + (arr?.length||0), 0);
 }
 
-/* ====== RAPOR — tüm tarihler: her ders için herkesin durumu (işaret yoksa kırmızı) ====== */
+/* ====== RAPOR ====== */
 async function realRunReport(){
   $('runMsg').textContent='Hazırlanıyor...';
 
@@ -653,7 +597,6 @@ async function realRunReport(){
   const dersCount = mufredatToplam();
 
   // 2) Her ders için talebe durumlarını oku ve topla
-  // agg[uid] = {ad, verdi, yarim, veremedi, detay[]}
   const agg = {};
   state.talebeler.forEach(t=> agg[t.uid] = { ad:t.ad, verdi:0, yarim:0, veremedi:0, detay:[] });
 
@@ -662,7 +605,6 @@ async function realRunReport(){
     const col = db.collection(PATHS.main).doc(state.devre).collection(kitap).doc(ders).collection('talebeler');
     const qs  = await col.get();
 
-    // mevcut kayıtları map'le
     const recMap = new Map(); // uid -> {durum, personel, islemISO}
     qs.forEach(doc=>{
       const x=doc.data()||{};
@@ -670,26 +612,18 @@ async function realRunReport(){
       recMap.set(doc.id, {durum:(x.durum||'').toLowerCase(), personel:x.personel||'—', islemISO:iso, dersGunu:x.dersGunu||gunISO});
     });
 
-    // her talebe için satır oluştur (yoksa "işaret yok" = kırmızı)
     for(const t of state.talebeler){
       const a = agg[t.uid];
       const rec = recMap.get(t.uid);
       let durumLbl = '—';
       let personel = '—';
       let islemISO = '';
+      if(rec){ durumLbl = rec.durum || '—'; personel = rec.personel || '—'; islemISO = rec.islemISO || ''; }
 
-      if(rec){
-        durumLbl = rec.durum || '—';
-        personel = rec.personel || '—';
-        islemISO = rec.islemISO || '';
-      }
-
-      // sayımları artır
       if(durumLbl===STAT_VERDI) a.verdi++;
       else if(durumLbl===STAT_YARIM) a.yarim++;
-      else a.veremedi++; // hem "veremedi" hem "işaret yok" bu sepete
+      else a.veremedi++; // işaret yok / veremedi
 
-      // detay satırı (tarih: dersin sabit günü)
       a.detay.push({
         tarih: gunISO || '',
         kitap, ders,
@@ -699,13 +633,13 @@ async function realRunReport(){
     }
   }
 
-  // 3) Yüzde ve kart satırları
+  // 3) satırları hazırla
   const rows = Object.entries(agg).map(([uid,a])=>{
     const p = dersCount>0 ? (a.verdi / dersCount) : 0;
     return { uid, ad:a.ad, mufredat:dersCount, verdi:a.verdi, yarim:a.yarim, veremedi:a.veremedi, p, detay:a.detay };
   });
 
-  // 4) Özet
+  // 4) Özet + kartlar
   const toplamTalebe = rows.length || 1;
   const toplamVerilen = rows.reduce((n,r)=> n + (r.verdi||0), 0);
   const yuzde = (dersCount*toplamTalebe)>0 ? ((toplamVerilen/(dersCount*toplamTalebe))*100).toFixed(1)+'%' : '0%';
@@ -715,7 +649,11 @@ async function realRunReport(){
     ['Toplam Ders Sayısı (Müfredat)', dersCount],
     ['Genel Verme Yüzdesi', yuzde]
   ]});
-  renderCards(rows, sumTitle);
+
+  // son sonuçları sakla (sıralama/yeniden çizim için)
+  state.lastRows = rows;
+  state.lastContext = sumTitle;
+  renderCards(state.lastRows, state.lastContext);
 
   $('runMsg').textContent='';
 }
@@ -723,25 +661,16 @@ async function realRunReport(){
 /* ===== Loader Kontrol ===== */
 const loader = document.getElementById('loader');
 const loaderText = document.getElementById('loaderText');
+function showLoader(msg='Hazırlanıyor...'){ loaderText.textContent = msg; loader.classList.add('show'); }
+function hideLoader(){ loader.classList.remove('show'); }
 
-function showLoader(msg='Hazırlanıyor...'){
-  loaderText.textContent = msg;
-  loader.classList.add('show');
-}
-function hideLoader(){
-  loader.classList.remove('show');
-}
-
-/* runReport çağrısına entegre et */
+/* runReport sarmalayıcı */
 async function runReport(){
   showLoader('Rapor hazırlanıyor...');
   try{
     $('runMsg').textContent='';
-    await new Promise(r=>setTimeout(r,300)); // küçük gecikme efekti
-
-    // (burada senin mevcut rapor kodun var)
-    // ...
-    await realRunReport(); // örnek: mevcut fonksiyonu ayrı çağır
+    await new Promise(r=>setTimeout(r,200));
+    await realRunReport();
   }catch(err){
     console.error('Rapor hatası', err);
     alert('Bir hata oluştu, tekrar deneyin.');
@@ -753,7 +682,6 @@ async function runReport(){
 /* ====== İnternet Bağlantı Durumu ====== */
 const netHint = document.getElementById('netHint');
 let netTimer=null;
-
 function showNetHint(text,cls=''){
   netHint.textContent=text;
   netHint.className='netHint '+cls;
@@ -761,29 +689,24 @@ function showNetHint(text,cls=''){
   clearTimeout(netTimer);
   netTimer=setTimeout(()=>netHint.classList.remove('show'),4000);
 }
-
-// ilk durum
 function checkConnection(){
   if(navigator.onLine) showNetHint('Bağlantı sağlandı ✓','ok');
   else showNetHint('İnternet bağlantısı yok, tekrar deneniyor...','bad');
 }
 window.addEventListener('online', ()=> showNetHint('Bağlantı geri geldi ✓','ok'));
 window.addEventListener('offline', ()=> showNetHint('İnternet bağlantısı kesildi','bad'));
-
-/* Zayıf bağlantı (fetch ping) */
 async function monitorNetwork(){
   while(true){
     try{
       const ctrl=new AbortController();
-      const t=setTimeout(()=>ctrl.abort(),4000); // 4sn içinde cevap yoksa zayıf
+      const t=setTimeout(()=>ctrl.abort(),4000);
       await fetch('https://www.gstatic.com/generate_204',{signal:ctrl.signal});
       clearTimeout(t);
-      // eğer önceden offline uyarısı gösterildiyse "ok" bastır
     }catch(e){
       if(!navigator.onLine) showNetHint('Bağlantı yok, bağlanmaya çalışılıyor...','bad');
       else showNetHint('Bağlantı yavaş, lütfen bekleyin...','warn');
     }
-    await new Promise(r=>setTimeout(r,15000)); // 15sn’de bir kontrol
+    await new Promise(r=>setTimeout(r,15000));
   }
 }
 checkConnection();
@@ -807,9 +730,8 @@ function renderCards(aggRows, contextTitle){
   rows.forEach(r=>{
     const card=document.createElement('div'); card.className='tCard';
     const header = `<div class="tHeader"><div class="name">${r.ad}</div><div class="perc">${pct(r.p||0)}</div></div>`;
-
     const pills=`
-      <span class="pill">${'Ders'}: <b>${r.mufredat ?? 0}</b></span>
+      <span class="pill">Ders: <b>${r.mufredat ?? 0}</b></span>
       <span class="pill verdi">Verilen: <b>${r.verdi}</b></span>
       <span class="pill yarim">Yarım: <b>${r.yarim}</b></span>
       <span class="pill veremedi">Verilmeyen: <b>${r.veremedi}</b></span>
@@ -842,7 +764,7 @@ function renderModalRows(){
   let arr=__DETAIL_CTX.list.slice();
 
   if(__DETAIL_CTX.filter==='status'){
-    const o = {[STAT_VEREMEDI]:0,[STAT_YARIM]:1,[STAT_VERDI]:2};
+    const o = { [STAT_VEREMEDI]:0, 'vermedi':0, [STAT_YARIM]:1, 'yarım':1, [STAT_VERDI]:2, 'verdi':2 };
     arr.sort((a,b)=>{
       const da = (String(a.durum||'').toLowerCase());
       const db = (String(b.durum||'').toLowerCase());
@@ -855,7 +777,7 @@ function renderModalRows(){
   arr.forEach(x=>{
     const row=document.createElement('div'); row.className='trow';
     const d=(String(x.durum||'').toLowerCase());
-    if(!d || d==='—' || d.includes('işaret'))      row.style.background='#ffd7d7'; // işaret yok → kırmızı
+    if(!d || d==='—' || d.includes('işaret'))      row.style.background='#ffd7d7';
     else if(d.includes('vermedi'))                  row.style.background='#ffd7d7';
     else if(d.includes('yarım'))                    row.style.background='#fff6c2';
     else if(d.includes('verdi'))                    row.style.background='#c8f7c5';
@@ -976,9 +898,11 @@ $('selKitap').addEventListener('change', async ()=>{
   state.kitap = $('selKitap').value;
   await updateDersCountPill();
 });
-$('selSort').addEventListener('change', ()=>{/* render sırasında uygulanır */});
+$('selSort').addEventListener('change', ()=>{
+  // son rapor varsa yeniden çiz
+  if(state.lastRows) renderCards(state.lastRows, state.lastContext||'');
+});
 $('btnRun').addEventListener('click', async (e)=>{ e.preventDefault(); await runReport(); });
-
 
 /* ====== Auth & Başlat ====== */
 auth.onAuthStateChanged(async (user)=>{
