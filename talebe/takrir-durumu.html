@@ -343,6 +343,10 @@
 
   /* Firebase & helpers */
   const db=firebase.firestore(), auth=firebase.auth();
+  try{
+  db.settings({ cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED });
+  db.enablePersistence({ synchronizeTabs: true }).catch(()=>{ /* ignore */ });
+  }catch(_){}
   const $=(id)=>document.getElementById(id);
   function toast(msg){const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(window.__to); window.__to=setTimeout(()=>t.classList.remove('show'),2500);}
 
@@ -410,6 +414,39 @@
   function bumpLoading(to){ if(!__loading.bar) return; if(to>__loading.value) setLoading(to); }
   function loadingLabel(t){ if(__loading.lbl) __loading.lbl.textContent=t; }
   function loadingEnd(){ if(__loading.timer){ clearInterval(__loading.timer); __loading.timer=null; } if(__loading.bar){ setLoading(100);} if(__loading.box){ const b=__loading.box; setTimeout(()=>b.remove(),350);} __loading={ box:null, bar:null, pct:null, lbl:null, timer:null, softCap:85, value:0 }; }
+
+async function startRealtimeListener() {
+  if (!state.kitap || !state.ders) return () => {};
+  const dersKey = encodeURIComponent(`${state.kitap}__${state.ders}`);
+  const dersDay = (state.dersKayitISO || new Date().toISOString()).slice(0,10);
+  const colRef  = db.collection(PATHS.byDate).doc(state.devre).collection(dersDay);
+
+  return colRef.onSnapshot(async (snapshot) => {
+    // alt belgeleri paralel oku
+    const tasks = snapshot.docChanges().map(async (change) => {
+      // silinmişse/parent kaldırılmışsa boşalt
+      if (change.type === 'removed') {
+        const uid = change.doc.id;
+        if (state.durumMap[uid]) state.durumMap[uid] = { durum: STAT_NONE, islemISO: null, personel: '—' };
+        return;
+      }
+
+      const dersDoc = await change.doc.ref.collection('dersler').doc(dersKey).get();
+      if (!dersDoc.exists) return;
+      const x   = dersDoc.data() || {};
+      const uid = change.doc.id;
+
+      state.durumMap[uid] = {
+        durum:   canonStat(x.durum),
+        personel:x.personel,
+        islemISO:x.islemISO?.toDate ? x.islemISO.toDate().toISOString() : null
+      };
+    });
+
+    await Promise.all(tasks);
+    renderTalebeListDebounced();
+  });
+}
 
   /* Index & data ops */
   async function ensureIndexForDevre(devre){
@@ -551,29 +588,69 @@ async function addDers(devre, kitap, ders){
     qs.forEach(d=>{ const x=d.data()||{}; list.push({ uid:d.id, ad:x.kullAd||'—' }); });
     return list.sort((a,b)=>a.ad.localeCompare(b.ad,'tr'));
   }
-  async function writeStatus({devre, kitap, ders, uid, durum, personel, dersGun}){
-    if(!devre || !kitap || !ders || !uid) throw new Error('invalid-params');
-    const dersDay = (dersGun && /^\d{4}-\d{2}-\d{2}$/.test(dersGun)) ? dersGun : new Date().toLocaleDateString('sv-SE');
-    const opDay   = new Date().toLocaleDateString('sv-SE');
-    const dersKey = encodeURIComponent(`${kitap}__${ders}`);
-    const nowISOClient = new Date().toISOString();
+async function writeStatusFast({devre, kitap, ders, uid, durum, personel, personelUid, device, dersGun}) {
+  if(!devre || !kitap || !ders || !uid) throw new Error('invalid-params');
 
-    await db.collection(PATHS.main).doc(devre).collection(kitap).doc(ders)
-      .collection('talebeler').doc(uid)
-      .set({ durum, personel, dersGunu: dersDay, islemISO: firebase.firestore.FieldValue.serverTimestamp() }, { merge:true });
+  const dersDay = (/^\d{4}-\d{2}-\d{2}$/.test(dersGun) ? dersGun : new Date().toLocaleDateString('sv-SE'));
+  const opDay   = new Date().toLocaleDateString('sv-SE');
+  const dersKey = encodeURIComponent(`${kitap}__${ders}`);
+  const nowISOClient = new Date().toISOString();
 
-    const byDateDocLesson = db.collection(PATHS.byDate).doc(devre).collection(dersDay).doc(uid);
-    await byDateDocLesson.set({ kayitlar: firebase.firestore.FieldValue.arrayUnion({ kitap, ders, durum, personel, islemISOStr: nowISOClient }) }, { merge:true });
-    await byDateDocLesson.collection('dersler').doc(dersKey)
-      .set({ kitap, ders, durum, personel, dersGun: dersDay, islemISO: firebase.firestore.FieldValue.serverTimestamp() }, { merge:true });
+  const batch = db.batch();
 
-    const byDateDocOp = db.collection(PATHS.byDate).doc(devre).collection(opDay).doc(uid);
-    await byDateDocOp.set({ _exists:true }, { merge:true });
-    await byDateDocOp.collection('dersler').doc(dersKey)
-      .set({ kitap, ders, durum, personel, dersGun: dersDay, opGun: opDay, islemISO: firebase.firestore.FieldValue.serverTimestamp() }, { merge:true });
+  // 1) ana doc
+  const mainRef = db.collection(PATHS.main).doc(devre).collection(kitap).doc(ders)
+    .collection('talebeler').doc(uid);
+  batch.set(mainRef, {
+    durum, personel,
+    ...(personelUid ? { personelUid } : {}),
+    ...(device ? { device } : {}),
+    dersGunu: dersDay,
+    islemISO: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge:true });
 
-    return { dersDay, opDay, dersKey, islemISOClient: nowISOClient };
-  }
+  // 2) tarih / dersGünü / uid
+  const byDateDocLesson = db.collection(PATHS.byDate).doc(devre).collection(dersDay).doc(uid);
+  batch.set(byDateDocLesson, {
+    _exists:true,
+    kayitlar: firebase.firestore.FieldValue.arrayUnion({
+      kitap, ders, durum, personel,
+      ...(personelUid ? { personelUid } : {}),
+      ...(device ? { device } : {}),
+      islemISOStr: nowISOClient
+    })
+  }, { merge:true });
+
+  // 2a) alt dersler
+  const byDateLessonRef = byDateDocLesson.collection('dersler').doc(dersKey);
+  batch.set(byDateLessonRef, {
+    kitap, ders, durum, personel,
+    ...(personelUid ? { personelUid } : {}),
+    ...(device ? { device } : {}),
+    dersGun: dersDay,
+    islemISO: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge:true });
+
+  // 3) işlem günü / uid / dersler/{dersKey}
+  const byDateDocOp = db.collection(PATHS.byDate).doc(devre).collection(opDay).doc(uid);
+  batch.set(byDateDocOp, {_exists:true}, { merge:true });
+
+  const byDateOpRef = byDateDocOp.collection('dersler').doc(dersKey);
+  batch.set(byDateOpRef, {
+    kitap, ders, durum, personel,
+    ...(personelUid ? { personelUid } : {}),
+    ...(device ? { device } : {}),
+    dersGun: dersDay,
+    opGun: opDay,
+    islemISO: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge:true });
+
+  await batch.commit();
+
+  // UI için hemen döndür (serverTimestamp’i bekletme)
+  return { dersDay, opDay, dersKey, islemISOClient: nowISOClient };
+}
+
   async function readStatuses({devre, kitap, ders, dersISO}){
     const tKey = (dersISO||'').slice(0,10); if(!tKey) return {};
     const col = db.collection(PATHS.byDate).doc(devre).collection(tKey);
@@ -751,9 +828,19 @@ async function addDers(devre, kitap, ders){
     wrap.innerHTML = buildSummaryHTML(counts, state.talebeler.length);
     $('outArea').replaceChildren(wrap);
 
+    if (window._takrirUnsub) window._takrirUnsub(); // önceki varsa kapat
+    window._takrirUnsub = await startRealtimeListener();
+
     renderTalebeList();
     $('islemSection').style.display='block';
   }
+
+  function safeUnsub(){
+  if (typeof window._takrirUnsub === 'function') {
+    try { window._takrirUnsub(); } catch(_) {}
+  }
+  window._takrirUnsub = null;
+}
 
   function renderTalebeList(){
     const box=$('talebeList'); box.innerHTML='';
@@ -784,6 +871,12 @@ async function addDers(devre, kitap, ders){
       box.appendChild(row);
     });
   }
+
+  let _renderTimer=null;
+function renderTalebeListDebounced(){
+  if (_renderTimer) cancelAnimationFrame(_renderTimer);
+  _renderTimer = requestAnimationFrame(renderTalebeList);
+}
 
   /* NAV helpers (tek kopya) */
   function normalizeUrl(u){
@@ -904,21 +997,37 @@ async function addDers(devre, kitap, ders){
   }
   function closeModal(){ $('mModal').style.display='none'; }
   $('mCancel').addEventListener('click', closeModal);
-  $('mSave').addEventListener('click', async ()=>{
-    const sel=[...document.querySelectorAll('input[name="mStat"]')].find(i=>i.checked);
-    if(!sel){ closeModal(); return; }
-    const durum=sel.value;
-    try{
-      const sabitGun=(state.dersKayitISO||new Date().toISOString()).slice(0,10);
-      const wr=await writeStatus({devre:state.devre, kitap:state.kitap, ders:state.ders, uid:modalCtx.uid, durum, personel:__ME||'—', dersGun:sabitGun});
-      const dersRef=db.collection(PATHS.byDate).doc(state.devre).collection(wr.opDay).doc(modalCtx.uid).collection('dersler').doc(wr.dersKey);
-      let islemISO=null;
-      try{ const fresh=await dersRef.get(); const x=fresh.exists?(fresh.data()||{}):{}; islemISO = x.islemISO?.toDate ? x.islemISO.toDate().toISOString() : (x.islemISOStr || wr.islemISOClient || null); }
-      catch(_){ islemISO=wr.islemISOClient||null; }
-      state.durumMap[modalCtx.uid]={durum, islemISO};
-      renderTalebeList(); toast('Kaydedildi'); closeModal();
-    }catch(err){ console.error(err); alert('Kaydedilemedi'); }
-  });
+$('mSave').addEventListener('click', async () => {
+  const sel = [...document.querySelectorAll('input[name="mStat"]')].find(i=>i.checked);
+  if(!sel){ $('mModal').style.display='none'; return; }
+  const durum = sel.value;
+
+  try{
+    const sabitGun = (state.dersKayitISO || new Date().toISOString()).slice(0,10);
+    const { uid: meUid, name: meName } = await ensureUserCtx();
+    const device = getDeviceInfo();
+
+    // 1) Optimistic UI: anında yansıt
+    const nowISO = new Date().toISOString();
+    state.durumMap[modalCtx.uid] = { durum, islemISO: nowISO, personel: meName };
+    renderTalebeList();
+    $('mModal').style.display='none';
+    toast('Kaydediliyor…');
+
+    // 2) Arka planda tek round-trip batch commit
+    await writeStatusFast({
+      devre: state.devre, kitap: state.kitap, ders: state.ders,
+      uid: modalCtx.uid, durum,
+      personel: meName, personelUid: meUid, device,
+      dersGun: sabitGun
+    });
+
+    toast('Kaydedildi');
+  }catch(err){
+    console.error(err);
+    toast('Kaydedilemedi');  // İstersen roll-back yapabilirsin
+  }
+});
 
   // Kitap & Ders modal
   const kdModal=$('kdModal'), kdClose=$('kdClose');
@@ -965,11 +1074,33 @@ async function addDers(devre, kitap, ders){
     openKD();
   });
 
-  // Seçimler
-  $('selDevre').addEventListener('change', async ()=>{ state.devre=$('selDevre').value; await refreshKitap(true); clearOutput(); });
-  $('selKitap').addEventListener('change', async ()=>{ state.kitap=$('selKitap').value||''; await refreshDers(); clearOutput(); });
-  $('selDers').addEventListener('change', async ()=>{ state.ders=$('selDers').value||''; state.dersKayitISO=null; });
-  document.querySelectorAll('input[name="mode"]').forEach(r=> r.addEventListener('change', ()=> state.mode=r.value));
+  // Mod değişirken
+document.querySelectorAll('input[name="mode"]').forEach(r=>{
+  r.addEventListener('change', ()=>{
+    state.mode = r.value;
+    if (state.mode === 'rapor') safeUnsub();
+  });
+});
+
+$('selDevre').addEventListener('change', async ()=>{
+  safeUnsub();
+  state.devre = $('selDevre').value;
+  await refreshKitap(true);
+  clearOutput();
+});
+window.addEventListener('beforeunload', safeUnsub);
+
+// Kitap/Ders değişirken
+$('selKitap').addEventListener('change', async ()=>{
+  safeUnsub();
+  state.kitap = $('selKitap').value||'';
+  await refreshDers(); clearOutput();
+});
+$('selDers').addEventListener('change', async ()=>{
+  safeUnsub();
+  state.ders = $('selDers').value||'';
+  state.dersKayitISO=null;
+});
 
   // Göster
   $('btnGit').addEventListener('click', async ()=>{
@@ -978,10 +1109,16 @@ async function addDers(devre, kitap, ders){
     state.mode=currentMode;
     if(!state.kitap){ $('goMsg').textContent='Kitap seçiniz.'; return; }
     if(!state.ders){ $('goMsg').textContent='Ders seçiniz.'; return; }
-    loadingStart('Veriler getiriliyor…', 88);
-    try{ if(state.mode==='rapor') await showRapor(); else await showIslem(); }
-    finally{ loadingEnd(); }
-  });
+  loadingStart('Veriler getiriliyor…', 88);
+  try{
+    if (state.mode==='rapor') {
+      safeUnsub();          // <— ekle
+      await showRapor();
+    } else {
+      await showIslem();
+    }
+  } finally { loadingEnd(); }
+});
 
   // Ekle butonları
   $('btnKitapEkleToggle').addEventListener('click', ()=>{ const w=$('kitapEkleWrap'); w.style.display=w.style.display==='none'?'flex':'none'; });
