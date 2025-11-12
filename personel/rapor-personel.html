@@ -11,8 +11,6 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
   <script src="../../js/firebase/firebase-init.js"></script>
 
-  <!-- html2pdf -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
 
   <style>
     :root{
@@ -34,8 +32,9 @@
     .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px}
     .row{display:grid;gap:12px}
     .row.cols-3{grid-template-columns:repeat(3,1fr)}
-    @media (max-width:900px){.row.cols-3{grid-template-columns:1fr 1fr}}
-    @media (max-width:640px){.row.cols-3{grid-template-columns:1fr}}
+    .row.cols-4{grid-template-columns:repeat(4,1fr)}
+    @media (max-width:900px){.row.cols-3,.row.cols-4{grid-template-columns:1fr 1fr}}
+    @media (max-width:640px){.row.cols-3,.row.cols-4{grid-template-columns:1fr}}
     .kpi{display:flex;flex-direction:column;gap:4px}
     .kpi .label{color:var(--muted);font-size:12px}
     .kpi .value{font-size:20px;font-weight:600}
@@ -117,7 +116,7 @@
             <option value="tum">Tüm Yıllar</option>
           </select>
           <button id="btnYukle">Yükle</button>
-          <button id="btnPDF" class="secondary">PDF düzeniyle birebir</button>
+          <button id="btnGizle" class="secondary" title="Kalan sıfır olanları gizle/göster">Kalan Sıfır Olanları Gizle</button>
         </div>
       </div>
     </div>
@@ -138,10 +137,11 @@
     <div id="siralamaEtiketleri" class="siralama-etiketleri"></div>
 
     <!-- KPI kartları -->
-    <div class="row cols-3 avoid-break" style="margin-top:12px">
-      <div class="card kpi"><span class="label">Toplam Tahakkuk</span><span class="value" id="kpiTahakkuk">₺0</span></div>
-      <div class="card kpi good"><span class="label">Toplam Tahsilat</span><span class="value" id="kpiTahsilat">₺0</span></div>
-      <div class="card kpi warn"><span class="label">Kalan</span><span class="value" id="kpiKalan">₺0</span></div>
+    <div class="row cols-4 avoid-break" style="margin-top:12px">
+      <div class="card kpi"><span class="label">Toplam Tahakkuk</span><span class="value" id="kpiTahakkuk">₺0</span><span class="label" style="font-size:11px;margin-top:2px" id="kpiTahakkukPct"></span></div>
+      <div class="card kpi good"><span class="label">Toplam Tahsilat</span><span class="value" id="kpiTahsilat">₺0</span><span class="label" style="font-size:11px;margin-top:2px" id="kpiTahsilatPct"></span></div>
+      <div class="card kpi warn"><span class="label">Kalan</span><span class="value" id="kpiKalan">₺0</span><span class="label" style="font-size:11px;margin-top:2px" id="kpiKalanPct"></span></div>
+      <div class="card kpi good"><span class="label">Tahsilat Nispeti</span><span class="value" id="kpiNispet">0%</span></div>
     </div>
 
     <!-- Faaliyet özeti -->
@@ -154,7 +154,7 @@
     <div class="card" style="margin-top:12px">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
         <h3 style="margin:0">Detaylı Liste</h3>
-        <span class="muted">Yıl / Faaliyet / Borçlu / Ödeyen / Tahakkuk / Tahsilat / Yeni Tahsilat / Kalan</span>
+        <span class="muted" id="detayAciklama">Yıl / Faaliyet / Borçlu / Ödeyen / Tahakkuk / Tahsilat / Yeni Tahsilat / Kalan</span>
       </div>
       <div class="table-wrap avoid-break">
         <table id="tbl">
@@ -162,6 +162,7 @@
             <tr id="hdr">
               <th data-col="yil" data-type="num">Yıl</th>
               <th data-col="faaliyet" data-type="str">Faaliyet</th>
+              <th data-col="personel" data-type="str" id="thPersonel" style="display:none">Personel Adı</th>
               <th data-col="borclu" data-type="str">Borçlu Adı Soyadı</th>
               <th data-col="odeyen" data-type="str">Ödeyen Kişi</th>
               <th class="right" data-col="tahakkuk" data-type="num">Tahakkuk</th>
@@ -173,11 +174,18 @@
           <tbody id="tbody"></tbody>
           <tfoot>
             <tr>
-              <td colspan="4" class="right">TOPLAM</td>
+              <td colspan="4" class="right" id="tfootColspan">TOPLAM</td>
               <td class="right" id="sumTahakkuk">₺0</td>
               <td class="right" id="sumTahsilat">₺0</td>
               <td class="right" id="sumYeni">₺0</td>
               <td class="right" id="sumKalan">₺0</td>
+            </tr>
+            <tr>
+              <td colspan="4" class="right" id="tfootColspan2">YÜZDE</td>
+              <td class="right" id="sumTahakkukPct">—</td>
+              <td class="right" id="sumTahsilatPct">—</td>
+              <td class="right" id="sumYeniPct">—</td>
+              <td class="right" id="sumKalanPct">—</td>
             </tr>
           </tfoot>
         </table>
@@ -212,6 +220,7 @@ function titleTR(s){
     const params = new URLSearchParams(location.search);
     const paramPersonel = params.get('personel') ? decodeURIComponent(params.get('personel')) : 'ALL';
     const paramYil = params.get('yil') || '2025';
+    let hideZeroKalan = false; // Kalan sıfır olanları gizle durumu
 
     // ---------- Kişi listesi
     async function loadPeople(){
@@ -327,6 +336,7 @@ function titleTR(s){
         return {
           yil: t.yil,
           faaliyet: titleTR(t.faaliyet),
+          personel: titleTR(t.personel||''),
           borclu:   titleTR(t.borclu||''),
           odeyen:   titleTR(uniq[uniq.length-1]?.odeyen || ''),
           tahakkuk: +Number(t.tahakkuk||0),
@@ -361,14 +371,28 @@ function titleTR(s){
     }
 
     function renderAll(rows, person, yil){
-      qs('#pillAdet').textContent = `${rows.length} kayıt`;
+      // Kalan sıfır olanları filtrele
+      let filteredRows = rows;
+      if(hideZeroKalan){
+        filteredRows = rows.filter(r => Math.abs(r.kalan || 0) > 0.001);
+      }
+      
+      qs('#pillAdet').textContent = `${filteredRows.length} kayıt${filteredRows.length !== rows.length ? ` (${rows.length - filteredRows.length} gizli)` : ''}`;
 
-      const tTah = rows.reduce((a,b)=>a+(b.tahakkuk||0),0);
-      const tTsl = rows.reduce((a,b)=>a+(b.tahsilat||0)+(b.yeni||0),0);
+      const tTah = filteredRows.reduce((a,b)=>a+(b.tahakkuk||0),0);
+      const tTsl = filteredRows.reduce((a,b)=>a+(b.tahsilat||0)+(b.yeni||0),0);
       const tKal = tTah - tTsl;
+      
+      // Yüzde hesaplamaları (Toplam Tahakkuk referans olarak kullanılıyor)
+      const nispetPct = tTah > 0 ? ((tTsl / tTah) * 100).toFixed(1) : '0.0';
+      
       qs('#kpiTahakkuk').textContent = money(tTah);
+      qs('#kpiTahakkukPct').textContent = '100.0%'; // Referans değer
       qs('#kpiTahsilat').textContent = money(tTsl);
+      qs('#kpiTahsilatPct').textContent = tTah > 0 ? `${nispetPct}%` : '0.0%'; // Tahsilat/Tahakkuk oranı
       qs('#kpiKalan').textContent    = money(tKal);
+      qs('#kpiKalanPct').textContent = tTah > 0 ? `${(100 - parseFloat(nispetPct)).toFixed(1)}%` : '0.0%'; // Kalan/Tahakkuk oranı
+      qs('#kpiNispet').textContent = `${nispetPct}%`;
 
       // ---- faaliyet özeti: TR locale ile tekilleştir/birleştir
 const fMap = new Map();
@@ -398,15 +422,32 @@ rows.forEach(r=>{
         });
 
       // ---- tablo
+      // Personel kolonu görünürlüğü
+      const thPersonel = qs('#thPersonel');
+      const showPersonel = person === 'ALL';
+      if(showPersonel){
+        thPersonel.style.display = '';
+        qs('#detayAciklama').textContent = 'Yıl / Faaliyet / Personel Adı / Borçlu / Ödeyen / Tahakkuk / Tahsilat / Yeni Tahsilat / Kalan';
+      } else {
+        thPersonel.style.display = 'none';
+        qs('#detayAciklama').textContent = 'Yıl / Faaliyet / Borçlu / Ödeyen / Tahakkuk / Tahsilat / Yeni Tahsilat / Kalan';
+      }
+      
       const tbody = qs('#tbody'); tbody.innerHTML='';
       let sTah=0,sTsl=0,sYeni=0,sKal=0;
-      sortRows(rows).forEach(r=>{
+      const allRows = sortRows(filteredRows);
+      const totalTah = allRows.reduce((a,b)=>a+(b.tahakkuk||0),0);
+      
+      allRows.forEach(r=>{
         sTah+=r.tahakkuk||0; sTsl+=r.tahsilat||0; sYeni+=r.yeni||0; sKal+=r.kalan||0;
         const tr=document.createElement('tr');
         if(Math.abs(r.kalan)<0.001) tr.classList.add('zero');
+        
+        const personelCell = showPersonel ? `<td>${r.personel||''}</td>` : '';
         tr.innerHTML = `
           <td>${r.yil}</td>
           <td>${r.faaliyet||''}</td>
+          ${personelCell}
           <td>${r.borclu||''}</td>
           <td>${r.odeyen||''}</td>
           <td class="right">${money(r.tahakkuk)}</td>
@@ -415,10 +456,27 @@ rows.forEach(r=>{
           <td class="right">${money(r.kalan)}</td>`;
         tbody.appendChild(tr);
       });
+      
+      // Toplam satırı
+      const colspan = showPersonel ? '5' : '4';
+      qs('#tfootColspan').setAttribute('colspan', colspan);
+      qs('#tfootColspan2').setAttribute('colspan', colspan);
+      
       qs('#sumTahakkuk').textContent = money(sTah);
       qs('#sumTahsilat').textContent = money(sTsl);
       qs('#sumYeni').textContent     = money(sYeni);
       qs('#sumKalan').textContent    = money(sKal);
+      
+      // Yüzde satırı (Toplam Tahakkuk referans olarak kullanılıyor)
+      const sumTahPct = totalTah > 0 ? '100.0' : '0.0'; // Referans değer
+      const sumTslPct = totalTah > 0 ? ((sTsl / totalTah) * 100).toFixed(1) : '0.0'; // Tahsilat/Tahakkuk
+      const sumYeniPct = totalTah > 0 ? ((sYeni / totalTah) * 100).toFixed(1) : '0.0'; // Yeni Tahsilat/Tahakkuk
+      const sumKalPct = totalTah > 0 ? ((sKal / totalTah) * 100).toFixed(1) : '0.0'; // Kalan/Tahakkuk
+      
+      qs('#sumTahakkukPct').textContent = `(${sumTahPct}%)`;
+      qs('#sumTahsilatPct').textContent = `(${sumTslPct}%)`;
+      qs('#sumYeniPct').textContent = `(${sumYeniPct}%)`;
+      qs('#sumKalanPct').textContent = `(${sumKalPct}%)`;
     }
 
     // ---------- Sütun başlıklarına tıklama ile sıralama (isteğe bağlı)
@@ -431,46 +489,58 @@ rows.forEach(r=>{
         th.classList.add(currentSort.dir==='asc'?'sort-asc':'sort-desc');
 
         // mevcut gövdeden veriyi okuyup yeniden çiz
+        const person = qs('#personelSecim').value||'ALL';
+        const yil = qs('#selYil').value;
+        const showPersonel = person === 'ALL';
         const rows = [...qs('#tbody').querySelectorAll('tr')].map(tr=>{
           const tds = tr.querySelectorAll('td');
           const parseMoney = s => +tds[s].textContent.replace(/\D/g,'')/100;
+          let idx = 0;
           return {
-            yil: +tds[0].textContent,
-            faaliyet: tds[1].textContent,
-            borclu: tds[2].textContent,
-            odeyen: tds[3].textContent,
-            tahakkuk: parseMoney(4),
-            tahsilat: parseMoney(5),
-            yeni: parseMoney(6),
-            kalan: parseMoney(7),
+            yil: +tds[idx++].textContent,
+            faaliyet: tds[idx++].textContent,
+            personel: showPersonel ? tds[idx++].textContent : '',
+            borclu: tds[idx++].textContent,
+            odeyen: tds[idx++].textContent,
+            tahakkuk: parseMoney(idx++),
+            tahsilat: parseMoney(idx++),
+            yeni: parseMoney(idx++),
+            kalan: parseMoney(idx++),
           };
         });
-        const person = qs('#personelSecim').value||'ALL';
-        const yil    = qs('#selYil').value;
         renderAll(rows, person, yil);
       });
-    });
-
-    // ---------- PDF
-    qs('#btnPDF').addEventListener('click', ()=>{
-      const el = document.getElementById('pdf-root');
-      const person = qs('#personelSecim').value || 'ALL';
-      const yil = qs('#selYil').value;
-      const opt = {
-        margin:[10,10,10,10],
-        filename:`${person}-${yil}-alacak-raporu.pdf`,
-        image:{type:'jpeg',quality:0.98},
-        html2canvas:{scale:2,useCORS:true,scrollY:-window.scrollY},
-        pagebreak:{mode:['css','legacy']},
-        jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
-      };
-      html2pdf().set(opt).from(el).save();
     });
 
     // ---------- Olaylar
     qs('#btnYukle').addEventListener('click', loadReport);
     qs('#personelSecim').addEventListener('change', loadReport);
     qs('#selYil').addEventListener('change', loadReport);
+    qs('#btnGizle').addEventListener('click', ()=>{
+      hideZeroKalan = !hideZeroKalan;
+      qs('#btnGizle').textContent = hideZeroKalan ? 'Kalan Sıfır Olanları Göster' : 'Kalan Sıfır Olanları Gizle';
+      const person = qs('#personelSecim').value || 'ALL';
+      const yil = qs('#selYil').value;
+      // Mevcut veriyi yeniden render et
+      const rows = [...qs('#tbody').querySelectorAll('tr')].map(tr=>{
+        const tds = tr.querySelectorAll('td');
+        const parseMoney = s => +tds[s].textContent.replace(/\D/g,'')/100;
+        const showPersonel = person === 'ALL';
+        let idx = 0;
+        return {
+          yil: +tds[idx++].textContent,
+          faaliyet: tds[idx++].textContent,
+          personel: showPersonel ? tds[idx++].textContent : '',
+          borclu: tds[idx++].textContent,
+          odeyen: tds[idx++].textContent,
+          tahakkuk: parseMoney(idx++),
+          tahsilat: parseMoney(idx++),
+          yeni: parseMoney(idx++),
+          kalan: parseMoney(idx++),
+        };
+      });
+      renderAll(rows, person, yil);
+    });
 
     // ---------- Başlat
     (async ()=>{
