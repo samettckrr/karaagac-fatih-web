@@ -1213,7 +1213,8 @@ async function renderTopluIzinListe(){
       const date=tr?.dataset?.date||''; const don=tr?.dataset?.donus||'';
       const tInput=document.getElementById('izn-tarih'); const dInput=document.getElementById('izn-donus-saat');
       if(tInput && date) tInput.value=date;
-      if(dInput && don)  dInput.value = new Date(don).toISOString().slice(0,16);
+      if(dInput && don)  dInput.value = don; // ISO string as stored (no TZ shift)
+      __IZN_STATE.donusSaatISO = don || null;
       toast('Oturum seçildi.');
     });
   });
@@ -1246,7 +1247,7 @@ document.getElementById('izn-oturum-sel')?.addEventListener('change', (e)=>{
   const date=opt.getAttribute('data-date')||''; const don=opt.getAttribute('data-donus')||'';
   const tInput=document.getElementById('izn-tarih'); const dInput=document.getElementById('izn-donus-saat');
   if(tInput && date) tInput.value=date;
-  if(dInput && don)  dInput.value = new Date(don).toISOString().slice(0,16);
+  if(dInput && don)  dInput.value = don; // keep ISO as-is
   // state & info
   __IZN_STATE.iso10 = date || __IZN_STATE.iso10;
   __IZN_STATE.donusSaatISO = don || null;
@@ -1616,8 +1617,8 @@ document.getElementById('iznModalKaydet').addEventListener('click', async ()=>{
   try{
     const meName = currentUserName || (currentUser?.email||'');
     const meUid  = currentUser?.uid || null;
-    const donusSaatSel = document.getElementById('izn-donus-saat').value;
-    const donusSaatISO = donusSaatSel ? new Date(donusSaatSel).toISOString() : null;
+    // Use selected oturum dönüş saati as provided (ISO) without re-parsing to avoid TZ shift
+    const donusSaatISO = __IZN_STATE.donusSaatISO || null;
     // optimistic
     __IZN_STATE.map[__IZN_MODAL_CTX.uid] = { durum, personel: meName, islemISO:new Date().toISOString(), donusSaatISO };
     iznRenderIslemList();
