@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Kantin Fiyat Listesi</title>
+<link rel="icon" type="image/png" href="../img/logo.png" />
+
+<!-- Firebase (compat) -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="../js/firebase/firebase-init.js"></script>
+
+<style>
+  @media print {
+    body { margin: 0; padding: 20px; }
+    .no-print { display: none !important; }
+    .page-break { page-break-after: always; }
+  }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    color: #0b1220;
+    background: #f3f6fc;
+  }
+  .header {
+    text-align: center;
+    margin-bottom: 30px;
+    border-bottom: 3px solid #0ea5e9;
+    padding-bottom: 20px;
+  }
+  .logo {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 10px;
+    display: block;
+  }
+  .header h1 {
+    margin: 10px 0 5px;
+    font-size: 28px;
+    color: #0ea5e9;
+    font-weight: 900;
+  }
+  .header h2 {
+    margin: 5px 0;
+    font-size: 18px;
+    color: #4b5563;
+  }
+  .header .tarih {
+    margin-top: 10px;
+    font-size: 14px;
+    color: #6b7280;
+  }
+  .kategori-baslik {
+    background: #0ea5e9;
+    color: white;
+    padding: 10px 15px;
+    margin: 20px 0 10px;
+    font-size: 18px;
+    font-weight: 800;
+    border-radius: 8px;
+  }
+  .urun-listesi {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+    margin-bottom: 30px;
+  }
+  .urun-item {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .urun-item.stok-bitti {
+    border: 2px solid #b91c1c;
+    background: rgba(185, 28, 28, 0.05);
+  }
+  .urun-item.stok-bitti .urun-ad {
+    color: #b91c1c;
+  }
+  .urun-ad {
+    font-weight: 700;
+    font-size: 15px;
+    flex: 1;
+  }
+  .urun-fiyat {
+    font-weight: 900;
+    font-size: 18px;
+    color: #0ea5e9;
+    margin-left: 12px;
+  }
+  .no-print {
+    text-align: center;
+    margin: 20px 0;
+  }
+  .no-print button {
+    background: #0ea5e9;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    margin: 0 8px;
+  }
+  .no-print button:hover {
+    background: #0284c7;
+  }
+  .loading {
+    text-align: center;
+    padding: 40px;
+    color: #4b5563;
+  }
+  .spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid #e5e7eb;
+    border-top-color: #0ea5e9;
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+    margin: 0 auto 12px;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  @media print {
+    .urun-listesi {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+</style>
+</head>
+<body>
+  <div id="loading" class="loading">
+    <div class="spinner"></div>
+    <div>Fiyat listesi yükleniyor...</div>
+  </div>
+
+  <div id="content" style="display:none">
+    <div class="header">
+      <h1>KARAAĞAÇ FATİH</h1>
+      <h2>Kantin Fiyat Listesi</h2>
+      <div class="tarih" id="tarihDisplay">Tarih: -</div>
+    </div>
+    
+    <div id="urunlerContainer"></div>
+    
+    <div class="no-print">
+      <button onclick="window.print()">🖨 Yazdır</button>
+      <button onclick="window.close()">✖ Kapat</button>
+    </div>
+  </div>
+
+<script>
+const db = firebase.firestore();
+
+function toNum(v){
+  if (typeof v === 'number') return v;
+  if (typeof v === 'string'){
+    const n = Number(v.replace(/\./g,'').replace(',', '.'));
+    return isNaN(n) ? 0 : n;
+  }
+  return 0;
+}
+
+function getKategoriLabel(kat){
+  const map = {
+    'yemek': '🍽️ Yemek',
+    'icecek': '🥤 İçecek',
+    'atistirmalik': '🍪 Atıştırmalık',
+    'diger': '📦 Diğer'
+  };
+  return map[kat] || kat;
+}
+
+async function loadFiyatListesi(){
+  try{
+    // Sadece aktif ürünleri çek, sıralamayı client-side yap (index gerektirmez)
+    const snap = await db.collection('kantin_urunler').where('aktif','==',true).get();
+    
+    if(snap.empty){
+      document.getElementById('loading').innerHTML = '<div style="color:#b91c1c; padding:20px">Ürün bulunamadı!</div>';
+      return;
+    }
+    
+    // Tarih göster
+    const today = new Date();
+    const tarihStr = today.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' });
+    document.getElementById('tarihDisplay').textContent = 'Tarih: ' + tarihStr;
+    
+    // Ürünleri önce kategoriye göre grupla, sonra alfabetik sırala
+    const kategoriler = {};
+    snap.forEach(doc=>{
+      const d = doc.data() || {};
+      const kategori = d.kategori || 'diger';
+      if(!kategoriler[kategori]){
+        kategoriler[kategori] = [];
+      }
+      kategoriler[kategori].push({
+        ad: d.ad || 'İsimsiz',
+        fiyat: toNum(d.fiyat || 0),
+        stok: toNum(d.stok || 0)
+      });
+    });
+    
+    // Her kategorideki ürünleri alfabetik sırala
+    Object.keys(kategoriler).forEach(kat=>{
+      kategoriler[kat].sort((a, b)=>a.ad.localeCompare(b.ad, 'tr'));
+    });
+    
+    // HTML oluştur
+    let html = '';
+    const kategoriSirasi = ['yemek', 'icecek', 'atistirmalik', 'diger'];
+    
+    kategoriSirasi.forEach(kat=>{
+      if(!kategoriler[kat] || kategoriler[kat].length === 0) return;
+      
+      html += '<div class="kategori-baslik">' + getKategoriLabel(kat) + '</div>';
+      html += '<div class="urun-listesi">';
+      
+      kategoriler[kat].forEach(urun=>{
+        const stokBitti = urun.stok <= 0;
+        const stokClass = stokBitti ? ' stok-bitti' : '';
+        html += '<div class="urun-item' + stokClass + '">' +
+          '<div class="urun-ad">' + urun.ad + '</div>' +
+          '<div class="urun-fiyat">₺ ' + urun.fiyat.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}) + '</div>' +
+          '</div>';
+      });
+      
+      html += '</div>';
+    });
+    
+    document.getElementById('urunlerContainer').innerHTML = html;
+    
+    // Loading'i gizle, içeriği göster
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('content').style.display = 'block';
+    
+  }catch(e){
+    console.error(e);
+    document.getElementById('loading').innerHTML = '<div style="color:#b91c1c; padding:20px">Fiyat listesi yüklenirken hata oluştu: ' + e.message + '</div>';
+  }
+}
+
+// Sayfa yüklendiğinde
+loadFiyatListesi();
+</script>
+</body>
+</html>
+

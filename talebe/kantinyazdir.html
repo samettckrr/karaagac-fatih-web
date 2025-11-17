@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Kantin Sayımı Yazdır</title>
+<link rel="icon" type="image/png" href="../img/logo.png" />
+
+<!-- Firebase (compat) -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="../js/firebase/firebase-init.js"></script>
+
+<style>
+  @media print {
+    body { margin: 0; padding: 20px; }
+    .no-print { display: none !important; }
+    .header { border-bottom: 3px solid #0ea5e9 !important; }
+    table { page-break-inside: avoid; }
+    tr { page-break-inside: avoid; }
+  }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+    color: #0b1220;
+    background: #f3f6fc;
+  }
+  .header {
+    text-align: center;
+    margin-bottom: 30px;
+    border-bottom: 3px solid #0ea5e9;
+    padding-bottom: 20px;
+    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+    color: white;
+    padding: 25px 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.2);
+  }
+  .header h2 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 900;
+    color: white;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  .header .tarih {
+    margin-top: 12px;
+    font-size: 18px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.95);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 25px 0;
+    background: white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  th, td {
+    border: 1px solid #e5e7eb;
+    padding: 12px;
+    text-align: left;
+  }
+  th {
+    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+    color: white;
+    font-weight: 800;
+    text-align: center;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  td {
+    text-align: center;
+    font-size: 14px;
+  }
+  tbody tr:nth-child(even) {
+    background: #f9fafb;
+  }
+  tbody tr:hover {
+    background: #f3f6fc;
+  }
+  .toplamlar {
+    margin-top: 25px;
+    padding: 20px;
+    background: linear-gradient(135deg, #f3f6fc 0%, #e0e7ff 100%);
+    border-radius: 12px;
+    border: 2px solid #0ea5e9;
+    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.15);
+  }
+  .toplamlar div {
+    display: flex;
+    justify-content: space-between;
+    margin: 8px 0;
+    font-size: 16px;
+  }
+  .toplamlar .toplam {
+    font-weight: 900;
+    font-size: 24px;
+    color: #0ea5e9;
+    border-top: 3px solid #0ea5e9;
+    padding-top: 15px;
+    margin-top: 15px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  }
+  .aciklama {
+    margin-top: 30px;
+    padding: 20px;
+    background: linear-gradient(135deg, #f9fafb 0%, #f3f6fc 100%);
+    border-radius: 12px;
+    border-left: 4px solid #0ea5e9;
+    line-height: 1.8;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+  .aciklama p {
+    margin: 0;
+    font-size: 15px;
+    color: #4b5563;
+  }
+  .aciklama strong {
+    color: #0b1220;
+    font-weight: 800;
+  }
+  .imza-alani {
+    margin-top: 50px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 30px;
+  }
+  .imza-kutu {
+    text-align: center;
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .imza-kutu .isim {
+    margin-top: 10px;
+    font-weight: 700;
+    font-size: 16px;
+    color: #0b1220;
+  }
+  .imza-cizgi {
+    margin-top: 50px;
+    border-top: 2px solid #0b1220;
+    width: 180px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-top: 8px;
+    font-size: 13px;
+    color: #4b5563;
+    font-weight: 600;
+  }
+  .no-print {
+    text-align: center;
+    margin: 30px 0;
+  }
+  .no-print button {
+    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+    color: white;
+    border: none;
+    padding: 14px 28px;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+    transition: all 0.2s;
+  }
+  .no-print button:hover {
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(14, 165, 233, 0.4);
+  }
+  .loading {
+    text-align: center;
+    padding: 60px;
+    color: #4b5563;
+  }
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #e5e7eb;
+    border-top-color: #0ea5e9;
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+    margin: 0 auto 16px;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  .para-dagilim {
+    margin-top: 20px;
+    padding: 15px;
+    background: #f0f9ff;
+    border-radius: 8px;
+    border-left: 4px solid #0ea5e9;
+  }
+  .para-dagilim h4 {
+    margin: 0 0 12px 0;
+    color: #0ea5e9;
+    font-size: 16px;
+    font-weight: 800;
+  }
+  .para-dagilim div {
+    display: flex;
+    justify-content: space-between;
+    margin: 6px 0;
+    font-size: 14px;
+    color: #4b5563;
+  }
+  .para-dagilim .label {
+    font-weight: 600;
+  }
+  .para-dagilim .value {
+    font-weight: 700;
+    color: #0b1220;
+  }
+</style>
+</head>
+<body>
+  <div id="loading" class="loading">
+    <div class="spinner"></div>
+    <div>Sayım verisi yükleniyor...</div>
+  </div>
+
+  <div id="content" style="display:none">
+    <div class="header">
+      <h2>Kantin Sayımı</h2>
+      <div class="tarih" id="tarihDisplay">Tarih: -</div>
+    </div>
+    
+    <table>
+      <thead>
+        <tr>
+          <th>Ürün Marka + Adı</th>
+          <th>Mevcut Adet</th>
+          <th>Kalan Stok</th>
+          <th>Satış Adedi</th>
+          <th>Gelir (₺)</th>
+        </tr>
+      </thead>
+      <tbody id="urunTableBody">
+      </tbody>
+    </table>
+    
+    <div class="toplamlar">
+      <div class="toplam">
+        <span>Toplam Gelir:</span>
+        <span id="toplamGelirDisplay">₺ 0,00</span>
+      </div>
+    </div>
+    
+    <div class="aciklama">
+      <p id="aciklamaText"></p>
+    </div>
+    
+    <div class="imza-alani" id="imzaAlani">
+    </div>
+    
+    <div class="no-print">
+      <button onclick="window.print()">🖨 Yazdır</button>
+    </div>
+  </div>
+
+<script>
+const db = firebase.firestore();
+
+// URL'den sayım ID'sini al
+const urlParams = new URLSearchParams(window.location.search);
+const sayimId = urlParams.get('id');
+
+if(!sayimId){
+  document.getElementById('loading').innerHTML = '<div style="color:#b91c1c; padding:20px">Sayım ID bulunamadı!</div>';
+} else {
+  loadSayim(sayimId);
+}
+
+function toNum(v){
+  if (typeof v === 'number') return v;
+  if (typeof v === 'string'){
+    const n = Number(v.replace(/\./g,'').replace(',', '.'));
+    return isNaN(n) ? 0 : n;
+  }
+  return 0;
+}
+
+async function loadSayim(sayimId){
+  try{
+    const sayimSnap = await db.collection('kantin_sayimlar').doc(sayimId).get();
+    if(!sayimSnap.exists){
+      document.getElementById('loading').innerHTML = '<div style="color:#b91c1c; padding:20px">Sayım bulunamadı!</div>';
+      return;
+    }
+    
+    const d = sayimSnap.data() || {};
+    const tarih = d.tarih || '';
+    const personel = d.personel || '';
+    const kantinci = d.kantinci || '';
+    const urunler = d.urunler || [];
+    const toplamGelir = toNum(d.toplamGelir || 0);
+    const paraDagilimi = d.paraDagilimi || {};
+    const muhasebe = toNum(paraDagilimi.muhasebe || 0);
+    const borclar = toNum(paraDagilimi.borclar || 0);
+    const nakit = toNum(paraDagilimi.nakit || 0);
+    const aciklama = d.aciklama || '';
+    
+    // Tarih formatını düzenle (YYYY-MM-DD -> DD.MM.YYYY)
+    let tarihFormatted = tarih;
+    if(tarih && tarih.includes('-')){
+      const [y, m, g] = tarih.split('-');
+      tarihFormatted = g + '.' + m + '.' + y;
+    }
+    
+    // Tarih göster
+    document.getElementById('tarihDisplay').textContent = '📅 ' + tarihFormatted;
+    
+    // Ürün tablosunu doldur
+    const tbody = document.getElementById('urunTableBody');
+    if(urunler.length === 0){
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#9ca3af; padding:30px">Ürün bulunamadı</td></tr>';
+    } else {
+      tbody.innerHTML = urunler.map(u=>{
+        const satilanAdet = u.satilanAdet || 0;
+        const gelir = u.toplamGelir || 0;
+        const satisVar = satilanAdet > 0;
+        const rowStyle = satisVar ? 'background:#f0fdf4;' : '';
+        return '<tr style="' + rowStyle + '">' +
+          '<td style="text-align:left; font-weight:600">' + (u.urunAd || '-') + '</td>' +
+          '<td style="font-weight:700">' + (u.mevcutAdet || 0) + '</td>' +
+          '<td style="font-weight:700; color:' + (u.kalanAdet > 0 ? '#16a34a' : '#b91c1c') + '">' + (u.kalanAdet || 0) + '</td>' +
+          '<td style="font-weight:700; color:' + (satisVar ? '#16a34a' : '#4b5563') + '">' + satilanAdet + '</td>' +
+          '<td style="font-weight:800; color:#0ea5e9">₺ ' + gelir.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}) + '</td>' +
+          '</tr>';
+      }).join('');
+    }
+    
+    // Toplam gelir göster
+    document.getElementById('toplamGelirDisplay').textContent = '₺ ' + toplamGelir.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    
+    // Para dağılımı bilgisi
+    let paraDagilimHtml = '';
+    if(paraDagilimi.muhasebe !== undefined){
+      paraDagilimHtml = '<div class="para-dagilim">' +
+        '<h4>💰 Para Dağılımı</h4>' +
+        '<div><span class="label">Muhasebeye Teslim:</span><span class="value">₺ ' + muhasebe.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}) + '</span></div>' +
+        '<div><span class="label">Borçlar (Toplam):</span><span class="value">₺ ' + borclar.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}) + '</span></div>' +
+        '<div><span class="label">Nakit Bozuk Para:</span><span class="value">₺ ' + nakit.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}) + '</span></div>' +
+        '<div style="margin-top:10px; padding-top:10px; border-top:2px solid #0ea5e9; font-weight:800; font-size:16px"><span>Toplam:</span><span style="color:#0ea5e9">₺ ' + (muhasebe + borclar + nakit).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}) + '</span></div>' +
+        '</div>';
+    }
+    
+    // Açıklama
+    let aciklamaHtml = '<strong>' + tarihFormatted + '</strong> tarihinde yapılan kantin sayımı sonucunda ';
+    if(paraDagilimi.muhasebe !== undefined){
+      aciklamaHtml += 'muhasebeye <strong>₺ ' + muhasebe.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}) + '</strong> para teslim edilmiştir.';
+    } else {
+      aciklamaHtml += 'toplam <strong>₺ ' + toplamGelir.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}) + '</strong> gelir elde edilmiştir.';
+    }
+    if(aciklama){
+      aciklamaHtml += '<br><br><em>' + aciklama + '</em>';
+    }
+    document.getElementById('aciklamaText').innerHTML = aciklamaHtml;
+    
+    // Para dağılımını açıklama bölümünden sonra ekle
+    if(paraDagilimHtml){
+      const aciklamaDiv = document.getElementById('aciklamaText').parentElement;
+      aciklamaDiv.insertAdjacentHTML('afterend', paraDagilimHtml);
+    }
+    
+    // İmza alanı
+    const imzaAlani = document.getElementById('imzaAlani');
+    let imzaHtml = '<div class="imza-kutu">' +
+      '<div class="isim">👤 ' + personel + '</div>' +
+      '<div class="imza-cizgi">İmza</div>' +
+      '</div>';
+    
+    // Kantinci isimlerini ayır (virgülle ayrılmış olabilir)
+    if(kantinci && typeof kantinci === 'string' && kantinci.trim()){
+      let kantinciler = [];
+      if(kantinci.includes(',')){
+        kantinciler = kantinci.split(',').map(k=>k.trim()).filter(k=>k);
+      } else {
+        kantinciler = [kantinci.trim()].filter(k=>k);
+      }
+      
+      kantinciler.forEach(k=>{
+        imzaHtml += '<div class="imza-kutu">' +
+          '<div class="isim">👤 ' + k + '</div>' +
+          '<div class="imza-cizgi">İmza</div>' +
+          '</div>';
+      });
+    }
+    
+    imzaAlani.innerHTML = imzaHtml;
+    
+    // Loading'i gizle, içeriği göster
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('content').style.display = 'block';
+    
+    // Otomatik yazdır (opsiyonel - isterseniz kaldırabilirsiniz)
+    // setTimeout(()=>{ window.print(); }, 500);
+    
+  }catch(e){
+    console.error(e);
+    document.getElementById('loading').innerHTML = '<div style="color:#b91c1c; padding:20px">Sayım yüklenirken hata oluştu: ' + e.message + '</div>';
+  }
+}
+</script>
+</body>
+</html>
+
