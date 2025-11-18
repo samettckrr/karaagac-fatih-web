@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Karaağaç Fatih | Kumbaram</title>
+<link rel="icon" type="image/png" href="../img/logo.png" />
+
+<style>
+  /* ========== Tema ========== */
+  :root{
+    --appbar-h:56px;
+    --radius:14px; --shadow:0 12px 28px rgba(0,0,0,.12);
+    --bg:#0f172a; --card:rgba(15,23,42,.98);
+    --stroke:rgba(148,163,184,.16); --text:#e5e7eb; --muted:#9aa4b2;
+    --brand:#38bdf8; --brand2:#0ea5e9;
+    --surface:rgba(2,6,23,.10); --surface2:rgba(2,6,23,.06);
+    --danger:#ef4444; --success:#22c55e; --warning:#f59e0b;
+    --gap-lg:20px; --gap:14px; --gap-sm:10px;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#f3f6fc; --card:#ffffff; --stroke:rgba(15,23,42,.12);
+      --text:#0b1220; --muted:#4b5563; --surface:#f1f5ff; --surface2:#f6f8ff;
+      --brand:#0ea5e9; --brand2:#0284c7;
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif}
+  img,svg,video{max-width:100%;height:auto;display:block}
+
+  /* ========== Appbar ========== */
+  .appbar{
+    position:sticky; top:0; z-index:60; height:var(--appbar-h);
+    background:var(--card); backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--stroke);
+    display:flex; align-items:center; gap:10px; padding:0 12px;
+  }
+  .brand{display:flex; align-items:center; gap:10px; cursor:pointer}
+  .brand img{width:24px; height:24px}
+  .brand span{font-weight:900; letter-spacing:.02em}
+  .nav-center{margin:0 auto; height:100%}
+  .nav-list{display:flex; gap:22px; align-items:center; height:100%; list-style:none; margin:0; padding:0}
+  .nav-item{position:relative; height:100%}
+  .nav-btn{height:100%; display:flex; align-items:center; gap:6px; font-weight:800; cursor:pointer}
+  .nav-btn:hover{color:var(--brand)}
+  .caret{font-size:12px; opacity:.6}
+  .dropdown{position:absolute; top:100%; left:0; min-width:240px; background:var(--card); border:1px solid var(--stroke); border-radius:12px; box-shadow:var(--shadow); padding:8px; display:none}
+  .dropdown a{display:flex; align-items:center; gap:8px; padding:10px 12px; border-radius:10px; color:var(--text); text-decoration:none}
+  .dropdown a:hover{background:var(--surface2)}
+  .nav-item.open .dropdown{display:block}
+  .nav-right{display:flex; gap:8px; align-items:center}
+  .btn{border:1px solid var(--stroke); background:var(--surface2); color:var(--text); border-radius:999px; padding:8px 14px; cursor:pointer; white-space:nowrap; font-weight:700}
+  .actions{display:flex; gap:10px; flex-wrap:wrap}
+  .hamb{display:none}
+  .iconbtn{position:relative; border:1px solid var(--stroke); background:var(--card); color:var(--text); border-radius:999px; padding:8px 12px; cursor:pointer; display:flex; align-items:center; gap:8px}
+  .badge{position:absolute; top:-6px; right:-6px; background:var(--danger); color:#fff; font-size:11px; padding:2px 6px; border-radius:999px; border:2px solid var(--card)}
+  .drop-right{left:auto; right:0}
+  .avatar{width:22px;height:22px;border-radius:999px;background:linear-gradient(180deg,#94a3b8,#64748b)}
+  @media (max-width: 960px){ .nav-center{display:none} .hamb{display:inline-flex} }
+
+  /* ========== Drawer ========== */
+  .drawer{position:fixed; top:var(--appbar-h); right:0; bottom:0; left:34%; transform:translateX(100%); transition:.25s; background:var(--card); border-left:1px solid var(--stroke); z-index:70; overflow:auto; padding:16px}
+  .drawer.open{transform:translateX(0)}
+  .drawer .panel-title{margin:14px 4px 6px; font-weight:800; color:var(--muted); font-size:13px}
+  .drawer a{display:block; padding:12px; border-radius:12px; border:1px solid var(--stroke); margin:8px 0; color:var(--text); background:var(--surface2)}
+  .drawer a:hover{background:var(--surface)}
+
+  /* ========== Layout ========== */
+  .container{max-width:1120px; margin:0 auto; padding:18px; display:grid; gap:var(--gap-lg)}
+  .card{background:var(--card); border:1px solid var(--stroke); border-radius:16px; box-shadow:var(--shadow); padding:16px}
+  .stack-lg{display:grid; gap:var(--gap-lg)}
+  .stack   {display:grid; gap:var(--gap)}
+  .row{display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); gap:var(--gap)}
+  .col-4{grid-column:span 4} .col-6{grid-column:span 6} .col-12{grid-column:span 12}
+
+  @media (max-width: 960px){
+    .container{padding:14px}
+    .row{grid-template-columns:repeat(6,minmax(0,1fr))}
+    .col-4{grid-column:span 6} .col-6{grid-column:span 6} .col-12{grid-column:span 6}
+  }
+  @media (max-width: 640px){
+    .row{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .col-4,.col-6,.col-12{grid-column:span 4}
+    .container{padding:12px}
+    .card{padding:12px}
+  }
+
+  .muted{color:var(--muted)}
+
+  /* ========== KPI Cards ========== */
+  .kpi-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:var(--gap)}
+  .kpi-card{
+    background:linear-gradient(135deg, var(--brand), var(--brand2));
+    color:#fff; padding:20px; border-radius:16px; text-align:center;
+  }
+  .kpi-card.warning{background:linear-gradient(135deg, var(--warning), #f97316)}
+  .kpi-card.success{background:linear-gradient(135deg, var(--success), #16a34a)}
+  .kpi-label{font-size:13px; opacity:.9; margin-bottom:6px}
+  .kpi-value{font-size:32px; font-weight:900; margin-bottom:4px}
+  .kpi-hint{font-size:12px; opacity:.8}
+
+  @media (max-width: 640px){
+    .kpi-grid{grid-template-columns:1fr}
+  }
+
+  /* ========== Kumbara Cards ========== */
+  .kumbara-grid{
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));
+    gap:var(--gap);
+  }
+  @media (max-width: 640px){
+    .kumbara-grid{grid-template-columns:1fr}
+  }
+  .kumbara-card{
+    background:var(--card); border:1px solid var(--stroke);
+    border-radius:16px; padding:16px; transition:transform .15s, box-shadow .15s;
+    min-width:0; overflow:hidden;
+  }
+  .kumbara-card:hover{
+    transform:translateY(-2px); box-shadow:var(--shadow);
+  }
+  @media (max-width: 640px){
+    .kumbara-card:hover{transform:none}
+  }
+  .kumbara-card.dagitildi{
+    border-color:var(--success); background:rgba(34,197,94,.05);
+  }
+  .kumbara-card.toplandi{
+    border-color:var(--warning); background:rgba(245,158,11,.05);
+  }
+  .kumbara-header{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:12px;
+  }
+  .kumbara-tur{
+    font-size:12px; padding:4px 10px; border-radius:999px;
+    background:var(--surface2); border:1px solid var(--stroke);
+    font-weight:700;
+  }
+  .kumbara-tur.kumbara{background:rgba(14,165,233,.15); color:var(--brand)}
+  .kumbara-tur.sadaka{background:rgba(34,197,94,.15); color:var(--success)}
+  .kumbara-numara{
+    font-size:24px; font-weight:900; color:var(--brand);
+  }
+  @media (max-width: 640px){
+    .kumbara-numara{font-size:20px}
+    .kumbara-header{flex-wrap:wrap; gap:8px}
+  }
+  .kumbara-personel{
+    font-size:13px; color:var(--muted); margin-bottom:8px;
+  }
+  .kumbara-durum{
+    display:flex; gap:6px; flex-wrap:wrap; margin-top:12px;
+  }
+  .durum-badge{
+    font-size:11px; padding:4px 8px; border-radius:6px;
+    background:var(--surface2); border:1px solid var(--stroke);
+  }
+  .durum-badge.dagitildi{background:rgba(34,197,94,.15); color:var(--success); border-color:rgba(34,197,94,.3)}
+  .durum-badge.toplandi{background:rgba(245,158,11,.15); color:var(--warning); border-color:rgba(245,158,11,.3)}
+  .kumbara-verilen{
+    margin-top:12px; padding-top:12px; border-top:1px solid var(--stroke);
+  }
+  .kumbara-verilen-label{font-size:12px; color:var(--muted); margin-bottom:4px}
+  .kumbara-verilen-ad{font-weight:700; font-size:14px}
+  .kumbara-verilen-adres{font-size:12px; color:var(--muted); margin-top:4px}
+  .kumbara-actions{
+    display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;
+  }
+  @media (max-width: 640px){
+    .kumbara-actions{flex-direction:column}
+    .kumbara-actions .btn{width:100%}
+  }
+  .btn{border:1px solid var(--stroke); background:var(--surface2); border-radius:999px; padding:8px 14px; cursor:pointer; font-size:13px; font-weight:700}
+  .btn-primary{background:linear-gradient(180deg,var(--brand),var(--brand2)); color:#fff; border:none}
+  .btn-success{background:var(--success); color:#fff; border:none}
+  .btn:disabled{opacity:.5; cursor:not-allowed}
+
+  /* ========== Modal ========== */
+  .modal{display:none; position:fixed; inset:0; background:rgba(2,6,23,.6); z-index:99; align-items:center; justify-content:center; padding:18px}
+  .modal.show{display:flex}
+  .modal-icerik{background:var(--card); border:1px solid var(--stroke); width:96%; max-width:500px; border-radius:16px; box-shadow:var(--shadow); padding:18px; position:relative; display:grid; gap:var(--gap)}
+  .modal-kapat{position:absolute; right:12px; top:10px; font-size:22px; cursor:pointer; color:var(--danger)}
+  .modal-title{margin:0; font-size:18px; font-weight:800}
+  label{display:block; margin-bottom:6px; font-size:13px; color:var(--muted)}
+  .field{display:flex; flex-direction:column; gap:6px}
+  select{
+    width:100%; padding:10px 12px; border:1px solid var(--stroke);
+    border-radius:12px; background:var(--surface2); color:var(--text); outline:none;
+  }
+  select:focus{ box-shadow:0 0 0 3px rgba(14,165,233,.25); border-color:#0ea5e9; background:var(--surface) }
+  input,textarea{
+    width:100%; padding:10px 12px; border:1px solid var(--stroke);
+    border-radius:12px; background:var(--surface2); color:var(--text); outline:none;
+  }
+  textarea{height:auto; min-height:80px; resize:vertical}
+  input:focus,textarea:focus{ box-shadow:0 0 0 3px rgba(14,165,233,.25); border-color:#0ea5e9; background:var(--surface) }
+
+  /* ========== Toast ========== */
+  .toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:rgba(2,6,23,.95); color:#fff; border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:10px 12px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:200}
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+
+  .empty{text-align:center; padding:40px; color:var(--muted)}
+
+  /* ========== Tables ========== */
+  .table-wrap{border:1px solid var(--stroke); border-radius:14px; overflow:auto; background:var(--card); margin-top:12px}
+  table{width:100%; border-collapse:collapse; min-width:600px}
+  th,td{padding:12px 14px; text-align:left; border-bottom:1px solid var(--stroke); font-size:14px}
+  thead th{position:sticky; top:0; background:var(--surface); font-weight:800}
+</style>
+
+<!-- Firebase (compat) -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="../js/firebase/firebase-init.js"></script>
+</head>
+<body>
+
+<!-- APPBAR -->
+<div class="appbar">
+  <div class="brand" onclick="location.href='../panel.html'">
+    <img src="../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
+  </div>
+  <nav class="nav-center"><ul class="nav-list" id="navMain"></ul></nav>
+  <div class="nav-right">
+    <button class="btn hamb" id="hamburger" title="Menü">☰</button>
+    <div class="nav-item">
+      <button class="iconbtn" id="btnProfile" title="Profil">
+        <span class="avatar"></span> <span id="profName" class="muted">Profil</span>
+      </button>
+      <div class="dropdown drop-right" id="profDropdown">
+        <a href="/diger/kullanici-yonetimi.html" >👤 Profil</a>
+        <a href="/diger/sistem-ayarlari.html" >⚙️ Ayarlar</a>
+        <a href="#" id="btnLogout">🚪 Çıkış Yap</a>
+      </div>
+    </div>
+  </div>
+</div>
+<aside class="drawer" id="drawer"></aside>
+
+<!-- CONTENT -->
+<main class="container stack-lg">
+  <!-- Başlık -->
+  <section class="card stack">
+    <h2 style="margin:0">Kumbaram</h2>
+    <div class="muted">Zimmetlenen kumbara ve sadaka kutularını yönetin</div>
+  </section>
+
+  <!-- Yönetici Seçim Paneli -->
+  <section class="card stack" id="yoneticiPanel" style="display:none">
+    <h3 style="margin:0">Yönetici Paneli</h3>
+    <div class="row">
+      <div class="col-6 field">
+        <label>Personel Seç</label>
+        <select id="secPersonel">
+          <option value="">Tüm Personeller</option>
+        </select>
+      </div>
+      <div class="col-6 field" style="align-self:flex-end">
+        <button class="btn btn-primary" onclick="yoneticiFiltrele()">Filtrele</button>
+        <button class="btn" onclick="yoneticiFiltreTemizle()">Temizle</button>
+        <button class="btn btn-success" onclick="yoneticiRaporGoster()">Rapor Görüntüle</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Yönetici Rapor Ekranı -->
+  <section class="card stack" id="yoneticiRapor" style="display:none">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px">
+      <h3 style="margin:0">Rapor</h3>
+      <button class="btn" onclick="yoneticiRaporKapat()">Kapat</button>
+    </div>
+    <div id="raporIcerik">
+      <div class="empty">Rapor yükleniyor...</div>
+    </div>
+  </section>
+
+  <!-- KPI Cards -->
+  <section class="row">
+    <div class="col-4">
+      <div class="kpi-card">
+        <div class="kpi-label">Toplam Zimmetlenen</div>
+        <div class="kpi-value" id="kpiZimmetlenen">0</div>
+        <div class="kpi-hint">Size zimmetlenen</div>
+      </div>
+    </div>
+    <div class="col-4">
+      <div class="kpi-card success">
+        <div class="kpi-label">Dağıtılan</div>
+        <div class="kpi-value" id="kpiDagitildi">0</div>
+        <div class="kpi-hint">Dağıtım yapılan</div>
+      </div>
+    </div>
+    <div class="col-4">
+      <div class="kpi-card warning">
+        <div class="kpi-label">Toplanan</div>
+        <div class="kpi-value" id="kpiToplandi">0</div>
+        <div class="kpi-hint">Geri toplanan</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Kumbara Listesi -->
+  <section class="card stack">
+    <h3 style="margin:0">Zimmetlenen Kumbaralar</h3>
+    <div id="kumbaraListesi" class="kumbara-grid">
+      <div class="empty">Yükleniyor...</div>
+    </div>
+  </section>
+
+  <div style="height:40px"></div>
+</main>
+
+<!-- Dağıtım Modal -->
+<div class="modal" id="dagitimModal">
+  <div class="modal-icerik">
+    <button class="modal-kapat" onclick="dagitimModalKapat()">✖</button>
+    <h3 class="modal-title">Dağıtım Kaydı</h3>
+    <input type="hidden" id="dagitimKumbaraId" />
+    <div class="field">
+      <label>Kumbara/Sadaka Bilgisi</label>
+      <div id="dagitimKumbaraBilgi" class="muted"></div>
+    </div>
+    <div class="field">
+      <label>Verilen Kişi Adı Soyadı *</label>
+      <input type="text" id="dagitimAdSoyad" placeholder="Örn: Mehmet Yılmaz" />
+    </div>
+    <div class="field">
+      <label>Adres / Bilgi</label>
+      <textarea id="dagitimAdres" placeholder="Adres veya ek bilgi giriniz..."></textarea>
+    </div>
+    <div class="actions" style="display:flex; gap:10px; justify-content:flex-end; margin-top:10px">
+      <button class="btn" onclick="dagitimModalKapat()">İptal</button>
+      <button class="btn btn-primary" onclick="dagitimKaydet()">Kaydet</button>
+    </div>
+  </div>
+</div>
+
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===== Helpers ===== */
+const db=firebase.firestore(), auth=firebase.auth();
+const userAgent = navigator.userAgent || '';
+const cihazTipi = ()=> (window.innerWidth<700?'mobile':(window.innerWidth<960?'tablet':'desktop'));
+const tsISO = ()=> new Date().toISOString();
+function toast(msg){const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(window.__to); window.__to=setTimeout(()=>t.classList.remove('show'),2400);}
+
+/* ===== Yetki Kontrolü ===== */
+const YONETICILER = ['Samet Çakır', 'Muhsin Çelik'];
+let currentUser = null;
+let currentUserName = '';
+let isYonetici = false;
+let seciliPersonel = ''; // Yönetici için seçili personel filtresi
+
+/* ===== Navigation Bar ===== */
+let CURRENT_ALLOW=new Set(), CURRENT_DENY=new Set();
+const norm=(s)=> String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+function normalizeUrl(u){ if(!u) return '#'; if(/^https?:\/\//i.test(u)) return u; if(u.startsWith('/')) return u; return '/'+u.replace(/^\.?\//,''); }
+
+async function fetchPanels(allowSet, denySet){
+  const res=[]; try{
+    const snap=await db.collection('sayfa_manifesti').get();
+    snap.forEach(doc=>{
+      const d=doc.data()||{}, id=doc.id, panelTitle=d.title||id;
+      const panelGrant = allowSet.has(norm(id)) || allowSet.has(norm(panelTitle));
+      let pages = Array.isArray(d.pages)? d.pages : [];
+      pages = pages.filter(pg=>{
+        const keyNorm=norm(pg.key||pg.title||'');
+        const pageGrant=allowSet.has(keyNorm), denied=denySet.has(keyNorm);
+        return !denied && (panelGrant || pageGrant);
+      }).map(pg=>({ baslik: pg.title||pg.key||'Sayfa', url: pg.path||'#', key: pg.key||pg.title||'', sira: typeof pg.order==='number'? pg.order:9999 }))
+        .sort((a,b)=>a.sira-b.sira);
+      if(pages.length) res.push({ id, baslik:panelTitle, sira: typeof d.order==='number'? d.order:9999, pages });
+    });
+    res.sort((a,b)=>a.sira-b.sira);
+  }catch(e){ console.error(e); toast('Menü yüklenemedi'); }
+  return res;
+}
+
+function renderNav(panels){
+  const ul=document.getElementById('navMain'), drawer=document.getElementById('drawer');
+  ul.innerHTML=''; drawer.innerHTML='';
+  if(!panels.length){
+    ul.innerHTML='<li class="nav-item"><div class="nav-btn">Panel yok</div></li>';
+    drawer.innerHTML='<div class="muted" style="padding:8px">Menü bulunamadı</div>'; return;
+  }
+  panels.forEach(p=>{
+    const li=document.createElement('li'); li.className='nav-item';
+    li.innerHTML=`<div class="nav-btn">${p.baslik} <span class="caret">▾</span></div>`;
+    const dd=document.createElement('div'); dd.className='dropdown';
+    (p.pages||[]).forEach(pg=>{
+      const a=document.createElement('a');
+      a.href=normalizeUrl(pg.url || pg.path || '#'); a.textContent=pg.baslik;
+      a.dataset.key=pg.key||pg.baslik; a.dataset.panel=p.id; a.dataset.panelTitle=p.baslik;
+      dd.appendChild(a);
+    });
+    li.appendChild(dd);
+    li.querySelector('.nav-btn').addEventListener('click',(e)=>{
+      e.stopPropagation();
+      ul.querySelectorAll('.nav-item').forEach(x=>{ if(x!==li) x.classList.remove('open'); });
+      li.classList.toggle('open');
+    });
+    ul.appendChild(li);
+
+    const h=document.createElement('div'); h.className='panel-title'; h.textContent=p.baslik; drawer.appendChild(h);
+    (p.pages||[]).forEach(pg=>{
+      const a=document.createElement('a');
+      a.href=normalizeUrl(pg.url || pg.path || '#'); a.textContent=pg.baslik;
+      a.dataset.key=pg.key||pg.baslik; a.dataset.panel=p.id; a.dataset.panelTitle=p.baslik;
+      drawer.appendChild(a);
+    });
+  });
+  document.addEventListener('click',(e)=>{ if(!ul.contains(e.target)) ul.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('open')); });
+}
+
+(function(){ const hamb=document.getElementById('hamburger'), drawer=document.getElementById('drawer'); if(!hamb) return; hamb.addEventListener('click',()=>drawer.classList.toggle('open')); document.addEventListener('click',(e)=>{ if(!drawer.contains(e.target) && !hamb.contains(e.target)) drawer.classList.remove('open'); }); })();
+
+document.addEventListener('click',(e)=>{
+  const a=e.target.closest('a[data-key]'); if(!a) return;
+  const key=norm(a.dataset.key), pnl=norm(a.dataset.panel||''), pnlTitle=norm(a.dataset.panelTitle||'');
+  if(CURRENT_DENY.has(key)){ e.preventDefault(); toast('Bu sayfa için yetkiniz yok.'); return; }
+  const allowed = CURRENT_ALLOW.has(key) || CURRENT_ALLOW.has(pnl) || CURRENT_ALLOW.has(pnlTitle);
+  if(!allowed){ e.preventDefault(); toast('Bu sayfa için yetkiniz yok.'); }
+});
+
+(function(){
+  const profBtn=document.getElementById('btnProfile'), profDD=document.getElementById('profDropdown');
+  function closeAll(e){
+    if(!profDD.contains(e.target)  && e.target!==profBtn)  profDD.parentElement.classList.remove('open');
+  }
+  document.addEventListener('click', closeAll);
+  profBtn ?.addEventListener('click',(e)=>{ e.stopPropagation(); profDD.parentElement.classList.toggle('open'); });
+  document.getElementById('btnLogout')?.addEventListener('click', async (e) => {
+    e.preventDefault();
+    try { await auth.signOut(); location.assign('../index.html'); }
+    catch(err){ console.error(err); toast('Çıkış yapılamadı'); }
+  });
+})();
+
+/* ===== Yönetici Paneli ===== */
+const personeller = [
+  "Muhsin Çelik","Faruk Nafiz Özgan","İbrahim Ay","Samet Çakır",
+  "Kerem Kocaoğlu","Serhan Durak","Mahmut Solmaz","Mehmet Taha Keskin","Ahmetali Emre Şahin"
+];
+
+async function yuklePersonelListesi(){
+  const select = document.getElementById('secPersonel');
+  if(!select) return;
+  
+  // Tüm zimmetlenen personelleri bul
+  try{
+    const snap = await db.collection('kumbaralar')
+      .where('zimmetli', '==', true)
+      .get();
+    
+    const personelSet = new Set();
+    snap.forEach(doc=>{
+      const personel = doc.data().zimmetliPersonel;
+      if(personel) personelSet.add(personel);
+    });
+    
+    const personelList = Array.from(personelSet).sort();
+    
+    select.innerHTML = '<option value="">Tüm Personeller</option>';
+    personelList.forEach(p=>{
+      const option = document.createElement('option');
+      option.value = p;
+      option.textContent = p;
+      select.appendChild(option);
+    });
+  }catch(e){
+    console.error(e);
+    // Fallback: Sabit liste
+    select.innerHTML = '<option value="">Tüm Personeller</option>';
+    personeller.forEach(p=>{
+      const option = document.createElement('option');
+      option.value = p;
+      option.textContent = p;
+      select.appendChild(option);
+    });
+  }
+}
+
+function yoneticiFiltrele(){
+  seciliPersonel = document.getElementById('secPersonel').value;
+  yukleKumbaralar();
+  guncelleKPI();
+}
+
+function yoneticiFiltreTemizle(){
+  document.getElementById('secPersonel').value = '';
+  seciliPersonel = '';
+  yukleKumbaralar();
+  guncelleKPI();
+}
+
+async function yoneticiRaporGoster(){
+  if(!isYonetici) return;
+  
+  const raporSection = document.getElementById('yoneticiRapor');
+  const raporIcerik = document.getElementById('raporIcerik');
+  raporSection.style.display = 'grid';
+  raporIcerik.innerHTML = '<div class="empty">Rapor yükleniyor...</div>';
+  
+  try{
+    let q = db.collection('kumbaralar').where('zimmetli', '==', true);
+    if(seciliPersonel){
+      q = q.where('zimmetliPersonel', '==', seciliPersonel);
+    }
+    
+    const snap = await q.get();
+    
+    if(snap.empty){
+      raporIcerik.innerHTML = '<div class="empty">Rapor için veri bulunamadı.</div>';
+      return;
+    }
+    
+    // Personel bazında grupla
+    const personelMap = new Map();
+    snap.forEach(doc=>{
+      const data = doc.data();
+      const personel = data.zimmetliPersonel || 'Bilinmeyen';
+      
+      if(!personelMap.has(personel)){
+        personelMap.set(personel, {
+          personel: personel,
+          toplam: 0,
+          dagitildi: 0,
+          toplandi: 0,
+          bekleyen: 0,
+          kumbaralar: []
+        });
+      }
+      
+      const stats = personelMap.get(personel);
+      stats.toplam++;
+      if(data.dagitildi) stats.dagitildi++;
+      if(data.toplandi) stats.toplandi++;
+      if(!data.dagitildi) stats.bekleyen++;
+      
+      stats.kumbaralar.push({
+        tur: data.tur || 'kumbara',
+        numara: data.numara || '-',
+        dagitildi: data.dagitildi || false,
+        toplandi: data.toplandi || false,
+        verilenKisi: data.verilenKisiAdSoyad || '-',
+        dagitimTarihi: data.dagitimTarihi || null,
+        toplamaTarihi: data.toplamaTarihi || null
+      });
+    });
+    
+    // HTML oluştur
+    let html = '<div class="stack">';
+    
+    Array.from(personelMap.values()).sort((a,b)=>a.personel.localeCompare(b.personel)).forEach(stats=>{
+      html += `
+        <div class="card" style="margin-bottom:16px">
+          <h4 style="margin:0 0 12px 0">${stats.personel}</h4>
+          <div class="row" style="margin-bottom:16px">
+            <div class="col-3">
+              <div class="kpi-card" style="padding:12px">
+                <div class="kpi-label">Toplam</div>
+                <div class="kpi-value" style="font-size:24px">${stats.toplam}</div>
+              </div>
+            </div>
+            <div class="col-3">
+              <div class="kpi-card success" style="padding:12px">
+                <div class="kpi-label">Dağıtılan</div>
+                <div class="kpi-value" style="font-size:24px">${stats.dagitildi}</div>
+              </div>
+            </div>
+            <div class="col-3">
+              <div class="kpi-card warning" style="padding:12px">
+                <div class="kpi-label">Toplanan</div>
+                <div class="kpi-value" style="font-size:24px">${stats.toplandi}</div>
+              </div>
+            </div>
+            <div class="col-3">
+              <div class="kpi-card" style="padding:12px; background:linear-gradient(135deg, #6366f1, #8b5cf6)">
+                <div class="kpi-label">Bekleyen</div>
+                <div class="kpi-value" style="font-size:24px">${stats.bekleyen}</div>
+              </div>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tür</th><th>Numara</th><th>Durum</th><th>Verilen Kişi</th><th>Dağıtım Tarihi</th><th>Toplama Tarihi</th>
+                </tr>
+              </thead>
+              <tbody>
+      `;
+      
+      stats.kumbaralar.sort((a,b)=>a.numara - b.numara).forEach(k=>{
+        const turLabel = k.tur === 'kumbara' ? 'Kumbara' : 'Sadaka';
+        let durum = '';
+        if(k.toplandi) durum = '<span class="durum-badge toplandi">Toplandı</span>';
+        else if(k.dagitildi) durum = '<span class="durum-badge dagitildi">Dağıtıldı</span>';
+        else durum = '<span class="durum-badge">Bekliyor</span>';
+        
+        const dagitimTarihi = k.dagitimTarihi ? new Date(k.dagitimTarihi).toLocaleString('tr-TR') : '-';
+        const toplamaTarihi = k.toplamaTarihi ? new Date(k.toplamaTarihi).toLocaleString('tr-TR') : '-';
+        
+        html += `
+          <tr>
+            <td>${turLabel}</td>
+            <td>#${k.numara}</td>
+            <td>${durum}</td>
+            <td>${k.verilenKisi}</td>
+            <td>${dagitimTarihi}</td>
+            <td>${toplamaTarihi}</td>
+          </tr>
+        `;
+      });
+      
+      html += `
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    });
+    
+    html += '</div>';
+    raporIcerik.innerHTML = html;
+  }catch(e){
+    console.error(e);
+    raporIcerik.innerHTML = '<div class="empty">Rapor yüklenirken hata oluştu: ' + e.message + '</div>';
+  }
+}
+
+function yoneticiRaporKapat(){
+  document.getElementById('yoneticiRapor').style.display = 'none';
+}
+
+/* ===== Auth & Yetki Kontrolü ===== */
+try{ firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL); }catch(e){}
+auth.onAuthStateChanged(async (user)=>{
+  currentUser = user || null;
+  if(!user){
+    setTimeout(()=>{ if(!auth.currentUser) location.replace('../index.html'); },150);
+    return;
+  }
+  
+  try{
+    // Kullanıcı bilgilerini al
+    const uSnap = await db.collection('kullanicilar').doc(user.uid).get();
+    const data = uSnap.exists ? (uSnap.data()||{}) : {};
+    currentUserName = (data.adSoyad || '').trim();
+    
+    if(!currentUserName && user.displayName) currentUserName = user.displayName.trim();
+    if(!currentUserName && user.email){
+      const namePart = user.email.split('@')[0];
+      currentUserName = namePart.charAt(0).toUpperCase() + namePart.slice(1);
+    }
+    
+    // Yönetici kontrolü
+    isYonetici = YONETICILER.some(y=>{
+      const normY = y.toLowerCase().trim();
+      const normU = currentUserName.toLowerCase().trim();
+      return normU === normY || normU.includes(normY) || normY.includes(normU);
+    });
+    
+    document.getElementById('profName').textContent = (currentUserName.split(' ')[0] || 'Profil') + (isYonetici ? ' (Yönetici)' : '');
+    
+    // Navigation bar yükle
+    const rawPerms=Array.isArray(data.yetkiler)? data.yetkiler : [];
+    CURRENT_ALLOW=new Set(rawPerms.filter(s=>!String(s).trim().startsWith('-') && !String(s).trim().startsWith('!')).map(norm));
+    CURRENT_DENY =new Set(rawPerms.filter(s=> String(s).trim().startsWith('-') || String(s).trim().startsWith('!')).map(s=>norm(String(s).replace(/^[-!]\s*/,''))));
+    const panels=await fetchPanels(CURRENT_ALLOW, CURRENT_DENY);
+    renderNav(panels);
+    
+    // Yönetici paneli göster
+    if(isYonetici){
+      document.getElementById('yoneticiPanel').style.display = 'grid';
+      await yuklePersonelListesi();
+    }
+    
+    // Verileri yükle
+    await yukleKumbaralar();
+    await guncelleKPI();
+  }catch(e){
+    console.error(e);
+    toast('Kullanıcı bilgileri yüklenemedi.');
+  }
+});
+
+/* ===== Kumbara Yükleme ===== */
+async function yukleKumbaralar(){
+  const container = document.getElementById('kumbaraListesi');
+  container.innerHTML = '<div class="empty">Yükleniyor...</div>';
+  
+  try{
+    let q = db.collection('kumbaralar').where('zimmetli', '==', true);
+    
+    // Yönetici değilse sadece kendisine zimmetlenenleri göster
+    if(!isYonetici){
+      q = q.where('zimmetliPersonel', '==', currentUserName);
+    } else if(seciliPersonel){
+      // Yönetici ve personel seçilmişse filtrele
+      q = q.where('zimmetliPersonel', '==', seciliPersonel);
+    }
+    
+    const snap = await q.get();
+    
+    if(snap.empty){
+      container.innerHTML = '<div class="empty">Zimmetlenen kumbara/sadaka bulunamadı.</div>';
+      return;
+    }
+    
+    const kumbaralar = snap.docs.map(doc=>({id: doc.id, ...doc.data()}))
+      .sort((a,b)=>{
+        const numA = a.numara || 0;
+        const numB = b.numara || 0;
+        return numA - numB;
+      });
+    
+    if(kumbaralar.length === 0){
+      container.innerHTML = '<div class="empty">Zimmetlenen kumbara/sadaka bulunamadı.</div>';
+      return;
+    }
+    
+    container.innerHTML = kumbaralar.map(k=>{
+      const turLabel = k.tur === 'kumbara' ? 'Kumbara' : 'Sadaka';
+      const turClass = k.tur === 'kumbara' ? 'kumbara' : 'sadaka';
+      const cardClass = k.toplandi ? 'toplandi' : (k.dagitildi ? 'dagitildi' : '');
+      
+      return `
+        <div class="kumbara-card ${cardClass}" data-id="${k.id}">
+          <div class="kumbara-header">
+            <span class="kumbara-tur ${turClass}">${turLabel}</span>
+            <span class="kumbara-numara">#${k.numara || '-'}</span>
+          </div>
+          <div class="kumbara-personel">Personel: ${k.zimmetliPersonel || '-'}</div>
+          <div class="kumbara-durum">
+            ${k.dagitildi ? '<span class="durum-badge dagitildi">✓ Dağıtıldı</span>' : ''}
+            ${k.toplandi ? '<span class="durum-badge toplandi">↻ Toplandı</span>' : ''}
+          </div>
+          ${k.dagitildi ? `
+            <div class="kumbara-verilen">
+              <div class="kumbara-verilen-label">Verilen Kişi:</div>
+              <div class="kumbara-verilen-ad">${k.verilenKisiAdSoyad || '-'}</div>
+              ${k.verilenKisiAdres ? `<div class="kumbara-verilen-adres">${k.verilenKisiAdres}</div>` : ''}
+            </div>
+          ` : ''}
+          <div class="kumbara-actions">
+            ${!k.dagitildi ? `<button class="btn btn-primary" onclick="dagitimAc('${k.id}')">Dağıt</button>` : ''}
+            ${k.dagitildi && !k.toplandi ? `<div class="hint" style="margin-top:8px; padding:8px; background:var(--surface2); border-radius:8px; font-size:12px">ℹ️ Bu kumbara dağıtıldı. Toplama işlemi yönetim panelinden yapılacaktır.</div>` : ''}
+            ${k.toplandi ? `<div class="hint" style="margin-top:8px; padding:8px; background:rgba(245,158,11,.1); border-radius:8px; font-size:12px; color:var(--warning)">✓ Toplandı - Sayım aşamasında</div>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }catch(e){
+    console.error(e);
+    container.innerHTML = '<div class="empty">Hata: ' + e.message + '</div>';
+  }
+}
+
+/* ===== KPI Güncelleme ===== */
+async function guncelleKPI(){
+  try{
+    let q = db.collection('kumbaralar').where('zimmetli', '==', true);
+    
+    if(!isYonetici){
+      q = q.where('zimmetliPersonel', '==', currentUserName);
+    } else if(seciliPersonel){
+      // Yönetici ve personel seçilmişse filtrele
+      q = q.where('zimmetliPersonel', '==', seciliPersonel);
+    }
+    
+    const snap = await q.get();
+    
+    let toplamZimmetlenen = 0;
+    let dagitildi = 0;
+    let toplandi = 0;
+    
+    snap.forEach(doc=>{
+      const data = doc.data();
+      toplamZimmetlenen++;
+      if(data.dagitildi) dagitildi++;
+      if(data.toplandi) toplandi++;
+    });
+    
+    document.getElementById('kpiZimmetlenen').textContent = toplamZimmetlenen;
+    document.getElementById('kpiDagitildi').textContent = dagitildi;
+    document.getElementById('kpiToplandi').textContent = toplandi;
+  }catch(e){
+    console.error(e);
+  }
+}
+
+/* ===== Dağıtım Modal ===== */
+function dagitimAc(kumbaraId){
+  const modal = document.getElementById('dagitimModal');
+  document.getElementById('dagitimKumbaraId').value = kumbaraId;
+  
+  // Kumbara bilgilerini yükle
+  db.collection('kumbaralar').doc(kumbaraId).get().then(doc=>{
+    if(doc.exists){
+      const data = doc.data();
+      const turLabel = data.tur === 'kumbara' ? 'Kumbara' : 'Sadaka';
+      document.getElementById('dagitimKumbaraBilgi').textContent = `${turLabel} #${data.numara || '-'} - ${data.zimmetliPersonel || '-'}`;
+    }
+  });
+  
+  // Formu temizle
+  document.getElementById('dagitimAdSoyad').value = '';
+  document.getElementById('dagitimAdres').value = '';
+  
+  modal.classList.add('show');
+}
+
+function dagitimModalKapat(){
+  document.getElementById('dagitimModal').classList.remove('show');
+}
+
+async function dagitimKaydet(){
+  const kumbaraId = document.getElementById('dagitimKumbaraId').value;
+  const adSoyad = document.getElementById('dagitimAdSoyad').value.trim();
+  const adres = document.getElementById('dagitimAdres').value.trim();
+  
+  if(!adSoyad){
+    toast('Verilen kişi adı soyadı zorunludur.');
+    return;
+  }
+  
+  try{
+    await db.collection('kumbaralar').doc(kumbaraId).update({
+      dagitildi: true,
+      dagitimTarihi: tsISO(),
+      verilenKisiAdSoyad: adSoyad,
+      verilenKisiAdres: adres || '',
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedBy: currentUser?.email || null
+    });
+    
+    toast('✅ Dağıtım kaydedildi.');
+    dagitimModalKapat();
+    await yukleKumbaralar();
+    await guncelleKPI();
+  }catch(e){
+    console.error(e);
+    toast('Dağıtım kaydedilemedi.');
+  }
+}
+
+</script>
+</body>
+</html>
+
