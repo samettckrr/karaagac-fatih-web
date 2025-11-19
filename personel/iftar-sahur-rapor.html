@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>İftar-Sahur Raporları | Ramazan-ı Şerif</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <link rel="icon" type="image/png" href="../img/logo.png" />
+
+  <!-- Firebase compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="../../js/firebase/firebase-init.js"></script>
+
+  <!-- html2pdf -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
+
+  <style>
+    :root{
+      --appbar-h:56px;
+      --bg:#f4f6f9; --card:#ffffff; --ink:#2c3e50; --muted:#6c7a89;
+      --accent:#324960; --good:#2d6a4f; --warn:#d35400; --bad:#c0392b;
+      --border:#e6ebf2; --stroke:rgba(15,23,42,.12); --text:#0b1220;
+      --surface:#f1f5ff; --surface2:#f6f8ff; --shadow:0 12px 28px rgba(0,0,0,.12);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+    img{max-width:100%;height:auto;display:block}
+    
+    /* APPBAR */
+    .appbar{
+      position:sticky; top:0; z-index:60; height:var(--appbar-h);
+      background:var(--card); backdrop-filter:blur(10px);
+      border-bottom:1px solid var(--stroke);
+      display:flex; align-items:center; gap:10px; padding:0 12px;
+    }
+    .brand{display:flex; align-items:center; gap:10px; cursor:pointer}
+    .brand img{width:24px; height:24px}
+    .brand span{font-weight:900; letter-spacing:.02em; color:var(--text)}
+    .nav-center{margin:0 auto; height:100%}
+    .nav-list{display:flex; gap:22px; align-items:center; height:100%; list-style:none; margin:0; padding:0}
+    .nav-item{position:relative; height:100%}
+    .nav-btn{height:100%; display:flex; align-items:center; gap:6px; font-weight:800; cursor:pointer; color:var(--text)}
+    .nav-btn:hover{color:var(--accent)}
+    .caret{font-size:12px; opacity:.6}
+    .dropdown{position:absolute; top:100%; left:0; min-width:240px; background:var(--card); border:1px solid var(--stroke); border-radius:12px; box-shadow:var(--shadow); padding:8px; display:none}
+    .dropdown a{display:flex; align-items:center; gap:8px; padding:10px 12px; border-radius:10px; color:var(--text); text-decoration:none}
+    .dropdown a:hover{background:var(--surface2)}
+    .nav-item.open .dropdown{display:block}
+    .nav-right{display:flex; gap:8px; align-items:center}
+    .btn{border:1px solid var(--stroke); background:var(--surface2); color:var(--text); border-radius:999px; padding:8px 14px; cursor:pointer; white-space:nowrap; font-weight:700}
+    .hamb{display:none}
+    .iconbtn{position:relative; border:1px solid var(--stroke); background:var(--card); color:var(--text); border-radius:999px; padding:8px 12px; cursor:pointer; display:flex; align-items:center; gap:8px}
+    .drop-right{left:auto; right:0}
+    .avatar{width:22px;height:22px;border-radius:999px;background:linear-gradient(180deg,#94a3b8,#64748b)}
+    .muted{color:var(--muted)}
+    @media (max-width: 960px){ .nav-center{display:none} .hamb{display:inline-flex} }
+
+    /* DRAWER */
+    .drawer{position:fixed; top:var(--appbar-h); right:0; bottom:0; left:34%; transform:translateX(100%); transition:.25s; background:var(--card); border-left:1px solid var(--stroke); z-index:70; overflow:auto; padding:16px}
+    .drawer.open{transform:translateX(0)}
+    .drawer .panel-title{margin:14px 4px 6px; font-weight:800; color:var(--muted); font-size:13px}
+    .drawer a{display:block; padding:12px; border-radius:12px; border:1px solid var(--stroke); margin:8px 0; color:var(--text); background:var(--surface2); text-decoration:none}
+    .drawer a:hover{background:var(--surface)}
+    
+    header{position:sticky;top:var(--appbar-h);z-index:5;background:var(--card);border-bottom:1px solid var(--border);box-shadow:0 2px 4px rgba(0,0,0,.05)}
+    .wrap{max-width:1400px;margin:0 auto;padding:12px 16px}
+    
+    .toolbar{display:flex;gap:10px;flex-wrap:nowrap;align-items:center;overflow:auto;padding-bottom:6px}
+    .toolbar::-webkit-scrollbar{height:6px}
+    .toolbar::-webkit-scrollbar-thumb{background:#d7dde6;border-radius:999px}
+    select,input,button{
+      height:38px;border:1px solid var(--border);background:#fff;border-radius:10px;padding:0 12px;font:inherit;color:var(--ink);white-space:nowrap
+    }
+    button{background:var(--accent);color:#fff;border:none;cursor:pointer;font-weight:500}
+    button.secondary{background:#fff;color:var(--ink);border:1px solid var(--border)}
+    button:hover{opacity:0.9}
+    
+    .chip{padding:8px 10px;border-radius:999px;border:1px solid var(--border);background:#fff;color:var(--muted);font-size:12px;white-space:nowrap}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin:12px 0}
+    .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:16px 0}
+    .kpi{display:flex;flex-direction:column;gap:4px;padding:12px;background:#fff;border:1px solid var(--border);border-radius:12px}
+    .kpi .label{color:var(--muted);font-size:12px;font-weight:500}
+    .kpi .value{font-size:24px;font-weight:700;color:var(--ink)}
+    .kpi.good .value{color:var(--good)}
+    .kpi.warn .value{color:var(--warn)}
+    
+    .line{height:1px;background:var(--border);margin:8px 0}
+    .muted{color:var(--muted)}
+    
+    .table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px}
+    table{width:100%;border-collapse:collapse;background:#fff;min-width:900px}
+    thead th{
+      position:sticky;top:0;background:#fafbfc;border-bottom:2px solid var(--border);
+      font-weight:600;text-align:left;font-size:13px;color:var(--muted);padding:12px;z-index:1
+    }
+    tbody td{border-bottom:1px solid var(--border);padding:12px;font-size:14px}
+    tbody tr:hover{background:#f8f9fa}
+    .right{text-align:right}
+    
+    .card-list{display:none;gap:10px;margin-top:12px}
+    .mini-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px}
+    .mini-line{display:flex;justify-content:space-between;gap:8px;font-size:14px}
+    .mini-hl{font-weight:600}
+    .chip-badge{padding:4px 8px;border-radius:4px;background:#f0f0f0;color:var(--ink);font-size:11px;display:inline-block}
+    .chip-badge.iftar{background:#fff3cd;color:#856404}
+    .chip-badge.sahur{background:#d1ecf1;color:#0c5460}
+    
+    .switcher{display:flex;gap:6px;align-items:center;white-space:nowrap;margin-left:8px}
+    
+    .avoid-break{page-break-inside:avoid;break-inside:avoid}
+    @media print{
+      header{position:static;border:none}
+      .toolbar{display:none!important}
+      .wrap{max-width:100%;padding:0}
+      .card{border:none;padding:0}
+      .table-wrap{border:none}
+    }
+
+    @media (max-width:540px){
+      .table-wrap{display:none}
+      .card-list{display:grid}
+      input{min-width:160px}
+    }
+    
+    header strong{font-size:clamp(16px,3.8vw,18px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40vw}
+  </style>
+</head>
+<body>
+
+<!-- APPBAR -->
+<div class="appbar">
+  <div class="brand" onclick="location.href='../panel.html'">
+    <img src="../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
+  </div>
+  <nav class="nav-center"><ul class="nav-list" id="navMain"></ul></nav>
+  <div class="nav-right">
+    <button class="btn hamb" id="hamburger" title="Menü">☰</button>
+    <div class="nav-item">
+      <button class="iconbtn" id="btnProfile" title="Profil">
+        <span class="avatar"></span> <span id="profName" class="muted">Profil</span>
+      </button>
+      <div class="dropdown drop-right" id="profDropdown">
+        <a href="../diger/kullanici-yonetimi.html">👤 Profil</a>
+        <a href="../diger/sistem-ayarlari.html">⚙️ Ayarlar</a>
+        <a href="#" id="btnLogout">🚪 Çıkış Yap</a>
+      </div>
+    </div>
+  </div>
+</div>
+<aside class="drawer" id="drawer"></aside>
+
+<header>
+  <div class="wrap">
+    <h2 style="margin:12px 0 8px 0;font-size:24px;font-weight:800">Ramazan-ı Şerif</h2>
+    <div class="muted" style="margin-bottom:12px">İftar-Sahur Raporları</div>
+    <div class="toolbar">
+      <select id="filtreYil">
+        <option value="">Yıl seçiniz...</option>
+      </select>
+      <select id="filtreTip">
+        <option value="">Tüm Tipler</option>
+        <option value="iftar">İftar</option>
+        <option value="sahur">Sahur</option>
+      </select>
+      <input id="ara" placeholder="Sahip / Personel ara..." />
+      <select id="filtreMod">
+        <option value="tum">Tüm Kayıtlar</option>
+        <option value="kendim">Sadece Kendim</option>
+      </select>
+      <div style="flex:1"></div>
+      <label class="switcher" title="Mobilde kart görünüm otomatik açılır">
+        <input id="toggleKart" type="checkbox" style="accent-color:#324960" />
+        <span class="muted">Kart Görünüm</span>
+      </label>
+      <button id="btnExport" class="secondary">CSV Dışa Aktar</button>
+      <button id="btnPDF" class="good">PDF'ye Aktar</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap" id="pdf-root">
+    <!-- KPI Kartları -->
+    <div class="kpi-row" id="kpiRow">
+      <div class="kpi">
+        <span class="label">Toplam İftar</span>
+        <span class="value" id="kpiIftar">0</span>
+      </div>
+      <div class="kpi">
+        <span class="label">Toplam Sahur</span>
+        <span class="value" id="kpiSahur">0</span>
+      </div>
+      <div class="kpi">
+        <span class="label">Toplam Tutar (₺)</span>
+        <span class="value" id="kpiTutar">₺0</span>
+      </div>
+      <div class="kpi">
+        <span class="label">Toplam Müsafir</span>
+        <span class="value" id="kpiMusafir">0</span>
+      </div>
+      <div class="kpi good">
+        <span class="label">İştirak Edilen</span>
+        <span class="value" id="kpiIstirak">0</span>
+      </div>
+      <div class="kpi">
+        <span class="label">Toplam Kayıt</span>
+        <span class="value" id="kpiToplam">0</span>
+      </div>
+    </div>
+
+    <!-- Liste -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
+        <h3 style="margin:0">Detaylı Liste | Seçime Göre</h3>
+        <span class="muted">Veri Firestore'dan gelir; Realtime güncelleme aktif.</span>
+      </div>
+
+      <div class="table-wrap" id="tableWrap">
+        <table id="tbl">
+          <thead>
+            <tr>
+              <th>Tarih</th>
+              <th>Tip</th>
+              <th>Sahip</th>
+              <th class="right">Tutar (₺)</th>
+              <th>İştirak</th>
+              <th>Müsafir</th>
+              <th>Personel</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+          <tfoot>
+            <tr>
+              <td colspan="3" class="right"><strong>TOPLAM</strong></td>
+              <td class="right" id="sumTutar"><strong>₺0</strong></td>
+              <td colspan="2"></td>
+              <td class="right" id="sumMusafir"><strong>0</strong></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div class="card-list" id="cardList"></div>
+    </div>
+  </main>
+
+  <script>
+    const db = window.db;
+    const auth = window.auth;
+    const qs = s => document.querySelector(s);
+    
+    let kayitlar = [];
+    let currentUser = null;
+    let currentUserUid = null;
+
+    const ayIsimleri = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+
+    /* ===== Navigation Bar ===== */
+    let CURRENT_ALLOW=new Set(), CURRENT_DENY=new Set();
+    const norm=(s)=> String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+    function normalizeUrl(u){ if(!u) return '#'; if(/^https?:\/\//i.test(u)) return u; if(u.startsWith('/')) return u; return '/'+u.replace(/^\.?\//,''); }
+
+    async function fetchPanels(allowSet, denySet){
+      const res=[]; try{
+        const snap=await db.collection('sayfa_manifesti').get();
+        snap.forEach(doc=>{
+          const d=doc.data()||{}, id=doc.id, panelTitle=d.title||id;
+          const panelGrant = allowSet.has(norm(id)) || allowSet.has(norm(panelTitle));
+          let pages = Array.isArray(d.pages)? d.pages : [];
+          pages = pages.filter(pg=>{
+            const keyNorm=norm(pg.key||pg.title||'');
+            const pageGrant=allowSet.has(keyNorm), denied=denySet.has(keyNorm);
+            return !denied && (panelGrant || pageGrant);
+          }).map(pg=>({ baslik: pg.title||pg.key||'Sayfa', url: pg.path||'#', key: pg.key||pg.title||'', sira: typeof pg.order==='number'? pg.order:9999 }))
+            .sort((a,b)=>a.sira-b.sira);
+          if(pages.length) res.push({ id, baslik:panelTitle, sira: typeof d.order==='number'? d.order:9999, pages });
+        });
+        res.sort((a,b)=>a.sira-b.sira);
+      }catch(e){ console.error(e); }
+      return res;
+    }
+
+    function renderNav(panels){
+      const ul=document.getElementById('navMain'), drawer=document.getElementById('drawer');
+      ul.innerHTML=''; drawer.innerHTML='';
+      if(!panels.length){
+        ul.innerHTML='<li class="nav-item"><div class="nav-btn">Panel yok</div></li>';
+        drawer.innerHTML='<div class="muted" style="padding:8px">Menü bulunamadı</div>'; return;
+      }
+      panels.forEach(p=>{
+        const li=document.createElement('li'); li.className='nav-item';
+        li.innerHTML=`<div class="nav-btn">${p.baslik} <span class="caret">▾</span></div>`;
+        const dd=document.createElement('div'); dd.className='dropdown';
+        (p.pages||[]).forEach(pg=>{
+          const a=document.createElement('a');
+          a.href=normalizeUrl(pg.url || pg.path || '#'); a.textContent=pg.baslik;
+          a.dataset.key=pg.key||pg.baslik; a.dataset.panel=p.id; a.dataset.panelTitle=p.baslik;
+          dd.appendChild(a);
+        });
+        li.appendChild(dd);
+        li.querySelector('.nav-btn').addEventListener('click',(e)=>{
+          e.stopPropagation();
+          ul.querySelectorAll('.nav-item').forEach(x=>{ if(x!==li) x.classList.remove('open'); });
+          li.classList.toggle('open');
+        });
+        ul.appendChild(li);
+
+        const h=document.createElement('div'); h.className='panel-title'; h.textContent=p.baslik; drawer.appendChild(h);
+        (p.pages||[]).forEach(pg=>{
+          const a=document.createElement('a');
+          a.href=normalizeUrl(pg.url || pg.path || '#'); a.textContent=pg.baslik;
+          a.dataset.key=pg.key||pg.baslik; a.dataset.panel=p.id; a.dataset.panelTitle=p.baslik;
+          drawer.appendChild(a);
+        });
+      });
+      document.addEventListener('click',(e)=>{ if(!ul.contains(e.target)) ul.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('open')); });
+    }
+
+    (function(){ const hamb=document.getElementById('hamburger'), drawer=document.getElementById('drawer'); if(!hamb) return; hamb.addEventListener('click',()=>drawer.classList.toggle('open')); document.addEventListener('click',(e)=>{ if(!drawer.contains(e.target) && !hamb.contains(e.target)) drawer.classList.remove('open'); }); })();
+
+    document.addEventListener('click',(e)=>{
+      const a=e.target.closest('a[data-key]'); if(!a) return;
+      const key=norm(a.dataset.key), pnl=norm(a.dataset.panel||''), pnlTitle=norm(a.dataset.panelTitle||'');
+      if(CURRENT_DENY.has(key)){ e.preventDefault(); return; }
+      const allowed = CURRENT_ALLOW.has(key) || CURRENT_ALLOW.has(pnl) || CURRENT_ALLOW.has(pnlTitle);
+      if(!allowed){ e.preventDefault(); }
+    });
+
+    (function(){
+      const profBtn=document.getElementById('btnProfile'), profDD=document.getElementById('profDropdown');
+      function closeAll(e){
+        if(!profDD.contains(e.target)  && e.target!==profBtn)  profDD.parentElement.classList.remove('open');
+      }
+      document.addEventListener('click', closeAll);
+      profBtn?.addEventListener('click',(e)=>{ e.stopPropagation(); profDD.parentElement.classList.toggle('open'); });
+      document.getElementById('btnLogout')?.addEventListener('click', async (e) => {
+        e.preventDefault();
+        try { await auth.signOut(); location.assign('../../index.html'); }
+        catch(err){ console.error(err); }
+      });
+    })();
+
+    // Firebase Auth kontrolü
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) {
+        window.location.href = '../../index.html';
+        return;
+      }
+      currentUser = user;
+      currentUserUid = user.uid;
+      
+      // Kullanıcı bilgilerini al
+      try {
+        const userDoc = await db.collection('kullanicilar').doc(user.uid).get();
+        if (userDoc.exists) {
+          const data = userDoc.data();
+          
+          // Profil adını güncelle
+          const profNameEl = document.getElementById('profName');
+          if (profNameEl) profNameEl.textContent = data.adSoyad || user.email?.split('@')[0] || 'Profil';
+          
+          // Yetkileri yükle
+          const rawPerms = Array.isArray(data.yetkiler) ? data.yetkiler : [];
+          CURRENT_ALLOW = new Set(rawPerms.filter(s=>!String(s).trim().startsWith('-') && !String(s).trim().startsWith('!')).map(norm));
+          CURRENT_DENY = new Set(rawPerms.filter(s=>String(s).trim().startsWith('-') || String(s).trim().startsWith('!')).map(s=>norm(String(s).replace(/^[-!]\s*/,''))));
+          
+          // Navigation render
+          const panels = await fetchPanels(CURRENT_ALLOW, CURRENT_DENY);
+          renderNav(panels);
+        }
+      } catch (e) {
+        console.error('Kullanıcı bilgisi alınamadı:', e);
+      }
+      
+      // Ramazan yıllarını yükle ve yıl seçeneklerini güncelle
+      await loadRamazanYillari();
+      
+      // İlk yükleme
+      loadKayitlar();
+    });
+
+    // Kayıtları yükle (realtime listener)
+    function loadKayitlar() {
+      const yil = qs('#filtreYil').value;
+      
+      const yilRef = db.collection('ramazan_serif').doc(String(yil));
+      
+      // Realtime listener - anlık güncelleme için
+      yilRef.collection('kayitlar')
+        .orderBy('tarih', 'desc')
+        .onSnapshot((snap) => {
+          kayitlar = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          render();
+        }, (err) => {
+          console.error('Kayıtlar dinlenemedi:', err);
+        });
+    }
+
+    // Render
+    function render() {
+      const yil = parseInt(qs('#filtreYil').value);
+      const tip = qs('#filtreTip').value;
+      const ara = qs('#ara').value.toLowerCase().trim();
+      const mod = qs('#filtreMod').value;
+      const useCards = qs('#cardList').style.display === 'grid';
+
+      let filtered = [...kayitlar];
+
+      // Yıl filtresi (zaten yıl bazlı yükleniyor ama yine de kontrol)
+      filtered = filtered.filter(k => k.yil === yil);
+
+      // Tip filtresi
+      if (tip) {
+        filtered = filtered.filter(k => k.tip === tip);
+      }
+
+      // Kullanıcı bazlı filtre
+      if (mod === 'kendim') {
+        filtered = filtered.filter(k => k.personelUid === currentUserUid);
+      }
+
+      // Arama filtresi
+      if (ara) {
+        filtered = filtered.filter(k =>
+          (k.sahip || '').toLowerCase().includes(ara) ||
+          (k.personel || '').toLowerCase().includes(ara)
+        );
+      }
+
+      // KPI güncelle
+      const iftarSayisi = filtered.filter(k => k.tip === 'iftar').length;
+      const sahurSayisi = filtered.filter(k => k.tip === 'sahur').length;
+      const toplamTutar = filtered.reduce((sum, k) => sum + (Number(k.tutar) || 0), 0);
+      const toplamMusafir = filtered.reduce((sum, k) => sum + (Number(k.musafirAdedi) || 0), 0);
+      const istirakSayisi = filtered.filter(k => k.istirak).length;
+
+      qs('#kpiIftar').textContent = iftarSayisi;
+      qs('#kpiSahur').textContent = sahurSayisi;
+      qs('#kpiTutar').textContent = '₺' + toplamTutar.toLocaleString('tr-TR', { minimumFractionDigits: 2 });
+      qs('#kpiMusafir').textContent = toplamMusafir;
+      qs('#kpiIstirak').textContent = istirakSayisi;
+      qs('#kpiToplam').textContent = filtered.length;
+
+      // Tablo/Kart render
+      if (!useCards) {
+        const tbody = qs('#tbody');
+        tbody.innerHTML = '';
+
+        if (filtered.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">Kayıt bulunamadı</td></tr>';
+          qs('#sumTutar').textContent = '₺0';
+          qs('#sumMusafir').textContent = '0';
+          return;
+        }
+
+        filtered.forEach(k => {
+          const tr = document.createElement('tr');
+          const tarihStr = k.tarih instanceof Date ? k.tarih.toISOString().slice(0, 10) : k.tarih;
+          const tarih = new Date(tarihStr);
+
+          tr.innerHTML = `
+            <td>${tarih.getDate()}.${tarih.getMonth() + 1}.${tarih.getFullYear()}</td>
+            <td><span class="chip-badge ${k.tip}">${k.tip === 'iftar' ? '🌙 İftar' : '🌟 Sahur'}</span></td>
+            <td><strong>${k.sahip || '-'}</strong></td>
+            <td class="right"><strong>₺${Number(k.tutar || 0).toLocaleString('tr-TR',{minimumFractionDigits:2})}</strong></td>
+            <td>${k.istirak ? '✓ Evet' : '✗ Hayır'}</td>
+            <td>${k.musafirAdedi || 0}</td>
+            <td>${k.personel || '-'}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        qs('#sumTutar').innerHTML = '<strong>₺' + toplamTutar.toLocaleString('tr-TR',{minimumFractionDigits:2}) + '</strong>';
+        qs('#sumMusafir').innerHTML = '<strong>' + toplamMusafir + '</strong>';
+      } else {
+        // Kart görünümü
+        const list = qs('#cardList');
+        list.innerHTML = '';
+
+        if (filtered.length === 0) {
+          list.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px">Kayıt bulunamadı</div>';
+          return;
+        }
+
+        filtered.forEach(k => {
+          const tarihStr = k.tarih instanceof Date ? k.tarih.toISOString().slice(0, 10) : k.tarih;
+          const tarih = new Date(tarihStr);
+          const div = document.createElement('div');
+          div.className = 'mini-card';
+          div.innerHTML = `
+            <div class="mini-line">
+              <span class="mini-hl">${tarih.getDate()}.${tarih.getMonth() + 1}.${tarih.getFullYear()}</span>
+              <span class="chip-badge ${k.tip}">${k.tip === 'iftar' ? '🌙 İftar' : '🌟 Sahur'}</span>
+            </div>
+            <div class="mini-line">
+              <span>Sahip</span>
+              <span class="mini-hl">${k.sahip || '-'}</span>
+            </div>
+            <div class="mini-line">
+              <span>Tutar</span>
+              <span class="mini-hl">₺${Number(k.tutar || 0).toLocaleString('tr-TR',{minimumFractionDigits:2})}</span>
+            </div>
+            <div class="mini-line">
+              <span>İştirak</span>
+              <span>${k.istirak ? '✓ Evet' : '✗ Hayır'}</span>
+            </div>
+            <div class="mini-line">
+              <span>Müsafir</span>
+              <span>${k.musafirAdedi || 0}</span>
+            </div>
+            <div class="mini-line">
+              <span>Personel</span>
+              <span>${k.personel || '-'}</span>
+            </div>
+          `;
+          list.appendChild(div);
+        });
+      }
+    }
+
+    // Kart görünüm toggle
+    function toggleView() {
+      const useCards = qs('#toggleKart').checked || window.innerWidth <= 540;
+      qs('#tableWrap').style.display = useCards ? 'none' : 'block';
+      qs('#cardList').style.display = useCards ? 'grid' : 'none';
+      render();
+    }
+
+    qs('#toggleKart').addEventListener('change', toggleView);
+    window.addEventListener('resize', () => {
+      if (window.innerWidth <= 540) {
+        qs('#toggleKart').checked = true;
+        toggleView();
+      }
+    });
+
+    // İlk yükleme
+    if (window.innerWidth <= 540) {
+      qs('#toggleKart').checked = true;
+    }
+
+    // Filtre değişiklikleri
+    // Ramazan yıllarını yükle ve yıl seçeneklerini güncelle
+    async function loadRamazanYillari() {
+      try {
+        const snap = await db.collection('ramazan_serif').doc('ayarlar').collection('yillar').orderBy('yil', 'desc').get();
+        const yillar = snap.docs.map(d => d.data().yil);
+        
+        // Filtre yıl seçeneklerini güncelle
+        const select = qs('#filtreYil');
+        if (select) {
+          const currentValue = select.value;
+          select.innerHTML = '';
+          
+          yillar.forEach(yil => {
+            const opt = document.createElement('option');
+            opt.value = yil;
+            opt.textContent = `${yil} Ramazan-ı Şerif`;
+            select.appendChild(opt);
+          });
+          
+          // Aktif yıl varsa onu seç
+          const aktifSnap = await db.collection('ramazan_serif').doc('ayarlar').collection('yillar').where('aktif', '==', true).limit(1).get();
+          if (!aktifSnap.empty) {
+            const aktifYil = aktifSnap.docs[0].data().yil;
+            select.value = aktifYil;
+          } else if (currentValue && yillar.includes(parseInt(currentValue))) {
+            select.value = currentValue;
+          } else if (yillar.length > 0) {
+            select.value = yillar[0];
+          }
+        }
+      } catch (e) {
+        console.error('Ramazan yılları yüklenemedi:', e);
+      }
+    }
+
+    ['#filtreYil', '#filtreTip', '#filtreMod'].forEach(sel => {
+      qs(sel).addEventListener('change', () => {
+        if (sel === '#filtreYil') {
+          loadKayitlar();
+        } else {
+          render();
+        }
+      });
+    });
+
+    qs('#ara').addEventListener('input', render);
+
+    // CSV Export
+    qs('#btnExport').addEventListener('click', () => {
+      const yil = qs('#filtreYil').value;
+      const tip = qs('#filtreTip').value;
+      const ara = qs('#ara').value.toLowerCase().trim();
+      const mod = qs('#filtreMod').value;
+
+      let filtered = [...kayitlar];
+      filtered = filtered.filter(k => k.yil === parseInt(yil));
+      if (tip) filtered = filtered.filter(k => k.tip === tip);
+      if (mod === 'kendim') filtered = filtered.filter(k => k.personelUid === currentUserUid);
+      if (ara) {
+        filtered = filtered.filter(k =>
+          (k.sahip || '').toLowerCase().includes(ara) ||
+          (k.personel || '').toLowerCase().includes(ara)
+        );
+      }
+
+      const rows = [['Tarih', 'Tip', 'Sahip', 'Tutar', 'İştirak', 'MüsafirAdedi', 'Personel']];
+
+      filtered.forEach(k => {
+        const tarihStr = k.tarih instanceof Date ? k.tarih.toISOString().slice(0, 10) : k.tarih;
+        rows.push([
+          tarihStr,
+          k.tip || '',
+          k.sahip || '',
+          k.tutar || 0,
+          k.istirak ? 'Evet' : 'Hayır',
+          k.musafirAdedi || 0,
+          k.personel || ''
+        ]);
+      });
+
+      const csv = rows.map(r => r.map(cell => {
+        const str = String(cell);
+        return str.includes(',') || str.includes('"') || str.includes('\n')
+          ? `"${str.replace(/"/g, '""')}"`
+          : str;
+      }).join(',')).join('\n');
+
+      const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `iftar-sahur-rapor-${yil}-ramazan-serif.csv`;
+      link.click();
+    });
+
+    // PDF Export
+    qs('#btnPDF').addEventListener('click', () => {
+      const el = document.getElementById('pdf-root');
+      const opt = {
+        margin: [10, 10, 10, 10],
+        filename: `iftar-sahur-rapor-${qs('#filtreYil').value}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, scrollY: -window.scrollY },
+        pagebreak: { mode: ['css', 'legacy'] },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+      html2pdf().set(opt).from(el).save();
+    });
+  </script>
+</body>
+</html>
+

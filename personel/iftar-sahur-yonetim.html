@@ -1,0 +1,1811 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>İftar-Sahur Yönetim Paneli | Ramazan-ı Şerif</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <link rel="icon" type="image/png" href="../img/logo.png" />
+
+  <!-- Firebase compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="../../js/firebase/firebase-init.js"></script>
+
+  <style>
+    :root{
+      --appbar-h:56px;
+      --bg:#f4f6f9; --card:#ffffff; --ink:#2c3e50; --muted:#6c7a89;
+      --accent:#324960; --good:#2d6a4f; --warn:#d35400; --bad:#c0392b;
+      --border:#e6ebf2; --stroke:rgba(15,23,42,.12); --text:#0b1220;
+      --surface:#f1f5ff; --surface2:#f6f8ff; --shadow:0 12px 28px rgba(0,0,0,.12);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+    img{max-width:100%;height:auto;display:block}
+    
+    /* APPBAR */
+    .appbar{
+      position:sticky; top:0; z-index:60; height:var(--appbar-h);
+      background:var(--card); backdrop-filter:blur(10px);
+      border-bottom:1px solid var(--stroke);
+      display:flex; align-items:center; gap:10px; padding:0 12px;
+    }
+    .brand{display:flex; align-items:center; gap:10px; cursor:pointer}
+    .brand img{width:24px; height:24px}
+    .brand span{font-weight:900; letter-spacing:.02em; color:var(--text)}
+    .nav-center{margin:0 auto; height:100%}
+    .nav-list{display:flex; gap:22px; align-items:center; height:100%; list-style:none; margin:0; padding:0}
+    .nav-item{position:relative; height:100%}
+    .nav-btn{height:100%; display:flex; align-items:center; gap:6px; font-weight:800; cursor:pointer; color:var(--text)}
+    .nav-btn:hover{color:var(--accent)}
+    .caret{font-size:12px; opacity:.6}
+    .dropdown{position:absolute; top:100%; left:0; min-width:240px; background:var(--card); border:1px solid var(--stroke); border-radius:12px; box-shadow:var(--shadow); padding:8px; display:none}
+    .dropdown a{display:flex; align-items:center; gap:8px; padding:10px 12px; border-radius:10px; color:var(--text); text-decoration:none}
+    .dropdown a:hover{background:var(--surface2)}
+    .nav-item.open .dropdown{display:block}
+    .nav-right{display:flex; gap:8px; align-items:center}
+    .btn{border:1px solid var(--stroke); background:var(--surface2); color:var(--text); border-radius:999px; padding:8px 14px; cursor:pointer; white-space:nowrap; font-weight:700}
+    .hamb{display:none}
+    .iconbtn{position:relative; border:1px solid var(--stroke); background:var(--card); color:var(--text); border-radius:999px; padding:8px 12px; cursor:pointer; display:flex; align-items:center; gap:8px}
+    .drop-right{left:auto; right:0}
+    .avatar{width:22px;height:22px;border-radius:999px;background:linear-gradient(180deg,#94a3b8,#64748b)}
+    .muted{color:var(--muted)}
+    @media (max-width: 960px){ .nav-center{display:none} .hamb{display:inline-flex} }
+
+    /* DRAWER */
+    .drawer{position:fixed; top:var(--appbar-h); right:0; bottom:0; left:34%; transform:translateX(100%); transition:.25s; background:var(--card); border-left:1px solid var(--stroke); z-index:70; overflow:auto; padding:16px}
+    .drawer.open{transform:translateX(0)}
+    .drawer .panel-title{margin:14px 4px 6px; font-weight:800; color:var(--muted); font-size:13px}
+    .drawer a{display:block; padding:12px; border-radius:12px; border:1px solid var(--stroke); margin:8px 0; color:var(--text); background:var(--surface2); text-decoration:none}
+    .drawer a:hover{background:var(--surface)}
+    
+    header{position:sticky;top:var(--appbar-h);z-index:5;background:var(--card);border-bottom:1px solid var(--border);box-shadow:0 2px 4px rgba(0,0,0,.05)}
+    .wrap{max-width:1400px;margin:0 auto;padding:12px 16px}
+    
+    .toolbar{display:flex;gap:10px;flex-wrap:nowrap;align-items:center;overflow:auto;padding-bottom:6px}
+    .toolbar::-webkit-scrollbar{height:6px}
+    .toolbar::-webkit-scrollbar-thumb{background:#d7dde6;border-radius:999px}
+    .line{height:1px;background:var(--border);margin:8px 0}
+    header strong{font-size:clamp(16px,3.8vw,18px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40vw}
+    .chip{padding:8px 10px;border-radius:999px;border:1px solid var(--border);background:#fff;color:var(--muted);font-size:12px;white-space:nowrap}
+    select,input,button{
+      height:38px;border:1px solid var(--border);background:#fff;border-radius:10px;padding:0 12px;font:inherit;color:var(--ink)
+    }
+    button{background:var(--accent);color:#fff;border:none;cursor:pointer;font-weight:500}
+    button.secondary{background:#fff;color:var(--ink);border:1px solid var(--border)}
+    button:hover{opacity:0.9}
+    button.danger{background:var(--bad);color:#fff}
+    
+    /* Tabs */
+    .tabs{display:flex;gap:4px;border-bottom:2px solid var(--border);margin:16px 0;overflow-x:auto}
+    .tab{
+      padding:12px 20px;border:none;background:transparent;color:var(--muted);cursor:pointer;
+      border-bottom:3px solid transparent;white-space:nowrap;font-weight:500;transition:all 0.2s
+    }
+    .tab:hover{color:var(--ink);background:#f8f9fa}
+    .tab.active{color:var(--accent);border-bottom-color:var(--accent);background:#fff}
+    
+    .tab-content{display:none}
+    .tab-content.active{display:block}
+    
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin:12px 0}
+    
+    /* Tablo */
+    .table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px}
+    table{width:100%;border-collapse:collapse;background:#fff;min-width:900px}
+    thead th{
+      position:sticky;top:0;background:#fafbfc;border-bottom:2px solid var(--border);
+      font-weight:600;text-align:left;font-size:13px;color:var(--muted);padding:12px;z-index:1
+    }
+    tbody td{border-bottom:1px solid var(--border);padding:12px;font-size:14px}
+    tbody tr:hover{background:#f8f9fa}
+    .right{text-align:right}
+    
+    /* Modal */
+    body.modal-open{overflow:hidden}
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;padding:16px;z-index:9999;backdrop-filter:blur(4px)}
+    .modal.show{display:flex}
+    .sheet{max-width:700px;width:100%;max-height:90vh;overflow-y:auto;background:#fff;border-radius:16px;padding:20px;border:1px solid var(--border);box-shadow:0 20px 40px rgba(0,0,0,.2)}
+    .sheet h3{margin:0 0 16px 0;font-size:20px;color:var(--ink)}
+    .form-grid{display:grid;gap:14px}
+    .form-group{display:flex;flex-direction:column;gap:6px}
+    .form-group label{font-size:13px;font-weight:600;color:var(--muted)}
+    .form-group input,.form-group select{
+      width:100%;height:42px;border:1px solid var(--border);border-radius:10px;padding:0 12px;font:inherit;font-size:14px
+    }
+    .actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+    
+    /* İstatistikler */
+    .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:16px 0}
+    .stat-card{
+      background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px;
+      display:flex;flex-direction:column;gap:8px
+    }
+    .stat-label{color:var(--muted);font-size:12px;font-weight:600}
+    .stat-value{font-size:24px;font-weight:700;color:var(--ink)}
+    
+    /* Takvim Tab */
+    .cal-wrapper{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+    .cal-dow-row{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+    .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+    .cal-dow{text-align:center;font-size:12px;font-weight:600;color:var(--muted);padding:8px}
+    .cal-day{
+      aspect-ratio:1;border:1px solid var(--border);border-radius:8px;padding:6px;
+      background:#fff;cursor:pointer;min-height:60px;display:flex;flex-direction:column;justify-content:space-between;font-size:12px
+    }
+    .cal-day.has-data{background:#e8f5e9;border-color:var(--good)}
+    .cal-day.today{border-color:var(--accent);border-width:2px}
+    
+    .badge-chip{padding:4px 8px;border-radius:4px;background:#f0f0f0;color:var(--ink);font-size:11px;display:inline-block;margin:2px}
+    .badge-chip.iftar{background:#fff3cd;color:#856404}
+    .badge-chip.sahur{background:#d1ecf1;color:#0c5460}
+    
+    @media (max-width:768px){
+      .tabs{overflow-x:auto;-webkit-overflow-scrolling:touch}
+      .table-wrap{font-size:12px}
+    }
+  </style>
+</head>
+<body>
+
+<!-- APPBAR -->
+<div class="appbar">
+  <div class="brand" onclick="location.href='../panel.html'">
+    <img src="../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
+  </div>
+  <nav class="nav-center"><ul class="nav-list" id="navMain"></ul></nav>
+  <div class="nav-right">
+    <button class="btn hamb" id="hamburger" title="Menü">☰</button>
+    <div class="nav-item">
+      <button class="iconbtn" id="btnProfile" title="Profil">
+        <span class="avatar"></span> <span id="profName" class="muted">Profil</span>
+      </button>
+      <div class="dropdown drop-right" id="profDropdown">
+        <a href="../diger/kullanici-yonetimi.html">👤 Profil</a>
+        <a href="../diger/sistem-ayarlari.html">⚙️ Ayarlar</a>
+        <a href="#" id="btnLogout">🚪 Çıkış Yap</a>
+      </div>
+    </div>
+  </div>
+</div>
+<aside class="drawer" id="drawer"></aside>
+
+<header>
+  <div class="wrap">
+    <h2 style="margin:12px 0 8px 0;font-size:24px;font-weight:800">Ramazan-ı Şerif</h2>
+    <div class="muted" style="margin-bottom:12px">İftar-Sahur Yönetim Paneli</div>
+  </div>
+</header>
+
+<main class="wrap">
+    <div class="tabs">
+      <button class="tab active" data-tab="kayitlar">📋 Kayıtlar</button>
+      <button class="tab" data-tab="takvim">📅 Takvim Görünümü</button>
+      <button class="tab" data-tab="tutar">💰 Tutar Ayarları</button>
+      <button class="tab" data-tab="ramazan">📅 Ramazan Ayarları</button>
+      <button class="tab" data-tab="kapasite">📊 Kapasite Ayarları</button>
+      <button class="tab" data-tab="istatistik">📊 İstatistikler</button>
+      <button class="tab" data-tab="export">📤 İçe/Dışa Aktar</button>
+    </div>
+
+    <!-- Tab: Kayıtlar -->
+    <div class="tab-content active" id="tab-kayitlar">
+      <div class="card">
+        <div class="toolbar">
+          <select id="filtreYil">
+            <option value="2024">2024</option>
+            <option value="2025" selected>2025</option>
+            <option value="2026">2026</option>
+          </select>
+          <select id="filtreAy">
+            <option value="">Tüm Aylar</option>
+          </select>
+          <select id="filtreTip">
+            <option value="">Tüm Tipler</option>
+            <option value="iftar">İftar</option>
+            <option value="sahur">Sahur</option>
+          </select>
+          <input type="text" id="araInput" placeholder="Sahip, Personel ara..." style="flex:1;min-width:200px" />
+          <button onclick="filterKayitlar()">Filtrele</button>
+          <button class="good" onclick="openEditModal()">+ Yeni Kayıt</button>
+        </div>
+
+        <div class="table-wrap">
+          <table id="tblKayitlar">
+            <thead>
+              <tr>
+                <th>Tarih</th>
+                <th>Tip</th>
+                <th>Sahip</th>
+                <th>Tutar (₺)</th>
+                <th>İştirak</th>
+                <th>Müsafir</th>
+                <th>Personel</th>
+                <th style="width:120px">İşlemler</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyKayitlar"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Takvim Görünümü -->
+    <div class="tab-content" id="tab-takvim">
+      <div class="card">
+        <div class="toolbar">
+          <select id="calYil">
+            <option value="2024">2024</option>
+            <option value="2025" selected>2025</option>
+            <option value="2026">2026</option>
+          </select>
+          <select id="calAy"></select>
+          <button onclick="renderCalView()">Yükle</button>
+        </div>
+
+        <div class="cal-wrapper">
+          <div class="cal-dow-row">
+            <div class="cal-dow">Pzt</div>
+            <div class="cal-dow">Sal</div>
+            <div class="cal-dow">Çar</div>
+            <div class="cal-dow">Per</div>
+            <div class="cal-dow">Cum</div>
+            <div class="cal-dow">Cmt</div>
+            <div class="cal-dow">Paz</div>
+          </div>
+          <div class="cal-grid" id="calViewGrid"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Tutar Ayarları -->
+    <div class="tab-content" id="tab-tutar">
+      <div class="card">
+        <div class="toolbar">
+          <select id="tutarYil">
+            <option value="2024">2024</option>
+            <option value="2025" selected>2025</option>
+            <option value="2026">2026</option>
+          </select>
+          <button class="good" onclick="openTutarModal()">+ Yeni Tutar Seçeneği</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Sıra</th>
+                <th>Tutar (₺)</th>
+                <th>Etiket</th>
+                <th>Durum</th>
+                <th style="width:120px">İşlemler</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyTutar"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: İstatistikler -->
+    <div class="tab-content" id="tab-istatistik">
+      <div class="card">
+        <div class="toolbar">
+          <select id="statYil">
+            <option value="2024">2024</option>
+            <option value="2025" selected>2025</option>
+            <option value="2026">2026</option>
+          </select>
+          <button onclick="loadStatistics()">Yükle</button>
+        </div>
+
+        <div class="stats-grid" id="statsGrid"></div>
+
+        <div class="card" style="margin-top:16px">
+          <h3 style="margin:0 0 12px 0">Aylık Dağılım</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Ay</th>
+                  <th>İftar</th>
+                  <th>Sahur</th>
+                  <th>Toplam Tutar (₺)</th>
+                  <th>Toplam Müsafir</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyAylik"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Ramazan Ayarları -->
+    <div class="tab-content" id="tab-ramazan">
+      <div class="card">
+        <div class="toolbar">
+          <h3 style="margin:0">Ramazan-ı Şerif Yılları</h3>
+          <div style="flex:1"></div>
+          <button class="good" onclick="openRamazanModal()">+ Yeni Ramazan Yılı</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Yıl</th>
+                <th>Başlangıç Tarihi</th>
+                <th>Bitiş Tarihi</th>
+                <th>Hicri Yıl</th>
+                <th>Durum</th>
+                <th style="width:120px">İşlemler</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyRamazan"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Kapasite Ayarları -->
+    <div class="tab-content" id="tab-kapasite">
+      <div class="card">
+        <div class="toolbar">
+          <select id="kapasiteYil">
+            <option value="">Yıl seçiniz...</option>
+          </select>
+          <div style="flex:1"></div>
+          <button class="good" onclick="openGenelKapasiteModal()">⚙️ Genel Kapasite</button>
+          <button class="good" onclick="openKapasiteModal()">+ Günlük Kapasite</button>
+        </div>
+
+        <div class="card" style="margin-top:16px">
+          <h3 style="margin:0 0 12px 0">Genel Kapasite Ayarları</h3>
+          <div id="genelKapasiteInfo" style="padding:12px;background:#f8f9fa;border-radius:8px;margin-bottom:12px">
+            <p style="margin:0;color:var(--muted);font-size:13px">Genel kapasite tüm günler için geçerlidir. Günlük özel kapasite varsa o gün için özel kapasite kullanılır.</p>
+            <div id="genelKapasiteDisplay" style="margin-top:8px"></div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px">
+          <h3 style="margin:0 0 12px 0">Günlük Kapasite Ayarları</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tarih</th>
+                  <th>İftar Max</th>
+                  <th>Sahur Max</th>
+                  <th style="width:120px">İşlemler</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyKapasite"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: İçe/Dışa Aktar -->
+    <div class="tab-content" id="tab-export">
+      <div class="card">
+        <h3 style="margin:0 0 16px 0">Dışa Aktar (CSV)</h3>
+        <div class="toolbar">
+          <select id="exportYil">
+            <option value="2024">2024</option>
+            <option value="2025" selected>2025</option>
+            <option value="2026">2026</option>
+          </select>
+          <button class="good" onclick="exportCSV()">CSV Olarak İndir</button>
+        </div>
+
+        <div class="card" style="margin-top:16px">
+          <h3 style="margin:0 0 16px 0">İçe Aktar (CSV)</h3>
+          <div class="form-group">
+            <label>CSV Dosyası Seçin</label>
+            <input type="file" id="importFile" accept=".csv" />
+            <small style="color:var(--muted);margin-top:4px">
+              Format: Tarih,Tip,Sahip,Tutar,İştirak,MüsafirAdedi,Personel
+            </small>
+          </div>
+          <button onclick="importCSV()">İçe Aktar</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal: Kayıt Düzenle -->
+  <div class="modal" id="modalEdit">
+    <div class="sheet">
+      <h3 id="editTitle">Yeni Kayıt</h3>
+      <form id="formEdit" class="form-grid">
+        <input type="hidden" id="editId" />
+        <div class="form-group">
+          <label>Tarih *</label>
+          <input type="date" id="editTarih" required />
+        </div>
+        <div class="form-group">
+          <label>Tip *</label>
+          <select id="editTip" required>
+            <option value="">Seçiniz</option>
+            <option value="iftar">İftar</option>
+            <option value="sahur">Sahur</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Sahip *</label>
+          <input type="text" id="editSahip" required />
+        </div>
+        <div class="form-group">
+          <label>Tutar (₺) *</label>
+          <input type="number" id="editTutar" min="0" step="0.01" required />
+        </div>
+        <div class="form-group">
+          <label>İştirak</label>
+          <select id="editIstirak">
+            <option value="true">Evet</option>
+            <option value="false">Hayır</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Müsafir Adedi *</label>
+          <input type="number" id="editMusafir" min="0" required />
+        </div>
+        <div class="actions">
+          <button type="button" class="secondary" onclick="closeEditModal()">İptal</button>
+          <button type="submit" class="good">Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Tutar Seçeneği -->
+  <div class="modal" id="modalTutar">
+    <div class="sheet">
+      <h3 id="tutarTitle">Yeni Tutar Seçeneği</h3>
+      <form id="formTutar" class="form-grid">
+        <input type="hidden" id="tutarId" />
+        <div class="form-group">
+          <label>Tutar (₺) *</label>
+          <input type="number" id="tutarTutar" min="0" step="0.01" required />
+        </div>
+        <div class="form-group">
+          <label>Etiket *</label>
+          <input type="text" id="tutarLabel" placeholder="Örn: ₺5.000 - Standart" required />
+        </div>
+        <div class="form-group">
+          <label>Sıra *</label>
+          <input type="number" id="tutarSira" min="1" value="1" required />
+        </div>
+        <div class="form-group">
+          <label>Durum</label>
+          <select id="tutarAktif">
+            <option value="true">Aktif</option>
+            <option value="false">Pasif</option>
+          </select>
+        </div>
+        <div class="actions">
+          <button type="button" class="secondary" onclick="closeTutarModal()">İptal</button>
+          <button type="submit" class="good">Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Ramazan Ayarları -->
+  <div class="modal" id="modalRamazan">
+    <div class="sheet">
+      <h3 id="ramazanTitle">Yeni Ramazan-ı Şerif Yılı</h3>
+      <form id="formRamazan" class="form-grid">
+        <input type="hidden" id="ramazanId" />
+        <div class="form-group">
+          <label>Yıl *</label>
+          <input type="number" id="ramazanYil" min="2024" max="2050" required />
+        </div>
+        <div class="form-group">
+          <label>Başlangıç Tarihi *</label>
+          <input type="date" id="ramazanBaslangic" required />
+        </div>
+        <div class="form-group">
+          <label>Bitiş Tarihi *</label>
+          <input type="date" id="ramazanBitis" required />
+        </div>
+        <div class="form-group">
+          <label>Hicri Yıl *</label>
+          <input type="number" id="ramazanHicri" min="1400" max="1500" required />
+        </div>
+        <div class="form-group">
+          <label>Durum *</label>
+          <select id="ramazanAktif" required>
+            <option value="true">Aktif</option>
+            <option value="false">Pasif</option>
+          </select>
+        </div>
+        <div class="actions">
+          <button type="button" class="secondary" onclick="closeRamazanModal()">İptal</button>
+          <button type="submit" class="good">Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Genel Kapasite Ayarları -->
+  <div class="modal" id="modalGenelKapasite">
+    <div class="sheet">
+      <h3 id="genelKapasiteTitle">Genel Kapasite Ayarları</h3>
+      <form id="formGenelKapasite" class="form-grid">
+        <div class="form-group">
+          <label>İftar Max Kapasite</label>
+          <input type="number" id="genelKapasiteIftar" min="0" placeholder="Sınırsız için boş bırakın" />
+          <small style="color:var(--muted);margin-top:4px">İştirak edecekler için kapasite. İştirak etmeyecekler için sınırsız.</small>
+        </div>
+        <div class="form-group">
+          <label>Sahur Max Kapasite</label>
+          <input type="number" id="genelKapasiteSahur" min="0" placeholder="Sınırsız için boş bırakın" />
+          <small style="color:var(--muted);margin-top:4px">İştirak edecekler için kapasite. İştirak etmeyecekler için sınırsız.</small>
+        </div>
+        <div class="actions">
+          <button type="button" class="secondary" onclick="closeGenelKapasiteModal()">İptal</button>
+          <button type="submit" class="good">Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Günlük Kapasite Ayarları -->
+  <div class="modal" id="modalKapasite">
+    <div class="sheet">
+      <h3 id="kapasiteTitle">Yeni Günlük Kapasite</h3>
+      <form id="formKapasite" class="form-grid">
+        <input type="hidden" id="kapasiteId" />
+        <div class="form-group">
+          <label>Tarih *</label>
+          <input type="date" id="kapasiteTarih" required />
+        </div>
+        <div class="form-group">
+          <label>İftar Max Kapasite</label>
+          <input type="number" id="kapasiteIftar" min="0" placeholder="Sınırsız için boş bırakın" />
+          <small style="color:var(--muted);margin-top:4px">Bu gün için özel kapasite. Genel kapasiteyi geçersiz kılar.</small>
+        </div>
+        <div class="form-group">
+          <label>Sahur Max Kapasite</label>
+          <input type="number" id="kapasiteSahur" min="0" placeholder="Sınırsız için boş bırakın" />
+          <small style="color:var(--muted);margin-top:4px">Bu gün için özel kapasite. Genel kapasiteyi geçersiz kılar.</small>
+        </div>
+        <div class="actions">
+          <button type="button" class="secondary" onclick="closeKapasiteModal()">İptal</button>
+          <button type="submit" class="good">Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const db = window.db;
+    const auth = window.auth;
+    const qs = s => document.querySelector(s);
+    
+    let kayitlar = [];
+    let tutarSecenekleri = [];
+    let currentYil = new Date().getFullYear();
+
+    const ayIsimleri = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+
+    /* ===== Navigation Bar ===== */
+    let CURRENT_ALLOW=new Set(), CURRENT_DENY=new Set();
+    const norm=(s)=> String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+    function normalizeUrl(u){ if(!u) return '#'; if(/^https?:\/\//i.test(u)) return u; if(u.startsWith('/')) return u; return '/'+u.replace(/^\.?\//,''); }
+
+    async function fetchPanels(allowSet, denySet){
+      const res=[]; try{
+        const snap=await db.collection('sayfa_manifesti').get();
+        snap.forEach(doc=>{
+          const d=doc.data()||{}, id=doc.id, panelTitle=d.title||id;
+          const panelGrant = allowSet.has(norm(id)) || allowSet.has(norm(panelTitle));
+          let pages = Array.isArray(d.pages)? d.pages : [];
+          pages = pages.filter(pg=>{
+            const keyNorm=norm(pg.key||pg.title||'');
+            const pageGrant=allowSet.has(keyNorm), denied=denySet.has(keyNorm);
+            return !denied && (panelGrant || pageGrant);
+          }).map(pg=>({ baslik: pg.title||pg.key||'Sayfa', url: pg.path||'#', key: pg.key||pg.title||'', sira: typeof pg.order==='number'? pg.order:9999 }))
+            .sort((a,b)=>a.sira-b.sira);
+          if(pages.length) res.push({ id, baslik:panelTitle, sira: typeof d.order==='number'? d.order:9999, pages });
+        });
+        res.sort((a,b)=>a.sira-b.sira);
+      }catch(e){ console.error(e); }
+      return res;
+    }
+
+    function renderNav(panels){
+      const ul=document.getElementById('navMain'), drawer=document.getElementById('drawer');
+      ul.innerHTML=''; drawer.innerHTML='';
+      if(!panels.length){
+        ul.innerHTML='<li class="nav-item"><div class="nav-btn">Panel yok</div></li>';
+        drawer.innerHTML='<div class="muted" style="padding:8px">Menü bulunamadı</div>'; return;
+      }
+      panels.forEach(p=>{
+        const li=document.createElement('li'); li.className='nav-item';
+        li.innerHTML=`<div class="nav-btn">${p.baslik} <span class="caret">▾</span></div>`;
+        const dd=document.createElement('div'); dd.className='dropdown';
+        (p.pages||[]).forEach(pg=>{
+          const a=document.createElement('a');
+          a.href=normalizeUrl(pg.url || pg.path || '#'); a.textContent=pg.baslik;
+          a.dataset.key=pg.key||pg.baslik; a.dataset.panel=p.id; a.dataset.panelTitle=p.baslik;
+          dd.appendChild(a);
+        });
+        li.appendChild(dd);
+        li.querySelector('.nav-btn').addEventListener('click',(e)=>{
+          e.stopPropagation();
+          ul.querySelectorAll('.nav-item').forEach(x=>{ if(x!==li) x.classList.remove('open'); });
+          li.classList.toggle('open');
+        });
+        ul.appendChild(li);
+
+        const h=document.createElement('div'); h.className='panel-title'; h.textContent=p.baslik; drawer.appendChild(h);
+        (p.pages||[]).forEach(pg=>{
+          const a=document.createElement('a');
+          a.href=normalizeUrl(pg.url || pg.path || '#'); a.textContent=pg.baslik;
+          a.dataset.key=pg.key||pg.baslik; a.dataset.panel=p.id; a.dataset.panelTitle=p.baslik;
+          drawer.appendChild(a);
+        });
+      });
+      document.addEventListener('click',(e)=>{ if(!ul.contains(e.target)) ul.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('open')); });
+    }
+
+    (function(){ const hamb=document.getElementById('hamburger'), drawer=document.getElementById('drawer'); if(!hamb) return; hamb.addEventListener('click',()=>drawer.classList.toggle('open')); document.addEventListener('click',(e)=>{ if(!drawer.contains(e.target) && !hamb.contains(e.target)) drawer.classList.remove('open'); }); })();
+
+    document.addEventListener('click',(e)=>{
+      const a=e.target.closest('a[data-key]'); if(!a) return;
+      const key=norm(a.dataset.key), pnl=norm(a.dataset.panel||''), pnlTitle=norm(a.dataset.panelTitle||'');
+      if(CURRENT_DENY.has(key)){ e.preventDefault(); return; }
+      const allowed = CURRENT_ALLOW.has(key) || CURRENT_ALLOW.has(pnl) || CURRENT_ALLOW.has(pnlTitle);
+      if(!allowed){ e.preventDefault(); }
+    });
+
+    (function(){
+      const profBtn=document.getElementById('btnProfile'), profDD=document.getElementById('profDropdown');
+      function closeAll(e){
+        if(!profDD.contains(e.target)  && e.target!==profBtn)  profDD.parentElement.classList.remove('open');
+      }
+      document.addEventListener('click', closeAll);
+      profBtn?.addEventListener('click',(e)=>{ e.stopPropagation(); profDD.parentElement.classList.toggle('open'); });
+      document.getElementById('btnLogout')?.addEventListener('click', async (e) => {
+        e.preventDefault();
+        try { await auth.signOut(); location.assign('../../index.html'); }
+        catch(err){ console.error(err); }
+      });
+    })();
+
+    // Auth kontrolü
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) {
+        window.location.href = '../../index.html';
+        return;
+      }
+      
+      // Kullanıcı bilgilerini al
+      try {
+        const userDoc = await db.collection('kullanicilar').doc(user.uid).get();
+        if (userDoc.exists) {
+          const data = userDoc.data();
+          
+          // Profil adını güncelle
+          const profNameEl = document.getElementById('profName');
+          if (profNameEl) profNameEl.textContent = data.adSoyad || user.email?.split('@')[0] || 'Profil';
+          
+          // Yetkileri yükle
+          const rawPerms = Array.isArray(data.yetkiler) ? data.yetkiler : [];
+          CURRENT_ALLOW = new Set(rawPerms.filter(s=>!String(s).trim().startsWith('-') && !String(s).trim().startsWith('!')).map(norm));
+          CURRENT_DENY = new Set(rawPerms.filter(s=>String(s).trim().startsWith('-') || String(s).trim().startsWith('!')).map(s=>norm(String(s).replace(/^[-!]\s*/,''))));
+          
+          // Navigation render
+          const panels = await fetchPanels(CURRENT_ALLOW, CURRENT_DENY);
+          renderNav(panels);
+        }
+      } catch (e) {
+        console.error('Kullanıcı bilgisi alınamadı:', e);
+      }
+      
+      // Ay seçeneklerini doldur
+      fillAyOptions();
+      
+      // Ramazan yıllarını yükle ve yıl seçeneklerini güncelle
+      await loadRamazanYillari();
+      
+      // İlk yükleme
+      await loadKayitlar();
+      await loadTutarSecenekleri();
+      
+      // Tab değiştirme
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+          document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+          
+          tab.classList.add('active');
+          const tabId = tab.dataset.tab;
+          qs(`#tab-${tabId}`).classList.add('active');
+          
+          if (tabId === 'takvim') renderCalView();
+          if (tabId === 'istatistik') loadStatistics();
+          if (tabId === 'ramazan') loadRamazanAyarlari();
+          if (tabId === 'kapasite') loadKapasiteAyarlari();
+          if (tabId === 'tutar') loadTutarSecenekleri();
+        });
+      });
+    });
+
+    // Ramazan Ayarları
+    let ramazanAyarlari = [];
+
+    async function loadRamazanAyarlari() {
+      try {
+        const snap = await db.collection('ramazan_serif').doc('ayarlar').collection('yillar').orderBy('yil', 'desc').get();
+        ramazanAyarlari = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderRamazanAyarlari();
+      } catch (e) {
+        console.error('Ramazan ayarları yüklenemedi:', e);
+        ramazanAyarlari = [];
+        renderRamazanAyarlari();
+      }
+    }
+
+    function renderRamazanAyarlari() {
+      const tbody = qs('#tbodyRamazan');
+      tbody.innerHTML = '';
+
+      if (ramazanAyarlari.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">Kayıt bulunamadı</td></tr>';
+        return;
+      }
+
+      ramazanAyarlari.forEach(r => {
+        const tr = document.createElement('tr');
+        const baslangic = new Date(r.baslangic);
+        const bitis = new Date(r.bitis);
+        
+        tr.innerHTML = `
+          <td><strong>${r.yil}</strong></td>
+          <td>${baslangic.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long', timeZone: 'Europe/Istanbul' })}</td>
+          <td>${bitis.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long', timeZone: 'Europe/Istanbul' })}</td>
+          <td>${r.hicriYil || '-'}</td>
+          <td>${r.aktif ? '<span style="color:var(--good);font-weight:600">Aktif</span>' : '<span style="color:var(--muted)">Pasif</span>'}</td>
+          <td>
+            <button onclick="editRamazan('${r.id}')" style="padding:4px 8px;font-size:12px">Düzenle</button>
+            <button onclick="deleteRamazan('${r.id}')" class="danger" style="padding:4px 8px;font-size:12px">Sil</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function openRamazanModal(id = null) {
+      qs('#ramazanId').value = id || '';
+      qs('#ramazanTitle').textContent = id ? 'Ramazan-ı Şerif Yılı Düzenle' : 'Yeni Ramazan-ı Şerif Yılı';
+      
+      if (id) {
+        const r = ramazanAyarlari.find(r => r.id === id);
+        if (r) {
+          const baslangic = new Date(r.baslangic);
+          const bitis = new Date(r.bitis);
+          qs('#ramazanYil').value = r.yil || '';
+          qs('#ramazanBaslangic').value = baslangic.toISOString().slice(0, 10);
+          qs('#ramazanBitis').value = bitis.toISOString().slice(0, 10);
+          qs('#ramazanHicri').value = r.hicriYil || '';
+          qs('#ramazanAktif').value = r.aktif ? 'true' : 'false';
+        }
+      } else {
+        qs('#formRamazan').reset();
+        qs('#ramazanYil').value = new Date().getFullYear();
+        qs('#ramazanAktif').value = 'false';
+      }
+      
+      qs('#modalRamazan').classList.add('show');
+      document.body.classList.add('modal-open');
+    }
+
+    function closeRamazanModal() {
+      qs('#modalRamazan').classList.remove('show');
+      document.body.classList.remove('modal-open');
+    }
+
+    qs('#formRamazan').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const id = qs('#ramazanId').value;
+      const yil = parseInt(qs('#ramazanYil').value);
+      const baslangic = qs('#ramazanBaslangic').value;
+      const bitis = qs('#ramazanBitis').value;
+      const hicriYil = parseInt(qs('#ramazanHicri').value);
+      const aktif = qs('#ramazanAktif').value === 'true';
+      
+      if (!yil || !baslangic || !bitis || !hicriYil) {
+        alert('Lütfen tüm alanları doldurun.');
+        return;
+      }
+      
+      // Aktif olan varsa diğerlerini pasif yap
+      if (aktif) {
+        try {
+          const snap = await db.collection('ramazan_serif').doc('ayarlar').collection('yillar').where('aktif', '==', true).get();
+          const batch = db.batch();
+          snap.docs.forEach(doc => {
+            if (doc.id !== id) {
+              batch.update(doc.ref, { aktif: false });
+            }
+          });
+          await batch.commit();
+        } catch (e) {
+          console.error('Aktif yıl güncellenemedi:', e);
+        }
+      }
+      
+      try {
+        const ayarlarRef = db.collection('ramazan_serif').doc('ayarlar').collection('yillar');
+        const data = {
+          yil: yil,
+          baslangic: baslangic,
+          bitis: bitis,
+          hicriYil: hicriYil,
+          aktif: aktif,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        if (id) {
+          await ayarlarRef.doc(id).update(data);
+        } else {
+          await ayarlarRef.add({
+            ...data,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }
+        
+        alert('Ramazan ayarı başarıyla kaydedildi!');
+        closeRamazanModal();
+        await loadRamazanAyarlari();
+      } catch (e) {
+        console.error('Ramazan ayarı kaydedilemedi:', e);
+        alert('Hata: ' + e.message);
+      }
+    });
+
+    async function deleteRamazan(id) {
+      if (!confirm('Bu Ramazan-ı Şerif yılını silmek istediğinizden emin misiniz?')) return;
+      
+      try {
+        await db.collection('ramazan_serif').doc('ayarlar').collection('yillar').doc(id).delete();
+        alert('Ramazan ayarı silindi!');
+        await loadRamazanAyarlari();
+      } catch (e) {
+        console.error('Ramazan ayarı silinemedi:', e);
+        alert('Hata: ' + e.message);
+      }
+    }
+
+    window.editRamazan = editRamazan;
+    window.deleteRamazan = deleteRamazan;
+
+    function editRamazan(id) {
+      openRamazanModal(id);
+    }
+
+    window.openRamazanModal = openRamazanModal;
+
+    // Kapasite Ayarları
+    let kapasiteAyarlariList = [];
+
+    async function loadKapasiteAyarlari() {
+      const yil = qs('#kapasiteYil').value;
+      if (!yil) {
+        qs('#tbodyKapasite').innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:20px">Lütfen bir yıl seçiniz</td></tr>';
+        qs('#genelKapasiteDisplay').innerHTML = '';
+        return;
+      }
+
+      try {
+        const yilRef = db.collection('ramazan_serif').doc(String(yil));
+        
+        // Günlük kapasite ayarlarını yükle
+        const snap = await yilRef.collection('kapasite_ayarlari').orderBy('tarih', 'desc').get();
+        kapasiteAyarlariList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderKapasiteAyarlari();
+
+        // Genel kapasite ayarlarını yükle
+        const genelSnap = await yilRef.collection('ayarlar').doc('genel').get();
+        if (genelSnap.exists) {
+          const genelData = genelSnap.data();
+          qs('#genelKapasiteDisplay').innerHTML = `
+            <div style="display:flex;gap:16px;flex-wrap:wrap">
+              <div><strong>İftar Max:</strong> ${genelData.iftarMax !== null && genelData.iftarMax !== undefined ? genelData.iftarMax : '∞ (Sınırsız)'}</div>
+              <div><strong>Sahur Max:</strong> ${genelData.sahurMax !== null && genelData.sahurMax !== undefined ? genelData.sahurMax : '∞ (Sınırsız)'}</div>
+            </div>
+          `;
+        } else {
+          qs('#genelKapasiteDisplay').innerHTML = '<div style="color:var(--muted);font-size:13px">Genel kapasite ayarı tanımlanmamış</div>';
+        }
+      } catch (e) {
+        console.error('Kapasite ayarları yüklenemedi:', e);
+        kapasiteAyarlariList = [];
+        renderKapasiteAyarlari();
+      }
+    }
+
+    function renderKapasiteAyarlari() {
+      const tbody = qs('#tbodyKapasite');
+      tbody.innerHTML = '';
+
+      if (kapasiteAyarlariList.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:20px">Kayıt bulunamadı</td></tr>';
+        return;
+      }
+
+      kapasiteAyarlariList.forEach(k => {
+        const tr = document.createElement('tr');
+        const tarih = new Date(k.tarih);
+        
+        tr.innerHTML = `
+          <td>${tarih.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Istanbul' })}</td>
+          <td>${k.iftarMax !== null && k.iftarMax !== undefined ? k.iftarMax : '∞ (Sınırsız)'}</td>
+          <td>${k.sahurMax !== null && k.sahurMax !== undefined ? k.sahurMax : '∞ (Sınırsız)'}</td>
+          <td>
+            <button onclick="editKapasite('${k.id}')" style="padding:4px 8px;font-size:12px">Düzenle</button>
+            <button onclick="deleteKapasite('${k.id}')" class="danger" style="padding:4px 8px;font-size:12px">Sil</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function openGenelKapasiteModal() {
+      const yil = qs('#kapasiteYil').value;
+      if (!yil) {
+        alert('Lütfen önce bir yıl seçiniz');
+        return;
+      }
+
+      // Mevcut genel kapasiteyi yükle
+      const yilRef = db.collection('ramazan_serif').doc(String(yil));
+      yilRef.collection('ayarlar').doc('genel').get().then(doc => {
+        if (doc.exists) {
+          const data = doc.data();
+          qs('#genelKapasiteIftar').value = data.iftarMax !== null && data.iftarMax !== undefined ? data.iftarMax : '';
+          qs('#genelKapasiteSahur').value = data.sahurMax !== null && data.sahurMax !== undefined ? data.sahurMax : '';
+        } else {
+          qs('#genelKapasiteIftar').value = '';
+          qs('#genelKapasiteSahur').value = '';
+        }
+      });
+
+      qs('#modalGenelKapasite').classList.add('show');
+      document.body.classList.add('modal-open');
+    }
+
+    function closeGenelKapasiteModal() {
+      qs('#modalGenelKapasite').classList.remove('show');
+      document.body.classList.remove('modal-open');
+    }
+
+    qs('#formGenelKapasite').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const yil = qs('#kapasiteYil').value;
+      if (!yil) {
+        alert('Lütfen bir yıl seçiniz');
+        return;
+      }
+
+      const iftarMax = qs('#genelKapasiteIftar').value ? parseInt(qs('#genelKapasiteIftar').value) : null;
+      const sahurMax = qs('#genelKapasiteSahur').value ? parseInt(qs('#genelKapasiteSahur').value) : null;
+
+      try {
+        const yilRef = db.collection('ramazan_serif').doc(String(yil));
+        await yilRef.collection('ayarlar').doc('genel').set({
+          iftarMax: iftarMax,
+          sahurMax: sahurMax,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        
+        alert('Genel kapasite ayarı kaydedildi!');
+        closeGenelKapasiteModal();
+        await loadKapasiteAyarlari();
+      } catch (e) {
+        console.error('Genel kapasite kaydedilemedi:', e);
+        alert('Hata: ' + e.message);
+      }
+    });
+
+    function openKapasiteModal(id = null) {
+      const yil = qs('#kapasiteYil').value;
+      if (!yil) {
+        alert('Lütfen önce bir yıl seçiniz');
+        return;
+      }
+
+      qs('#kapasiteId').value = id || '';
+      qs('#kapasiteTitle').textContent = id ? 'Günlük Kapasite Düzenle' : 'Yeni Günlük Kapasite';
+      
+      if (id) {
+        const k = kapasiteAyarlariList.find(k => k.id === id);
+        if (k) {
+          const tarih = new Date(k.tarih);
+          qs('#kapasiteTarih').value = tarih.toISOString().slice(0, 10);
+          qs('#kapasiteIftar').value = k.iftarMax !== null && k.iftarMax !== undefined ? k.iftarMax : '';
+          qs('#kapasiteSahur').value = k.sahurMax !== null && k.sahurMax !== undefined ? k.sahurMax : '';
+        }
+      } else {
+        qs('#formKapasite').reset();
+      }
+      
+      qs('#modalKapasite').classList.add('show');
+      document.body.classList.add('modal-open');
+    }
+
+    function closeKapasiteModal() {
+      qs('#modalKapasite').classList.remove('show');
+      document.body.classList.remove('modal-open');
+    }
+
+    qs('#formKapasite').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const yil = qs('#kapasiteYil').value;
+      if (!yil) {
+        alert('Lütfen bir yıl seçiniz');
+        return;
+      }
+
+      const id = qs('#kapasiteId').value;
+      const tarih = qs('#kapasiteTarih').value;
+      const iftarMax = qs('#kapasiteIftar').value ? parseInt(qs('#kapasiteIftar').value) : null;
+      const sahurMax = qs('#kapasiteSahur').value ? parseInt(qs('#kapasiteSahur').value) : null;
+      
+      if (!tarih) {
+        alert('Lütfen bir tarih seçiniz');
+        return;
+      }
+
+      try {
+        const yilRef = db.collection('ramazan_serif').doc(String(yil));
+        const ayarlarRef = yilRef.collection('kapasite_ayarlari');
+        
+        const data = {
+          tarih: tarih,
+          iftarMax: iftarMax,
+          sahurMax: sahurMax,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        if (id) {
+          await ayarlarRef.doc(id).update(data);
+        } else {
+          await ayarlarRef.add({
+            ...data,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }
+        
+        alert('Kapasite ayarı kaydedildi!');
+        closeKapasiteModal();
+        await loadKapasiteAyarlari();
+      } catch (e) {
+        console.error('Kapasite kaydedilemedi:', e);
+        alert('Hata: ' + e.message);
+      }
+    });
+
+    async function deleteKapasite(id) {
+      const yil = qs('#kapasiteYil').value;
+      if (!yil) return;
+      
+      if (!confirm('Bu kapasite ayarını silmek istediğinizden emin misiniz?')) return;
+      
+      try {
+        await db.collection('ramazan_serif').doc(String(yil)).collection('kapasite_ayarlari').doc(id).delete();
+        alert('Kapasite ayarı silindi!');
+        await loadKapasiteAyarlari();
+      } catch (e) {
+        console.error('Kapasite silinemedi:', e);
+        alert('Hata: ' + e.message);
+      }
+    }
+
+    window.editKapasite = editKapasite;
+    window.deleteKapasite = deleteKapasite;
+    window.openKapasiteModal = openKapasiteModal;
+    window.openGenelKapasiteModal = openGenelKapasiteModal;
+
+    function editKapasite(id) {
+      openKapasiteModal(id);
+    }
+
+    // Kapasite yıl seçimi değişimi
+    if (qs('#kapasiteYil')) {
+      qs('#kapasiteYil').addEventListener('change', () => {
+        loadKapasiteAyarlari();
+      });
+    }
+
+    // Ramazan yıllarını yükle ve yıl seçeneklerini güncelle
+    async function loadRamazanYillari() {
+      try {
+        const snap = await db.collection('ramazan_serif').doc('ayarlar').collection('yillar').orderBy('yil', 'desc').get();
+        const yillar = snap.docs.map(d => d.data().yil);
+        
+        // Filtre yıl seçeneklerini güncelle
+        updateYilSelect('filtreYil', yillar);
+        updateYilSelect('exportYil', yillar);
+        updateYilSelect('kapasiteYil', yillar);
+        updateYilSelect('tutarYil', yillar);
+        
+        // Aktif yıl varsa onu seç
+        const aktifSnap = await db.collection('ramazan_serif').doc('ayarlar').collection('yillar').where('aktif', '==', true).limit(1).get();
+        if (!aktifSnap.empty) {
+          const aktifYil = aktifSnap.docs[0].data().yil;
+          qs('#filtreYil').value = aktifYil;
+          qs('#exportYil').value = aktifYil;
+          if (qs('#kapasiteYil')) qs('#kapasiteYil').value = aktifYil;
+          if (qs('#tutarYil')) qs('#tutarYil').value = aktifYil;
+          currentYil = aktifYil;
+        }
+      } catch (e) {
+        console.error('Ramazan yılları yüklenemedi:', e);
+      }
+    }
+
+    function updateYilSelect(selectId, yillar) {
+      const select = qs('#' + selectId);
+      if (!select) return;
+      
+      const currentValue = select.value;
+      select.innerHTML = '';
+      
+      yillar.forEach(yil => {
+        const opt = document.createElement('option');
+        opt.value = yil;
+        opt.textContent = `${yil} Ramazan-ı Şerif`;
+        select.appendChild(opt);
+      });
+      
+      if (currentValue && yillar.includes(parseInt(currentValue))) {
+        select.value = currentValue;
+      } else if (yillar.length > 0) {
+        select.value = yillar[0];
+      }
+    }
+
+    function fillAyOptions() {
+      const sel = qs('#filtreAy');
+      sel.innerHTML = '<option value="">Tüm Aylar</option>';
+      ayIsimleri.forEach((ay, idx) => {
+        const opt = document.createElement('option');
+        opt.value = idx + 1;
+        opt.textContent = ay;
+        sel.appendChild(opt);
+      });
+
+      const calSel = qs('#calAy');
+      calSel.innerHTML = '';
+      ayIsimleri.forEach((ay, idx) => {
+        const opt = document.createElement('option');
+        opt.value = idx + 1;
+        opt.textContent = ay;
+        opt.selected = idx + 1 === new Date().getMonth() + 1;
+        calSel.appendChild(opt);
+      });
+    }
+
+    // Kayıtları yükle
+    async function loadKayitlar() {
+      const yil = qs('#filtreYil').value;
+      currentYil = parseInt(yil);
+      
+      try {
+        const yilRef = db.collection('ramazan_serif').doc(String(yil));
+        const snap = await yilRef.collection('kayitlar').orderBy('tarih', 'desc').get();
+        kayitlar = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderKayitlar();
+      } catch (e) {
+        console.error('Kayıtlar yüklenemedi:', e);
+        kayitlar = [];
+        renderKayitlar();
+      }
+    }
+
+    function filterKayitlar() {
+      renderKayitlar();
+    }
+
+    function renderKayitlar() {
+      const tbody = qs('#tbodyKayitlar');
+      tbody.innerHTML = '';
+      
+      let filtered = [...kayitlar];
+      
+      const ay = qs('#filtreAy').value;
+      if (ay) filtered = filtered.filter(k => k.ay === parseInt(ay));
+      
+      const tip = qs('#filtreTip').value;
+      if (tip) filtered = filtered.filter(k => k.tip === tip);
+      
+      const ara = qs('#araInput').value.toLowerCase().trim();
+      if (ara) {
+        filtered = filtered.filter(k => 
+          (k.sahip || '').toLowerCase().includes(ara) ||
+          (k.personel || '').toLowerCase().includes(ara)
+        );
+      }
+      
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">Kayıt bulunamadı</td></tr>';
+        return;
+      }
+      
+      filtered.forEach(k => {
+        const tr = document.createElement('tr');
+        const tarihStr = k.tarih instanceof Date ? k.tarih.toISOString().slice(0, 10) : k.tarih;
+        const tarih = new Date(tarihStr);
+        
+        tr.innerHTML = `
+          <td>${tarih.getDate()}.${tarih.getMonth() + 1}.${tarih.getFullYear()}</td>
+          <td><span class="badge-chip ${k.tip}">${k.tip === 'iftar' ? '🌙 İftar' : '🌟 Sahur'}</span></td>
+          <td><strong>${k.sahip || '-'}</strong></td>
+          <td class="right"><strong>₺${Number(k.tutar || 0).toLocaleString('tr-TR',{minimumFractionDigits:2})}</strong></td>
+          <td>${k.istirak ? '✓ Evet' : '✗ Hayır'}</td>
+          <td>${k.musafirAdedi || 0}</td>
+          <td>${k.personel || '-'}</td>
+          <td>
+            <button onclick="editKayit('${k.id}')" style="padding:4px 8px;font-size:12px">Düzenle</button>
+            <button onclick="deleteKayit('${k.id}')" class="danger" style="padding:4px 8px;font-size:12px">Sil</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function openEditModal(id = null) {
+      qs('#editId').value = id || '';
+      qs('#editTitle').textContent = id ? 'Kayıt Düzenle' : 'Yeni Kayıt';
+      
+      if (id) {
+        const k = kayitlar.find(k => k.id === id);
+        if (k) {
+          const tarihStr = k.tarih instanceof Date ? k.tarih.toISOString().slice(0, 10) : k.tarih;
+          qs('#editTarih').value = tarihStr;
+          qs('#editTip').value = k.tip;
+          qs('#editSahip').value = k.sahip || '';
+          qs('#editTutar').value = k.tutar || 0;
+          qs('#editIstirak').value = k.istirak ? 'true' : 'false';
+          qs('#editMusafir').value = k.musafirAdedi || 0;
+        }
+      } else {
+        qs('#formEdit').reset();
+        qs('#editTarih').value = new Date().toISOString().slice(0, 10);
+      }
+      
+      qs('#modalEdit').classList.add('show');
+      document.body.classList.add('modal-open');
+    }
+
+    function closeEditModal() {
+      qs('#modalEdit').classList.remove('show');
+      document.body.classList.remove('modal-open');
+    }
+
+    qs('#formEdit').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const id = qs('#editId').value;
+      const tarih = qs('#editTarih').value;
+      const tip = qs('#editTip').value;
+      const sahip = qs('#editSahip').value.trim();
+      const tutar = parseFloat(qs('#editTutar').value) || 0;
+      const istirak = qs('#editIstirak').value === 'true';
+      const musafirAdedi = parseInt(qs('#editMusafir').value) || 0;
+      
+      const date = new Date(tarih);
+      const yil = date.getFullYear();
+      const ay = date.getMonth() + 1;
+      
+      try {
+        const yilRef = db.collection('ramazan_serif').doc(String(yil));
+        const data = {
+          tarih: tarih,
+          tip: tip,
+          sahip: sahip,
+          tutar: tutar,
+          istirak: istirak,
+          musafirAdedi: musafirAdedi,
+          yil: yil,
+          ay: ay,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        if (id) {
+          await yilRef.collection('kayitlar').doc(id).update(data);
+        } else {
+          const user = auth.currentUser;
+          let personelAd = 'Bilinmeyen';
+          if (user) {
+            try {
+              const userDoc = await db.collection('kullanicilar').doc(user.uid).get();
+              if (userDoc.exists) {
+                personelAd = userDoc.data().adSoyad || user.email || 'Bilinmeyen';
+              }
+            } catch (e) {}
+          }
+          
+          await yilRef.collection('kayitlar').add({
+            ...data,
+            personel: personelAd,
+            personelUid: user?.uid || null,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }
+        
+        alert('Kayıt başarıyla kaydedildi!');
+        closeEditModal();
+        await loadKayitlar();
+      } catch (e) {
+        console.error('Kayıt kaydedilemedi:', e);
+        alert('Hata: ' + e.message);
+      }
+    });
+
+    async function deleteKayit(id) {
+      if (!confirm('Bu kaydı silmek istediğinizden emin misiniz?')) return;
+      
+      try {
+        const k = kayitlar.find(k => k.id === id);
+        if (k) {
+          const yilRef = db.collection('ramazan_serif').doc(String(k.yil));
+          await yilRef.collection('kayitlar').doc(id).delete();
+          alert('Kayıt silindi!');
+          await loadKayitlar();
+        }
+      } catch (e) {
+        console.error('Kayıt silinemedi:', e);
+        alert('Hata: ' + e.message);
+      }
+    }
+
+    window.editKayit = editKayit;
+    window.deleteKayit = deleteKayit;
+
+    function editKayit(id) {
+      openEditModal(id);
+    }
+
+    // Takvim görünümü
+    async function renderCalView() {
+      const yil = parseInt(qs('#calYil').value);
+      const ay = parseInt(qs('#calAy').value);
+      
+      try {
+        const yilRef = db.collection('ramazan_serif').doc(String(yil));
+        const snap = await yilRef.collection('kayitlar')
+          .where('yil', '==', yil)
+          .where('ay', '==', ay)
+          .get();
+        
+        const ayKayitlar = snap.docs.map(d => d.data());
+        const byDate = new Map();
+        
+        ayKayitlar.forEach(k => {
+          const tarihStr = k.tarih instanceof Date ? k.tarih.toISOString().slice(0, 10) : k.tarih;
+          if (!byDate.has(tarihStr)) byDate.set(tarihStr, []);
+          byDate.get(tarihStr).push(k);
+        });
+        
+        const grid = qs('#calViewGrid');
+        grid.innerHTML = '';
+        
+        const firstDay = new Date(yil, ay - 1, 1);
+        const lastDay = new Date(yil, ay, 0);
+        const startDay = (firstDay.getDay() + 6) % 7;
+        const daysInMonth = lastDay.getDate();
+        
+        for (let i = 0; i < startDay; i++) {
+          const div = document.createElement('div');
+          div.className = 'cal-day';
+          grid.appendChild(div);
+        }
+        
+        const today = new Date();
+        for (let day = 1; day <= daysInMonth; day++) {
+          const date = new Date(yil, ay - 1, day);
+          const dateStr = date.toISOString().slice(0, 10);
+          const gunKayitlar = byDate.get(dateStr) || [];
+          
+          const div = document.createElement('div');
+          div.className = 'cal-day';
+          if (dateStr === today.toISOString().slice(0, 10)) div.classList.add('today');
+          if (gunKayitlar.length > 0) div.classList.add('has-data');
+          
+          div.innerHTML = `
+            <div>${day}</div>
+            <div>
+              ${gunKayitlar.filter(k => k.tip === 'iftar').length > 0 ? '<span class="badge-chip iftar">İ</span>' : ''}
+              ${gunKayitlar.filter(k => k.tip === 'sahur').length > 0 ? '<span class="badge-chip sahur">S</span>' : ''}
+            </div>
+          `;
+          
+          if (gunKayitlar.length > 0) {
+            div.onclick = () => {
+              alert(`Bu günde ${gunKayitlar.length} kayıt var:\n${gunKayitlar.map(k => `${k.tip === 'iftar' ? 'İftar' : 'Sahur'}: ${k.sahip}`).join('\n')}`);
+            };
+          }
+          
+          grid.appendChild(div);
+        }
+      } catch (e) {
+        console.error('Takvim yüklenemedi:', e);
+      }
+    }
+
+    // Tutar seçenekleri
+    async function loadTutarSecenekleri() {
+      const yil = qs('#tutarYil').value;
+      try {
+        const yilRef = db.collection('ramazan_serif').doc(String(yil));
+        const snap = await yilRef.collection('tutar_secenekleri').orderBy('sira', 'asc').get();
+        tutarSecenekleri = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderTutarSecenekleri();
+      } catch (e) {
+        console.error('Tutar seçenekleri yüklenemedi:', e);
+        tutarSecenekleri = [];
+        renderTutarSecenekleri();
+      }
+    }
+
+    function renderTutarSecenekleri() {
+      const tbody = qs('#tbodyTutar');
+      tbody.innerHTML = '';
+      
+      if (tutarSecenekleri.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">Kayıt bulunamadı</td></tr>';
+        return;
+      }
+      
+      tutarSecenekleri.forEach(t => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${t.sira || 0}</td>
+          <td><strong>₺${Number(t.tutar || 0).toLocaleString('tr-TR',{minimumFractionDigits:2})}</strong></td>
+          <td>${t.label || '-'}</td>
+          <td>${t.aktif ? '<span style="color:var(--good)">Aktif</span>' : '<span style="color:var(--muted)">Pasif</span>'}</td>
+          <td>
+            <button onclick="editTutar('${t.id}')" style="padding:4px 8px;font-size:12px">Düzenle</button>
+            <button onclick="deleteTutar('${t.id}')" class="danger" style="padding:4px 8px;font-size:12px">Sil</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function openTutarModal(id = null) {
+      qs('#tutarId').value = id || '';
+      qs('#tutarTitle').textContent = id ? 'Tutar Seçeneği Düzenle' : 'Yeni Tutar Seçeneği';
+      
+      if (id) {
+        const t = tutarSecenekleri.find(t => t.id === id);
+        if (t) {
+          qs('#tutarTutar').value = t.tutar || 0;
+          qs('#tutarLabel').value = t.label || '';
+          qs('#tutarSira').value = t.sira || 1;
+          qs('#tutarAktif').value = t.aktif ? 'true' : 'false';
+        }
+      } else {
+        qs('#formTutar').reset();
+        qs('#tutarSira').value = tutarSecenekleri.length + 1;
+      }
+      
+      qs('#modalTutar').classList.add('show');
+      document.body.classList.add('modal-open');
+    }
+
+    function closeTutarModal() {
+      qs('#modalTutar').classList.remove('show');
+      document.body.classList.remove('modal-open');
+    }
+
+    qs('#formTutar').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const id = qs('#tutarId').value;
+      const yil = qs('#tutarYil').value;
+      const tutar = parseFloat(qs('#tutarTutar').value) || 0;
+      const label = qs('#tutarLabel').value.trim();
+      const sira = parseInt(qs('#tutarSira').value) || 1;
+      const aktif = qs('#tutarAktif').value === 'true';
+      
+      try {
+        const yilRef = db.collection('ramazan_serif').doc(String(yil));
+        const data = {
+          tutar: tutar,
+          label: label,
+          sira: sira,
+          aktif: aktif
+        };
+        
+        if (id) {
+          await yilRef.collection('tutar_secenekleri').doc(id).update(data);
+        } else {
+          await yilRef.collection('tutar_secenekleri').add(data);
+        }
+        
+        alert('Tutar seçeneği kaydedildi!');
+        closeTutarModal();
+        await loadTutarSecenekleri();
+      } catch (e) {
+        console.error('Tutar seçeneği kaydedilemedi:', e);
+        alert('Hata: ' + e.message);
+      }
+    });
+
+    async function deleteTutar(id) {
+      if (!confirm('Bu tutar seçeneğini silmek istediğinizden emin misiniz?')) return;
+      
+      try {
+        const yil = qs('#tutarYil').value;
+        const yilRef = db.collection('ramazan_serif').doc(String(yil));
+        await yilRef.collection('tutar_secenekleri').doc(id).delete();
+        alert('Tutar seçeneği silindi!');
+        await loadTutarSecenekleri();
+      } catch (e) {
+        console.error('Tutar seçeneği silinemedi:', e);
+        alert('Hata: ' + e.message);
+      }
+    }
+
+    window.editTutar = editTutar;
+    window.deleteTutar = deleteTutar;
+
+    function editTutar(id) {
+      openTutarModal(id);
+    }
+
+    qs('#tutarYil').addEventListener('change', loadTutarSecenekleri);
+
+    // İstatistikler
+    async function loadStatistics() {
+      const yil = parseInt(qs('#statYil').value);
+      
+      try {
+        const yilRef = db.collection('ramazan_serif').doc(String(yil));
+        const snap = await yilRef.collection('kayitlar')
+          .where('yil', '==', yil)
+          .get();
+        
+        const allKayitlar = snap.docs.map(d => d.data());
+        
+        const iftarSayisi = allKayitlar.filter(k => k.tip === 'iftar').length;
+        const sahurSayisi = allKayitlar.filter(k => k.tip === 'sahur').length;
+        const toplamTutar = allKayitlar.reduce((sum, k) => sum + (Number(k.tutar) || 0), 0);
+        const toplamMusafir = allKayitlar.reduce((sum, k) => sum + (Number(k.musafirAdedi) || 0), 0);
+        const istirakSayisi = allKayitlar.filter(k => k.istirak).length;
+        
+        qs('#statsGrid').innerHTML = `
+          <div class="stat-card">
+            <div class="stat-label">Toplam İftar</div>
+            <div class="stat-value">${iftarSayisi}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Toplam Sahur</div>
+            <div class="stat-value">${sahurSayisi}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Toplam Tutar</div>
+            <div class="stat-value">₺${toplamTutar.toLocaleString('tr-TR',{minimumFractionDigits:2})}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Toplam Müsafir</div>
+            <div class="stat-value">${toplamMusafir}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">İştirak Edilen</div>
+            <div class="stat-value">${istirakSayisi}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Toplam Kayıt</div>
+            <div class="stat-value">${allKayitlar.length}</div>
+          </div>
+        `;
+        
+        // Aylık dağılım
+        const aylik = {};
+        for (let i = 1; i <= 12; i++) {
+          aylik[i] = { iftar: 0, sahur: 0, tutar: 0, musafir: 0 };
+        }
+        
+        allKayitlar.forEach(k => {
+          const ay = k.ay || 1;
+          if (k.tip === 'iftar') aylik[ay].iftar++;
+          if (k.tip === 'sahur') aylik[ay].sahur++;
+          aylik[ay].tutar += Number(k.tutar) || 0;
+          aylik[ay].musafir += Number(k.musafirAdedi) || 0;
+        });
+        
+        const tbodyAylik = qs('#tbodyAylik');
+        tbodyAylik.innerHTML = '';
+        Object.entries(aylik).forEach(([ay, data]) => {
+          if (data.iftar === 0 && data.sahur === 0) return;
+          
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><strong>${ayIsimleri[parseInt(ay) - 1]}</strong></td>
+            <td>${data.iftar}</td>
+            <td>${data.sahur}</td>
+            <td class="right"><strong>₺${data.tutar.toLocaleString('tr-TR',{minimumFractionDigits:2})}</strong></td>
+            <td class="right">${data.musafir}</td>
+          `;
+          tbodyAylik.appendChild(tr);
+        });
+        
+        if (tbodyAylik.innerHTML === '') {
+          tbodyAylik.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">Kayıt bulunamadı</td></tr>';
+        }
+      } catch (e) {
+        console.error('İstatistikler yüklenemedi:', e);
+      }
+    }
+
+    // CSV Export
+    async function exportCSV() {
+      const yil = qs('#exportYil').value;
+      
+      try {
+        const yilRef = db.collection('ramazan_serif').doc(String(yil));
+        const snap = await yilRef.collection('kayitlar').orderBy('tarih', 'asc').get();
+        
+        const rows = [['Tarih', 'Tip', 'Sahip', 'Tutar', 'İştirak', 'MüsafirAdedi', 'Personel']];
+        
+        snap.docs.forEach(d => {
+          const k = d.data();
+          const tarihStr = k.tarih instanceof Date ? k.tarih.toISOString().slice(0, 10) : k.tarih;
+          rows.push([
+            tarihStr,
+            k.tip || '',
+            k.sahip || '',
+            k.tutar || 0,
+            k.istirak ? 'Evet' : 'Hayır',
+            k.musafirAdedi || 0,
+            k.personel || ''
+          ]);
+        });
+        
+        const csv = rows.map(r => r.map(cell => {
+          const str = String(cell);
+          return str.includes(',') || str.includes('"') || str.includes('\n') 
+            ? `"${str.replace(/"/g, '""')}"` 
+            : str;
+        }).join(',')).join('\n');
+        
+        const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `ramazan-serif-${yil}.csv`;
+        link.click();
+      } catch (e) {
+        console.error('CSV export hatası:', e);
+        alert('CSV dışa aktarılırken hata oluştu: ' + e.message);
+      }
+    }
+
+    // CSV Import
+    async function importCSV() {
+      const file = qs('#importFile').files[0];
+      if (!file) {
+        alert('Lütfen bir CSV dosyası seçin.');
+        return;
+      }
+      
+      const text = await file.text();
+      const lines = text.split('\n').filter(l => l.trim());
+      if (lines.length < 2) {
+        alert('CSV dosyası boş veya geçersiz.');
+        return;
+      }
+      
+      const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+      const rows = lines.slice(1).map(line => {
+        const values = [];
+        let current = '';
+        let inQuotes = false;
+        
+        for (let i = 0; i < line.length; i++) {
+          const char = line[i];
+          if (char === '"') {
+            inQuotes = !inQuotes;
+          } else if (char === ',' && !inQuotes) {
+            values.push(current.trim());
+            current = '';
+          } else {
+            current += char;
+          }
+        }
+        values.push(current.trim());
+        return values;
+      });
+      
+      try {
+        const user = auth.currentUser;
+        let personelAd = 'Bilinmeyen';
+        if (user) {
+          try {
+            const userDoc = await db.collection('kullanicilar').doc(user.uid).get();
+            if (userDoc.exists) {
+              personelAd = userDoc.data().adSoyad || user.email || 'Bilinmeyen';
+            }
+          } catch (e) {}
+        }
+        
+        const yilRef = db.collection('ramazan_serif').doc(String(currentYil));
+        let imported = 0;
+        
+        for (const row of rows) {
+          if (row.length < headers.length) continue;
+          
+          const tarih = row[0] || '';
+          const tip = row[1] || '';
+          const sahip = row[2] || '';
+          const tutar = parseFloat(row[3]) || 0;
+          const istirak = (row[4] || '').toLowerCase().includes('evet');
+          const musafirAdedi = parseInt(row[5]) || 0;
+          const personel = row[6] || personelAd;
+          
+          if (!tarih || !tip || !sahip) continue;
+          
+          const date = new Date(tarih);
+          const yil = date.getFullYear();
+          const ay = date.getMonth() + 1;
+          
+          await yilRef.collection('kayitlar').add({
+            tarih: tarih,
+            tip: tip.toLowerCase(),
+            sahip: sahip,
+            tutar: tutar,
+            tutarSecenek: String(tutar),
+            istirak: istirak,
+            musafirAdedi: musafirAdedi,
+            personel: personel,
+            personelUid: user?.uid || null,
+            yil: yil,
+            ay: ay,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          
+          imported++;
+        }
+        
+        alert(`${imported} kayıt başarıyla içe aktarıldı!`);
+        qs('#importFile').value = '';
+        await loadKayitlar();
+      } catch (e) {
+        console.error('CSV import hatası:', e);
+        alert('CSV içe aktarılırken hata oluştu: ' + e.message);
+      }
+    }
+
+    qs('#filtreYil').addEventListener('change', loadKayitlar);
+
+    // ESC tuşu
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeEditModal();
+        closeTutarModal();
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      if (e.target.classList.contains('modal')) {
+        closeEditModal();
+        closeTutarModal();
+      }
+    });
+  </script>
+</body>
+</html>
+

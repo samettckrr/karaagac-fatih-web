@@ -879,12 +879,13 @@
         const tdPersonel=document.createElement("td"); tdPersonel.className='wrap';
         tdPersonel.textContent=(p.oran>=100? '⭐ ' : '') + p.personel;
 
-        const tdTeberru=document.createElement("td"); tdTeberru.textContent=`${p.teberru.toLocaleString("tr-TR")} ₺`;
-        const tdTahsilat=document.createElement("td"); tdTahsilat.textContent=`${p.tahsilat.toLocaleString("tr-TR")} ₺`;
+        const fmtPara = (n) => Math.round(n || 0).toLocaleString("tr-TR", {minimumFractionDigits: 0, maximumFractionDigits: 0});
+        const tdTeberru=document.createElement("td"); tdTeberru.textContent=`${fmtPara(p.teberru)} ₺`;
+        const tdTahsilat=document.createElement("td"); tdTahsilat.textContent=`${fmtPara(p.tahsilat)} ₺`;
         const tdKk=document.createElement("td"); tdKk.textContent=p.kurbanKk||0;
         const tdBb=document.createElement("td"); tdBb.textContent=p.kurbanBb||0;
-        const tdHedef=document.createElement("td"); tdHedef.textContent=`${p.hedef.toLocaleString("tr-TR")} ₺`;
-        const tdTemin=document.createElement("td"); tdTemin.textContent=`${p.teminHedef.toLocaleString("tr-TR")} ₺`;
+        const tdHedef=document.createElement("td"); tdHedef.textContent=`${fmtPara(p.hedef)} ₺`;
+        const tdTemin=document.createElement("td"); tdTemin.textContent=`${fmtPara(p.teminHedef)} ₺`;
 
         const tdOran=document.createElement("td");
         const prog=document.createElement('div'); prog.className='progress';
@@ -940,10 +941,11 @@
       const oran = sumHedef>0 ? Math.round((sumTeminHF/sumHedef)*100) : 0;
 
       // para
-      toplamTeberruEl.textContent  = `₺${sumTeberru.toLocaleString("tr-TR")}`;
-      toplamTahsilatEl.textContent = `₺${sumTahsilat.toLocaleString("tr-TR")}`;
-      toplamHedefEl.textContent    = `₺${sumHedef.toLocaleString("tr-TR")}`;
-      toplamTeminEl.textContent    = `₺${sumTeminHF.toLocaleString("tr-TR")}`;
+      const fmtPara = (n) => Math.round(n || 0).toLocaleString("tr-TR", {minimumFractionDigits: 0, maximumFractionDigits: 0});
+      toplamTeberruEl.textContent  = `₺${fmtPara(sumTeberru)}`;
+      toplamTahsilatEl.textContent = `₺${fmtPara(sumTahsilat)}`;
+      toplamHedefEl.textContent    = `₺${fmtPara(sumHedef)}`;
+      toplamTeminEl.textContent    = `₺${fmtPara(sumTeminHF)}`;
       toplamOranEl.textContent     = `%${oran}`;
       oranBar.style.width          = Math.max(0, Math.min(100, oran)) + '%';
 
@@ -1075,16 +1077,31 @@
         const base = {};
         snap.forEach(doc=>{
           const d=doc.data()||{};
-          const when = getWhen(d);
-          if (start && end){
-            if (!when || when < start || when >= end) return;
-          } else if (yil){
-            if (!when || when.getFullYear() !== yil) return;
+          
+          // Önce ay/yıl alanlarını kontrol et (muhasebe-form'dan gelen veriler için)
+          if(d.ay !== undefined && d.yil !== undefined){
+            // Ay/yıl bazlı filtreleme
+            if(yil && d.yil !== yil) return;
+            if(ay && d.ay !== ay) return;
+            // Tarih aralığı kontrolü (start/end varsa)
+            if(start && end){
+              const when = getWhen(d);
+              if(!when || when < start || when >= end) return;
+            }
+          } else {
+            // Eski format: tarih alanından kontrol
+            const when = getWhen(d);
+            if (start && end){
+              if (!when || when < start || when >= end) return;
+            } else if (yil){
+              if (!when || when.getFullYear() !== yil) return;
+            }
           }
-          if (kategori !== 'Tümü'){
-            const dKat = d.kategori || d.category || '';
-            if (dKat !== kategori) return;
-          }
+          
+          // Kategori filtresi: Teberru'lar kategori filtresinden bağımsız olarak her zaman gösterilmeli
+          // Çünkü teberru genel bir kavramdır ve kategori bazlı değildir
+          // Kategori filtresi sadece hedef verileri için geçerli olmalı
+          
           const p=canonName(d.personel||'-');
           base[p]=(base[p]||0)+toNum(d.miktar);
           const ts=d.createdAt?.toMillis?.()? d.createdAt.toMillis(): (d.createdAt||0);
@@ -1223,7 +1240,7 @@
           tbody.innerHTML += `<tr>
             <td>${x.tStr}</td>
             <td>${x.ad||'-'}</td>
-            <td>${x.miktarTip==='adet' ? x.miktar : '₺'+x.miktar.toLocaleString('tr-TR')}</td>
+            <td>${x.miktarTip==='adet' ? x.miktar : '₺'+Math.round(x.miktar || 0).toLocaleString('tr-TR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}</td>
             <td><span class="etiket ${turEt}">${turAd}</span></td>
             <td>${x.aciklama||'-'}</td>
           </tr>`;
@@ -1282,18 +1299,31 @@
         const s = await db.collection('veriler').where('tur','==','teberru').get();
         s.forEach(doc=>{
           const d=doc.data()||{}; const p=canonName(d.personel||'-'); if(p!==personel) return;
-          const when=getWhen(d);
-          if (start && end){
-            if (!when || when < start || when >= end) return;
-          } else if (yil){
-            if (!when || when.getFullYear() !== yil) return;
+          
+          // Ay/yıl bazlı filtreleme (muhasebe-form'dan gelen veriler için)
+          if(d.ay !== undefined && d.yil !== undefined){
+            if(yil && d.yil !== yil) return;
+            if(ay && d.ay !== ay) return;
+            if(start && end){
+              const when = getWhen(d);
+              if(!when || when < start || when >= end) return;
+            }
+          } else {
+            // Eski format: tarih alanından kontrol
+            const when=getWhen(d);
+            if (start && end){
+              if (!when || when < start || when >= end) return;
+            } else if (yil){
+              if (!when || when.getFullYear() !== yil) return;
+            }
           }
-          if (kategori !== 'Tümü'){
-            const dKat = d.kategori || '';
-            if (dKat !== kategori) return;
-          }
+          
+          // Kategori filtresi teberru'lar için geçerli değil (teberru genel bir kavramdır)
+          
           teberruTop += toNum(d.miktar);
-          const t=when, tStr=t? t.toLocaleString('tr-TR'):'-';
+          const t = d.ay !== undefined && d.yil !== undefined ? 
+            new Date(d.yil, d.ay - 1, 1) : getWhen(d);
+          const tStr = t ? t.toLocaleString('tr-TR') : '-';
           satirlar.push({t, tStr, ad:(d.adSoyad||d.veren||'-'), miktar:toNum(d.miktar), tur:'teberru', aciklama:(d.aciklama||d.nereyeGeldi||'-'), miktarTip:'₺'});
         });
 
@@ -1341,11 +1371,12 @@
           satirlar.push({t, tStr, ad, miktar:tutar, tur:'tahsilat', aciklama:(d.aciklama||'-'), miktarTip:'₺'});
         });
 
+        const fmtPara = (n) => Math.round(n || 0).toLocaleString("tr-TR", {minimumFractionDigits: 0, maximumFractionDigits: 0});
         const oran=hedef>0? Math.round((hedefTeminTop/hedef)*100) : 0;
-        m_hedefTop.textContent='₺'+hedef.toLocaleString('tr-TR');
-        m_hedefTeminTop.textContent='₺'+hedefTeminTop.toLocaleString('tr-TR');
-        m_teberruTop.textContent='₺'+teberruTop.toLocaleString('tr-TR');
-        m_tahsilatTop.textContent='₺'+tahsilatTop.toLocaleString('tr-TR');
+        m_hedefTop.textContent='₺'+fmtPara(hedef);
+        m_hedefTeminTop.textContent='₺'+fmtPara(hedefTeminTop);
+        m_teberruTop.textContent='₺'+fmtPara(teberruTop);
+        m_tahsilatTop.textContent='₺'+fmtPara(tahsilatTop);
         m_oranTop.textContent='%'+oran;
 
         __modalRows = satirlar;
@@ -1355,6 +1386,7 @@
       }catch(err){
         console.error('[detay modal] hata:',err);
         m_hareketTabloBody.innerHTML=`<tr><td colspan="5">Kayıtlar yüklenemedi.</td></tr>`;
+        const fmtPara = (n) => Math.round(n || 0).toLocaleString("tr-TR", {minimumFractionDigits: 0, maximumFractionDigits: 0});
         m_hedefTeminTop.textContent='₺0'; m_teberruTop.textContent='₺0'; m_tahsilatTop.textContent='₺0'; m_oranTop.textContent='%0';
       }
     }

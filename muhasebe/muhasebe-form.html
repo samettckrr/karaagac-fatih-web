@@ -505,7 +505,8 @@
         <div class="row">
           <div class="col-6 field">
             <label>Miktar (₺)</label>
-            <input type="number" id="tbr-miktar" min="0" />
+            <input type="text" id="tbr-miktar" placeholder="Örn: 10,50 veya 1000" inputmode="decimal" />
+            <div class="hint">Virgül ile ondalık girebilirsiniz (örn: 10,50)</div>
           </div>
           <div class="col-6 field">
             <label>Para Nereye Geldi?</label>
@@ -729,7 +730,38 @@ const cihazTipi = ()=> (window.innerWidth<700?'mobile':(window.innerWidth<960?'t
 const tsISO = ()=> new Date().toISOString();
 const norm=(s)=> String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 function toast(msg){const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(window.__to); window.__to=setTimeout(()=>t.classList.remove('show'),2400);}
-function toNum(v){ if (typeof v === 'number') return v; if (typeof v === 'string'){ const n=Number(v.replace(/\./g,'').replace(',', '.')); return isNaN(n)?0:n; } return 0; }
+function toNum(v){ 
+  if (typeof v === 'number') return v; 
+  if (typeof v === 'string'){ 
+    // Türkçe format: nokta binlik, virgül ondalık ayırıcı
+    // Önce boşlukları temizle
+    let s = v.trim().replace(/\s/g, '');
+    // Eğer hem nokta hem virgül varsa: nokta binlik, virgül ondalık
+    if (s.includes(',') && s.includes('.')) {
+      s = s.replace(/\./g, '').replace(',', '.');
+    }
+    // Sadece virgül varsa: ondalık ayırıcı
+    else if (s.includes(',') && !s.includes('.')) {
+      s = s.replace(',', '.');
+    }
+    // Sadece nokta varsa: binlik ayırıcı (kaldır) veya ondalık (bırak)
+    else if (s.includes('.') && !s.includes(',')) {
+      // Son noktadan sonra 3 karakter varsa binlik, yoksa ondalık
+      const lastDotIndex = s.lastIndexOf('.');
+      const afterDot = s.substring(lastDotIndex + 1);
+      if (afterDot.length <= 2) {
+        // Ondalık ayırıcı (bırak)
+        s = s;
+      } else {
+        // Binlik ayırıcı (kaldır)
+        s = s.replace(/\./g, '');
+      }
+    }
+    const n = Number(s);
+    return isNaN(n) ? 0 : n; 
+  } 
+  return 0; 
+}
 function normalizeUrl(u){ if(!u) return '#'; if(/^https?:\/\//i.test(u)) return u; if(u.startsWith('/')) return u; return '/'+u.replace(/^\.?\//,''); }
 const MONTHS_TR=["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
 function formatMonthLabel(val){
