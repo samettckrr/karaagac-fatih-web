@@ -125,6 +125,17 @@
     .stat-label{color:var(--muted);font-size:12px;font-weight:600}
     .stat-value{font-size:24px;font-weight:700;color:var(--ink)}
     
+    /* Analiz Grafikleri */
+    .chart-container{position:relative;height:300px;margin:16px 0}
+    .progress-bar{height:24px;background:#f0f0f0;border-radius:12px;overflow:hidden;position:relative}
+    .progress-fill{height:100%;background:linear-gradient(90deg,var(--good),var(--accent));transition:width 0.3s}
+    .trend-up{color:var(--good);font-weight:600}
+    .trend-down{color:var(--bad);font-weight:600}
+    .trend-same{color:var(--muted);font-weight:600}
+    .badge-daimi{background:#e8f5e9;color:var(--good);padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600}
+    .badge-yeni{background:#e3f2fd;color:#1976d2;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600}
+    .badge-pasif{background:#fef3c7;color:#d97706;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600}
+    
     /* Takvim Tab */
     .cal-wrapper{display:flex;flex-direction:column;gap:8px;margin-top:12px}
     .cal-dow-row{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
@@ -171,6 +182,14 @@
 </div>
 <aside class="drawer" id="drawer"></aside>
 
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Progress Bar -->
+<div class="progress-container" id="progressContainer">
+  <div class="progress-bar-fill" id="progressBar"></div>
+</div>
+
 <header>
   <div class="wrap">
     <h2 style="margin:12px 0 8px 0;font-size:24px;font-weight:800">Ramazan-ı Şerif</h2>
@@ -182,9 +201,9 @@
     <div class="tabs">
       <button class="tab active" data-tab="kayitlar">📋 Kayıtlar</button>
       <button class="tab" data-tab="takvim">📅 Takvim Görünümü</button>
-      <button class="tab" data-tab="tutar">💰 Tutar Ayarları</button>
-      <button class="tab" data-tab="ramazan">📅 Ramazan Ayarları</button>
-      <button class="tab" data-tab="kapasite">📊 Kapasite Ayarları</button>
+      <button class="tab" data-tab="ayarlar">⚙️ Ayarlar</button>
+      <button class="tab" data-tab="hedef">🎯 Hedef Yönetimi</button>
+      <button class="tab" data-tab="veri-duzenleme">✏️ Veri Düzenleme</button>
       <button class="tab" data-tab="istatistik">📊 İstatistikler</button>
       <button class="tab" data-tab="export">📤 İçe/Dışa Aktar</button>
     </div>
@@ -259,36 +278,6 @@
       </div>
     </div>
 
-    <!-- Tab: Tutar Ayarları -->
-    <div class="tab-content" id="tab-tutar">
-      <div class="card">
-        <div class="toolbar">
-          <select id="tutarYil">
-            <option value="2024">2024</option>
-            <option value="2025" selected>2025</option>
-            <option value="2026">2026</option>
-          </select>
-          <button class="good" onclick="openTutarModal()">+ Yeni Tutar Seçeneği</button>
-        </div>
-
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Sıra</th>
-                <th>Tutar (₺)</th>
-                <th>Etiket</th>
-                <th>Tip</th>
-                <th>Durum</th>
-                <th style="width:120px">İşlemler</th>
-              </tr>
-            </thead>
-            <tbody id="tbodyTutar"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
     <!-- Tab: İstatistikler -->
     <div class="tab-content" id="tab-istatistik">
       <div class="card">
@@ -323,8 +312,9 @@
       </div>
     </div>
 
-    <!-- Tab: Ramazan Ayarları -->
-    <div class="tab-content" id="tab-ramazan">
+    <!-- Tab: Ayarlar -->
+    <div class="tab-content" id="tab-ayarlar">
+      <!-- Ramazan-ı Şerif Yılları -->
       <div class="card">
         <div class="toolbar">
           <h3 style="margin:0">Ramazan-ı Şerif Yılları</h3>
@@ -349,6 +339,7 @@
         </div>
       </div>
 
+      <!-- Mahal Ayarları -->
       <div class="card" style="margin-top:16px">
         <div class="toolbar">
           <h3 style="margin:0">Mahal Ayarları</h3>
@@ -358,22 +349,51 @@
 
         <div id="mahalList" style="margin-top:16px"></div>
       </div>
-    </div>
 
-    <!-- Tab: Kapasite Ayarları -->
-    <div class="tab-content" id="tab-kapasite">
-      <div class="card">
+      <!-- Tutar Ayarları -->
+      <div class="card" style="margin-top:16px">
         <div class="toolbar">
-          <select id="kapasiteYil">
+          <h3 style="margin:0">Tutar Ayarları</h3>
+          <div style="flex:1"></div>
+          <select id="tutarYil" style="margin-right:8px">
+            <option value="2024">2024</option>
+            <option value="2025" selected>2025</option>
+            <option value="2026">2026</option>
+          </select>
+          <button class="good" onclick="openTutarModal()">+ Yeni Tutar Seçeneği</button>
+        </div>
+
+        <div class="table-wrap" style="margin-top:16px">
+          <table>
+            <thead>
+              <tr>
+                <th>Sıra</th>
+                <th>Tutar (₺)</th>
+                <th>Etiket</th>
+                <th>Tip</th>
+                <th>Durum</th>
+                <th style="width:120px">İşlemler</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyTutar"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Kapasite Ayarları -->
+      <div class="card" style="margin-top:16px">
+        <div class="toolbar">
+          <h3 style="margin:0">Kapasite Ayarları</h3>
+          <div style="flex:1"></div>
+          <select id="kapasiteYil" style="margin-right:8px">
             <option value="">Yıl seçiniz...</option>
           </select>
-          <div style="flex:1"></div>
           <button class="good" onclick="openGenelKapasiteModal()">⚙️ Genel Kapasite</button>
           <button class="good" onclick="openKapasiteModal()">+ Günlük Kapasite</button>
         </div>
 
         <div class="card" style="margin-top:16px">
-          <h3 style="margin:0 0 12px 0">Genel Kapasite Ayarları</h3>
+          <h4 style="margin:0 0 12px 0">Genel Kapasite Ayarları</h4>
           <div id="genelKapasiteInfo" style="padding:12px;background:#f8f9fa;border-radius:8px;margin-bottom:12px">
             <p style="margin:0;color:var(--muted);font-size:13px">Genel kapasite tüm günler için geçerlidir. Günlük özel kapasite varsa o gün için özel kapasite kullanılır.</p>
             <div id="genelKapasiteDisplay" style="margin-top:8px"></div>
@@ -381,7 +401,7 @@
         </div>
 
         <div class="card" style="margin-top:16px">
-          <h3 style="margin:0 0 12px 0">Günlük Kapasite Ayarları</h3>
+          <h4 style="margin:0 0 12px 0">Günlük Kapasite Ayarları</h4>
           <div class="table-wrap">
             <table>
               <thead>
@@ -396,6 +416,121 @@
             </table>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Tab: Hedef Yönetimi -->
+    <div class="tab-content" id="tab-hedef">
+      <!-- Veri Yükleme -->
+      <div class="card">
+        <div class="toolbar">
+          <h3 style="margin:0">📥 Veri Yükleme</h3>
+          <div style="flex:1"></div>
+              <button class="good" onclick="openVeriYukleModal()">+ Veri Yükle</button>
+              <button class="warning" onclick="openVeriTemizleModal()" style="background:#fff3cd;color:#856404;border-color:#ffc107">🗑️ Veri Temizle</button>
+              <button class="secondary" onclick="downloadVeriSablon()">📄 Şablon İndir</button>
+        </div>
+        <div style="padding:12px;background:#f8f9fa;border-radius:8px;margin-top:12px">
+          <p style="margin:0;color:var(--muted);font-size:13px;line-height:1.6">
+            <strong>📋 Format:</strong> CSV dosyası yıllık veriler içermelidir.<br>
+            <strong>Kolonlar:</strong> Yıl, Tip (iftar/sahur/taahhüt/teberru), Sahip (kişi adı), Diğer (açıklama/ara kişi), Tutar (virgül destekli, örn: 10.000,50), Referans<br>
+            <strong>Örnek:</strong> 2023,iftar,Ali Gövercin,Mehmet Kara,10000.50,Muhsin Çelik
+          </p>
+          <p style="margin:8px 0 0 0;color:var(--muted);font-size:12px;line-height:1.5">
+            <strong>💡 Not:</strong> "Diğer" kısmı ara kişi bilgisi için kullanılır. Örn: İftar sahibi Ali Gövercin, Diğer Mehmet Kara, Referans Muhsin Çelik = Muhsin Çelik, Mehmet Kara vasıtasıyla Ali Gövercin'den iftar almış.
+          </p>
+        </div>
+      </div>
+
+      <!-- Genel Özet Dashboard -->
+      <div class="card" style="margin-top:16px">
+        <h3 style="margin:0 0 16px 0">📊 3 Yıllık Genel Özet</h3>
+        <div class="toolbar">
+          <select id="analizYil">
+            <option value="2023">2023</option>
+            <option value="2024">2024</option>
+            <option value="2025" selected>2025</option>
+            <option value="tumu">Tüm Yıllar</option>
+          </select>
+          <button onclick="loadAnalizDashboard()">Yenile</button>
+        </div>
+        <div id="analizDashboard" style="margin-top:16px"></div>
+      </div>
+
+      <!-- Personel/Referans Bazlı Detaylı Analiz -->
+      <div class="card" style="margin-top:16px">
+        <h3 style="margin:0 0 16px 0">👥 Personel/Referans Bazlı Detaylı Analiz</h3>
+        <div class="toolbar">
+          <input type="text" id="personelAra" placeholder="Personel/Referans adı ara..." style="flex:1;min-width:200px" />
+          <select id="personelFiltreYil">
+            <option value="">Tüm Yıllar</option>
+            <option value="2023">2023</option>
+            <option value="2024">2024</option>
+            <option value="2025">2025</option>
+          </select>
+          <select id="personelFiltreTip">
+            <option value="">Tüm Tipler</option>
+            <option value="iftar">İftar</option>
+            <option value="sahur">Sahur</option>
+            <option value="taahhut">Taahhüt</option>
+            <option value="teberru">Teberru</option>
+          </select>
+          <button onclick="loadPersonelAnalizi()">Ara</button>
+        </div>
+        <div id="personelAnalizList" style="margin-top:16px"></div>
+      </div>
+
+      <!-- Kişi Bazlı Analiz -->
+      <div class="card" style="margin-top:16px">
+        <h3 style="margin:0 0 16px 0">👤 Kişi Bazlı Detaylı Analiz</h3>
+        <div class="toolbar">
+          <input type="text" id="kisiAra" placeholder="Kişi adı ara..." style="flex:1;min-width:200px" />
+          <select id="kisiFiltreTip">
+            <option value="">Tüm Tipler</option>
+            <option value="iftar">İftar</option>
+            <option value="sahur">Sahur</option>
+            <option value="taahhut">Taahhüt</option>
+            <option value="teberru">Teberru</option>
+          </select>
+          <button onclick="loadKisiAnalizi()">Ara</button>
+        </div>
+        <div id="kisiAnalizList" style="margin-top:16px"></div>
+      </div>
+
+      <!-- Trend Analizi -->
+      <div class="card" style="margin-top:16px">
+        <h3 style="margin:0 0 16px 0">📈 Trend Analizi</h3>
+        <div id="trendAnaliz" style="margin-top:16px"></div>
+      </div>
+
+      <!-- Kategori Analizi -->
+      <div class="card" style="margin-top:16px">
+        <h3 style="margin:0 0 16px 0">🏷️ Bağışçı Kategorileri</h3>
+        <div id="kategoriAnaliz" style="margin-top:16px"></div>
+      </div>
+    </div>
+
+    <!-- Tab: Veri Düzenleme -->
+    <div class="tab-content" id="tab-veri-duzenleme">
+      <div class="card">
+        <h3 style="margin:0 0 16px 0">✏️ Veri Düzenleme</h3>
+        <div class="toolbar">
+          <select id="duzenleYil" style="min-width:150px">
+            <option value="2023">2023</option>
+            <option value="2024">2024</option>
+            <option value="2025" selected>2025</option>
+          </select>
+          <select id="duzenleTip" style="min-width:150px">
+            <option value="">Tüm Tipler</option>
+            <option value="iftar">İftar</option>
+            <option value="sahur">Sahur</option>
+            <option value="taahhut">Taahhüt</option>
+            <option value="teberru">Teberru</option>
+          </select>
+          <input type="text" id="duzenleAra" placeholder="Sahip, Personel, Referans ara..." style="flex:1;min-width:200px" />
+          <button onclick="loadVeriDuzenleme()">Yenile</button>
+        </div>
+        <div id="veriDuzenlemeList" style="margin-top:16px"></div>
       </div>
     </div>
 
@@ -603,6 +738,181 @@
     </div>
   </div>
 
+  <!-- Modal: Veri Temizleme -->
+  <div class="modal" id="modalVeriTemizle">
+    <div class="sheet" style="max-width:600px">
+      <h3>🗑️ Veri Temizleme</h3>
+      <div style="padding:12px;background:#fff3cd;border-left:4px solid #ffc107;border-radius:8px;margin-bottom:20px">
+        <p style="margin:0;font-size:13px;line-height:1.6">
+          <strong>⚠️ Uyarı:</strong> Seçili yıl/yıllar için TÜM veriler silinecektir. Bu işlem geri alınamaz!<br>
+          <strong>💡 Öneri:</strong> Silmeden önce verilerinizi yedekleyin veya CSV dosyanızı hazır tutun.
+        </p>
+      </div>
+      <form id="formVeriTemizle" class="form-grid">
+        <div class="form-group">
+          <label>Silinecek Yıllar *</label>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+              <input type="checkbox" id="temizle2023" value="2023" />
+              <span>2023</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+              <input type="checkbox" id="temizle2024" value="2024" checked />
+              <span>2024</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+              <input type="checkbox" id="temizle2025" value="2025" checked />
+              <span>2025</span>
+            </label>
+          </div>
+          <small style="color:var(--muted);margin-top:8px">
+            Temizlemek istediğiniz yılları seçin (ör: çift kopya olan veriler için)
+          </small>
+        </div>
+        <div class="actions">
+          <button type="button" class="secondary" onclick="closeVeriTemizleModal()">İptal</button>
+          <button type="submit" class="bad">Sil ve Temizle</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Veri Yükleme -->
+  <div class="modal" id="modalVeriYukle">
+    <div class="sheet" style="max-width:800px">
+      <h3>📥 Finansal Veri Yükleme</h3>
+      <div style="padding:12px;background:#f0f7ff;border-left:4px solid var(--accent);border-radius:8px;margin-bottom:20px">
+        <p style="margin:0;font-size:13px;line-height:1.6">
+          <strong>📋 Format:</strong> CSV dosyası yıllık veriler içermelidir.<br>
+          <strong>Kolonlar:</strong> Yıl, Tip (iftar/sahur/taahhüt/teberru), Sahip (kişi adı), Diğer (açıklama/ara kişi), Tutar (virgül destekli, örn: 10.000,50), Referans<br>
+          <strong>Örnek:</strong> 2023,iftar,Ali Gövercin,Mehmet Kara,10000.50,Muhsin Çelik
+        </p>
+        <p style="margin:8px 0 0 0;font-size:12px;line-height:1.5;color:var(--muted)">
+          <strong>💡 Not:</strong> "Diğer" kısmı ara kişi bilgisi için kullanılır. Tutar kısmında virgül veya nokta kullanabilirsiniz (10.000,50 veya 10000.50).
+        </p>
+      </div>
+      <form id="formVeriYukle" class="form-grid">
+        <div class="form-group">
+          <label>CSV Dosyası *</label>
+          <input type="file" id="veriYukleFile" accept=".csv" required />
+          <small style="color:var(--muted);margin-top:4px">
+            Muhasebe sisteminden indirdiğiniz CSV dosyasını seçin
+          </small>
+        </div>
+        <div class="form-group">
+          <label>Yıl *</label>
+          <select id="veriYukleYil" required>
+            <option value="">Seçiniz</option>
+            <option value="2023">2023</option>
+            <option value="2024">2024</option>
+            <option value="2025">2025</option>
+          </select>
+          <small style="color:var(--muted);margin-top:4px">
+            Yüklediğiniz verinin ait olduğu yıl
+          </small>
+        </div>
+        <div id="veriYuklePreview" style="display:none;margin-top:16px">
+          <h4 style="margin:0 0 12px 0;font-size:16px">Önizleme (İlk 10 Kayıt)</h4>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tip</th>
+                  <th>Sahip</th>
+                  <th>Diğer</th>
+                  <th>Tutar (₺)</th>
+                  <th>Referans</th>
+                </tr>
+              </thead>
+              <tbody id="veriYuklePreviewBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="actions">
+          <button type="button" class="secondary" onclick="closeVeriYukleModal()">İptal</button>
+          <button type="submit" class="good">Yükle</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Kişi Detay Analizi -->
+  <div class="modal" id="modalKisiDetay">
+    <div class="sheet" style="max-width:900px;max-height:90vh">
+      <h3 id="kisiDetayTitle">👤 Kişi Detay Analizi</h3>
+      <div id="kisiDetayContent"></div>
+      <div class="actions">
+        <button type="button" class="secondary" onclick="closeKisiDetayModal()">Kapat</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Personel/Referans Detay Analizi -->
+  <div class="modal" id="modalPersonelDetay">
+    <div class="sheet" style="max-width:1000px;max-height:90vh;overflow-y:auto">
+      <h3 id="personelDetayTitle">👥 Personel/Referans Detay Analizi</h3>
+      <div id="personelDetayContent"></div>
+      <div class="actions">
+        <button type="button" class="secondary" onclick="closePersonelDetay()">Kapat</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Veri Düzenleme -->
+  <div class="modal" id="modalVeriDuzenleme">
+    <div class="sheet" style="max-width:750px;max-height:90vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid var(--border)">
+        <h3 id="veriDuzenlemeTitle" style="margin:0;font-size:20px;color:var(--text)">✏️ Veri Düzenleme</h3>
+        <button type="button" onclick="closeVeriDuzenlemeModal()" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--muted);padding:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all 0.2s" onmouseover="this.style.background='var(--hover)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--muted)'">×</button>
+      </div>
+      <form id="formVeriDuzenleme" style="display:grid;gap:16px">
+        <input type="hidden" id="duzenleId" />
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div class="field">
+            <label style="display:block;margin-bottom:8px;font-weight:600;color:var(--text);font-size:14px">Yıl *</label>
+            <select id="duzenleYilInput" required style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text)">
+              <option value="2023">2023</option>
+              <option value="2024">2024</option>
+              <option value="2025">2025</option>
+            </select>
+          </div>
+          <div class="field">
+            <label style="display:block;margin-bottom:8px;font-weight:600;color:var(--text);font-size:14px">Tip *</label>
+            <select id="duzenleTipInput" required style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text)">
+              <option value="iftar">🌙 İftar</option>
+              <option value="sahur">🌟 Sahur</option>
+              <option value="taahhut">📋 Taahhüt</option>
+              <option value="teberru">💝 Teberru</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label style="display:block;margin-bottom:8px;font-weight:600;color:var(--text);font-size:14px">Sahip (Bağış Yapan) *</label>
+          <input type="text" id="duzenleSahip" required style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text)" />
+        </div>
+        <div class="field">
+          <label style="display:block;margin-bottom:8px;font-weight:600;color:var(--text);font-size:14px">Diğer (Ara Kişi)</label>
+          <input type="text" id="duzenleDiger" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text)" />
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div class="field">
+            <label style="display:block;margin-bottom:8px;font-weight:600;color:var(--text);font-size:14px">Tutar (₺) *</label>
+            <input type="text" id="duzenleTutar" placeholder="10000.50 veya 10.000,50" required style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text)" />
+          </div>
+          <div class="field">
+            <label style="display:block;margin-bottom:8px;font-weight:600;color:var(--text);font-size:14px">Referans (Personel)</label>
+            <input type="text" id="duzenleReferans" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text)" />
+          </div>
+        </div>
+        <div class="actions" style="display:flex;gap:12px;justify-content:flex-end;margin-top:8px;padding-top:20px;border-top:1px solid var(--border)">
+          <button type="button" class="secondary" onclick="closeVeriDuzenlemeModal()" style="padding:10px 20px;font-size:14px">İptal</button>
+          <button type="button" class="danger" onclick="deleteVeriKayit()" id="btnDeleteVeri" style="display:none;padding:10px 20px;font-size:14px">🗑️ Sil</button>
+          <button type="submit" class="good" style="padding:10px 24px;font-size:14px;font-weight:600">💾 Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Modal: Mahal Ayarları -->
   <div class="modal" id="modalMahal">
     <div class="sheet">
@@ -637,8 +947,164 @@
     let kayitlar = [];
     let tutarSecenekleri = [];
     let currentYil = new Date().getFullYear();
+    
+    // Toast Bildirim Sistemi
+    let toastQueue = [];
+    let toastShowing = false;
+    
+    function showToast(title, message = '', type = 'success', duration = 4000) {
+      const container = qs('#toastContainer');
+      if (!container) return;
+      
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      
+      const icons = {
+        success: '✅',
+        error: '❌',
+        warning: '⚠️',
+        info: 'ℹ️'
+      };
+      
+      toast.innerHTML = `
+        <span class="toast-icon">${icons[type] || icons.info}</span>
+        <div class="toast-content">
+          <div class="toast-title">${title}</div>
+          ${message ? `<div class="toast-message">${message}</div>` : ''}
+        </div>
+        <button class="toast-close" onclick="this.closest('.toast').remove()">×</button>
+      `;
+      
+      container.appendChild(toast);
+      
+      // Animasyon için
+      setTimeout(() => toast.classList.add('show'), 10);
+      
+      // Otomatik kapanma
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+      }, duration);
+    }
+    
+    window.showToast = showToast;
+    
+    // Progress Bar
+    function showProgress(percent) {
+      const container = qs('#progressContainer');
+      const bar = qs('#progressBar');
+      if (container && bar) {
+        if (percent > 0) {
+          container.classList.add('active');
+          bar.style.width = percent + '%';
+        } else {
+          container.classList.remove('active');
+          bar.style.width = '0%';
+        }
+      }
+    }
+    
+    window.showProgress = showProgress;
 
     const ayIsimleri = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+
+    // Mahal Ayarları - Global scope (onclick için erişilebilir olmalı)
+    let mahalList = [];
+    
+    // Mahal fonksiyonlarını önce tanımla (auth kontrolünden önce)
+    async function loadMahallar() {
+      try {
+        const snap = await db.collection('ramazan_serif').doc('ayarlar').collection('mahaller').orderBy('adi', 'asc').get();
+        mahalList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderMahallar();
+      } catch (e) {
+        console.error('Mahaller yüklenemedi:', e);
+        mahalList = [];
+        renderMahallar();
+      }
+    }
+
+    function renderMahallar() {
+      const container = qs('#mahalList');
+      if (!container) return;
+      
+      container.innerHTML = '';
+
+      if (mahalList.length === 0) {
+        container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px">Mahal bulunamadı. Yeni mahal ekleyin.</div>';
+        return;
+      }
+
+      mahalList.forEach(m => {
+        const card = document.createElement('div');
+        card.style.cssText = 'border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;background:#fff';
+        card.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:start">
+            <div>
+              <h4 style="margin:0 0 8px 0;font-size:16px;color:var(--ink)">${m.adi || '-'}</h4>
+              <div style="display:flex;gap:16px;font-size:13px;color:var(--muted)">
+                <span><strong>Min:</strong> ${m.minMusafir || 0} kişi</span>
+                <span><strong>Max:</strong> ${m.maxMusafir || 0} kişi</span>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button onclick="editMahal('${m.id}')" style="padding:6px 12px;font-size:12px">Düzenle</button>
+              <button onclick="deleteMahal('${m.id}')" class="danger" style="padding:6px 12px;font-size:12px">Sil</button>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function openMahalModal(id = null) {
+      qs('#mahalId').value = id || '';
+      qs('#mahalTitle').textContent = id ? 'Mahal Düzenle' : 'Yeni Mahal Ekle';
+      
+      if (id) {
+        const m = mahalList.find(m => m.id === id);
+        if (m) {
+          qs('#mahalAdi').value = m.adi || '';
+          qs('#mahalMin').value = m.minMusafir || 1;
+          qs('#mahalMax').value = m.maxMusafir || '';
+        }
+      } else {
+        qs('#formMahal').reset();
+        qs('#mahalMin').value = 1;
+      }
+      
+      qs('#modalMahal').classList.add('show');
+      document.body.classList.add('modal-open');
+    }
+
+    function closeMahalModal() {
+      qs('#modalMahal').classList.remove('show');
+      document.body.classList.remove('modal-open');
+    }
+
+    async function deleteMahal(id) {
+      if (!confirm('Bu mahali silmek istediğinizden emin misiniz?')) return;
+      
+      try {
+        await db.collection('ramazan_serif').doc('ayarlar').collection('mahaller').doc(id).delete();
+        alert('Mahal silindi!');
+        await loadMahallar();
+      } catch (e) {
+        console.error('Mahal silinemedi:', e);
+        alert('Hata: ' + e.message);
+      }
+    }
+
+    function editMahal(id) {
+      openMahalModal(id);
+    }
+
+    // Global olarak erişilebilir yap (onclick için)
+    window.openMahalModal = openMahalModal;
+    window.editMahal = editMahal;
+    window.deleteMahal = deleteMahal;
+    window.closeMahalModal = closeMahalModal;
+    window.loadMahallar = loadMahallar;
 
     /* ===== Navigation Bar ===== */
     let CURRENT_ALLOW=new Set(), CURRENT_DENY=new Set();
@@ -798,15 +1264,33 @@
           if (tabId === 'istatistik') {
             if (typeof loadStatistics === 'function') loadStatistics();
           }
-          if (tabId === 'ramazan') {
+          if (tabId === 'ayarlar') {
             if (typeof loadRamazanAyarlari === 'function') loadRamazanAyarlari();
             if (typeof loadMahallar === 'function') loadMahallar();
-          }
-          if (tabId === 'kapasite') {
+            if (typeof loadTutarSecenekleri === 'function') loadTutarSecenekleri();
             if (typeof loadKapasiteAyarlari === 'function') loadKapasiteAyarlari();
           }
-          if (tabId === 'tutar') {
-            if (typeof loadTutarSecenekleri === 'function') loadTutarSecenekleri();
+          if (tabId === 'hedef') {
+            // Analiz verilerini yükle ve göster
+            if (typeof loadAnalizVerileri === 'function') {
+              loadAnalizVerileri().then(() => {
+                if (typeof loadAnalizDashboard === 'function') loadAnalizDashboard();
+                if (typeof loadTrendAnaliz === 'function') loadTrendAnaliz();
+                if (typeof loadKategoriAnaliz === 'function') loadKategoriAnaliz();
+                if (typeof loadKisiAnalizi === 'function') loadKisiAnalizi();
+                if (typeof loadPersonelAnalizi === 'function') loadPersonelAnalizi();
+              });
+            }
+          }
+          if (tabId === 'veri-duzenleme') {
+            // Veri düzenleme sekmesi açıldığında verileri yükle
+            if (typeof loadAnalizVerileri === 'function') {
+              loadAnalizVerileri().then(() => {
+                if (typeof loadVeriDuzenleme === 'function') loadVeriDuzenleme();
+              });
+            } else {
+              if (typeof loadVeriDuzenleme === 'function') loadVeriDuzenleme();
+            }
           }
         }
       });
@@ -974,6 +1458,56 @@
     }
 
     window.openRamazanModal = openRamazanModal;
+
+    // Mahal form submit listener - DOM yüklendikten sonra ekle
+    setTimeout(() => {
+      const formMahal = qs('#formMahal');
+      if (formMahal) {
+        // Önceki listener'ı kaldır (varsa)
+        const newForm = formMahal.cloneNode(true);
+        formMahal.parentNode.replaceChild(newForm, formMahal);
+        
+        newForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          
+          const id = qs('#mahalId').value;
+          const adi = qs('#mahalAdi').value.trim();
+          const minMusafir = parseInt(qs('#mahalMin').value) || 1;
+          const maxMusafir = parseInt(qs('#mahalMax').value) || 1;
+          
+          if (!adi || !maxMusafir || maxMusafir < minMusafir) {
+            alert('Lütfen tüm alanları doğru şekilde doldurun. Max müsafir adedi min\'den küçük olamaz.');
+            return;
+          }
+          
+          try {
+            const ayarlarRef = db.collection('ramazan_serif').doc('ayarlar').collection('mahaller');
+            const data = {
+              adi: adi,
+              minMusafir: minMusafir,
+              maxMusafir: maxMusafir,
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            
+            if (id) {
+              await ayarlarRef.doc(id).update(data);
+            } else {
+              await ayarlarRef.add({
+                ...data,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+              });
+            }
+            
+            alert('Mahal başarıyla kaydedildi!');
+            closeMahalModal();
+            await loadMahallar();
+          } catch (e) {
+            console.error('Mahal kaydedilemedi:', e);
+            alert('Hata: ' + e.message);
+          }
+        });
+      }
+    }, 100);
 
     // Kapasite Ayarları
     let kapasiteAyarlariList = [];
@@ -1311,11 +1845,11 @@
       const tip = qs('#filtreTip').value;
       if (tip) filtered = filtered.filter(k => k.tip === tip);
       
-      const ara = qs('#araInput').value.toLowerCase().trim();
+      const ara = qs('#araInput').value.trim();
       if (ara) {
         filtered = filtered.filter(k => 
-          (k.sahip || '').toLowerCase().includes(ara) ||
-          (k.personel || '').toLowerCase().includes(ara)
+          turkishIncludes(k.sahip || '', ara) ||
+          turkishIncludes(k.personel || '', ara)
         );
       }
       
@@ -1466,8 +2000,8 @@
       
       try {
         const yilRef = db.collection('ramazan_serif').doc(String(yil));
+        // where('yil', '==', yil) gereksiz çünkü zaten yilRef içindeyiz
         const snap = await yilRef.collection('kayitlar')
-          .where('yil', '==', yil)
           .where('ay', '==', ay)
           .get();
         
@@ -1791,8 +2325,15 @@
         return;
       }
       
-      const text = await file.text();
-      const lines = text.split('\n').filter(l => l.trim());
+      // UTF-8 encoding ile dosyayı oku (Türkçe karakter desteği için)
+      const text = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = reject;
+        reader.readAsText(file, 'UTF-8');
+      });
+      
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
       if (lines.length < 2) {
         alert('CSV dosyası boş veya geçersiz.');
         return;
@@ -1893,8 +2434,1988 @@
       if (e.target.classList.contains('modal')) {
         closeEditModal();
         closeTutarModal();
+        closeVeriYukleModal();
+        closeKisiDetayModal();
       }
     });
+
+    // ===== HEDEF YÖNETİMİ - Finansal Analiz Sistemi =====
+    
+    // Veri yükleme değişkenleri
+    let analizVerileri = {}; // { yil: { tip: { sahip: [...veriler] } } }
+    let analizVerileriYukleniyor = false; // Yükleme durumu kontrolü
+    
+    // Veri yükleme modal
+    function openVeriYukleModal() {
+      qs('#veriYukleFile').value = '';
+      qs('#veriYukleYil').value = '';
+      qs('#veriYuklePreview').style.display = 'none';
+      qs('#modalVeriYukle').classList.add('show');
+      document.body.classList.add('modal-open');
+    }
+    
+    function closeVeriYukleModal() {
+      qs('#modalVeriYukle').classList.remove('show');
+      document.body.classList.remove('modal-open');
+    }
+    
+    window.openVeriYukleModal = openVeriYukleModal;
+    window.closeVeriYukleModal = closeVeriYukleModal;
+    
+    // CSV şablon indir
+    function downloadVeriSablon() {
+      const csv = 'Yıl,Tip,Sahip,Diğer,Tutar,Referans\n' +
+                  '2023,iftar,Ali Gövercin,Mehmet Kara,10000.50,Muhsin Çelik\n' +
+                  '2023,sahur,Mehmet Yılmaz,,5000.00,REF002\n' +
+                  '2023,taahhut,Fatma Demir,Ayşe Yılmaz,15000.75,REF003\n' +
+                  '2023,teberru,Ayşe Kaya,,20000.00,REF004\n' +
+                  '2024,iftar,Ali Gövercin,Mehmet Kara,12000.25,REF101\n' +
+                  '2024,sahur,Mehmet Yılmaz,,6000.50,REF102';
+      
+      const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'finansal-analiz-sablon.csv';
+      link.click();
+    }
+    
+    window.downloadVeriSablon = downloadVeriSablon;
+    
+    // Veri Temizleme Modal
+    function openVeriTemizleModal() {
+      const modal = qs('#modalVeriTemizle');
+      if (modal) {
+        modal.classList.add('show');
+        document.body.classList.add('modal-open');
+      }
+    }
+    
+    function closeVeriTemizleModal() {
+      const modal = qs('#modalVeriTemizle');
+      if (modal) {
+        modal.classList.remove('show');
+        document.body.classList.remove('modal-open');
+      }
+    }
+    
+    window.openVeriTemizleModal = openVeriTemizleModal;
+    window.closeVeriTemizleModal = closeVeriTemizleModal;
+    
+    // CSV dosyası parse ve önizleme - DOM yüklendikten sonra
+    setTimeout(() => {
+      const veriYukleFile = qs('#veriYukleFile');
+      if (veriYukleFile) {
+        veriYukleFile.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      try {
+        // UTF-8 encoding ile dosyayı oku (Türkçe karakter desteği için)
+        const text = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result);
+          reader.onerror = reject;
+          reader.readAsText(file, 'UTF-8');
+        });
+        
+        const lines = text.split(/\r?\n/).filter(l => l.trim());
+        if (lines.length < 2) {
+          alert('CSV dosyası boş veya geçersiz!');
+          return;
+        }
+        
+        // Header'ı parse et
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        
+        // Veri satırlarını parse et (ilk 10)
+        const previewData = [];
+        for (let i = 1; i < Math.min(11, lines.length); i++) {
+          const values = parseCSVLine(lines[i]);
+          if (values.length < 5) continue; // En az 5 kolon olmalı (yil, tip, sahip, diger, tutar)
+          
+          const yil = values[0]?.trim() || '';
+          const tipRaw = values[1]?.trim() || '';
+          const tip = normalizeTurkish(tipRaw); // Türkçe karakter uyumu (I->ı, İ->i)
+          const sahip = values[2]?.trim() || '';
+          const diger = values[3]?.trim() || '';
+          const tutar = parseTutar(values[4]?.trim() || '0');
+          const referans = values[5]?.trim() || '';
+          
+          if (!yil || !tip || !sahip || !tutar || tutar <= 0) continue;
+          
+          previewData.push({ yil, tip, sahip, diger, tutar, referans });
+        }
+        
+        // Önizleme göster
+        if (previewData.length > 0) {
+          const tbody = qs('#veriYuklePreviewBody');
+          tbody.innerHTML = '';
+          previewData.forEach(row => {
+            const tr = document.createElement('tr');
+            
+            // HTML escape fonksiyonu (Türkçe karakterler için)
+            const escapeHtml = (str) => {
+              if (!str) return '';
+              const div = document.createElement('div');
+              div.textContent = str;
+              return div.innerHTML;
+            };
+            
+            const tipCell = document.createElement('td');
+            tipCell.textContent = row.tip;
+            
+            const sahipCell = document.createElement('td');
+            sahipCell.textContent = row.sahip;
+            
+            const digerCell = document.createElement('td');
+            digerCell.textContent = row.diger || '-';
+            
+            const tutarCell = document.createElement('td');
+            tutarCell.textContent = '₺' + Number(row.tutar).toLocaleString('tr-TR', {minimumFractionDigits:2});
+            
+            const referansCell = document.createElement('td');
+            referansCell.textContent = row.referans || '-';
+            
+            tr.appendChild(tipCell);
+            tr.appendChild(sahipCell);
+            tr.appendChild(digerCell);
+            tr.appendChild(tutarCell);
+            tr.appendChild(referansCell);
+            
+            tbody.appendChild(tr);
+          });
+          qs('#veriYuklePreview').style.display = 'block';
+        }
+      } catch (e) {
+        console.error('Dosya okuma hatası:', e);
+        showToast('Hata', 'Dosya okunamadı: ' + e.message, 'error');
+        }
+      });
+    }
+    }, 200);
+    
+    // Türkçe karakter normalizasyonu (ı-İ uyumu için)
+    function normalizeTurkish(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/I/g, 'ı')  // Büyük I -> küçük ı
+        .replace(/İ/g, 'i')  // Büyük İ -> küçük i
+        .replace(/ı/g, 'ı')  // Küçük ı -> küçük ı (aynı kalır)
+        .replace(/i/g, 'i')  // Küçük i -> küçük i (aynı kalır)
+        .toLowerCase()
+        .trim();
+    }
+    
+    // Türkçe karakter uyumlu arama (ı-İ uyumu)
+    function turkishIncludes(str, search) {
+      if (!str || !search) return false;
+      const normalizedStr = normalizeTurkish(str);
+      const normalizedSearch = normalizeTurkish(search);
+      return normalizedStr.includes(normalizedSearch);
+    }
+    
+    // Personel/referans isimlerini standart formata çevir (TÜMÜ BÜYÜK HARF - Türkçe)
+    function normalizePersonelName(name) {
+      if (!name) return '';
+      // Önce trim yap
+      name = String(name).trim();
+      // Boşsa döndür
+      if (!name) return '';
+      // "Diğer" özel durumu - büyük harfle
+      if (normalizeTurkish(name) === 'diğer') return 'DİĞER';
+      // Tüm harfleri büyük yap (Türkçe karakter desteği ile)
+      return name.toLocaleUpperCase('tr-TR');
+    }
+    
+    // CSV satırını parse et (virgül ve tırnak işareti desteği)
+    function parseCSVLine(line) {
+      const values = [];
+      let current = '';
+      let inQuotes = false;
+      
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          values.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      values.push(current.trim());
+      return values;
+    }
+    
+    // Tutar parse et (virgül destekli, binlik ayırıcı destekli)
+    function parseTutar(str) {
+      if (!str || str === '') return 0;
+      // Virgülü noktaya çevir (Türkçe format: 10.000,50)
+      // Eğer son karakter virgülse (küsürat varsa), virgülü nokta yap
+      let cleaned = String(str).trim().replace(/\./g, ''); // Binlik ayırıcıyı kaldır
+      cleaned = cleaned.replace(/,/g, '.'); // Virgülü noktaya çevir (küsürat için)
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? 0 : parsed;
+    }
+    
+    // Veri yükleme form submit - DOM yüklendikten sonra
+    setTimeout(() => {
+      const formVeriYukle = qs('#formVeriYukle');
+      if (formVeriYukle) {
+        formVeriYukle.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          
+          const file = qs('#veriYukleFile').files[0];
+          const yil = qs('#veriYukleYil').value;
+          
+          if (!file || !yil) {
+            showToast('Hata', 'Lütfen dosya ve yıl seçiniz!', 'error');
+            return;
+          }
+          
+          // Submit butonunu devre dışı bırak
+          const submitBtn = formVeriYukle.querySelector('button[type="submit"]');
+          const originalBtnText = submitBtn.textContent;
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Yükleniyor...';
+          
+          try {
+        // UTF-8 encoding ile dosyayı oku (Türkçe karakter desteği için)
+        const text = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result);
+          reader.onerror = reject;
+          reader.readAsText(file, 'UTF-8');
+        });
+        
+        const lines = text.split(/\r?\n/).filter(l => l.trim());
+        if (lines.length < 2) {
+          alert('CSV dosyası boş veya geçersiz!');
+          return;
+        }
+        
+        const user = auth.currentUser;
+        // Yönetici bilgisi (CSV'yi yükleyen kişi - sadece "Diğer" referansları için kullanılacak)
+        let yoneticiAd = 'Bilinmeyen';
+        let yoneticiUid = null;
+        if (user) {
+          yoneticiUid = user.uid;
+          try {
+            const userDoc = await db.collection('kullanicilar').doc(user.uid).get();
+            if (userDoc.exists) {
+              yoneticiAd = userDoc.data().adSoyad || user.email || 'Bilinmeyen';
+            }
+          } catch (e) {}
+        }
+        
+        let batch = db.batch();
+        let imported = 0;
+        let skipped = 0;
+        let batchCount = 0;
+        const totalLines = lines.length - 1; // Header hariç
+        const hatalar = []; // Hata detayları
+        let kolonHatasi = 0;
+        let validasyonHatasi = 0;
+        let tipHatasi = 0;
+        let digerHatalar = 0;
+        
+        showProgress(15);
+        
+        // İlk satırı atla (header)
+        for (let i = 1; i < lines.length; i++) {
+          const satirNo = i + 1; // Excel satır numarası (header dahil)
+          const progress = 15 + Math.floor((i / totalLines) * 75); // 15-90 arası
+          showProgress(progress);
+          
+          try {
+            const values = parseCSVLine(lines[i]);
+            if (values.length < 5) { // En az 5 kolon olmalı (yil, tip, sahip, diger, tutar)
+              skipped++;
+              kolonHatasi++;
+              hatalar.push({ satir: satirNo, hata: 'Yetersiz kolon sayısı', veri: lines[i].substring(0, 50) });
+              continue;
+            }
+            
+                const csvYil = values[0]?.trim() || yil;
+                const tip = normalizeTurkish(values[1]?.trim() || ''); // Türkçe karakter uyumu
+                const sahip = values[2]?.trim() || ''; // Sahip adını olduğu gibi sakla
+                const diger = values[3]?.trim() || ''; // Diğer boş olabilir, sorun değil
+                const tutar = parseTutar(values[4]?.trim() || '0');
+                const referans = values[5]?.trim() || ''; // Referans = hangi personele ait olduğu
+                
+                // Personel bilgisini belirle:
+                // - Eğer referans = "Diğer" ise, yönetici bilgisini kullan (CSV'yi yükleyen kişi)
+                // - Değilse, referans değerini personel adı olarak kullan
+                let personelAd = '';
+                let personelUid = null;
+                
+                if (!referans || normalizeTurkish(referans) === 'diğer') {
+                  // "Diğer" referansı için yönetici bilgisini kullan
+                  personelAd = normalizePersonelName(yoneticiAd);
+                  personelUid = yoneticiUid;
+                } else {
+                  // Referans değerini personel adı olarak kullan (normalize et)
+                  personelAd = normalizePersonelName(referans);
+                  personelUid = null; // Sistemde kayıtlı değil, sadece isim olarak sakla
+                }
+            
+            // Validasyon - Sahip ve Diğer aynı olabilir, sorun değil
+            // Diğer boş olabilir, sorun değil
+            if (!tip || !sahip || !tutar || tutar <= 0) {
+              skipped++;
+              validasyonHatasi++;
+              hatalar.push({ 
+                satir: satirNo, 
+                hata: 'Validasyon hatası (tip, sahip veya tutar eksik/geçersiz)', 
+                veri: `Tip: ${tip || 'boş'}, Sahip: ${sahip || 'boş'}, Tutar: ${tutar || '0'}` 
+              });
+              continue;
+            }
+            
+            // Sahip ve Diğer aynıysa veya Diğer boşsa - normal durum, devam et
+            // Tip kontrolü (Türkçe karakter uyumlu: I->ı, İ->i)
+            if (!['iftar', 'sahur', 'taahhut', 'teberru'].includes(tip)) {
+              skipped++;
+              tipHatasi++;
+              hatalar.push({ 
+                satir: satirNo, 
+                hata: `Geçersiz tip: "${tip}" (iftar, sahur, taahhut, teberru olmalı)`, 
+                veri: `Tip: ${tip}` 
+              });
+              continue;
+            }
+            
+            // Firestore'a kaydet - Her kayıt benzersiz doc() ID ile kaydedilir
+            // Aynı veri kombinasyonu birden fazla kez kaydedilebilir (ör: 10 x 5000₺ = 50.000₺)
+            const analizRef = db.collection('ramazan_serif').doc('analiz').collection('veriler');
+            const data = {
+              yil: parseInt(csvYil) || parseInt(yil),
+              tip: tip, // Normalize edilmiş tip (ı-İ uyumlu)
+              sahip: sahip.trim(), // Trim edilmiş sahip adı
+              diger: (diger || '').trim(), // Trim edilmiş diğer alanı (ara kişi)
+              tutar: tutar,
+              referans: (referans || '').trim(), // Trim edilmiş referans = bağışı alan kişi (bilgi amaçlı)
+              personel: personelAd, // Normalize edilmiş personel adı (referans = "Diğer" ise yönetici, değilse referans değeri)
+              personelUid: personelUid, // Personel UID (sadece "Diğer" referansları için yönetici UID'si)
+              yukleyen: normalizePersonelName(yoneticiAd), // Normalize edilmiş yükleyen adı
+              yukleyenUid: yoneticiUid, // CSV'yi yükleyen kişinin UID'si
+              createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            
+            // Her kayıt benzersiz doc() ID ile kaydedilir
+            // Aynı veri kombinasyonu birden fazla kez kaydedilebilir
+            // Örnek: "2024-İftar-Ahmet Şen-Mehmet Ak-5000-Muhsin Çelik" 10 kez varsa
+            // 10 ayrı kayıt olarak kaydedilir ve toplam 50.000₺ olarak hesaplanır
+            
+            batch.set(analizRef.doc(), data); // Benzersiz document ID ile kaydet
+            imported++;
+            batchCount++;
+            
+            // Batch limit kontrolü (Firestore limit 500) - her 400 kayıtta bir commit
+            if (batchCount >= 400) {
+              try {
+                await batch.commit();
+                batch = db.batch(); // Yeni batch oluştur
+                batchCount = 0;
+                showToast('Bilgi', `${imported} kayıt işlendi, kaydediliyor...`, 'info', 1500);
+              } catch (batchError) {
+                digerHatalar++;
+                hatalar.push({ 
+                  satir: `Batch ${Math.floor(i / 400) + 1}`, 
+                  hata: 'Batch commit hatası', 
+                  veri: batchError.message 
+                });
+                console.error('Batch commit hatası:', batchError);
+              }
+            }
+          } catch (rowError) {
+            skipped++;
+            digerHatalar++;
+            hatalar.push({ 
+              satir: satirNo, 
+              hata: 'Satır işleme hatası', 
+              veri: rowError.message 
+            });
+            console.error(`Satır ${satirNo} hatası:`, rowError);
+          }
+        }
+        
+        showProgress(95);
+        showToast('Bilgi', 'Son kayıtlar kaydediliyor...', 'info', 1500);
+        
+        // Kalan kayıtları kaydet
+        if (batchCount > 0) {
+          try {
+            await batch.commit();
+          } catch (finalBatchError) {
+            digerHatalar++;
+            hatalar.push({ 
+              satir: 'Final batch', 
+              hata: 'Final batch commit hatası', 
+              veri: finalBatchError.message 
+            });
+            console.error('Final batch commit hatası:', finalBatchError);
+          }
+        }
+        
+        showProgress(100);
+        
+        // Sonuç bildirimi
+        setTimeout(() => {
+          showProgress(0);
+          
+          if (imported > 0) {
+            let hataMesaji = '';
+            if (skipped > 0) {
+              hataMesaji = `\n\n⚠️ ${skipped} kayıt atlandı:\n`;
+                  if (kolonHatasi > 0) hataMesaji += `• ${kolonHatasi} kolon hatası\n`;
+                  if (validasyonHatasi > 0) hataMesaji += `• ${validasyonHatasi} validasyon hatası\n`;
+                  if (tipHatasi > 0) hataMesaji += `• ${tipHatasi} tip hatası\n`;
+                  if (digerHatalar > 0) hataMesaji += `• ${digerHatalar} diğer hata\n`;
+              
+              if (hatalar.length > 0 && hatalar.length <= 10) {
+                hataMesaji += '\n📋 İlk 10 hata detayı:\n';
+                hatalar.slice(0, 10).forEach((h, idx) => {
+                  hataMesaji += `${idx + 1}. Satır ${h.satir}: ${h.hata}\n`;
+                });
+              } else if (hatalar.length > 10) {
+                hataMesaji += `\n📋 Toplam ${hatalar.length} hata var (ilk 10 gösteriliyor)\n`;
+                hatalar.slice(0, 10).forEach((h, idx) => {
+                  hataMesaji += `${idx + 1}. Satır ${h.satir}: ${h.hata}\n`;
+                });
+              }
+            }
+            
+            showToast(
+              'Başarılı! ✅', 
+              `${imported} kayıt başarıyla yüklendi!${hataMesaji}`,
+              'success',
+              8000
+            );
+          } else {
+            showToast(
+              'Uyarı ⚠️',
+              `Hiçbir kayıt yüklenemedi! ${skipped} kayıt atlandı. Hata detaylarını kontrol edin.`,
+              'warning',
+              6000
+            );
+          }
+          
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalBtnText;
+          
+          // Hataları konsola yazdır (geliştirici için)
+          if (hatalar.length > 0) {
+            console.group('📋 CSV Yükleme Hata Detayları');
+            hatalar.forEach(h => {
+              console.warn(`Satır ${h.satir}:`, h.hata, h.veri);
+            });
+            console.groupEnd();
+          }
+          
+          closeVeriYukleModal();
+          
+          // Analiz verilerini yeniden yükle
+          loadAnalizVerileri().then(() => {
+            loadAnalizDashboard();
+          });
+        }, 500);
+        
+      } catch (e) {
+        showProgress(0);
+        console.error('Veri yükleme hatası:', e);
+        showToast(
+          'Kritik Hata ❌',
+          `Veri yüklenirken hata oluştu: ${e.message}\n\nLütfen dosya formatını kontrol edin.`,
+          'error',
+          8000
+        );
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalBtnText;
+      }
+        });
+      }
+    }, 200);
+    
+    // Analiz verilerini yükle (3 yıl)
+    async function loadAnalizVerileri() {
+      // Eğer zaten yükleniyorsa, mevcut yükleme tamamlanana kadar bekle
+      if (analizVerileriYukleniyor) {
+        console.log('Analiz verileri zaten yükleniyor, bekleniyor...');
+        // Mevcut yükleme tamamlanana kadar bekle (max 10 saniye)
+        let beklemeSayaci = 0;
+        while (analizVerileriYukleniyor && beklemeSayaci < 100) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          beklemeSayaci++;
+        }
+        if (beklemeSayaci >= 100) {
+          console.warn('Analiz verileri yükleme timeout!');
+        }
+        return; // Mevcut yükleme tamamlandı, tekrar yükleme
+      }
+      
+      // Yükleme başladı
+      analizVerileriYukleniyor = true;
+      
+      try {
+        const yillar = [2023, 2024, 2025];
+        // Önce mevcut verileri tamamen temizle
+        analizVerileri = {};
+        
+        for (const yil of yillar) {
+          try {
+            const snap = await db.collection('ramazan_serif').doc('analiz').collection('veriler')
+              .where('yil', '==', yil)
+              .get();
+            
+            if (!analizVerileri[yil]) analizVerileri[yil] = {};
+            
+            // Document ID bazlı duplicate kontrolü (aynı document birden fazla kez eklenmesin)
+            const loadedDocIds = new Set();
+            
+            // TÜM kayıtları yükle - duplicate filtreleme YOK (içerik bazlı)
+            // Aynı veri kombinasyonu birden fazla kez kaydedilebilir
+            // Her kayıt ayrı ayrı sayılır ve toplanır
+            snap.docs.forEach(doc => {
+              try {
+                // Aynı document ID'yi birden fazla kez yükleme
+                if (loadedDocIds.has(doc.id)) {
+                  console.warn(`Doküman ${doc.id} zaten yüklendi, atlanıyor.`);
+                  return;
+                }
+                loadedDocIds.add(doc.id);
+                
+                const data = doc.data();
+                if (!data) {
+                  console.warn(`Doküman ${doc.id} verisi boş, atlanıyor.`);
+                  return;
+                }
+                
+                const tip = data.tip || 'diğer';
+                const sahip = data.sahip || 'Bilinmeyen';
+                
+                if (!analizVerileri[yil][tip]) analizVerileri[yil][tip] = {};
+                if (!analizVerileri[yil][tip][sahip]) {
+                  analizVerileri[yil][tip][sahip] = [];
+                }
+                
+                // Aynı document ID'yi bu sahip için de kontrol et (ek güvenlik)
+                const mevcutKayit = analizVerileri[yil][tip][sahip].find(v => v.id === doc.id);
+                if (mevcutKayit) {
+                  console.warn(`Doküman ${doc.id} zaten ${sahip} için yüklü, atlanıyor.`);
+                  return;
+                }
+                
+                // Her kayıt ayrı ayrı eklenir (duplicate kontrolü yok - içerik bazlı)
+                // Personel bilgisini normalize et (eşleştirme için)
+                const rawPersonel = data.personel || data.referans || '';
+                const normalizedPersonel = normalizePersonelName(rawPersonel);
+                
+                // Tutarı sayıya çevir (güvenlik için)
+                const tutar = Number(data.tutar) || 0;
+                
+                analizVerileri[yil][tip][sahip].push({
+                  id: doc.id, // Benzersiz document ID
+                  diger: data.diger || '',
+                  tutar: tutar, // Sayı olarak sakla
+                  referans: data.referans || '',
+                  personel: normalizedPersonel, // Normalize edilmiş personel bilgisi
+                  createdAt: data.createdAt
+                });
+              } catch (docError) {
+                // Tek bir dokümanda hata varsa atla, diğerlerini yükle
+                console.warn(`Yıl ${yil} - Doküman ${doc.id} yüklenemedi:`, docError);
+              }
+            });
+          } catch (yilError) {
+            // Bir yılın verileri yüklenemezse diğer yılları yüklemeye devam et
+            console.warn(`Yıl ${yil} verileri yüklenemedi:`, yilError);
+            if (!analizVerileri[yil]) analizVerileri[yil] = {};
+          }
+        }
+      } catch (e) {
+        console.error('Analiz verileri yüklenirken genel hata:', e);
+        // Hata olsa bile boş veri yapısı döndür
+        if (!analizVerileri || Object.keys(analizVerileri).length === 0) {
+          analizVerileri = { 2023: {}, 2024: {}, 2025: {} };
+        }
+      } finally {
+        // Yükleme tamamlandı
+        analizVerileriYukleniyor = false;
+      }
+    }
+    
+    // Genel özet dashboard yükle
+    function loadAnalizDashboard() {
+      const secilenYil = qs('#analizYil').value;
+      const container = qs('#analizDashboard');
+      if (!container) return;
+      
+      // Tüm yıllar için özet hesapla
+      const yillar = [2023, 2024, 2025];
+      const tipler = ['iftar', 'sahur', 'taahhut', 'teberru'];
+      
+      let summary = {};
+      
+      // Önce tüm yıllar için summary objelerini başlat
+      yillar.forEach(yil => {
+        if (!analizVerileri[yil]) analizVerileri[yil] = {};
+        summary[yil] = { toplamTutar: 0, toplamKayit: 0, kisiSayisi: 0 };
+      });
+      
+      // Her yıl için verileri hesapla
+      yillar.forEach(yil => {
+        if (!analizVerileri[yil]) return;
+        if (!summary[yil]) summary[yil] = { toplamTutar: 0, toplamKayit: 0, kisiSayisi: 0 };
+        
+        const uniqueKisiler = new Set(); // Benzersiz kişiler için
+        
+        tipler.forEach(tip => {
+          if (!analizVerileri[yil][tip]) analizVerileri[yil][tip] = {};
+          const kisiler = Object.keys(analizVerileri[yil][tip]);
+          let tipTutar = 0;
+          let tipKayit = 0;
+          
+          kisiler.forEach(kisi => {
+            const veriler = analizVerileri[yil][tip][kisi];
+            if (!veriler || !Array.isArray(veriler)) return; // Güvenlik kontrolü
+            veriler.forEach(v => {
+              const tutar = Number(v.tutar) || 0;
+              tipTutar += tutar;
+              tipKayit++;
+            });
+            // Benzersiz kişileri topla
+            uniqueKisiler.add(kisi);
+          });
+          
+          if (!summary[yil][tip]) summary[yil][tip] = {};
+          summary[yil][tip] = { tutar: tipTutar, kayit: tipKayit, kisi: kisiler.length };
+          summary[yil].toplamTutar += tipTutar;
+          summary[yil].toplamKayit += tipKayit;
+        });
+        
+        // Kişi sayısını doğru hesapla (tüm tiplerdeki benzersiz kişiler)
+        summary[yil].kisiSayisi = uniqueKisiler.size;
+      });
+      
+      // HTML oluştur
+      let html = `
+        <div class="stats-grid">
+          ${yillar.map(yil => `
+            <div class="stat-card">
+              <div class="stat-label">${yil} Toplam</div>
+              <div class="stat-value">₺${summary[yil].toplamTutar.toLocaleString('tr-TR', {minimumFractionDigits:2})}</div>
+              <div style="font-size:12px;color:var(--muted)">${summary[yil].toplamKayit} kayıt, ${summary[yil].kisiSayisi} kişi</div>
+            </div>
+          `).join('')}
+        </div>
+        
+        <div class="card" style="margin-top:16px">
+          <h4 style="margin:0 0 12px 0">Yıllık Karşılaştırma</h4>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Yıl</th>
+                  <th>İftar</th>
+                  <th>Sahur</th>
+                  <th>Taahhüt</th>
+                  <th>Teberru</th>
+                  <th>Toplam</th>
+                  <th>Kişi Sayısı</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${yillar.map(yil => {
+                  const trend = yil > 2023 ? calculateTrend(summary[yil - 1].toplamTutar, summary[yil].toplamTutar) : '';
+                  return `
+                    <tr>
+                      <td><strong>${yil}</strong></td>
+                      <td>₺${summary[yil].iftar?.tutar.toLocaleString('tr-TR', {minimumFractionDigits:2}) || '0,00'}</td>
+                      <td>₺${summary[yil].sahur?.tutar.toLocaleString('tr-TR', {minimumFractionDigits:2}) || '0,00'}</td>
+                      <td>₺${summary[yil].taahhut?.tutar.toLocaleString('tr-TR', {minimumFractionDigits:2}) || '0,00'}</td>
+                      <td>₺${summary[yil].teberru?.tutar.toLocaleString('tr-TR', {minimumFractionDigits:2}) || '0,00'}</td>
+                      <td><strong>₺${summary[yil].toplamTutar.toLocaleString('tr-TR', {minimumFractionDigits:2})}</strong> ${trend}</td>
+                      <td>${summary[yil].kisiSayisi}</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+      
+      container.innerHTML = html;
+    }
+    
+    // Trend hesapla
+    function calculateTrend(onceki, simdi) {
+      if (!onceki || onceki === 0) return '';
+      const degisim = ((simdi - onceki) / onceki) * 100;
+      if (degisim > 0) return `<span class="trend-up">↑ ${degisim.toFixed(1)}%</span>`;
+      if (degisim < 0) return `<span class="trend-down">↓ ${Math.abs(degisim).toFixed(1)}%</span>`;
+      return '<span class="trend-same">→ 0%</span>';
+    }
+    
+    window.loadAnalizDashboard = loadAnalizDashboard;
+    
+    // Kişi bazlı analiz yükle
+    function loadKisiAnalizi() {
+      const arama = qs('#kisiAra').value.trim();
+      const tipFiltre = qs('#kisiFiltreTip').value;
+      const container = qs('#kisiAnalizList');
+      if (!container) return;
+      
+      // Tüm kişileri topla
+      let kisiler = {};
+      const yillar = [2023, 2024, 2025];
+      const tipler = ['iftar', 'sahur', 'taahhut', 'teberru'];
+      
+      yillar.forEach(yil => {
+        if (!analizVerileri[yil]) return;
+        tipler.forEach(tip => {
+          if (tipFiltre && tip !== tipFiltre) return;
+          if (!analizVerileri[yil][tip]) return;
+          
+          Object.keys(analizVerileri[yil][tip]).forEach(kisiAdi => {
+            // Türkçe karakter uyumlu arama
+            if (arama && !turkishIncludes(kisiAdi, arama)) return;
+            
+            if (!kisiler[kisiAdi]) {
+              kisiler[kisiAdi] = { toplamTutar: 0, veriler: {}, kategori: '' };
+            }
+            
+            const veriler = analizVerileri[yil][tip][kisiAdi];
+            let tipTutar = 0;
+            veriler.forEach(v => {
+              tipTutar += v.tutar || 0;
+            });
+            
+            if (!kisiler[kisiAdi].veriler[yil]) kisiler[kisiAdi].veriler[yil] = {};
+            kisiler[kisiAdi].veriler[yil][tip] = { tutar: tipTutar, kayit: veriler.length };
+            kisiler[kisiAdi].toplamTutar += tipTutar;
+          });
+        });
+      });
+      
+      // Kişileri kategorize et
+      const kisilerList = Object.keys(kisiler).map(kisiAdi => {
+        const kisi = kisiler[kisiAdi];
+        const yillarList = Object.keys(kisi.veriler);
+        let kategori = 'yeni';
+        
+        if (yillarList.length === 3) {
+          // 3 yılda da var
+          const sonYil = Math.max(...yillarList.map(Number));
+          if (kisi.veriler[sonYil]) {
+            kategori = 'daimi';
+          }
+        } else if (yillarList.length === 1) {
+          kategori = 'yeni';
+        } else if (yillarList.length === 2) {
+          const enSonYil = Math.max(...yillarList.map(Number));
+          if (kisi.veriler[enSonYil]) {
+            kategori = 'daimi';
+          } else {
+            kategori = 'pasif';
+          }
+        }
+        
+        return { ...kisi, adi: kisiAdi, kategori };
+      });
+      
+      // Toplam tutara göre sırala
+      kisilerList.sort((a, b) => b.toplamTutar - a.toplamTutar);
+      
+      // HTML oluştur
+      if (kisilerList.length === 0) {
+        container.innerHTML = '<p style="text-align:center;color:var(--muted);padding:20px">Kayıt bulunamadı.</p>';
+        return;
+      }
+      
+      let html = `
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Kişi</th>
+                <th>2023</th>
+                <th>2024</th>
+                <th>2025</th>
+                <th>Toplam</th>
+                <th>Kategori</th>
+                <th style="width:120px">İşlemler</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${kisilerList.slice(0, 50).map(kisi => {
+                const yil2023 = kisi.veriler['2023'] ? 
+                  Object.values(kisi.veriler['2023']).reduce((sum, v) => sum + v.tutar, 0) : 0;
+                const yil2024 = kisi.veriler['2024'] ? 
+                  Object.values(kisi.veriler['2024']).reduce((sum, v) => sum + v.tutar, 0) : 0;
+                const yil2025 = kisi.veriler['2025'] ? 
+                  Object.values(kisi.veriler['2025']).reduce((sum, v) => sum + v.tutar, 0) : 0;
+                
+                const kategoriBadge = kisi.kategori === 'daimi' ? 
+                  '<span class="badge-daimi">Daimi Bağışçı</span>' :
+                  kisi.kategori === 'yeni' ?
+                  '<span class="badge-yeni">Yeni Bağışçı</span>' :
+                  '<span class="badge-pasif">Pasif Olmuş</span>';
+                
+                return `
+                  <tr>
+                    <td><strong>${kisi.adi}</strong></td>
+                    <td>${yil2023 > 0 ? '₺' + yil2023.toLocaleString('tr-TR', {minimumFractionDigits:2}) : '-'}</td>
+                    <td>${yil2024 > 0 ? '₺' + yil2024.toLocaleString('tr-TR', {minimumFractionDigits:2}) : '-'}</td>
+                    <td>${yil2025 > 0 ? '₺' + yil2025.toLocaleString('tr-TR', {minimumFractionDigits:2}) : '-'}</td>
+                    <td><strong>₺${kisi.toplamTutar.toLocaleString('tr-TR', {minimumFractionDigits:2})}</strong></td>
+                    <td>${kategoriBadge}</td>
+                    <td><button onclick="openKisiDetay('${kisi.adi.replace(/'/g, "\\'")}')" style="padding:4px 8px;font-size:12px">Detay</button></td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+      
+      container.innerHTML = html;
+    }
+    
+    window.loadKisiAnalizi = loadKisiAnalizi;
+    
+    // Personel/Referans Bazlı Detaylı Analiz
+    function loadPersonelAnalizi() {
+      const arama = normalizeTurkish(qs('#personelAra')?.value || '');
+      const filtreYil = qs('#personelFiltreYil')?.value || '';
+      const filtreTip = normalizeTurkish(qs('#personelFiltreTip')?.value || '');
+      const container = qs('#personelAnalizList');
+      
+      if (!container) return;
+      
+      container.innerHTML = '<p style="text-align:center;color:var(--muted);padding:20px">Yükleniyor...</p>';
+      
+      // Personel/Referans bazlı verileri topla
+      const personeller = {}; // { personelAdi: { yillar: { 2023: {...}, 2024: {...}, 2025: {...} } } }
+      const yillar = [2023, 2024, 2025];
+      const tipler = ['iftar', 'sahur', 'taahhut', 'teberru'];
+      
+      yillar.forEach(yil => {
+        if (filtreYil && String(yil) !== filtreYil) return; // Yıl filtresi
+        if (!analizVerileri[yil]) return;
+        
+        tipler.forEach(tip => {
+          if (filtreTip && tip !== filtreTip) return; // Tip filtresi
+          if (!analizVerileri[yil][tip]) return;
+          
+          // Her sahip (bağış yapan kişi) için personel/referans bilgisini al
+          Object.keys(analizVerileri[yil][tip]).forEach(sahip => {
+            const veriler = analizVerileri[yil][tip][sahip];
+              veriler.forEach(v => {
+              // Personel adını normalize et (eşleştirme için)
+              // Eğer referans "DİĞER" ise, personel adı olarak "DİĞER" göster
+              let rawPersonelAdi = v.personel || v.referans || 'Bilinmeyen';
+              // Referans "DİĞER" ise ve personel adı yönetici adı ise, "DİĞER" olarak göster
+              if (v.referans && normalizeTurkish(v.referans) === 'diğer') {
+                rawPersonelAdi = 'DİĞER';
+              }
+              const personelAdi = normalizePersonelName(rawPersonelAdi);
+              
+              // Arama filtresi (normalize edilmiş değerlerle)
+              if (arama && !turkishIncludes(normalizeTurkish(personelAdi), arama)) return;
+              
+              // Normalize edilmiş personel adını key olarak kullan
+              if (!personeller[personelAdi]) {
+                personeller[personelAdi] = {
+                  veriler: {},
+                  toplamTutar: 0,
+                  toplamKayit: 0
+                };
+              }
+              
+              if (!personeller[personelAdi].veriler[yil]) {
+                personeller[personelAdi].veriler[yil] = {};
+              }
+              
+              if (!personeller[personelAdi].veriler[yil][tip]) {
+                personeller[personelAdi].veriler[yil][tip] = [];
+              }
+              
+              const tutar = Number(v.tutar) || 0;
+              personeller[personelAdi].veriler[yil][tip].push({
+                sahip: sahip,
+                diger: v.diger || '',
+                tutar: tutar,
+                referans: v.referans || ''
+              });
+              
+              personeller[personelAdi].toplamTutar += tutar;
+              personeller[personelAdi].toplamKayit++;
+            });
+          });
+        });
+      });
+      
+      // Personelleri kategorize et ve sırala
+      const personellerList = Object.keys(personeller).map(personelAdi => {
+        const personel = personeller[personelAdi];
+        const yillarList = Object.keys(personel.veriler).map(Number);
+        
+        // Kişi kategorisi (bağış yapan kişiler için değil, personel için)
+        // Burada personel'in kaç yıldır çalıştığına bakıyoruz
+        let kategori = 'yeni';
+        if (yillarList.length === 3) {
+          kategori = 'daimi'; // 3 yıldır var
+        } else if (yillarList.length === 1 && yillarList[0] === 2025) {
+          kategori = 'yeni'; // Sadece 2025'te
+        } else if (yillarList.length > 0 && Math.max(...yillarList) < 2025) {
+          kategori = 'pasif'; // 2025'te yok
+        } else if (yillarList.length === 2) {
+          kategori = 'daimi'; // 2 yıldır var
+        }
+        
+        return { ...personel, adi: personelAdi, kategori };
+      });
+      
+      // Toplam tutara göre sırala
+      personellerList.sort((a, b) => b.toplamTutar - a.toplamTutar);
+      
+      // HTML oluştur
+      if (personellerList.length === 0) {
+        container.innerHTML = '<p style="text-align:center;color:var(--muted);padding:20px">Kayıt bulunamadı.</p>';
+        return;
+      }
+      
+      let html = `
+        <div style="margin-bottom:16px;padding:12px;background:#f0f7ff;border-left:4px solid var(--accent);border-radius:8px">
+          <p style="margin:0;font-size:13px;line-height:1.6">
+            <strong>📊 Toplam:</strong> ${personellerList.length} personel/referans, 
+            ${personellerList.reduce((sum, p) => sum + p.toplamKayit, 0)} kayıt, 
+            ₺${personellerList.reduce((sum, p) => sum + p.toplamTutar, 0).toLocaleString('tr-TR', {minimumFractionDigits:2})}
+          </p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Personel/Referans</th>
+                <th>2023</th>
+                <th>2024</th>
+                <th>2025</th>
+                <th>Toplam</th>
+                <th>Kayıt</th>
+                <th>Kategori</th>
+                <th style="width:120px">İşlemler</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${personellerList.map(personel => {
+                const yil2023 = personel.veriler['2023'] ? 
+                  Object.values(personel.veriler['2023']).flat().reduce((sum, v) => sum + (v.tutar || 0), 0) : 0;
+                const yil2024 = personel.veriler['2024'] ? 
+                  Object.values(personel.veriler['2024']).flat().reduce((sum, v) => sum + (v.tutar || 0), 0) : 0;
+                const yil2025 = personel.veriler['2025'] ? 
+                  Object.values(personel.veriler['2025']).flat().reduce((sum, v) => sum + (v.tutar || 0), 0) : 0;
+                
+                const kategoriBadge = personel.kategori === 'daimi' ? 
+                  '<span class="badge-daimi">Daimi Personel</span>' :
+                  personel.kategori === 'yeni' ?
+                  '<span class="badge-yeni">Yeni Personel</span>' :
+                  '<span class="badge-pasif">Pasif Personel</span>';
+                
+                return `
+                  <tr>
+                    <td><strong>${personel.adi}</strong></td>
+                    <td>${yil2023 > 0 ? '₺' + yil2023.toLocaleString('tr-TR', {minimumFractionDigits:2}) : '-'}</td>
+                    <td>${yil2024 > 0 ? '₺' + yil2024.toLocaleString('tr-TR', {minimumFractionDigits:2}) : '-'}</td>
+                    <td>${yil2025 > 0 ? '₺' + yil2025.toLocaleString('tr-TR', {minimumFractionDigits:2}) : '-'}</td>
+                    <td><strong>₺${personel.toplamTutar.toLocaleString('tr-TR', {minimumFractionDigits:2})}</strong></td>
+                    <td>${personel.toplamKayit}</td>
+                    <td>${kategoriBadge}</td>
+                    <td><button onclick="openPersonelDetay('${personel.adi.replace(/'/g, "\\'")}')" style="padding:4px 8px;font-size:12px">Detay</button></td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+      
+      container.innerHTML = html;
+    }
+    
+    window.loadPersonelAnalizi = loadPersonelAnalizi;
+    
+    // Personel/Referans Detay Modal
+    function openPersonelDetay(personelAdi) {
+      qs('#personelDetayTitle').textContent = `👥 ${personelAdi} - Detaylı Analiz`;
+      
+      // Personelin tüm verilerini topla
+      let personelVerileri = [];
+      const yillar = [2023, 2024, 2025];
+      const tipler = ['iftar', 'sahur', 'taahhut', 'teberru'];
+      const tipLabels = { iftar: '🌙 İftar', sahur: '🌟 Sahur', taahhut: '📋 Taahhüt', teberru: '💝 Teberru' };
+      
+      yillar.forEach(yil => {
+        if (!analizVerileri[yil]) return;
+        tipler.forEach(tip => {
+          if (!analizVerileri[yil][tip]) return;
+          
+          // Her sahip için personel/referans kontrolü
+          Object.keys(analizVerileri[yil][tip]).forEach(sahip => {
+            const veriler = analizVerileri[yil][tip][sahip];
+            veriler.forEach(v => {
+              // Personel adını normalize et ve karşılaştır
+              // Eğer referans "DİĞER" ise, personel adı olarak "DİĞER" göster
+              let rawVPersonel = v.personel || v.referans || 'Bilinmeyen';
+              if (v.referans && normalizeTurkish(v.referans) === 'diğer') {
+                rawVPersonel = 'DİĞER';
+              }
+              const vPersonel = normalizePersonelName(rawVPersonel);
+              const normalizedPersonelAdi = normalizePersonelName(personelAdi);
+              
+              // Normalize edilmiş değerlerle karşılaştır
+              if (vPersonel === normalizedPersonelAdi) {
+                personelVerileri.push({
+                  yil,
+                  tip,
+                  tipLabel: tipLabels[tip] || tip,
+                  sahip: sahip,
+                  diger: v.diger || '',
+                  tutar: v.tutar || 0,
+                  referans: v.referans || ''
+                });
+              }
+            });
+          });
+        });
+      });
+      
+      // Yıllara ve tiplere göre grupla
+      let yilTipOzeti = {};
+      personelVerileri.forEach(v => {
+        const key = `${v.yil}_${v.tip}`;
+        if (!yilTipOzeti[key]) {
+          yilTipOzeti[key] = {
+            yil: v.yil,
+            tip: v.tip,
+            tipLabel: v.tipLabel,
+            toplam: 0,
+            kayitSayisi: 0,
+            kisiler: []
+          };
+        }
+        yilTipOzeti[key].toplam += v.tutar;
+        yilTipOzeti[key].kayitSayisi++;
+        if (!yilTipOzeti[key].kisiler.includes(v.sahip)) {
+          yilTipOzeti[key].kisiler.push(v.sahip);
+        }
+      });
+      
+      const container = qs('#personelDetayContent');
+      let html = `
+        <div class="stats-grid">
+          ${yillar.map(yil => {
+            const yilVerileri = personelVerileri.filter(v => v.yil === yil);
+            const yilToplam = yilVerileri.reduce((sum, v) => sum + v.tutar, 0);
+            const trend = yil > 2023 ? 
+              calculateTrend(
+                personelVerileri.filter(v => v.yil === yil - 1).reduce((sum, v) => sum + v.tutar, 0),
+                yilToplam
+              ) : '';
+            return `
+              <div class="stat-card">
+                <div class="stat-label">${yil} Toplam</div>
+                <div class="stat-value">₺${yilToplam.toLocaleString('tr-TR', {minimumFractionDigits:2})}</div>
+                <div style="font-size:12px">${yilVerileri.length} kayıt</div>
+                <div style="font-size:12px">${trend || ''}</div>
+              </div>
+            `;
+          }).join('')}
+          <div class="stat-card">
+            <div class="stat-label">Genel Toplam</div>
+            <div class="stat-value">₺${personelVerileri.reduce((sum, v) => sum + v.tutar, 0).toLocaleString('tr-TR', {minimumFractionDigits:2})}</div>
+            <div style="font-size:12px">${personelVerileri.length} kayıt</div>
+          </div>
+        </div>
+        
+        <div class="card" style="margin-top:16px">
+          <h4 style="margin:0 0 12px 0">Yıl ve Tip Bazlı Detay</h4>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Yıl</th>
+                  <th>Tip</th>
+                  <th>Toplam Tutar (₺)</th>
+                  <th>Kayıt Sayısı</th>
+                  <th>Bağışçı Sayısı</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${Object.values(yilTipOzeti).sort((a, b) => {
+                  if (a.yil !== b.yil) return b.yil - a.yil;
+                  return a.tip.localeCompare(b.tip);
+                }).map(ozet => `
+                  <tr>
+                    <td><strong>${ozet.yil}</strong></td>
+                    <td>${ozet.tipLabel}</td>
+                    <td><strong>₺${ozet.toplam.toLocaleString('tr-TR', {minimumFractionDigits:2})}</strong></td>
+                    <td>${ozet.kayitSayisi}</td>
+                    <td>${ozet.kisiler.length}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <div class="card" style="margin-top:16px">
+          <h4 style="margin:0 0 12px 0">Tüm Kayıtlar (Detaylı)</h4>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Yıl</th>
+                  <th>Tip</th>
+                  <th>Sahip (Bağış Yapan)</th>
+                  <th>Diğer</th>
+                  <th>Tutar (₺)</th>
+                  <th>Referans</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${personelVerileri.sort((a, b) => {
+                  if (a.yil !== b.yil) return b.yil - a.yil;
+                  if (a.tip !== b.tip) return a.tip.localeCompare(b.tip);
+                  return b.tutar - a.tutar;
+                }).map(v => `
+                  <tr>
+                    <td>${v.yil}</td>
+                    <td>${v.tipLabel}</td>
+                    <td>${v.sahip}</td>
+                    <td>${v.diger || '-'}</td>
+                    <td>₺${v.tutar.toLocaleString('tr-TR', {minimumFractionDigits:2})}</td>
+                    <td>${v.referans || '-'}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+      
+      container.innerHTML = html;
+      qs('#modalPersonelDetay').classList.add('show');
+      document.body.classList.add('modal-open');
+    }
+    
+    window.openPersonelDetay = openPersonelDetay;
+    
+    function closePersonelDetay() {
+      qs('#modalPersonelDetay').classList.remove('show');
+      document.body.classList.remove('modal-open');
+    }
+    
+    window.closePersonelDetay = closePersonelDetay;
+    
+    // Kişi detay modal
+    function openKisiDetay(kisiAdi) {
+      qs('#kisiDetayTitle').textContent = `👤 ${kisiAdi} - Detaylı Analiz`;
+      
+      // Kişinin tüm verilerini topla
+      let kisiVerileri = [];
+      const yillar = [2023, 2024, 2025];
+      const tipler = ['iftar', 'sahur', 'taahhut', 'teberru'];
+      const tipLabels = { iftar: '🌙 İftar', sahur: '🌟 Sahur', taahhut: '📋 Taahhüt', teberru: '💝 Teberru' };
+      
+      yillar.forEach(yil => {
+        if (!analizVerileri[yil]) return;
+        tipler.forEach(tip => {
+          if (!analizVerileri[yil][tip] || !analizVerileri[yil][tip][kisiAdi]) return;
+          
+          const veriler = analizVerileri[yil][tip][kisiAdi];
+          veriler.forEach(v => {
+            kisiVerileri.push({
+              yil,
+              tip,
+              tipLabel: tipLabels[tip] || tip,
+              diger: v.diger || '',
+              tutar: v.tutar || 0,
+              referans: v.referans || ''
+            });
+          });
+        });
+      });
+      
+      // Yıllara göre grupla
+      let yilOzeti = {};
+      kisiVerileri.forEach(v => {
+        if (!yilOzeti[v.yil]) yilOzeti[v.yil] = { toplam: 0, tipler: {} };
+        yilOzeti[v.yil].toplam += v.tutar;
+        if (!yilOzeti[v.yil].tipler[v.tip]) yilOzeti[v.yil].tipler[v.tip] = 0;
+        yilOzeti[v.yil].tipler[v.tip] += v.tutar;
+      });
+      
+      const container = qs('#kisiDetayContent');
+      let html = `
+        <div class="stats-grid">
+          ${yillar.map(yil => {
+            const ozet = yilOzeti[yil] || { toplam: 0, tipler: {} };
+            const trend = yil > 2023 && yilOzeti[yil - 1] ? 
+              calculateTrend(yilOzeti[yil - 1].toplam, ozet.toplam) : '';
+            return `
+              <div class="stat-card">
+                <div class="stat-label">${yil} Toplam</div>
+                <div class="stat-value">₺${ozet.toplam.toLocaleString('tr-TR', {minimumFractionDigits:2})}</div>
+                <div style="font-size:12px">${trend || ''}</div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+        
+        <div class="card" style="margin-top:16px">
+          <h4 style="margin:0 0 12px 0">Yıllık Detay</h4>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Yıl</th>
+                  <th>Tip</th>
+                  <th>Diğer</th>
+                  <th>Tutar (₺)</th>
+                  <th>Referans</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${kisiVerileri.sort((a, b) => {
+                  if (a.yil !== b.yil) return b.yil - a.yil;
+                  return b.tutar - a.tutar;
+                }).map(v => `
+                  <tr>
+                    <td><strong>${v.yil}</strong></td>
+                    <td>${v.tipLabel}</td>
+                    <td>${v.diger || '-'}</td>
+                    <td><strong>₺${v.tutar.toLocaleString('tr-TR', {minimumFractionDigits:2})}</strong></td>
+                    <td>${v.referans || '-'}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+      
+      container.innerHTML = html;
+      qs('#modalKisiDetay').classList.add('show');
+      document.body.classList.add('modal-open');
+    }
+    
+    function closeKisiDetayModal() {
+      qs('#modalKisiDetay').classList.remove('show');
+      document.body.classList.remove('modal-open');
+    }
+    
+    window.openKisiDetay = openKisiDetay;
+    window.closeKisiDetayModal = closeKisiDetayModal;
+    
+    // Trend analizi yükle
+    function loadTrendAnaliz() {
+      const container = qs('#trendAnaliz');
+      if (!container) return;
+      
+      const yillar = [2023, 2024, 2025];
+      const tipler = ['iftar', 'sahur', 'taahhut', 'teberru'];
+      const tipLabels = { iftar: '🌙 İftar', sahur: '🌟 Sahur', taahhut: '📋 Taahhüt', teberru: '💝 Teberru' };
+      
+      let html = '<div class="card"><h4 style="margin:0 0 12px 0">Tip Bazlı Trend Analizi</h4>';
+      
+      tipler.forEach(tip => {
+        let tipVeriler = [];
+        yillar.forEach(yil => {
+          if (!analizVerileri[yil] || !analizVerileri[yil][tip]) {
+            tipVeriler.push({ yil, tutar: 0, kayit: 0, kisi: 0 });
+            return;
+          }
+          
+          const kisiler = Object.keys(analizVerileri[yil][tip]);
+          let tutar = 0;
+          let kayit = 0;
+          
+          kisiler.forEach(kisi => {
+            const veriler = analizVerileri[yil][tip][kisi];
+            veriler.forEach(v => {
+              tutar += v.tutar || 0;
+              kayit++;
+            });
+          });
+          
+          tipVeriler.push({ yil, tutar, kayit, kisi: kisiler.length });
+        });
+        
+        const maxTutar = Math.max(...tipVeriler.map(v => v.tutar));
+        
+        html += `
+          <div style="margin-bottom:20px;padding:12px;background:#f8f9fa;border-radius:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <strong>${tipLabels[tip] || tip}</strong>
+              <span style="font-size:12px;color:var(--muted)">
+                Toplam: ₺${tipVeriler.reduce((sum, v) => sum + v.tutar, 0).toLocaleString('tr-TR', {minimumFractionDigits:2})}
+              </span>
+            </div>
+            ${yillar.map(yil => {
+              const veri = tipVeriler.find(v => v.yil === yil);
+              const trend = yil > 2023 ? calculateTrend(
+                tipVeriler.find(v => v.yil === yil - 1)?.tutar || 0,
+                veri.tutar
+              ) : '';
+              const yuzde = maxTutar > 0 ? (veri.tutar / maxTutar) * 100 : 0;
+              
+              return `
+                <div style="margin-bottom:8px">
+                  <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                    <span style="font-size:13px"><strong>${yil}:</strong> ₺${veri.tutar.toLocaleString('tr-TR', {minimumFractionDigits:2})}</span>
+                    <span style="font-size:12px">${veri.kayit} kayıt, ${veri.kisi} kişi ${trend}</span>
+                  </div>
+                  <div class="progress-bar">
+                    <div class="progress-fill" style="width:${yuzde}%"></div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+      });
+      
+      html += '</div>';
+      container.innerHTML = html;
+    }
+    
+    window.loadTrendAnaliz = loadTrendAnaliz;
+    
+    // Kategori analizi yükle
+    function loadKategoriAnaliz() {
+      const container = qs('#kategoriAnaliz');
+      if (!container) return;
+      
+      // Tüm kişileri kategorize et
+      let kisiler = {};
+      const yillar = [2023, 2024, 2025];
+      const tipler = ['iftar', 'sahur', 'taahhut', 'teberru'];
+      
+      yillar.forEach(yil => {
+        if (!analizVerileri[yil]) return;
+        tipler.forEach(tip => {
+          if (!analizVerileri[yil][tip]) return;
+          Object.keys(analizVerileri[yil][tip]).forEach(kisiAdi => {
+            if (!kisiler[kisiAdi]) {
+              kisiler[kisiAdi] = { veriler: {} };
+            }
+            if (!kisiler[kisiAdi].veriler[yil]) {
+              kisiler[kisiAdi].veriler[yil] = [];
+            }
+            kisiler[kisiAdi].veriler[yil].push(...analizVerileri[yil][tip][kisiAdi]);
+          });
+        });
+      });
+      
+      let daimi = [];
+      let yeni = [];
+      let pasif = [];
+      
+      Object.keys(kisiler).forEach(kisiAdi => {
+        const kisi = kisiler[kisiAdi];
+        const yillarList = Object.keys(kisi.veriler).map(Number);
+        const toplamTutar = Object.values(kisi.veriler).flat().reduce((sum, v) => sum + (v.tutar || 0), 0);
+        
+        if (yillarList.length === 3) {
+          // 3 yılda da var - daimi
+          daimi.push({ adi: kisiAdi, toplamTutar, yillar: yillarList });
+        } else if (yillarList.length === 1 && yillarList[0] === 2025) {
+          // Sadece 2025'te var - yeni
+          yeni.push({ adi: kisiAdi, toplamTutar, yillar: yillarList });
+        } else if (yillarList.length > 0 && Math.max(...yillarList) < 2025) {
+          // 2025'te yok - pasif
+          pasif.push({ adi: kisiAdi, toplamTutar, yillar: yillarList });
+        } else {
+          yeni.push({ adi: kisiAdi, toplamTutar, yillar: yillarList });
+        }
+      });
+      
+      // Toplam tutara göre sırala
+      daimi.sort((a, b) => b.toplamTutar - a.toplamTutar);
+      yeni.sort((a, b) => b.toplamTutar - a.toplamTutar);
+      pasif.sort((a, b) => b.toplamTutar - a.toplamTutar);
+      
+      let html = `
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Daimi Bağışçı</div>
+            <div class="stat-value">${daimi.length}</div>
+            <div style="font-size:12px;color:var(--muted)">
+              ₺${daimi.reduce((sum, k) => sum + k.toplamTutar, 0).toLocaleString('tr-TR', {minimumFractionDigits:2})}
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Yeni Bağışçı</div>
+            <div class="stat-value">${yeni.length}</div>
+            <div style="font-size:12px;color:var(--muted)">
+              ₺${yeni.reduce((sum, k) => sum + k.toplamTutar, 0).toLocaleString('tr-TR', {minimumFractionDigits:2})}
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Pasif Olmuş</div>
+            <div class="stat-value">${pasif.length}</div>
+            <div style="font-size:12px;color:var(--muted)">
+              ₺${pasif.reduce((sum, k) => sum + k.toplamTutar, 0).toLocaleString('tr-TR', {minimumFractionDigits:2})}
+            </div>
+          </div>
+        </div>
+        
+        <div class="card" style="margin-top:16px">
+          <h4 style="margin:0 0 12px 0">Daimi Bağışçılar (Top ${daimi.length})</h4>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Kişi</th>
+                  <th>2023</th>
+                  <th>2024</th>
+                  <th>2025</th>
+                  <th>Toplam</th>
+                  <th style="width:120px">İşlemler</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${daimi.slice(0, 20).map(k => {
+                  const yil2023 = k.yillar.includes(2023) ? '✓' : '-';
+                  const yil2024 = k.yillar.includes(2024) ? '✓' : '-';
+                  const yil2025 = k.yillar.includes(2025) ? '✓' : '-';
+                  return `
+                    <tr>
+                      <td><strong>${k.adi}</strong></td>
+                      <td>${yil2023}</td>
+                      <td>${yil2024}</td>
+                      <td>${yil2025}</td>
+                      <td><strong>₺${k.toplamTutar.toLocaleString('tr-TR', {minimumFractionDigits:2})}</strong></td>
+                      <td><button onclick="openKisiDetay('${k.adi.replace(/'/g, "\\'")}')" style="padding:4px 8px;font-size:12px">Detay</button></td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <div class="card" style="margin-top:16px">
+          <h4 style="margin:0 0 12px 0">Yeni Bağışçılar (Top ${yeni.length})</h4>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Kişi</th>
+                  <th>İlk Yıl</th>
+                  <th>Toplam</th>
+                  <th style="width:120px">İşlemler</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${yeni.slice(0, 20).map(k => {
+                  const ilkYil = Math.min(...k.yillar);
+                  return `
+                    <tr>
+                      <td><strong>${k.adi}</strong></td>
+                      <td>${ilkYil}</td>
+                      <td><strong>₺${k.toplamTutar.toLocaleString('tr-TR', {minimumFractionDigits:2})}</strong></td>
+                      <td><button onclick="openKisiDetay('${k.adi.replace(/'/g, "\\'")}')" style="padding:4px 8px;font-size:12px">Detay</button></td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <div class="card" style="margin-top:16px">
+          <h4 style="margin:0 0 12px 0">Pasif Olmuş Bağışçılar (Top ${pasif.length})</h4>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Kişi</th>
+                  <th>Son Yıl</th>
+                  <th>Toplam</th>
+                  <th style="width:120px">İşlemler</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${pasif.slice(0, 20).map(k => {
+                  const sonYil = Math.max(...k.yillar);
+                  return `
+                    <tr>
+                      <td><strong>${k.adi}</strong></td>
+                      <td>${sonYil}</td>
+                      <td><strong>₺${k.toplamTutar.toLocaleString('tr-TR', {minimumFractionDigits:2})}</strong></td>
+                      <td><button onclick="openKisiDetay('${k.adi.replace(/'/g, "\\'")}')" style="padding:4px 8px;font-size:12px">Detay</button></td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+      
+      container.innerHTML = html;
+    }
+    
+    window.loadKategoriAnaliz = loadKategoriAnaliz;
+    
+    // Veri Düzenleme Fonksiyonları - Sıralama durumu
+    let veriDuzenlemeSiralama = {
+      column: 'createdAt',
+      direction: 'desc'
+    };
+    
+    function loadVeriDuzenleme() {
+      const yil = qs('#duzenleYil')?.value || '2025';
+      const tip = normalizeTurkish(qs('#duzenleTip')?.value || '');
+      const arama = qs('#duzenleAra')?.value?.trim() || '';
+      const container = qs('#veriDuzenlemeList');
+      
+      if (!container) return;
+      
+      container.innerHTML = '<p style="text-align:center;color:var(--muted);padding:20px">Yükleniyor...</p>';
+      
+      // Firestore'dan verileri çek (index gerektirmemek için orderBy'i kaldırdık, client-side sıralama yapacağız)
+      const analizRef = db.collection('ramazan_serif').doc('analiz').collection('veriler');
+      let query = analizRef.where('yil', '==', parseInt(yil));
+      
+      query.get().then(snapshot => {
+        let veriler = [];
+        
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const docTip = normalizeTurkish(data.tip || '');
+          
+          // Tip filtresi
+          if (tip && docTip !== tip) return;
+          
+          // Arama filtresi (sahip, personel, referans)
+          if (arama) {
+            const searchText = normalizeTurkish(arama);
+            const sahipText = normalizeTurkish(data.sahip || '');
+            const personelText = normalizeTurkish(data.personel || '');
+            const referansText = normalizeTurkish(data.referans || '');
+            
+            if (!sahipText.includes(searchText) && 
+                !personelText.includes(searchText) && 
+                !referansText.includes(searchText)) {
+              return;
+            }
+          }
+          
+          veriler.push({
+            id: doc.id,
+            yil: data.yil || 2025,
+            tip: data.tip || '',
+            sahip: data.sahip || '',
+            diger: data.diger || '',
+            tutar: data.tutar || 0,
+            referans: data.referans || '',
+            personel: data.personel || '',
+            createdAt: data.createdAt ? (data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt)) : new Date()
+          });
+        });
+        
+        // Client-side sıralama (sıralama durumuna göre)
+        veriler.sort((a, b) => {
+          let aVal, bVal;
+          
+          switch (veriDuzenlemeSiralama.column) {
+            case 'tip':
+              aVal = (a.tip || '').toLowerCase();
+              bVal = (b.tip || '').toLowerCase();
+              break;
+            case 'sahip':
+              aVal = (a.sahip || '').toLowerCase();
+              bVal = (b.sahip || '').toLowerCase();
+              break;
+            case 'diger':
+              aVal = (a.diger || '').toLowerCase();
+              bVal = (b.diger || '').toLowerCase();
+              break;
+            case 'tutar':
+              aVal = a.tutar || 0;
+              bVal = b.tutar || 0;
+              break;
+            case 'personel':
+              aVal = (a.personel || a.referans || '').toLowerCase();
+              bVal = (b.personel || b.referans || '').toLowerCase();
+              break;
+            case 'createdAt':
+            default:
+              aVal = a.createdAt instanceof Date ? a.createdAt.getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+              bVal = b.createdAt instanceof Date ? b.createdAt.getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+              break;
+          }
+          
+          if (typeof aVal === 'string') {
+            return veriDuzenlemeSiralama.direction === 'asc' 
+              ? aVal.localeCompare(bVal, 'tr')
+              : bVal.localeCompare(aVal, 'tr');
+          } else {
+            return veriDuzenlemeSiralama.direction === 'asc' 
+              ? aVal - bVal
+              : bVal - aVal;
+          }
+        });
+        
+        // HTML oluştur
+        if (veriler.length === 0) {
+          container.innerHTML = '<p style="text-align:center;color:var(--muted);padding:20px">Kayıt bulunamadı.</p>';
+          return;
+        }
+        
+        const tipLabels = { 
+          iftar: '🌙 İftar', 
+          sahur: '🌟 Sahur', 
+          taahhut: '📋 Taahhüt', 
+          teberru: '💝 Teberru' 
+        };
+        
+        let html = `
+          <div style="margin-bottom:16px;padding:12px;background:#f0f7ff;border-left:4px solid var(--accent);border-radius:8px">
+            <p style="margin:0;font-size:13px;line-height:1.6">
+              <strong>📊 Toplam:</strong> ${veriler.length} kayıt
+            </p>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:80px">ID</th>
+                  <th class="sortable" data-column="tip" style="cursor:pointer;user-select:none">
+                    Tip ${veriDuzenlemeSiralama.column === 'tip' ? (veriDuzenlemeSiralama.direction === 'asc' ? '↑' : '↓') : ''}
+                  </th>
+                  <th class="sortable" data-column="sahip" style="cursor:pointer;user-select:none">
+                    Sahip ${veriDuzenlemeSiralama.column === 'sahip' ? (veriDuzenlemeSiralama.direction === 'asc' ? '↑' : '↓') : ''}
+                  </th>
+                  <th class="sortable" data-column="diger" style="cursor:pointer;user-select:none">
+                    Diğer ${veriDuzenlemeSiralama.column === 'diger' ? (veriDuzenlemeSiralama.direction === 'asc' ? '↑' : '↓') : ''}
+                  </th>
+                  <th class="sortable" data-column="tutar" style="cursor:pointer;user-select:none">
+                    Tutar (₺) ${veriDuzenlemeSiralama.column === 'tutar' ? (veriDuzenlemeSiralama.direction === 'asc' ? '↑' : '↓') : ''}
+                  </th>
+                  <th class="sortable" data-column="personel" style="cursor:pointer;user-select:none">
+                    Personel/Referans ${veriDuzenlemeSiralama.column === 'personel' ? (veriDuzenlemeSiralama.direction === 'asc' ? '↑' : '↓') : ''}
+                  </th>
+                  <th style="width:120px">İşlemler</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${veriler.map(v => {
+                  const tipLabel = tipLabels[v.tip] || v.tip;
+                  const shortId = v.id.substring(0, 8);
+                  return `
+                    <tr>
+                      <td style="font-size:11px;color:var(--muted)">${shortId}...</td>
+                      <td>${tipLabel}</td>
+                      <td><strong>${v.sahip}</strong></td>
+                      <td>${v.diger || '-'}</td>
+                      <td>₺${v.tutar.toLocaleString('tr-TR', {minimumFractionDigits:2})}</td>
+                      <td>${(v.referans && normalizeTurkish(v.referans) === 'diğer') ? 'DİĞER' : (v.personel || v.referans || '-')}</td>
+                      <td>
+                        <button onclick="openVeriDuzenlemeModal('${v.id}')" style="padding:4px 8px;font-size:12px">Düzenle</button>
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+        
+        container.innerHTML = html;
+      }).catch(error => {
+        console.error('Veri düzenleme yükleme hatası:', error);
+        container.innerHTML = '<p style="text-align:center;color:var(--danger);padding:20px">Veri yüklenirken hata oluştu.</p>';
+      });
+    }
+    
+    window.loadVeriDuzenleme = loadVeriDuzenleme;
+    
+    // Veri düzenleme modalını aç
+    function openVeriDuzenlemeModal(docId) {
+      if (!docId) {
+        // Yeni kayıt
+        qs('#veriDuzenlemeTitle').textContent = '✏️ Yeni Veri Ekle';
+        qs('#formVeriDuzenleme').reset();
+        qs('#duzenleId').value = '';
+        qs('#btnDeleteVeri').style.display = 'none';
+        qs('#duzenleYilInput').value = qs('#duzenleYil')?.value || '2025';
+        qs('#modalVeriDuzenleme').classList.add('show');
+        document.body.classList.add('modal-open');
+        return;
+      }
+      
+      // Mevcut kaydı yükle
+      const analizRef = db.collection('ramazan_serif').doc('analiz').collection('veriler');
+      analizRef.doc(docId).get().then(doc => {
+        if (!doc.exists) {
+          showToast('Kayıt bulunamadı.', '', 'error');
+          return;
+        }
+        
+        const data = doc.data();
+        qs('#veriDuzenlemeTitle').textContent = '✏️ Veri Düzenleme';
+        qs('#duzenleId').value = docId;
+        qs('#duzenleYilInput').value = String(data.yil || 2025);
+        qs('#duzenleTipInput').value = data.tip || 'iftar';
+        qs('#duzenleSahip').value = data.sahip || '';
+        qs('#duzenleDiger').value = data.diger || '';
+        // Tutarı Türkçe formatında göster (nokta yerine virgül, binlik ayırıcı)
+        const tutar = data.tutar || 0;
+        qs('#duzenleTutar').value = tutar.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2}).replace(/\./g, '|TEMP|').replace(/,/g, '.').replace(/\|TEMP\|/g, ',');
+        qs('#duzenleReferans').value = data.referans || '';
+        qs('#btnDeleteVeri').style.display = 'inline-block';
+        qs('#btnDeleteVeri').setAttribute('data-doc-id', docId);
+        
+        qs('#modalVeriDuzenleme').classList.add('show');
+        document.body.classList.add('modal-open');
+      }).catch(error => {
+        console.error('Veri yükleme hatası:', error);
+        showToast('Veri yüklenirken hata oluştu.', '', 'error');
+      });
+    }
+    
+    window.openVeriDuzenlemeModal = openVeriDuzenlemeModal;
+    
+    // Veri düzenleme modalını kapat
+    function closeVeriDuzenlemeModal() {
+      qs('#modalVeriDuzenleme').classList.remove('show');
+      document.body.classList.remove('modal-open');
+      qs('#formVeriDuzenleme').reset();
+      qs('#duzenleId').value = '';
+      qs('#btnDeleteVeri').style.display = 'none';
+    }
+    
+    window.closeVeriDuzenlemeModal = closeVeriDuzenlemeModal;
+    
+    // Veri kaydet (güncelle veya ekle)
+    const formVeriDuzenleme = qs('#formVeriDuzenleme');
+    if (formVeriDuzenleme) {
+      formVeriDuzenleme.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const docId = qs('#duzenleId').value;
+        const yil = parseInt(qs('#duzenleYilInput').value);
+        const tip = qs('#duzenleTipInput').value;
+        const sahip = qs('#duzenleSahip').value.trim();
+        const diger = qs('#duzenleDiger').value.trim();
+        const tutar = parseTutar(qs('#duzenleTutar').value || '0');
+        const referans = qs('#duzenleReferans').value.trim();
+        
+        // Validasyon
+        if (!sahip || !tip || !tutar || tutar <= 0) {
+          showToast('Lütfen tüm zorunlu alanları doldurun.', '', 'error');
+          return;
+        }
+        
+        // Yönetici bilgisi
+        const user = auth.currentUser;
+        if (!user) {
+          showToast('Oturum açık değil.', '', 'error');
+          return;
+        }
+        
+        const yoneticiDoc = await db.collection('kullanicilar').doc(user.uid).get();
+        const yoneticiData = yoneticiDoc.exists ? yoneticiDoc.data() : {};
+        const yoneticiAd = yoneticiData.ad || yoneticiData.isim || user.email || 'Bilinmeyen';
+        const yoneticiUid = user.uid;
+        
+        // Personel bilgisini belirle
+        let personelAd = '';
+        let personelUid = null;
+        
+        if (!referans || normalizeTurkish(referans) === 'diğer') {
+          personelAd = normalizePersonelName(yoneticiAd);
+          personelUid = yoneticiUid;
+        } else {
+          personelAd = normalizePersonelName(referans);
+          personelUid = null;
+        }
+        
+        const analizRef = db.collection('ramazan_serif').doc('analiz').collection('veriler');
+        const data = {
+          yil: yil,
+          tip: tip,
+          sahip: sahip,
+          diger: diger || '',
+          tutar: tutar,
+          referans: referans || '',
+          personel: personelAd,
+          personelUid: personelUid,
+          yukleyen: normalizePersonelName(yoneticiAd),
+          yukleyenUid: yoneticiUid,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        if (docId) {
+          // Güncelle
+          data.createdAt = (await analizRef.doc(docId).get()).data()?.createdAt || firebase.firestore.FieldValue.serverTimestamp();
+          await analizRef.doc(docId).update(data);
+          showToast('Veri güncellendi.', '', 'success');
+        } else {
+          // Yeni kayıt
+          data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+          await analizRef.add(data);
+          showToast('Veri eklendi.', '', 'success');
+        }
+        
+        // Analiz verilerini yenile ve listeyi güncelle (sayfa yenilenmeden)
+        try {
+          if (typeof loadAnalizVerileri === 'function') {
+            await loadAnalizVerileri();
+          }
+          // Dashboard ve analizleri yenile
+          if (typeof loadAnalizDashboard === 'function') loadAnalizDashboard();
+          if (typeof loadTrendAnaliz === 'function') loadTrendAnaliz();
+          if (typeof loadKategoriAnaliz === 'function') loadKategoriAnaliz();
+          if (typeof loadKisiAnalizi === 'function') loadKisiAnalizi();
+          if (typeof loadPersonelAnalizi === 'function') loadPersonelAnalizi();
+          // Veri düzenleme listesini yenile
+          loadVeriDuzenleme();
+          closeVeriDuzenlemeModal();
+        } catch (error) {
+          console.error('Veri yenileme hatası:', error);
+          showToast('Veri güncellendi ancak listeler yenilenirken hata oluştu.', '', 'warning');
+          closeVeriDuzenlemeModal();
+          loadVeriDuzenleme();
+        }
+      });
+    }
+    
+    // Veri sil
+    async function deleteVeriKayit() {
+      const docId = qs('#duzenleId').value || qs('#btnDeleteVeri')?.getAttribute('data-doc-id');
+      
+      if (!docId) {
+        showToast('Silinecek kayıt bulunamadı.', '', 'error');
+        return;
+      }
+      
+      if (!confirm('Bu kaydı silmek istediğinizden emin misiniz?')) {
+        return;
+      }
+      
+      try {
+        const analizRef = db.collection('ramazan_serif').doc('analiz').collection('veriler');
+        await analizRef.doc(docId).delete();
+        showToast('Veri silindi.', '', 'success');
+        
+        // Analiz verilerini yenile ve listeyi güncelle (sayfa yenilenmeden)
+        if (typeof loadAnalizVerileri === 'function') {
+          await loadAnalizVerileri();
+        }
+        // Dashboard ve analizleri yenile
+        if (typeof loadAnalizDashboard === 'function') loadAnalizDashboard();
+        if (typeof loadTrendAnaliz === 'function') loadTrendAnaliz();
+        if (typeof loadKategoriAnaliz === 'function') loadKategoriAnaliz();
+        if (typeof loadKisiAnalizi === 'function') loadKisiAnalizi();
+        if (typeof loadPersonelAnalizi === 'function') loadPersonelAnalizi();
+        // Veri düzenleme listesini yenile
+        loadVeriDuzenleme();
+        closeVeriDuzenlemeModal();
+      } catch (error) {
+        console.error('Silme hatası:', error);
+        showToast('Veri silinirken hata oluştu.', '', 'error');
+      }
+    }
+    
+    window.deleteVeriKayit = deleteVeriKayit;
+    
+    // Event listeners - Veri düzenleme
+    setTimeout(() => {
+      const duzenleYil = qs('#duzenleYil');
+      const duzenleTip = qs('#duzenleTip');
+      const duzenleAra = qs('#duzenleAra');
+      
+      if (duzenleYil) {
+        duzenleYil.addEventListener('change', () => {
+          if (typeof loadVeriDuzenleme === 'function') loadVeriDuzenleme();
+        });
+      }
+      if (duzenleTip) {
+        duzenleTip.addEventListener('change', () => {
+          if (typeof loadVeriDuzenleme === 'function') loadVeriDuzenleme();
+        });
+      }
+      if (duzenleAra) {
+        let searchTimeout;
+        duzenleAra.addEventListener('input', () => {
+          clearTimeout(searchTimeout);
+          searchTimeout = setTimeout(() => {
+            if (typeof loadVeriDuzenleme === 'function') loadVeriDuzenleme();
+          }, 500);
+        });
+      }
+    }, 500);
+    
+    // Tab değiştiğinde analiz verilerini yükle
+    if (qs('#analizYil')) {
+      qs('#analizYil').addEventListener('change', () => {
+        loadAnalizDashboard();
+      });
+    }
+    
+    // Event listeners - Personel analizi
+    setTimeout(() => {
+      const personelAra = qs('#personelAra');
+      const personelFiltreYil = qs('#personelFiltreYil');
+      const personelFiltreTip = qs('#personelFiltreTip');
+      if (personelAra) {
+        personelAra.addEventListener('input', () => {
+          if (typeof loadPersonelAnalizi === 'function') loadPersonelAnalizi();
+        });
+      }
+      if (personelFiltreYil) {
+        personelFiltreYil.addEventListener('change', () => {
+          if (typeof loadPersonelAnalizi === 'function') loadPersonelAnalizi();
+        });
+      }
+      if (personelFiltreTip) {
+        personelFiltreTip.addEventListener('change', () => {
+          if (typeof loadPersonelAnalizi === 'function') loadPersonelAnalizi();
+        });
+      }
+      
+      // Kişi analizi event listeners
+      const kisiAra = qs('#kisiAra');
+      const kisiFiltreTip = qs('#kisiFiltreTip');
+      if (kisiAra) {
+        kisiAra.addEventListener('input', () => {
+          if (typeof loadKisiAnalizi === 'function') loadKisiAnalizi();
+        });
+      }
+      if (kisiFiltreTip) {
+        kisiFiltreTip.addEventListener('change', () => {
+          if (typeof loadKisiAnalizi === 'function') loadKisiAnalizi();
+        });
+      }
+    }, 500);
+    
+    // İlk yükleme - analiz verilerini yükle
+    setTimeout(async () => {
+      await loadAnalizVerileri();
+      loadAnalizDashboard();
+      loadTrendAnaliz();
+      loadKategoriAnaliz();
+      if (typeof loadPersonelAnalizi === 'function') loadPersonelAnalizi();
+    }, 500);
   </script>
 </body>
 </html>

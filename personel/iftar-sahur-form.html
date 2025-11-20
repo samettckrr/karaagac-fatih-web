@@ -121,6 +121,17 @@
     .badge.iftar{background:#f59e0b}
     .badge.sahur{background:#3b82f6}
     
+    /* Detail Modal Tabs */
+    .detail-tab-content{display:block;min-height:200px;max-height:400px;overflow-y:auto}
+    .detail-tab-content.active{display:block}
+    .modal .tabs{display:flex;gap:4px;border-bottom:2px solid var(--border);margin:0 0 16px 0;overflow-x:auto}
+    .modal .tab{
+      padding:10px 16px;border:none;background:transparent;color:var(--muted);cursor:pointer;
+      border-bottom:3px solid transparent;white-space:nowrap;font-weight:500;transition:all 0.2s
+    }
+    .modal .tab:hover{color:var(--ink);background:#f8f9fa}
+    .modal .tab.active{color:var(--accent);border-bottom-color:var(--accent);background:#fff}
+    
     /* Modal */
     body.modal-open{overflow:hidden}
     .modal{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;padding:16px;z-index:9999;backdrop-filter:blur(4px)}
@@ -366,9 +377,17 @@
 
   <!-- Modal: Gün Detayı -->
   <div class="modal" id="modalDetay">
-    <div class="sheet">
+    <div class="sheet" style="max-width:800px">
       <h3 id="detayTitle">Gün Detayı</h3>
+      <div style="border-bottom:2px solid var(--border);margin-bottom:16px">
+        <div class="tabs" style="border-bottom:none;margin:0;padding:0">
+          <button class="tab active" data-tab="iftar" onclick="switchDetailTab('iftar')">🌙 İftar</button>
+          <button class="tab" data-tab="sahur" onclick="switchDetailTab('sahur')">🌟 Sahur</button>
+        </div>
+      </div>
       <div id="detayContent"></div>
+      <div id="detayIftar" class="detail-tab-content"></div>
+      <div id="detaySahur" class="detail-tab-content" style="display:none"></div>
       <div class="actions">
         <button type="button" class="secondary" onclick="closeDetailModal()">Kapat</button>
         <button type="button" onclick="openFormForDay()">Yeni Kayıt Ekle</button>
@@ -849,21 +868,28 @@
       // ISO formatında değilse parse et (YYYY-MM-DD formatında geliyorsa)
       let baslangic, bitis;
       if (typeof baslangicRaw === 'string' && !baslangicRaw.includes('T')) {
-        // Sadece tarih var, saat ekle
-        baslangic = new Date(baslangicRaw + 'T00:00:00');
+        // Tarihi parse et - timezone sorununu önlemek için öğle saati kullan
+        const basParts = baslangicRaw.split('-');
+        baslangic = new Date(parseInt(basParts[0]), parseInt(basParts[1]) - 1, parseInt(basParts[2]), 12, 0, 0, 0);
       } else {
         baslangic = new Date(baslangicRaw);
+        // Normalize et
+        baslangic = new Date(baslangic.getFullYear(), baslangic.getMonth(), baslangic.getDate(), 12, 0, 0, 0);
       }
       
       if (typeof bitisRaw === 'string' && !bitisRaw.includes('T')) {
-        bitis = new Date(bitisRaw + 'T23:59:59');
+        // Tarihi parse et - timezone sorununu önlemek için öğle saati kullan
+        const bitisParts = bitisRaw.split('-');
+        bitis = new Date(parseInt(bitisParts[0]), parseInt(bitisParts[1]) - 1, parseInt(bitisParts[2]), 12, 0, 0, 0);
       } else {
         bitis = new Date(bitisRaw);
+        // Normalize et
+        bitis = new Date(bitis.getFullYear(), bitis.getMonth(), bitis.getDate(), 12, 0, 0, 0);
       }
       
       const hicriYil = ramazanAyari.hicriYil;
       
-      // Başlık güncelle
+      // Başlık güncelle (Türkiye saat diliminde formatla)
       const baslangicStr = baslangic.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric', timeZone: 'Europe/Istanbul' });
       const bitisStr = bitis.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric', timeZone: 'Europe/Istanbul' });
       qs('#calTitle').textContent = `${CURRENT_YIL} Ramazan-ı Şerif (${hicriYil}) - ${baslangicStr} / ${bitisStr}`;
@@ -901,7 +927,11 @@
         // Bitiş tarihini aşmışsa dur
         if (gunTarihi > bitisNormal) break;
         
-        const dateStr = gunTarihi.toISOString().slice(0, 10);
+        // Tarih string'ini oluştur - timezone sorununu önlemek için manuel formatla
+        const year = gunTarihi.getFullYear();
+        const month = String(gunTarihi.getMonth() + 1).padStart(2, '0');
+        const day = String(gunTarihi.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
         const ramazanGunu = i + 1;
         
         const dayKayitlar = kayitlar.filter(k => {
@@ -976,31 +1006,52 @@
     function openDayDetail(dateStr, dayKayitlar) {
       SELECTED_DATE = dateStr;
       
-      // Tarihi doğru parse et (timezone sorununu önlemek için)
+      // Tarihi doğru parse et (timezone sorununu önlemek için) - UTC offset ekleyerek
       const tarihParts = dateStr.split('-');
-      const tarih = new Date(parseInt(tarihParts[0]), parseInt(tarihParts[1]) - 1, parseInt(tarihParts[2]));
+      // Yerel saat diliminde tarih oluştur (timezone sorununu önlemek için)
+      const tarih = new Date(parseInt(tarihParts[0]), parseInt(tarihParts[1]) - 1, parseInt(tarihParts[2]), 12, 0, 0, 0);
       
-      qs('#detayTitle').textContent = `${tarih.getDate()} ${ayIsimleri[tarih.getMonth()]} ${tarih.getFullYear()}`;
+      // Türkiye saat diliminde formatla
+      const tarihStr = tarih.toLocaleDateString('tr-TR', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        timeZone: 'Europe/Istanbul'
+      });
+      const gunAdi = tarih.toLocaleDateString('tr-TR', {
+        weekday: 'long',
+        timeZone: 'Europe/Istanbul'
+      });
       
-      const content = qs('#detayContent');
-      if (dayKayitlar.length === 0) {
-        content.innerHTML = '<p style="color:var(--muted)">Bu gün için kayıt bulunamadı.</p>';
+      qs('#detayTitle').textContent = `${tarihStr} ${gunAdi.charAt(0).toUpperCase() + gunAdi.slice(1)}`;
+      
+      // İftar ve Sahur kayıtlarını ayır
+      const iftarKayitlar = dayKayitlar.filter(k => k.tip === 'iftar');
+      const sahurKayitlar = dayKayitlar.filter(k => k.tip === 'sahur');
+      
+      // Kayıtları tarihe göre sırala (ESKİDEN YENİYE) - createdAt varsa ona göre
+      function sortByCreatedAt(a, b) {
+        if (a.createdAt && b.createdAt) {
+          const aTime = a.createdAt.toMillis ? a.createdAt.toMillis() : (a.createdAt.seconds * 1000);
+          const bTime = b.createdAt.toMillis ? b.createdAt.toMillis() : (b.createdAt.seconds * 1000);
+          return aTime - bTime; // Eski üstte (ters sıralama)
+        }
+        // createdAt yoksa id'ye göre (alfanumerik olarak)
+        return (a.id || '').localeCompare(b.id || '');
+      }
+      
+      const sortedIftar = [...iftarKayitlar].sort(sortByCreatedAt);
+      const sortedSahur = [...sahurKayitlar].sort(sortByCreatedAt);
+      
+      // İftar sekmesi içeriği
+      const iftarContent = qs('#detayIftar');
+      if (sortedIftar.length === 0) {
+        iftarContent.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px">Bu gün için iftar kaydı bulunamadı.</p>';
       } else {
-        // Kayıtları tarihe göre sırala (en yeni üstte) - createdAt varsa ona göre, yoksa id'ye göre
-        const sortedKayitlar = [...dayKayitlar].sort((a, b) => {
-          if (a.createdAt && b.createdAt) {
-            const aTime = a.createdAt.toMillis ? a.createdAt.toMillis() : (a.createdAt.seconds * 1000);
-            const bTime = b.createdAt.toMillis ? b.createdAt.toMillis() : (b.createdAt.seconds * 1000);
-            return bTime - aTime; // En yeni üstte
-          }
-          // createdAt yoksa id'ye göre (alfanumerik olarak ters sıralama)
-          return (b.id || '').localeCompare(a.id || '');
-        });
-        
-        content.innerHTML = sortedKayitlar.map(k => `
+        iftarContent.innerHTML = sortedIftar.map(k => `
           <div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin:8px 0">
             <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">
-              <strong>${k.tip === 'iftar' ? '🌙 İftar' : '🌟 Sahur'}</strong>
+              <strong>🌙 İftar</strong>
               <span style="padding:4px 8px;border-radius:6px;background:#f0f0f0;color:var(--ink);font-size:12px;display:inline-block">${k.sahip}</span>
             </div>
             <div style="font-size:13px;color:var(--muted);line-height:1.6">
@@ -1014,9 +1065,53 @@
         `).join('');
       }
       
+      // Sahur sekmesi içeriği
+      const sahurContent = qs('#detaySahur');
+      if (sortedSahur.length === 0) {
+        sahurContent.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px">Bu gün için sahur kaydı bulunamadı.</p>';
+      } else {
+        sahurContent.innerHTML = sortedSahur.map(k => `
+          <div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin:8px 0">
+            <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">
+              <strong>🌟 Sahur</strong>
+              <span style="padding:4px 8px;border-radius:6px;background:#f0f0f0;color:var(--ink);font-size:12px;display:inline-block">${k.sahip}</span>
+            </div>
+            <div style="font-size:13px;color:var(--muted);line-height:1.6">
+              <div>Tutar: <strong>₺${Number(k.tutar || 0).toLocaleString('tr-TR',{minimumFractionDigits:2})}</strong></div>
+              <div>İştirak: ${k.istirak ? '✓ Evet' : '✗ Hayır'}</div>
+              <div>Müsafir: ${k.musafirAdedi || 0} kişi</div>
+              ${k.not ? `<div>Not: ${k.not}</div>` : ''}
+              <div style="margin-top:4px;font-size:11px">Kaydeden: ${k.personel || '-'}</div>
+            </div>
+          </div>
+        `).join('');
+      }
+      
+      // İlk sekme olarak İftar'ı göster
+      switchDetailTab('iftar');
+      
       qs('#modalDetay').classList.add('show');
       document.body.classList.add('modal-open');
     }
+    
+    // Detail sekme değiştir
+    function switchDetailTab(tab) {
+      document.querySelectorAll('#modalDetay .tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.detail-tab-content').forEach(c => c.style.display = 'none');
+      
+      const activeTab = document.querySelector(`#modalDetay .tab[data-tab="${tab}"]`);
+      if (activeTab) {
+        activeTab.classList.add('active');
+      }
+      
+      if (tab === 'iftar') {
+        qs('#detayIftar').style.display = 'block';
+      } else if (tab === 'sahur') {
+        qs('#detaySahur').style.display = 'block';
+      }
+    }
+    
+    window.switchDetailTab = switchDetailTab;
 
     // Form modalını aç
     async function openForm(dateStr = null) {
@@ -1041,19 +1136,20 @@
       
       // Tarih bilgisini göster (timezone sorununu önlemek için)
       if (SELECTED_DATE && ramazanAyari) {
-        // Tarihi doğru parse et - YYYY-MM-DD formatından
+        // Tarihi doğru parse et - YYYY-MM-DD formatından, UTC offset ekleyerek
         const tarihParts = SELECTED_DATE.split('-');
-        const tarih = new Date(parseInt(tarihParts[0]), parseInt(tarihParts[1]) - 1, parseInt(tarihParts[2]));
+        // Yerel saat diliminde tarih oluştur (timezone sorununu önlemek için - öğle saati kullan)
+        const tarih = new Date(parseInt(tarihParts[0]), parseInt(tarihParts[1]) - 1, parseInt(tarihParts[2]), 12, 0, 0, 0);
         
         // Başlangıç tarihini de doğru parse et
         const baslangicRaw = ramazanAyari.baslangic;
         let baslangic;
         if (typeof baslangicRaw === 'string' && !baslangicRaw.includes('T')) {
           const basParts = baslangicRaw.split('-');
-          baslangic = new Date(parseInt(basParts[0]), parseInt(basParts[1]) - 1, parseInt(basParts[2]));
+          baslangic = new Date(parseInt(basParts[0]), parseInt(basParts[1]) - 1, parseInt(basParts[2]), 12, 0, 0, 0);
         } else {
           baslangic = new Date(baslangicRaw);
-          baslangic = new Date(baslangic.getFullYear(), baslangic.getMonth(), baslangic.getDate());
+          baslangic = new Date(baslangic.getFullYear(), baslangic.getMonth(), baslangic.getDate(), 12, 0, 0, 0);
         }
         
         // Tarihleri normalize et (saat bilgisi olmadan)
@@ -1064,6 +1160,7 @@
         const ramazanGunu = gunFarki + 1;
         const hicriYil = ramazanAyari.hicriYil;
         
+        // Türkiye saat diliminde formatla
         const tarihStr = tarih.toLocaleDateString('tr-TR', { 
           day: 'numeric', 
           month: 'long', 
@@ -1607,6 +1704,7 @@
         return kTarih >= baslangicStr && kTarih <= bitisStr;
       });
       
+      // TÜM iftar ve sahur kayıtlarını say (iştirak etsin etmesin)
       const iftarSayisi = ramazanKayitlar.filter(k => k.tip === 'iftar').length;
       const sahurSayisi = ramazanKayitlar.filter(k => k.tip === 'sahur').length;
       
