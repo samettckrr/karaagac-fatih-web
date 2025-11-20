@@ -278,6 +278,7 @@
                 <th>Sıra</th>
                 <th>Tutar (₺)</th>
                 <th>Etiket</th>
+                <th>Tip</th>
                 <th>Durum</th>
                 <th style="width:120px">İşlemler</th>
               </tr>
@@ -346,6 +347,16 @@
             <tbody id="tbodyRamazan"></tbody>
           </table>
         </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="toolbar">
+          <h3 style="margin:0">Mahal Ayarları</h3>
+          <div style="flex:1"></div>
+          <button class="good" onclick="openMahalModal()">+ Yeni Mahal Ekle</button>
+        </div>
+
+        <div id="mahalList" style="margin-top:16px"></div>
       </div>
     </div>
 
@@ -473,7 +484,17 @@
         </div>
         <div class="form-group">
           <label>Etiket *</label>
-          <input type="text" id="tutarLabel" placeholder="Örn: ₺5.000 - Standart" required />
+          <input type="text" id="tutarLabel" placeholder="Örn: 50 kişilik iftar" required />
+        </div>
+        <div class="form-group">
+          <label>Tip *</label>
+          <select id="tutarTip" required>
+            <option value="">Seçiniz</option>
+            <option value="iftar">İftar</option>
+            <option value="sahur">Sahur</option>
+            <option value="">Her İkisi (Genel)</option>
+          </select>
+          <small style="color:var(--muted);margin-top:4px">Bu tutar seçeneğinin hangi tip için geçerli olduğunu belirtin</small>
         </div>
         <div class="form-group">
           <label>Sıra *</label>
@@ -576,6 +597,32 @@
         </div>
         <div class="actions">
           <button type="button" class="secondary" onclick="closeKapasiteModal()">İptal</button>
+          <button type="submit" class="good">Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Mahal Ayarları -->
+  <div class="modal" id="modalMahal">
+    <div class="sheet">
+      <h3 id="mahalTitle">Yeni Mahal Ekle</h3>
+      <form id="formMahal" class="form-grid">
+        <input type="hidden" id="mahalId" />
+        <div class="form-group">
+          <label>Mahal Adı *</label>
+          <input type="text" id="mahalAdi" placeholder="Örn: Ana Salon, Bahçe, Konferans Salonu" required />
+        </div>
+        <div class="form-group">
+          <label>Min Müsafir Adedi *</label>
+          <input type="number" id="mahalMin" min="1" value="1" required />
+        </div>
+        <div class="form-group">
+          <label>Max Müsafir Adedi *</label>
+          <input type="number" id="mahalMax" min="1" required />
+        </div>
+        <div class="actions">
+          <button type="button" class="secondary" onclick="closeMahalModal()">İptal</button>
           <button type="submit" class="good">Kaydet</button>
         </div>
       </form>
@@ -717,25 +764,60 @@
       // İlk yükleme
       await loadKayitlar();
       await loadTutarSecenekleri();
-      
-      // Tab değiştirme
-      document.querySelectorAll('.tab').forEach(tab => {
-        tab.addEventListener('click', () => {
-          document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-          document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-          
-          tab.classList.add('active');
-          const tabId = tab.dataset.tab;
-          qs(`#tab-${tabId}`).classList.add('active');
-          
-          if (tabId === 'takvim') renderCalView();
-          if (tabId === 'istatistik') loadStatistics();
-          if (tabId === 'ramazan') loadRamazanAyarlari();
-          if (tabId === 'kapasite') loadKapasiteAyarlari();
-          if (tabId === 'tutar') loadTutarSecenekleri();
-        });
-      });
+      await loadMahallar();
     });
+    
+    // Tab değiştirme - Event delegation kullanarak (tek listener)
+    let tabInitialized = false;
+    function initTabs() {
+      if (tabInitialized) return;
+      tabInitialized = true;
+      
+      document.addEventListener('click', (e) => {
+        const tab = e.target.closest('.tab');
+        if (!tab || !tab.dataset.tab) return;
+        
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Tüm tab'ları pasif yap
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        
+        // Tıklanan tab'ı aktif yap
+        tab.classList.add('active');
+        const tabId = tab.dataset.tab;
+        const tabContent = qs(`#tab-${tabId}`);
+        if (tabContent) {
+          tabContent.classList.add('active');
+          
+          // Tab'a göre içerik yükle
+          if (tabId === 'takvim') {
+            if (typeof renderCalView === 'function') renderCalView();
+          }
+          if (tabId === 'istatistik') {
+            if (typeof loadStatistics === 'function') loadStatistics();
+          }
+          if (tabId === 'ramazan') {
+            if (typeof loadRamazanAyarlari === 'function') loadRamazanAyarlari();
+            if (typeof loadMahallar === 'function') loadMahallar();
+          }
+          if (tabId === 'kapasite') {
+            if (typeof loadKapasiteAyarlari === 'function') loadKapasiteAyarlari();
+          }
+          if (tabId === 'tutar') {
+            if (typeof loadTutarSecenekleri === 'function') loadTutarSecenekleri();
+          }
+        }
+      });
+    }
+    
+    // DOM yüklendiğinde tab'ları başlat
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initTabs);
+    } else {
+      initTabs();
+    }
 
     // Ramazan Ayarları
     let ramazanAyarlari = [];
@@ -1449,8 +1531,10 @@
       const yil = qs('#tutarYil').value;
       try {
         const yilRef = db.collection('ramazan_serif').doc(String(yil));
-        const snap = await yilRef.collection('tutar_secenekleri').orderBy('sira', 'asc').get();
-        tutarSecenekleri = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // İndex gerektirmemek için client-side'da sırala
+        const snap = await yilRef.collection('tutar_secenekleri').get();
+        tutarSecenekleri = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => (a.sira || 0) - (b.sira || 0));
         renderTutarSecenekleri();
       } catch (e) {
         console.error('Tutar seçenekleri yüklenemedi:', e);
@@ -1464,16 +1548,18 @@
       tbody.innerHTML = '';
       
       if (tutarSecenekleri.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">Kayıt bulunamadı</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">Kayıt bulunamadı</td></tr>';
         return;
       }
       
       tutarSecenekleri.forEach(t => {
         const tr = document.createElement('tr');
+        const tipLabel = t.tip === 'iftar' ? '🌙 İftar' : (t.tip === 'sahur' ? '🌟 Sahur' : '🔹 Genel');
         tr.innerHTML = `
           <td>${t.sira || 0}</td>
           <td><strong>₺${Number(t.tutar || 0).toLocaleString('tr-TR',{minimumFractionDigits:2})}</strong></td>
           <td>${t.label || '-'}</td>
+          <td>${tipLabel}</td>
           <td>${t.aktif ? '<span style="color:var(--good)">Aktif</span>' : '<span style="color:var(--muted)">Pasif</span>'}</td>
           <td>
             <button onclick="editTutar('${t.id}')" style="padding:4px 8px;font-size:12px">Düzenle</button>
@@ -1495,10 +1581,12 @@
           qs('#tutarLabel').value = t.label || '';
           qs('#tutarSira').value = t.sira || 1;
           qs('#tutarAktif').value = t.aktif ? 'true' : 'false';
+          qs('#tutarTip').value = t.tip || '';
         }
       } else {
         qs('#formTutar').reset();
         qs('#tutarSira').value = tutarSecenekleri.length + 1;
+        qs('#tutarTip').value = '';
       }
       
       qs('#modalTutar').classList.add('show');
@@ -1519,6 +1607,7 @@
       const label = qs('#tutarLabel').value.trim();
       const sira = parseInt(qs('#tutarSira').value) || 1;
       const aktif = qs('#tutarAktif').value === 'true';
+      const tip = qs('#tutarTip').value || null; // null = genel (her ikisi için)
       
       try {
         const yilRef = db.collection('ramazan_serif').doc(String(yil));
@@ -1526,7 +1615,8 @@
           tutar: tutar,
           label: label,
           sira: sira,
-          aktif: aktif
+          aktif: aktif,
+          tip: tip || null // null = genel, 'iftar' veya 'sahur'
         };
         
         if (id) {

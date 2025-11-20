@@ -140,6 +140,58 @@
     
     .actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
     
+    /* Form validation styles */
+    .form-group.error input,
+    .form-group.error select,
+    .form-group.error textarea {
+      border-color: #dc2626 !important;
+      background-color: #fef2f2;
+    }
+    .form-error {
+      color: #dc2626;
+      font-size: 12px;
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .form-error::before {
+      content: '⚠️';
+      font-size: 14px;
+    }
+    
+    /* Toast notification */
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%) translateY(20px);
+      background: rgba(2, 6, 23, 0.95);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 12px 20px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s, transform 0.25s;
+      z-index: 10000;
+      font-weight: 500;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    .toast.success {
+      background: #2d6a4f;
+    }
+    .toast.error {
+      background: #c0392b;
+    }
+    .toast.warning {
+      background: #d35400;
+    }
+    
     @media (max-width:768px){
       .cal-wrapper{gap:4px}
       .cal-dow-row{gap:4px}
@@ -229,16 +281,18 @@
     </div>
   </main>
 
+  <!-- Toast Notification -->
+  <div class="toast" id="toast"></div>
+
   <!-- Modal: Kayıt Formu -->
   <div class="modal" id="modalForm">
-    <div class="sheet">
+    <div class="sheet" id="formSheet">
       <h3 id="modalTitle">Yeni Kayıt Ekle</h3>
       <form id="formKayit" class="form-grid">
+        <input type="hidden" id="tarih" />
         <div class="form-group">
           <label>Tarih *</label>
-          <select id="tarih" required>
-            <option value="">Seçiniz</option>
-          </select>
+          <input type="text" id="tarihDisplay" readonly style="background:#f5f5f5;cursor:not-allowed" />
           <small id="tarihInfo" style="color:var(--muted);margin-top:4px;display:block"></small>
         </div>
         
@@ -260,13 +314,8 @@
         <div class="form-group">
           <label>Tutar Seçeneği *</label>
           <select id="tutarSecenek" required>
-            <option value="">Seçiniz</option>
+            <option value="">Yükleniyor...</option>
           </select>
-        </div>
-        
-        <div class="form-group">
-          <label>Özel Tutar (₺) - Sadece "Özel" seçilirse</label>
-          <input type="number" id="ozelTutar" min="0" step="0.01" placeholder="0.00" />
         </div>
         
         <div class="form-group">
@@ -283,16 +332,35 @@
           </div>
         </div>
         
-        <div class="form-group">
+        <div class="form-group" id="musafirGroup">
           <label>Müsafir Adedi *</label>
           <input type="number" id="musafirAdedi" min="0" value="0" required />
         </div>
         
+        <div class="form-group">
+          <label>Not / Açıklama</label>
+          <textarea id="not" placeholder="Ek bilgiler, özel istekler vb. (isteğe bağlı)" style="height:80px"></textarea>
+        </div>
+        
         <div class="actions">
           <button type="button" class="secondary" onclick="closeModal()">İptal</button>
-          <button type="submit" class="good">Kaydet</button>
+          <button type="submit" class="good">Önizleme</button>
         </div>
       </form>
+    </div>
+    
+    <!-- Önizleme Görünümü -->
+    <div class="sheet" id="previewSheet" style="display:none">
+      <h3>Kayıt Önizleme</h3>
+      <div id="previewContent" style="padding:16px;background:#f8f9fa;border-radius:12px;margin-bottom:20px"></div>
+      <div id="previewInfo" style="padding:12px;background:#fff3cd;border-left:4px solid #f59e0b;border-radius:8px;margin-bottom:20px;display:none">
+        <p style="margin:0;color:#856404;font-size:13px;line-height:1.6"></p>
+      </div>
+      <div class="actions">
+        <button type="button" class="secondary" onclick="backToForm()">Geri Dön</button>
+        <button type="button" class="secondary" onclick="closeModal()">Kapat</button>
+        <button type="button" class="good" onclick="saveKayit()">Kaydet ve Kapat</button>
+      </div>
     </div>
   </div>
 
@@ -689,10 +757,9 @@
       };
     }
 
-    // Tutar seçeneklerini yükle
-    async function loadTutarSecenekleri() {
+    // Tutar seçeneklerini yükle (tip'e göre filtrele)
+    async function loadTutarSecenekleri(tip = null) {
       if (!CURRENT_YIL) {
-        console.warn('Yıl seçilmedi, tutar seçenekleri yüklenemiyor');
         const select = qs('#tutarSecenek');
         if (select) {
           select.innerHTML = '<option value="">Lütfen önce yıl seçiniz</option>';
@@ -704,10 +771,20 @@
         const yilRef = db.collection('ramazan_serif').doc(String(CURRENT_YIL));
         const snap = await yilRef.collection('tutar_secenekleri')
           .where('aktif', '==', true)
-          .orderBy('sira', 'asc')
           .get();
         
-        tutarSecenekleri = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        let allSecenekler = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => (a.sira || 0) - (b.sira || 0));
+        
+        // Tip'e göre filtrele (iftar/sahur)
+        if (tip) {
+          tutarSecenekleri = allSecenekler.filter(sec => {
+            // Eğer tip belirtilmemişse (null/undefined) veya tip eşleşiyorsa
+            return !sec.tip || sec.tip === tip;
+          });
+        } else {
+          tutarSecenekleri = allSecenekler;
+        }
         
         const select = qs('#tutarSecenek');
         if (!select) return;
@@ -717,40 +794,27 @@
         if (tutarSecenekleri.length === 0) {
           const optNone = document.createElement('option');
           optNone.value = '';
-          optNone.textContent = 'Tutar seçeneği bulunamadı';
+          optNone.textContent = 'Tutar seçeneği bulunamadı - Yönetim panelinden ekleyin';
           optNone.disabled = true;
           select.appendChild(optNone);
         } else {
           tutarSecenekleri.forEach(sec => {
             const opt = document.createElement('option');
-            opt.value = sec.tutar;
-            opt.textContent = `${sec.label || '₺' + sec.tutar}`;
+            opt.value = String(sec.tutar);
+            // Format: "Tutar - Etiket" şeklinde
+            const tutarFormatted = Number(sec.tutar).toLocaleString('tr-TR', {minimumFractionDigits:2});
+            const label = sec.label || '';
+            opt.textContent = label ? `${tutarFormatted}₺ - ${label}` : `${tutarFormatted}₺`;
             select.appendChild(opt);
           });
         }
-        
-        // Özel seçeneği ekle
-        const optOzel = document.createElement('option');
-        optOzel.value = 'ozel';
-        optOzel.textContent = 'Özel Tutar';
-        select.appendChild(optOzel);
-        
-        // Özel tutar değişimini dinle (sadece bir kez ekle)
-        select.removeEventListener('change', handleTutarSecenekChange);
-        select.addEventListener('change', handleTutarSecenekChange);
       } catch (e) {
         console.error('Tutar seçenekleri yüklenemedi:', e);
         const select = qs('#tutarSecenek');
         if (select) {
-          select.innerHTML = '<option value="">Yüklenemedi</option>';
+          select.innerHTML = '<option value="">Yüklenemedi - Hata: ' + e.message + '</option>';
         }
       }
-    }
-    
-    // Özel tutar değişim handler'ı
-    function handleTutarSecenekChange(e) {
-      qs('#ozelTutar').disabled = e.target.value !== 'ozel';
-      if (e.target.value !== 'ozel') qs('#ozelTutar').value = '';
     }
 
     // Kayıtları yükle (realtime listener)
@@ -893,17 +957,47 @@
       }
     }
 
+    // Toast bildirimi göster
+    function showToast(message, type = 'success') {
+      const toast = qs('#toast');
+      if (!toast) return;
+      
+      toast.textContent = message;
+      toast.className = `toast ${type}`;
+      toast.classList.add('show');
+      
+      clearTimeout(window.__toastTimeout);
+      window.__toastTimeout = setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+    
     // Gün detayını aç
     function openDayDetail(dateStr, dayKayitlar) {
       SELECTED_DATE = dateStr;
-      const date = new Date(dateStr);
-      qs('#detayTitle').textContent = `${date.getDate()} ${ayIsimleri[date.getMonth()]} ${date.getFullYear()}`;
+      
+      // Tarihi doğru parse et (timezone sorununu önlemek için)
+      const tarihParts = dateStr.split('-');
+      const tarih = new Date(parseInt(tarihParts[0]), parseInt(tarihParts[1]) - 1, parseInt(tarihParts[2]));
+      
+      qs('#detayTitle').textContent = `${tarih.getDate()} ${ayIsimleri[tarih.getMonth()]} ${tarih.getFullYear()}`;
       
       const content = qs('#detayContent');
       if (dayKayitlar.length === 0) {
         content.innerHTML = '<p style="color:var(--muted)">Bu gün için kayıt bulunamadı.</p>';
       } else {
-        content.innerHTML = dayKayitlar.map(k => `
+        // Kayıtları tarihe göre sırala (en yeni üstte) - createdAt varsa ona göre, yoksa id'ye göre
+        const sortedKayitlar = [...dayKayitlar].sort((a, b) => {
+          if (a.createdAt && b.createdAt) {
+            const aTime = a.createdAt.toMillis ? a.createdAt.toMillis() : (a.createdAt.seconds * 1000);
+            const bTime = b.createdAt.toMillis ? b.createdAt.toMillis() : (b.createdAt.seconds * 1000);
+            return bTime - aTime; // En yeni üstte
+          }
+          // createdAt yoksa id'ye göre (alfanumerik olarak ters sıralama)
+          return (b.id || '').localeCompare(a.id || '');
+        });
+        
+        content.innerHTML = sortedKayitlar.map(k => `
           <div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin:8px 0">
             <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">
               <strong>${k.tip === 'iftar' ? '🌙 İftar' : '🌟 Sahur'}</strong>
@@ -913,6 +1007,7 @@
               <div>Tutar: <strong>₺${Number(k.tutar || 0).toLocaleString('tr-TR',{minimumFractionDigits:2})}</strong></div>
               <div>İştirak: ${k.istirak ? '✓ Evet' : '✗ Hayır'}</div>
               <div>Müsafir: ${k.musafirAdedi || 0} kişi</div>
+              ${k.not ? `<div>Not: ${k.not}</div>` : ''}
               <div style="margin-top:4px;font-size:11px">Kaydeden: ${k.personel || '-'}</div>
             </div>
           </div>
@@ -927,42 +1022,67 @@
     async function openForm(dateStr = null) {
       SELECTED_DATE = dateStr || SELECTED_DATE;
       
+      if (!SELECTED_DATE) {
+        alert('Lütfen takvimden bir gün seçiniz.');
+        return;
+      }
+      
+      // Önizleme görünümünü gizle, form görünümünü göster
+      qs('#formSheet').style.display = 'block';
+      qs('#previewSheet').style.display = 'none';
+      
       // Form alanlarını temizle
       qs('#tip').value = '';
       qs('#sahip').value = '';
       qs('#tutarSecenek').value = '';
-      qs('#ozelTutar').value = '';
-      qs('#ozelTutar').disabled = true;
       qs('#istirakEvet').checked = true;
       qs('#musafirAdedi').value = '0';
+      qs('#not').value = '';
       
-      // Tarih seçimini güncelle (tarih seçenekleri yüklenmiş olmalı)
-      const tarihSelect = qs('#tarih');
-      if (SELECTED_DATE && tarihSelect) {
-        // Tarih seçeneklerini kontrol et
-        const options = Array.from(tarihSelect.options);
-        const found = options.find(opt => opt.value === SELECTED_DATE);
-        if (found) {
-          tarihSelect.value = SELECTED_DATE;
-          // Info güncelle
-          const info = qs('#tarihInfo');
-          if (info) info.textContent = found.textContent;
+      // Tarih bilgisini göster (timezone sorununu önlemek için)
+      if (SELECTED_DATE && ramazanAyari) {
+        // Tarihi doğru parse et - YYYY-MM-DD formatından
+        const tarihParts = SELECTED_DATE.split('-');
+        const tarih = new Date(parseInt(tarihParts[0]), parseInt(tarihParts[1]) - 1, parseInt(tarihParts[2]));
+        
+        // Başlangıç tarihini de doğru parse et
+        const baslangicRaw = ramazanAyari.baslangic;
+        let baslangic;
+        if (typeof baslangicRaw === 'string' && !baslangicRaw.includes('T')) {
+          const basParts = baslangicRaw.split('-');
+          baslangic = new Date(parseInt(basParts[0]), parseInt(basParts[1]) - 1, parseInt(basParts[2]));
         } else {
-          // Tarih seçeneği bulunamadı, belki henüz yüklenmedi - tekrar dene
-          if (ramazanAyari) {
-            // Tarih seçeneklerini kontrol et, belki yüklenmemiştir
-            await fillTarihOptions();
-            // Tekrar dene
-            const options2 = Array.from(tarihSelect.options);
-            const found2 = options2.find(opt => opt.value === SELECTED_DATE);
-            if (found2) {
-              tarihSelect.value = SELECTED_DATE;
-              const info = qs('#tarihInfo');
-              if (info) info.textContent = found2.textContent;
-            }
-          }
+          baslangic = new Date(baslangicRaw);
+          baslangic = new Date(baslangic.getFullYear(), baslangic.getMonth(), baslangic.getDate());
         }
+        
+        // Tarihleri normalize et (saat bilgisi olmadan)
+        const tarihNormal = new Date(tarih.getFullYear(), tarih.getMonth(), tarih.getDate());
+        const baslangicNormal = new Date(baslangic.getFullYear(), baslangic.getMonth(), baslangic.getDate());
+        
+        const gunFarki = Math.floor((tarihNormal - baslangicNormal) / (1000 * 60 * 60 * 24));
+        const ramazanGunu = gunFarki + 1;
+        const hicriYil = ramazanAyari.hicriYil;
+        
+        const tarihStr = tarih.toLocaleDateString('tr-TR', { 
+          day: 'numeric', 
+          month: 'long', 
+          year: 'numeric',
+          timeZone: 'Europe/Istanbul'
+        });
+        const gunAdi = tarih.toLocaleDateString('tr-TR', { 
+          weekday: 'long',
+          timeZone: 'Europe/Istanbul'
+        });
+        
+        qs('#tarih').value = SELECTED_DATE;
+        qs('#tarihDisplay').value = `${tarihStr} ${gunAdi.charAt(0).toUpperCase() + gunAdi.slice(1)} - ${ramazanGunu} Ramazan ${hicriYil}`;
+        qs('#tarihInfo').textContent = `${ramazanGunu}. Ramazan Günü (Hicri ${hicriYil})`;
       }
+      
+      // Müsafir adedi grubunu göster (başlangıçta evet seçili)
+      qs('#musafirGroup').style.display = 'flex';
+      qs('#musafirAdedi').required = true;
       
       // Kapasite uyarısını temizle
       const kapasiteUyari = qs('#kapasiteUyari');
@@ -974,7 +1094,7 @@
       qs('#modalForm').classList.add('show');
       document.body.classList.add('modal-open');
       
-      // Tutar seçeneklerini yeniden yükle (güncel olsun)
+      // Tutar seçeneklerini yeniden yükle (güncel olsun) - başlangıçta tip yok
       await loadTutarSecenekleri();
       
       // Tarih veya tip değiştiğinde kapasite kontrolü yap
@@ -1071,14 +1191,30 @@
     
     // Event listener'ları ekle (DOM yüklendikten sonra)
     setTimeout(() => {
-      if (qs('#tarih')) {
-        qs('#tarih').addEventListener('change', updateKapasiteUyari);
-      }
       if (qs('#tip')) {
-        qs('#tip').addEventListener('change', updateKapasiteUyari);
+        // Tip değişiminde hem tutar seçeneklerini hem kapasiteyi güncelle
+        qs('#tip').addEventListener('change', async (e) => {
+          const tip = e.target.value;
+          await loadTutarSecenekleri(tip);
+          updateKapasiteUyari();
+        });
       }
       document.querySelectorAll('input[name="istirak"]').forEach(radio => {
-        radio.addEventListener('change', updateKapasiteUyari);
+        radio.addEventListener('change', (e) => {
+          const istirak = e.target.value === 'true';
+          const musafirGroup = qs('#musafirGroup');
+          const musafirInput = qs('#musafirAdedi');
+          
+          if (istirak) {
+            musafirGroup.style.display = 'flex';
+            musafirInput.required = true;
+          } else {
+            musafirGroup.style.display = 'none';
+            musafirInput.required = false;
+            musafirInput.value = '0';
+          }
+          updateKapasiteUyari();
+        });
       });
     }, 100);
     
@@ -1091,33 +1227,131 @@
     function closeModal() {
       qs('#modalForm').classList.remove('show');
       document.body.classList.remove('modal-open');
+      // Form görünümüne geri dön
+      qs('#formSheet').style.display = 'block';
+      qs('#previewSheet').style.display = 'none';
+      formDataForPreview = null;
     }
-
-    function closeDetailModal() {
-      qs('#modalDetay').classList.remove('show');
-      document.body.classList.remove('modal-open');
-    }
-
-    // Form submit
-    qs('#formKayit').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      
+    
+    // Form verilerini saklamak için
+    let formDataForPreview = null;
+    
+    // Önizleme oluştur
+    function showPreview() {
       const tarih = qs('#tarih').value;
       const tip = qs('#tip').value;
       const sahip = qs('#sahip').value.trim();
       const tutarSecenek = qs('#tutarSecenek').value;
-      const ozelTutar = parseFloat(qs('#ozelTutar').value) || 0;
       const istirak = qs('input[name="istirak"]:checked').value === 'true';
       const musafirAdedi = parseInt(qs('#musafirAdedi').value) || 0;
+      const not = qs('#not').value.trim();
       
-      if (!tarih || !tip || !sahip || !tutarSecenek) {
-        alert('Lütfen zorunlu alanları doldurun.');
+      // Form verilerini sakla
+      formDataForPreview = {
+        tarih,
+        tip,
+        sahip,
+        tutarSecenek,
+        istirak,
+        musafirAdedi,
+        not
+      };
+      
+      // Tutar bilgisini al
+      const tutarText = tutarSecenek ? (tutarSecenekleri.find(t => String(t.tutar) === tutarSecenek)?.label || `₺${Number(tutarSecenek).toLocaleString('tr-TR', {minimumFractionDigits:2})}`) : '-';
+      
+      // Tarih bilgisini formatla
+      const tarihDisplay = qs('#tarihDisplay').value;
+      
+      // Önizleme içeriği
+      let previewHTML = `
+        <div style="margin-bottom:16px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Tarih</div>
+          <div style="font-size:16px;font-weight:600;color:var(--ink)">${tarihDisplay}</div>
+        </div>
+        <div style="margin-bottom:16px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Tip</div>
+          <div style="font-size:16px;font-weight:600;color:var(--ink)">${tip === 'iftar' ? '🌙 İftar' : '🌟 Sahur'}</div>
+        </div>
+        <div style="margin-bottom:16px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">İftar/Sahur Sahibi</div>
+          <div style="font-size:16px;font-weight:600;color:var(--ink)">${sahip}</div>
+        </div>
+        <div style="margin-bottom:16px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Tutar</div>
+          <div style="font-size:16px;font-weight:600;color:var(--ink)">${tutarText}</div>
+        </div>
+        <div style="margin-bottom:16px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">İştirak</div>
+          <div style="font-size:16px;font-weight:600;color:var(--ink)">${istirak ? '✓ Evet' : '✗ Hayır'}</div>
+        </div>
+      `;
+      
+      if (istirak) {
+        previewHTML += `
+          <div style="margin-bottom:16px">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Müsafir Adedi</div>
+            <div style="font-size:16px;font-weight:600;color:var(--ink)">${musafirAdedi} kişi</div>
+          </div>
+        `;
+      }
+      
+      if (not) {
+        previewHTML += `
+          <div style="margin-bottom:16px">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Not / Açıklama</div>
+            <div style="font-size:14px;color:var(--ink);line-height:1.6;white-space:pre-wrap">${not}</div>
+          </div>
+        `;
+      }
+      
+      qs('#previewContent').innerHTML = previewHTML;
+      
+      // İştirak durumuna göre bilgileri göster
+      if (istirak) {
+        const infoHTML = `
+          <p style="margin:0 0 12px 0;color:#856404;font-size:13px;line-height:1.6">
+            <strong>Müsafirleri ağırlayacağınız mekan ve yemek menüsü iftar/sahur gününden birkaç gün önce sizlere bildirilecektir.</strong>
+          </p>
+          <p style="margin:0;color:#856404;font-size:13px;line-height:1.6">
+            <strong>Dikkat!</strong> İftar/Sahur iptal-değişikliklerini iftar/sahur verildiği günden önce mutlaka bildiriniz!
+          </p>
+        `;
+        qs('#previewInfo').innerHTML = infoHTML;
+        qs('#previewInfo').style.display = 'block';
+      } else {
+        // İştirak etmeyecekler için de uyarı göster
+        const infoHTML = `
+          <p style="margin:0;color:#856404;font-size:13px;line-height:1.6">
+            <strong>Dikkat!</strong> İftar/Sahur iptal-değişikliklerini iftar/sahur verildiği günden önce mutlaka bildiriniz!
+          </p>
+        `;
+        qs('#previewInfo').innerHTML = infoHTML;
+        qs('#previewInfo').style.display = 'block';
+      }
+      
+      // Önizleme görünümünü göster, formu gizle
+      qs('#formSheet').style.display = 'none';
+      qs('#previewSheet').style.display = 'block';
+    }
+    
+    // Forma geri dön
+    function backToForm() {
+      qs('#formSheet').style.display = 'block';
+      qs('#previewSheet').style.display = 'none';
+    }
+    
+    // Kaydı kaydet
+    async function saveKayit() {
+      if (!formDataForPreview) {
+        alert('Önce önizlemeye geçiniz.');
         return;
       }
       
-      // Kapasite kontrolü (sadece iştirak edecekler için)
+      const { tarih, tip, sahip, tutarSecenek, istirak, musafirAdedi, not } = formDataForPreview;
+      
+      // Son kapasite kontrolü
       if (istirak) {
-        // Seçilen tarih ve tip için mevcut kayıtları al
         const dayKayitlar = kayitlar.filter(k => {
           const kTarih = k.tarih instanceof Date ? k.tarih.toISOString().slice(0, 10) : k.tarih;
           return kTarih === tarih;
@@ -1128,36 +1362,27 @@
         
         const kapasiteBilgisi = getKapasiteBilgisi(tarih, iftarKayitlar, sahurKayitlar);
         
-        // Kapasite kontrolü - sadece iştirak edecekler için
         if (tip === 'iftar') {
-          // Kapasite tanımlanmışsa ve doluysa
           if (kapasiteBilgisi.iftarMax !== null && kapasiteBilgisi.iftarMax > 0) {
             if (kapasiteBilgisi.iftarFull) {
-              alert(`❌ İftar kapasitesi dolmuş! (${kapasiteBilgisi.iftarIstirakEden}/${kapasiteBilgisi.iftarMax})\n\nİştirak etmeyecekler için sınırsız kayıt yapılabilir.`);
+              showToast(`❌ İftar kapasitesi dolmuş! (${kapasiteBilgisi.iftarIstirakEden}/${kapasiteBilgisi.iftarMax})`, 'error');
+              backToForm();
               return;
             }
           }
         } else if (tip === 'sahur') {
-          // Kapasite tanımlanmışsa ve doluysa
           if (kapasiteBilgisi.sahurMax !== null && kapasiteBilgisi.sahurMax > 0) {
             if (kapasiteBilgisi.sahurFull) {
-              alert(`❌ Sahur kapasitesi dolmuş! (${kapasiteBilgisi.sahurIstirakEden}/${kapasiteBilgisi.sahurMax})\n\nİştirak etmeyecekler için sınırsız kayıt yapılabilir.`);
+              showToast(`❌ Sahur kapasitesi dolmuş! (${kapasiteBilgisi.sahurIstirakEden}/${kapasiteBilgisi.sahurMax})`, 'error');
+              backToForm();
               return;
             }
           }
         }
       }
       
-      let tutar = 0;
-      if (tutarSecenek === 'ozel') {
-        if (ozelTutar <= 0) {
-          alert('Özel tutar giriniz.');
-          return;
-        }
-        tutar = ozelTutar;
-      } else {
-        tutar = parseFloat(tutarSecenek);
-      }
+      // Tutar hesapla
+      let tutar = parseFloat(tutarSecenek);
       
       const date = new Date(tarih);
       const yil = date.getFullYear();
@@ -1179,9 +1404,10 @@
           tip: tip,
           sahip: sahip,
           tutar: tutar,
-          tutarSecenek: tutarSecenek === 'ozel' ? 'ozel' : String(tutar),
+          tutarSecenek: String(tutar),
           istirak: istirak,
-          musafirAdedi: musafirAdedi,
+          musafirAdedi: istirak ? musafirAdedi : 0,
+          not: not || '',
           personel: personelAd,
           personelUid: currentUser.uid,
           yil: yil,
@@ -1190,12 +1416,171 @@
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         
-        alert('Kayıt başarıyla eklendi!');
+        showToast('✅ Kayıt başarıyla eklendi!', 'success');
         closeModal();
+        formDataForPreview = null;
       } catch (e) {
         console.error('Kayıt eklenemedi:', e);
-        alert('Kayıt eklenirken hata oluştu: ' + e.message);
+        showToast('❌ Kayıt eklenirken hata oluştu: ' + e.message, 'error');
       }
+    }
+    
+    // Global fonksiyonlar
+    window.saveKayit = saveKayit;
+    window.backToForm = backToForm;
+
+    function closeDetailModal() {
+      qs('#modalDetay').classList.remove('show');
+      document.body.classList.remove('modal-open');
+    }
+
+    // Form validasyonu
+    function validateForm() {
+      let isValid = true;
+      const errors = [];
+      
+      // Tüm hata sınıflarını temizle
+      document.querySelectorAll('.form-group').forEach(g => {
+        g.classList.remove('error');
+        const errorMsg = g.querySelector('.form-error');
+        if (errorMsg) errorMsg.remove();
+      });
+      
+      // Tarih kontrolü
+      const tarih = qs('#tarih').value;
+      if (!tarih) {
+        const group = qs('#tarih').closest('.form-group');
+        if (group) {
+          group.classList.add('error');
+          const errorDiv = document.createElement('div');
+          errorDiv.className = 'form-error';
+          errorDiv.textContent = 'Tarih seçimi zorunludur';
+          group.appendChild(errorDiv);
+        }
+        isValid = false;
+        errors.push('Tarih');
+      }
+      
+      // Tip kontrolü
+      const tip = qs('#tip').value;
+      if (!tip) {
+        const group = qs('#tip').closest('.form-group');
+        if (group) {
+          group.classList.add('error');
+          const errorDiv = document.createElement('div');
+          errorDiv.className = 'form-error';
+          errorDiv.textContent = 'Tip seçimi zorunludur';
+          group.appendChild(errorDiv);
+        }
+        isValid = false;
+        errors.push('Tip');
+      }
+      
+      // Sahip kontrolü
+      const sahip = qs('#sahip').value.trim();
+      if (!sahip) {
+        const group = qs('#sahip').closest('.form-group');
+        if (group) {
+          group.classList.add('error');
+          const errorDiv = document.createElement('div');
+          errorDiv.className = 'form-error';
+          errorDiv.textContent = 'İftar/Sahur sahibi adı zorunludur';
+          group.appendChild(errorDiv);
+        }
+        isValid = false;
+        errors.push('İftar/Sahur Sahibi');
+      }
+      
+      // Tutar seçeneği kontrolü
+      const tutarSecenek = qs('#tutarSecenek').value;
+      if (!tutarSecenek) {
+        const group = qs('#tutarSecenek').closest('.form-group');
+        if (group) {
+          group.classList.add('error');
+          const errorDiv = document.createElement('div');
+          errorDiv.className = 'form-error';
+          errorDiv.textContent = 'Tutar seçeneği zorunludur';
+          group.appendChild(errorDiv);
+        }
+        isValid = false;
+        errors.push('Tutar Seçeneği');
+      }
+      
+      // İştirak ve müsafir kontrolü
+      const istirak = qs('input[name="istirak"]:checked')?.value === 'true';
+      const musafirAdedi = parseInt(qs('#musafirAdedi').value) || 0;
+      if (istirak && musafirAdedi <= 0) {
+        const group = qs('#musafirAdedi').closest('.form-group');
+        if (group) {
+          group.classList.add('error');
+          const errorDiv = document.createElement('div');
+          errorDiv.className = 'form-error';
+          errorDiv.textContent = 'İştirak edecekseniz müsafir adedi girmeniz zorunludur';
+          group.appendChild(errorDiv);
+        }
+        isValid = false;
+        errors.push('Müsafir Adedi');
+      }
+      
+      if (!isValid) {
+        showToast(`Lütfen eksik alanları doldurun: ${errors.join(', ')}`, 'error');
+        // İlk hatalı alana scroll
+        const firstError = document.querySelector('.form-group.error');
+        if (firstError) {
+          firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
+      
+      return isValid;
+    }
+    
+    // Form submit - Önizlemeye geç
+    qs('#formKayit').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      // Form validasyonu
+      if (!validateForm()) {
+        return;
+      }
+      
+      const tarih = qs('#tarih').value;
+      const tip = qs('#tip').value;
+      const sahip = qs('#sahip').value.trim();
+      const tutarSecenek = qs('#tutarSecenek').value;
+      const istirak = qs('input[name="istirak"]:checked').value === 'true';
+      const musafirAdedi = parseInt(qs('#musafirAdedi').value) || 0;
+      
+      // Kapasite kontrolü (sadece iştirak edecekler için)
+      if (istirak) {
+        const dayKayitlar = kayitlar.filter(k => {
+          const kTarih = k.tarih instanceof Date ? k.tarih.toISOString().slice(0, 10) : k.tarih;
+          return kTarih === tarih;
+        });
+        
+        const iftarKayitlar = dayKayitlar.filter(k => k.tip === 'iftar');
+        const sahurKayitlar = dayKayitlar.filter(k => k.tip === 'sahur');
+        
+        const kapasiteBilgisi = getKapasiteBilgisi(tarih, iftarKayitlar, sahurKayitlar);
+        
+        if (tip === 'iftar') {
+          if (kapasiteBilgisi.iftarMax !== null && kapasiteBilgisi.iftarMax > 0) {
+            if (kapasiteBilgisi.iftarFull) {
+              showToast(`❌ İftar kapasitesi dolmuş! (${kapasiteBilgisi.iftarIstirakEden}/${kapasiteBilgisi.iftarMax})`, 'error');
+              return;
+            }
+          }
+        } else if (tip === 'sahur') {
+          if (kapasiteBilgisi.sahurMax !== null && kapasiteBilgisi.sahurMax > 0) {
+            if (kapasiteBilgisi.sahurFull) {
+              showToast(`❌ Sahur kapasitesi dolmuş! (${kapasiteBilgisi.sahurIstirakEden}/${kapasiteBilgisi.sahurMax})`, 'error');
+              return;
+            }
+          }
+        }
+      }
+      
+      // Önizlemeye geç
+      showPreview();
     });
 
     // Takvim navigasyonu
@@ -1213,10 +1598,13 @@
       const baslangic = new Date(ramazanAyari.baslangic);
       const bitis = new Date(ramazanAyari.bitis);
       
-      // Ramazan günlerindeki kayıtları filtrele
+      // Ramazan günlerindeki kayıtları filtrele (tarih string karşılaştırması)
+      const baslangicStr = baslangic.toISOString().slice(0, 10);
+      const bitisStr = bitis.toISOString().slice(0, 10);
+      
       const ramazanKayitlar = kayitlar.filter(k => {
-        const kTarih = k.tarih instanceof Date ? k.tarih : new Date(k.tarih);
-        return kTarih >= baslangic && kTarih <= bitis;
+        const kTarih = k.tarih instanceof Date ? k.tarih.toISOString().slice(0, 10) : k.tarih;
+        return kTarih >= baslangicStr && kTarih <= bitisStr;
       });
       
       const iftarSayisi = ramazanKayitlar.filter(k => k.tip === 'iftar').length;

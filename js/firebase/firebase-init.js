@@ -15,4 +15,12 @@ firebase.initializeApp(firebaseConfig);
 // firebase-init.js
 window.db      = window.db      || firebase.firestore();
 window.auth    = window.auth    || firebase.auth();
-window.storage = window.storage || firebase.storage();
+// Storage sadece yüklüyse kullanılır (opsiyonel)
+try {
+  if (firebase.storage && typeof firebase.storage === 'function') {
+    window.storage = window.storage || firebase.storage();
+  }
+} catch (e) {
+  // Storage modülü yüklenmemiş, sessizce devam et
+  console.debug('Firebase Storage modülü yüklenmedi, devam ediliyor...');
+}
