@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Tüm Personel Yönetici Raporu | Ramazan 2026</title>
+  <link rel="icon" type="image/png" href="../img/logo.png" />
+
+  <style>
+    /* --- TEMEL AYARLAR --- */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; color: #2c3e50; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    
+    @media print {
+      @page { size: A4 portrait; margin: 5mm 8mm; }
+      body { padding: 0; font-size: 10pt; }
+      .page-break { page-break-after: always; height: 0; display: block; }
+      .personel-section { page-break-inside: auto; } 
+      .personel-header { page-break-after: avoid; }
+      .manager-panel { page-break-inside: avoid; }
+      tr { page-break-inside: avoid; }
+      thead { display: table-header-group; }
+      a[href]:after { content: none !important; }
+    }
+
+    /* --- KAPAK (Standart) --- */
+    .cover-page { width: 100%; height: 285mm; display: flex; flex-direction: column; justify-content: space-between; padding: 12mm 15mm; text-align: center; border: 4px solid #324960; background: white; position: relative; }
+    .cover-title { font-size: 36px; font-weight: 900; color: #324960; margin: 20px 0; text-transform: uppercase; letter-spacing: 2px; }
+    .cover-subtitle { font-size: 18px; color: #555; margin-bottom: 30px; }
+    .kpi-row { display: flex; gap: 15px; margin: 20px 0; justify-content: center; }
+    .kpi { padding: 15px 20px; background: #f4f6f9; border: 1px solid #e6ebf2; border-radius: 8px; min-width: 130px; flex: 1; }
+    .kpi .label { font-size: 12px; color: #666; font-weight: bold; }
+    .kpi .value { font-size: 24px; font-weight: 800; color: #324960; margin-top: 6px; }
+    .charts-section { margin-top: 20px; display: flex; flex-direction: column; gap: 15px; align-items: center; }
+    .chart-box { width: 100%; max-width: 600px; border: 1px solid #eee; border-radius: 8px; padding: 10px; }
+    .chart-title { font-size: 11px; font-weight: 700; color: #324960; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; display: block; text-align: left; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+    .portfolio-explanation { font-size: 9px; color: #666; text-align: center; margin-top: 8px; line-height: 1.4; font-style: italic; }
+    .chart-area { fill: url(#gradientFill); opacity: 0.15; }
+    .chart-line { fill: none; stroke: #324960; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+    .chart-point { fill: #fff; stroke: #324960; stroke-width: 2.5; }
+    .growth-bg { fill: #27ae60; rx: 3; } .growth-bg.negative { fill: #c0392b; }
+    .growth-badge { font-size: 10px; font-weight: bold; fill: #fff; }
+    .bar-bg { fill: #f0f2f5; rx: 4; } .bar-fill { rx: 4; } .bar-text { font-size: 10px; font-weight: 600; fill: #555; } .bar-count { font-size: 11px; font-weight: bold; fill: #324960; text-anchor: end; }
+    .cover-bottom-section { position: absolute; bottom: 15mm; left: 15mm; right: 15mm; }
+    .cover-text-container { margin-bottom: 20px; } 
+    .cover-main-text { font-size: 18px; font-weight: 800; color: #324960; margin-bottom: 5px; }
+    .cover-year-text { font-size: 13px; color: #555; }
+    .cover-bottom-bar { border-top: 2px dashed #324960; padding-top: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+    .cover-logo-small { height: 40px; width: auto; }
+    .cover-bottom-title { font-size: 20px; font-weight: 900; color: #324960; letter-spacing: 1px; }
+    .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 15px 0; }
+    .summary-card { background: #f4f6f9; border: 1px solid #e6ebf2; border-radius: 8px; padding: 15px; text-align: center; }
+    .summary-card-label { font-size: 12px; color: #666; font-weight: bold; margin-bottom: 8px; }
+    .summary-card-value { font-size: 20px; font-weight: 800; color: #324960; }
+
+    /* --- YÖNETİCİ PANELİ --- */
+    .manager-panel { margin-bottom: 30px; width: 100%; }
+    .panel-col { border: 1px solid #ccc; border-radius: 8px; overflow: hidden; }
+    .panel-header { background: #324960; color: white; padding: 10px 15px; font-weight: bold; font-size: 14px; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center; }
+    
+    .leader-table { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed; }
+    .leader-table th { background: #f0f0f0; padding: 8px; text-align: right; color: #555; font-weight: 600; border-bottom: 2px solid #ccc; }
+    .leader-table th:first-child, .leader-table th:nth-child(2) { text-align: left; }
+    .leader-table td { padding: 8px; border-bottom: 1px solid #eee; text-align: right; }
+    .leader-table td:first-child, .leader-table td:nth-child(2) { text-align: left; }
+    
+    .rank-1 { background-color: #fff9c4 !important; } 
+    .col-current { background-color: #e8f4fc; font-weight: bold; color: #2980b9; } 
+    .col-total { background-color: #fdfdfe; font-weight: 900; color: #324960; border-left: 2px solid #eee; } 
+    .col-past { color: #95a5a6; } 
+
+    /* --- SAYFA STİLLERİ --- */
+    .summary-page { padding: 10mm 0; }
+    .page-title { font-size: 18px; font-weight: 800; color: #324960; border-bottom: 2px solid #324960; padding-bottom: 8px; margin-bottom: 15px; }
+    .personel-section { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; background: #fff; }
+    .personel-header { background: #324960; color: white; padding: 10px 15px; border-radius: 6px 6px 0 0; margin: -15px -15px 15px -15px; }
+    .personel-name { font-size: 18px; font-weight: 700; }
+    .personel-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+    .personel-stat { background: #f4f6f9; padding: 8px; border-radius: 6px; text-align: center; }
+    .personel-stat-label { font-size: 10px; color: #666; margin-bottom: 4px; }
+    .personel-stat-value { font-size: 16px; font-weight: 700; color: #324960; }
+    
+    .personel-table { width: 100%; border-collapse: collapse; font-size: 9pt; margin-top: 10px; table-layout: fixed; /* Sabit tablo düzeni */ }
+    .personel-table th, .personel-table td { border: 1px solid #ccc; padding: 4px; text-align: center; }
+    .personel-table thead th { background: #324960 !important; color: #fff !important; font-weight: bold; padding: 6px; }
+    .personel-table .year-header { background: #f0f0f0 !important; color: #333 !important; font-weight: bold; }
+    
+    /* 2. MADDENİN ÇÖZÜMÜ: İSİM HÜCRESİ STİLİ */
+    .name-cell-truncated {
+        text-align: left !important;
+        white-space: nowrap;       /* Alt satıra geçmeyi engelle */
+        overflow: hidden;          /* Taşan kısmı gizle */
+        text-overflow: ellipsis;   /* Sonuna ... koy */
+        max-width: 150px;          /* Maksimum genişlik (Gerekirse artırılabilir) */
+        display: block;            /* Tablo hücresinde block davranışı */
+        border: none !important;   /* İç div kenarlığı olmasın */
+    }
+
+    .genel-table { width: 100%; border-collapse: collapse; font-size: 9pt; margin-top: 15px; table-layout: fixed; }
+    .genel-table th, .genel-table td { border: 1px solid #ccc; padding: 6px; text-align: left; }
+    .genel-table thead th { background: #324960 !important; color: #fff !important; font-weight: bold; }
+    .genel-table tbody tr:nth-child(even) { background: #f9f9f9; }
+    
+    /* Genel tablo isim taşması için */
+    .genel-name-cell {
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; display: block;
+    }
+
+    .duplicate-row { background-color: #fff3cd !important; }
+    .duplicate-badge { background: #dc3545; color: white; font-size: 8px; padding: 2px 4px; border-radius: 3px; margin-left: 5px; }
+    .legend-box { margin: 10px 0; text-align: center; font-size: 10px; }
+    .legend-badge { display: inline-block; width: 12px; height: 12px; line-height: 12px; text-align: center; color:#fff; border-radius:3px; margin-right:3px; font-size:8px;}
+    .bg-daimi { fill: #2d6a4f; background-color: #2d6a4f; } 
+    .bg-yeni { fill: #e67e22; background-color: #e67e22; } 
+    .bg-pasif { fill: #c0392b; background-color: #c0392b; }
+  </style>
+</head>
+<body>
+  <div id="raporContent">Rapor Hazırlanıyor...</div>
+
+  <script>
+    try {
+        const p = new URLSearchParams(window.location.search);
+        let data = null;
+        if (p.get('key')) { try { const raw = localStorage.getItem(p.get('key')); if(raw) data = JSON.parse(raw); } catch (e) {} }
+        else if (p.get('data')) { try { data = JSON.parse(decodeURIComponent(p.get('data'))); } catch (e) {} }
+
+        if (!data) throw new Error("Veri bulunamadı.");
+        if (!data.personeller) throw new Error("Veri yapısı eksik (personeller).");
+
+        render(data);
+        setTimeout(() => { window.print(); }, 1500);
+
+    } catch (err) {
+        document.getElementById('raporContent').innerHTML = `<div style="padding:40px;text-align:center;color:red">${err.message}</div>`;
+    }
+
+    function render(d) {
+      const { personeller, toplamlar, genelBagisciAnaliz } = d;
+      const yillar = [2023, 2024, 2025];
+      const personelListesi = Object.keys(personeller).sort((a, b) => a.localeCompare(b, 'tr-TR'));
+      const genelCounts = { daimi: (genelBagisciAnaliz?.daimi || []).length, yeni: (genelBagisciAnaliz?.yeni || []).length, pasif: (genelBagisciAnaliz?.pasif || []).length };
+
+      // --- YÖNETİCİ PANELİ HESAPLAMALARI ---
+      const personelPerf = personelListesi.map(adi => {
+         const p = personeller[adi];
+         const calcTotal = (y) => ['iftar','sahur','taahhut','teberru'].reduce((s,t) => s + (p.veriler[y]?.[t]||[]).reduce((ss,v)=>ss+(Number(v.tutar)||0),0), 0);
+         
+         const t25 = calcTotal(2025);
+         const t24 = calcTotal(2024);
+         const t23 = calcTotal(2023);
+         const genelToplam = t25 + t24 + t23;
+         
+         // 1. MADDENİN ÇÖZÜMÜ: Toplam Portföy Sayısı (Daimi + Yeni + Pasif)
+         const bagisciListesi = p.bagisciAnaliz || { daimi: [], yeni: [], pasif: [] };
+         const portfoySayisi = (bagisciListesi.daimi || []).length + (bagisciListesi.yeni || []).length + (bagisciListesi.pasif || []).length;
+         
+         return { adi, portfoy: portfoySayisi, t25, t24, t23, genelToplam };
+      }).sort((a,b) => b.t25 - a.t25); // Sıralama 2025'e göre
+
+      // 1. KAPAK
+      const cover = `
+        <div class="cover-page">
+          <div>
+             <div class="cover-title">TÜM PERSONEL</div>
+             <div class="cover-subtitle">2026 RAMAZAN-I ŞERİF YÖNETİCİ RAPORU</div>
+             <div class="kpi-row">${yillar.map(y => `<div class="kpi"><div class="label">${y}</div><div class="value">₺${Math.round(toplamlar[y] || 0).toLocaleString('tr-TR')}</div></div>`).join('')}</div>
+             <div class="summary-grid">
+               <div class="summary-card"><div class="summary-card-label">TOPLAM PERSONEL</div><div class="summary-card-value">${personelListesi.length}</div></div>
+               <div class="summary-card"><div class="summary-card-label">DAİMİ BAĞIŞÇI</div><div class="summary-card-value">${genelCounts.daimi}</div></div>
+               <div class="summary-card"><div class="summary-card-label">YENİ BAĞIŞÇI</div><div class="summary-card-value">${genelCounts.yeni}</div></div>
+             </div>
+             <div class="charts-section">
+               <div class="chart-box"><span class="chart-title">Toplam Büyüme Trendi</span><div style="height:120px">${createTrendChart(toplamlar)}</div></div>
+               <div class="chart-box"><span class="chart-title">Genel Portföy Dağılımı</span><div style="height:100px">${createDonorBarChart(genelCounts)}</div><div class="portfolio-explanation">Daimi: 3 yılda da bağış yapanlar | Yeni: Sadece 2025'te bağış yapanlar | Pasif: 2023-2024'te var, 2025'te yok</div></div>
+             </div>
+          </div>
+          <div class="cover-bottom-section">
+             <div class="cover-text-container"><div class="cover-main-text">2026 RAMAZAN-I ŞERİF HAZIRLIK RAPORU</div><div class="cover-year-text">Tüm personel performans analizi ve portföy durum raporudur.</div></div>
+             <div class="cover-bottom-bar"><img src="../img/logo.png" class="cover-logo-small" onerror="this.style.display='none'"/><div class="cover-bottom-title">KARAAĞAÇ FATİH</div></div>
+          </div>
+        </div><div class="page-break"></div>`;
+
+      // 2. SAYFA: YÖNETİCİ KOKPİTİ (YENİ B. YERİNE PORTFÖY)
+      let managerPage = `
+        <div class="summary-page">
+          <div class="page-title">YÖNETİCİ KOKPİTİ & ANALİZ</div>
+          <div class="manager-panel">
+             <div class="panel-col">
+                <div class="panel-header">
+                   <span>🏆 Personel Performans Liderlik Tablosu</span>
+                   <span style="font-size:10px; opacity:0.8">(Sıralama: 2025 Tutarına Göre)</span>
+                </div>
+                <table class="leader-table">
+                   <thead>
+                      <tr>
+                         <th style="width:30px">#</th>
+                         <th>PERSONEL</th>
+                         <th style="text-align:center; width:80px">PORTFÖY</th> <th style="background:#d6eaf8; color:#2980b9; border-bottom-color:#2980b9">2025</th>
+                         <th>2024</th>
+                         <th>2023</th>
+                         <th style="background:#ecf0f1">3 YIL TOPLAM</th>
+                      </tr>
+                   </thead>
+                   <tbody>
+                      ${personelPerf.map((p, i) => `
+                         <tr class="${i===0 ? 'rank-1' : ''}">
+                            <td style="font-weight:bold; text-align:center">${i+1}</td>
+                            <td style="font-weight:600">${p.adi}</td>
+                            <td style="text-align:center">${p.portfoy} Kişi</td> <td class="col-current">₺${Math.round(p.t25).toLocaleString('tr-TR')}</td>
+                            <td class="col-past">₺${Math.round(p.t24).toLocaleString('tr-TR')}</td>
+                            <td class="col-past">₺${Math.round(p.t23).toLocaleString('tr-TR')}</td>
+                            <td class="col-total">₺${Math.round(p.genelToplam).toLocaleString('tr-TR')}</td>
+                         </tr>
+                      `).join('')}
+                   </tbody>
+                </table>
+             </div>
+          </div>
+
+          <div class="page-title" style="margin-top:30px">GENEL BAĞIŞÇI LİSTESİ & ÇAKIŞMA KONTROLÜ</div>
+          <div style="font-size:10px; color:#666; margin-bottom:5px"> * Sarı ile işaretlenenler birden fazla personele bağlı (çakışan) bağışçılardır.</div>
+          <table class="genel-table">
+            <thead><tr><th style="width: 40%">BAĞIŞÇI</th><th style="width: 20%">KATEGORİ</th><th style="width: 40%">BAĞLI PERSONEL</th></tr></thead>
+            <tbody>`;
+      
+      const tumBagiscilar = new Map();
+      personelListesi.forEach(personelAdi => {
+        const p = personeller[personelAdi];
+        ['daimi', 'yeni', 'pasif'].forEach(kat => {
+          (p.bagisciAnaliz[kat] || []).forEach(bagisci => {
+            if (!tumBagiscilar.has(bagisci)) tumBagiscilar.set(bagisci, { isim: bagisci, kategori: '', personeller: new Set() });
+            const entry = tumBagiscilar.get(bagisci);
+            entry.personeller.add(personelAdi);
+            if (!entry.kategori || entry.kategori === 'pasif') entry.kategori = kat;
+          });
+        });
+      });
+      const kategoriSira = { 'daimi': 1, 'yeni': 2, 'pasif': 3 };
+      const bagisciArray = Array.from(tumBagiscilar.values()).sort((a, b) => {
+        const katFark = (kategoriSira[a.kategori] || 99) - (kategoriSira[b.kategori] || 99);
+        if (katFark !== 0) return katFark;
+        return a.isim.localeCompare(b.isim, 'tr-TR');
+      });
+      bagisciArray.forEach(b => {
+        const katLabel = { 'daimi': '<span class="legend-badge bg-daimi">D</span> Daimi', 'yeni': '<span class="legend-badge bg-yeni">Y</span> Yeni', 'pasif': '<span class="legend-badge bg-pasif">P</span> Pasif' }[b.kategori] || b.kategori;
+        const personelArr = Array.from(b.personeller).sort();
+        const isDuplicate = personelArr.length > 1;
+        
+        // Genel tablo isim kısaltma
+        managerPage += `<tr class="${isDuplicate ? 'duplicate-row' : ''}"><td><div class="genel-name-cell"><strong>${b.isim}</strong> ${isDuplicate ? `<span class="duplicate-badge">ÇAKIŞMA (${personelArr.length})</span>` : ''}</div></td><td>${katLabel}</td><td>${personelArr.join(', ')}</td></tr>`;
+      });
+      managerPage += `</tbody></table></div><div class="page-break"></div>`;
+
+      // 3. PERSONEL DETAYLARI (KAYMA DÜZELTİLDİ)
+      let personelOzetler = '';
+      personelListesi.forEach(personelAdi => {
+        const p = personeller[personelAdi];
+        const pTotals = {};
+        yillar.forEach(y => { pTotals[y] = ['iftar', 'sahur', 'taahhut', 'teberru'].reduce((s, t) => s + (p.veriler[y]?.[t]||[]).reduce((ss, vv) => ss + (Number(vv.tutar)||0), 0), 0); });
+        
+        personelOzetler += `
+          <div class="personel-section">
+            <div class="personel-header">
+              <div style="display:flex; justify-content:space-between; align-items:center">
+                 <div class="personel-name">${personelAdi}</div>
+                 <div style="font-size:10px; opacity:0.8">TOPLAM: ₺${Math.round(pTotals[2023]+pTotals[2024]+pTotals[2025]).toLocaleString('tr-TR')}</div>
+              </div>
+              <div class="personel-stats">
+                <div class="personel-stat"><div class="personel-stat-label">2023</div><div class="personel-stat-value">₺${Math.round(pTotals[2023]).toLocaleString('tr-TR')}</div></div>
+                <div class="personel-stat"><div class="personel-stat-label">2024</div><div class="personel-stat-value">₺${Math.round(pTotals[2024]).toLocaleString('tr-TR')}</div></div>
+                <div class="personel-stat"><div class="personel-stat-label">2025</div><div class="personel-stat-value">₺${Math.round(pTotals[2025]).toLocaleString('tr-TR')}</div></div>
+              </div>
+            </div>
+            <table class="personel-table">
+              <thead>
+                <tr><th rowspan="2" style="width:25%">BAĞIŞÇI</th>${yillar.map(y => `<th colspan="4" class="year-header">${y}</th>`).join('')}</tr>
+                <tr>${yillar.map(y => `<th class="sub-th">İft</th><th class="sub-th">Sah</th><th class="sub-th">Tah</th><th class="sub-th">Teb</th>`).join('')}</tr>
+              </thead>
+              <tbody>`;
+        
+        const flatList = [];
+        ['daimi', 'yeni', 'pasif'].forEach(k => (p.bagisciAnaliz[k]||[]).forEach(n => flatList.push({ isim: n, tur: k })));
+        flatList.sort((a, b) => (kategoriSira[a.tur]-kategoriSira[b.tur]) || a.isim.localeCompare(b.isim, 'tr-TR'));
+        
+        if (flatList.length === 0) personelOzetler += `<tr><td colspan="13" style="text-align:center;padding:10px;color:#999">Bağışçı bulunamadı</td></tr>`;
+        else flatList.forEach(b => {
+           // 2. MADDENİN UYGULANMASI: .name-cell-truncated class'ı kullanıldı
+           personelOzetler += `<tr>
+             <td>
+               <div class="name-cell-truncated" title="${b.isim}">
+                 <span class="legend-badge bg-${b.tur}">${b.tur[0].toUpperCase()}</span> ${b.isim}
+               </div>
+             </td>
+             ${yillar.map(y => ['iftar', 'sahur', 'taahhut', 'teberru'].map(t => { 
+               const v = (p.veriler[y]?.[t]||[]).filter(x=>x.sahip===b.isim).reduce((s,vv)=>s+(Number(vv.tutar)||0),0); 
+               return `<td>${v>0?'₺'+Math.round(v).toLocaleString('tr-TR'):''}</td>`; 
+             }).join('')).join('')}
+           </tr>`;
+        });
+        personelOzetler += `</tbody></table></div><div class="page-break"></div>`;
+      });
+
+      document.getElementById('raporContent').innerHTML = cover + managerPage + personelOzetler;
+    }
+
+    function createTrendChart(totals) {
+      const values=[totals[2023]||0,totals[2024]||0,totals[2025]||0]; const maxVal=Math.max(...values)||1; const w=580,h=120,scaleY=v=>h-20-((v/(maxVal*1.15))*(h-40));
+      const pts=[{x:80,y:scaleY(values[0]),v:values[0],yr:2023},{x:290,y:scaleY(values[1]),v:values[1],yr:2024},{x:500,y:scaleY(values[2]),v:values[2],yr:2025}];
+      const p=`M ${pts[0].x} ${pts[0].y} L ${pts[1].x} ${pts[1].y} L ${pts[2].x} ${pts[2].y}`, area=`${p} L ${pts[2].x} ${h} L ${pts[0].x} ${h} Z`;
+      const gr=(v1,v2)=>{if(v1===0)return v2>0?"+100%":"0%";const r=((v2-v1)/v1)*100;return(r>0?"+":"")+Math.round(r)+"%"};
+      const g1=gr(values[0],values[1]), g2=gr(values[1],values[2]);
+      return `<svg viewBox="0 0 ${w} ${h}"><defs><linearGradient id="gradientFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#324960"/><stop offset="100%" stop-color="#fff" stop-opacity="0"/></linearGradient></defs><path d="${area}" class="chart-area"/><path d="${p}" class="chart-line"/>${pts.map(pt=>`<line x1="${pt.x}" y1="${pt.y}" x2="${pt.x}" y2="${h-15}" stroke="#eee" stroke-dasharray="3"/><circle cx="${pt.x}" cy="${pt.y}" r="4" class="chart-point"/><text x="${pt.x}" y="${h}" style="font-size:10px;fill:#666;text-anchor:middle">${pt.yr}</text><text x="${pt.x}" y="${pt.y-10}" style="font-size:11px;font-weight:bold;fill:#324960;text-anchor:middle">₺${Math.round(pt.v).toLocaleString('tr-TR')}</text>`).join('')}<rect x="${(pts[0].x+pts[1].x)/2-20}" y="${(pts[0].y+pts[1].y)/2-25}" width="40" height="18" class="growth-bg ${g1.includes('-')?'negative':''}" rx="3"/><text x="${(pts[0].x+pts[1].x)/2}" y="${(pts[0].y+pts[1].y)/2-12}" class="growth-badge" text-anchor="middle">${g1}</text><rect x="${(pts[1].x+pts[2].x)/2-20}" y="${(pts[1].y+pts[2].y)/2-25}" width="40" height="18" class="growth-bg ${g2.includes('-')?'negative':''}" rx="3"/><text x="${(pts[1].x+pts[2].x)/2}" y="${(pts[1].y+pts[2].y)/2-12}" class="growth-badge" text-anchor="middle">${g2}</text></svg>`;
+    }
+    function createDonorBarChart(c) {
+      const t=c.daimi+c.yeni+c.pasif||1, w=580,rh=25,g=12,h=(rh*3)+(g*2);
+      const draw=(y,l,v,cl)=>`<text x="0" y="${y+16}" class="bar-text">${l}</text><rect x="80" y="${y}" width="450" height="${rh}" class="bar-bg"/><rect x="80" y="${y}" width="${Math.max((v/t)*450,4)}" height="${rh}" class="bar-fill ${cl}"/><text x="570" y="${y+17}" class="bar-count">${v} Kişi</text><text x="85" y="${y+17}" style="font-size:9px;fill:#fff;font-weight:bold;opacity:${(v/t)*450>20?1:0}">${Math.round((v/t)*100)}%</text>`;
+      return `<svg viewBox="0 0 ${w} ${h}">${draw(0,"DAİMİ",c.daimi,"bg-daimi")}${draw(rh+g,"YENİ",c.yeni,"bg-yeni")}${draw((rh+g)*2,"PASİF",c.pasif,"bg-pasif")}</svg>`;
+    }
+  </script>
+</body>
+</html>

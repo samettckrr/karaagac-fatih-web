@@ -109,12 +109,23 @@
     .switcher{display:flex;gap:6px;align-items:center;white-space:nowrap;margin-left:8px}
     
     .avoid-break{page-break-inside:avoid;break-inside:avoid}
+    
+    /* Detaylı Rapor Stilleri */
+    #detayliRaporSection .card {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    
     @media print{
       header{position:static;border:none}
       .toolbar{display:none!important}
       .wrap{max-width:100%;padding:0}
       .card{border:none;padding:0}
       .table-wrap{border:none}
+      #detayliRaporSection .card {
+        page-break-after: auto;
+        margin-bottom: 20px;
+      }
     }
 
     @media (max-width:540px){
@@ -174,7 +185,8 @@
         <span class="muted">Kart Görünüm</span>
       </label>
       <button id="btnExport" class="secondary">CSV Dışa Aktar</button>
-      <button id="btnPDF" class="good">PDF'ye Aktar</button>
+      <button id="btnDetayliRapor" class="good" style="background:var(--good)">📊 Detaylı Personel Raporu (2023-2024-2025)</button>
+      <button id="btnTumPersonelRapor" class="good" style="background:var(--accent)">📋 Tüm Personel Raporu (Yurt Mesulü)</button>
     </div>
   </div>
 </header>
@@ -241,6 +253,80 @@
       </div>
 
       <div class="card-list" id="cardList"></div>
+    </div>
+
+    <!-- Detaylı Personel Bazlı Raporlama -->
+    <div class="card" id="detayliRaporSection" style="display:none">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <h3 style="margin:0">📊 Personel Bazlı Detaylı Analiz Raporu (2023-2024-2025)</h3>
+        <div style="flex:1"></div>
+        <select id="personelSecimi" style="min-width:200px">
+          <option value="">Personel Seçiniz...</option>
+        </select>
+        <button id="btnRaporYazdir" class="good" style="background:var(--good)">🖨️ Yazdır</button>
+        <button id="btnRaporPDF" class="good" style="background:var(--good)">PDF'ye Aktar</button>
+        <button id="btnRaporExcel" class="secondary">Excel'e Aktar</button>
+      </div>
+      
+      <!-- Personel Analiz Bölümü -->
+      <div id="personelAnalizContainer" style="display:none">
+        <!-- Personel Başlık -->
+        <div class="card" style="margin-bottom:16px;background:var(--surface2)">
+          <h4 id="personelBaslik" style="margin:0;font-size:20px;color:var(--accent)"></h4>
+          <div class="muted" id="personelAktifYillar" style="margin-top:4px"></div>
+        </div>
+
+        <!-- Yıl Bazlı Özet -->
+        <div class="card" style="margin-bottom:16px">
+          <h5 style="margin:0 0 12px 0;font-size:16px">📊 Yıl Bazlı Özet</h5>
+          <div id="yilBazliOzet"></div>
+        </div>
+
+        <!-- Detaylı Kayıtlar -->
+        <div class="card" style="margin-bottom:16px">
+          <h5 style="margin:0 0 12px 0;font-size:16px">📋 Detaylı Kayıtlar</h5>
+          <div id="detayliKayitlar"></div>
+        </div>
+
+        <!-- Bağışçı Analizi -->
+        <div class="card" style="margin-bottom:16px;background:var(--surface2)">
+          <h5 style="margin:0 0 12px 0;font-size:16px">👥 Bağışçı Analizi</h5>
+          <div class="kpi-row" id="bagisciAnalizKPIs">
+            <div class="kpi good">
+              <span class="label">Daimi Bağışçı</span>
+              <span class="value" id="daimiBagisciSayisi">0</span>
+              <small class="muted">3 yılda da bağış yapan</small>
+            </div>
+            <div class="kpi" style="background:#fff3cd">
+              <span class="label">Yeni Bağışçı</span>
+              <span class="value" id="yeniBagisciSayisi">0</span>
+              <small class="muted">Sadece 2025'te bağış yapan</small>
+            </div>
+            <div class="kpi" style="background:#f8d7da">
+              <span class="label">Pasif Bağışçı</span>
+              <span class="value" id="pasifBagisciSayisi">0</span>
+              <small class="muted">Önceki yıllarda var, 2025'te yok</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bağışçı Detayları -->
+        <div class="card" style="margin-bottom:16px">
+          <h5 style="margin:0 0 12px 0;font-size:16px">📋 Bağışçı Detayları (Yıl Yıl, Tip Tip)</h5>
+          <div id="bagisciDetaylari"></div>
+        </div>
+
+        <!-- Bağışçı İsim Listesi ve Kategorileri -->
+        <div class="card" style="margin-bottom:16px">
+          <h5 style="margin:0 0 12px 0;font-size:16px">👤 Bağışçılar (İsim Bazlı Detaylı Analiz)</h5>
+          <div id="bagisciIsimListesi"></div>
+        </div>
+      </div>
+
+      <!-- Personel seçilmediğinde mesaj -->
+      <div id="personelSecilmediMesaj" style="text-align:center;padding:40px;color:var(--muted)">
+        <p>Lütfen yukarıdan bir personel seçiniz.</p>
+      </div>
     </div>
   </main>
 
@@ -634,20 +720,1079 @@
       link.click();
     });
 
-    // PDF Export
-    qs('#btnPDF').addEventListener('click', () => {
-      const el = document.getElementById('pdf-root');
+    // Tüm Personel Raporu butonu
+    qs('#btnTumPersonelRapor').addEventListener('click', async () => {
+      try {
+        // Önce detaylı rapor bölümünü aç
+        const section = qs('#detayliRaporSection');
+        if (section.style.display === 'none') {
+          section.style.display = 'block';
+          section.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // Verileri yükle
+        await loadAllYearsData();
+        
+        // Analiz yap
+        if (!analizData) {
+          analizData = analizPersonelVerileri();
+        }
+        
+        // Veri kontrolü
+        if (!analizData || !analizData.personeller || Object.keys(analizData.personeller).length === 0) {
+          alert('Personel verisi bulunamadı. Lütfen önce verilerin yüklendiğinden emin olun.');
+          return;
+        }
+        
+        // Tüm personeller için rapor verisi hazırla
+        const tumPersonelRaporData = {
+          personeller: {},
+          toplamlar: {
+            2023: 0,
+            2024: 0,
+            2025: 0
+          },
+          genelBagisciAnaliz: {
+            daimi: [],
+            yeni: [],
+            pasif: []
+          }
+        };
+        
+        // Her personel için veri hazırla
+        Object.keys(analizData.personeller).forEach(personelAdi => {
+          const personel = analizData.personeller[personelAdi];
+          const bagisciAnaliz = analizBagisciPersonel(analizData.bagiscilar, personelAdi);
+          
+          // Personel verilerini hazırla
+          tumPersonelRaporData.personeller[personelAdi] = {
+            adi: personel.adi,
+            yillar: Array.from(personel.yillar).sort(),
+            veriler: {},
+            bagisciAnaliz: {
+              daimi: bagisciAnaliz.daimi || [],
+              yeni: bagisciAnaliz.yeni || [],
+              pasif: bagisciAnaliz.pasif || []
+            }
+          };
+          
+          // Veriler objesini serialize edilebilir hale getir
+          Object.keys(personel.veriler).forEach(yilStr => {
+            const yil = parseInt(yilStr);
+            tumPersonelRaporData.personeller[personelAdi].veriler[yil] = {
+              iftar: (personel.veriler[yil].iftar || []).map(v => ({
+                sahip: v.sahip || '',
+                tutar: Number(v.tutar) || 0,
+                tarih: v.tarih || null,
+                referans: v.referans || '',
+                diger: v.diger || ''
+              })),
+              sahur: (personel.veriler[yil].sahur || []).map(v => ({
+                sahip: v.sahip || '',
+                tutar: Number(v.tutar) || 0,
+                tarih: v.tarih || null,
+                referans: v.referans || '',
+                diger: v.diger || ''
+              })),
+              taahhut: (personel.veriler[yil].taahhut || []).map(v => ({
+                sahip: v.sahip || '',
+                tutar: Number(v.tutar) || 0,
+                tarih: v.tarih || null,
+                referans: v.referans || '',
+                diger: v.diger || ''
+              })),
+              teberru: (personel.veriler[yil].teberru || []).map(v => ({
+                sahip: v.sahip || '',
+                tutar: Number(v.tutar) || 0,
+                tarih: v.tarih || null,
+                referans: v.referans || '',
+                diger: v.diger || ''
+              }))
+            };
+            
+            // Toplamları hesapla
+            ['iftar', 'sahur', 'taahhut', 'teberru'].forEach(tip => {
+              const veriler = tumPersonelRaporData.personeller[personelAdi].veriler[yil][tip] || [];
+              tumPersonelRaporData.toplamlar[yil] += veriler.reduce((sum, v) => sum + (v.tutar || 0), 0);
+            });
+          });
+        });
+        
+        // Genel bağışçı analizi (tüm personeller için)
+        Object.keys(analizData.bagiscilar).forEach(sahip => {
+          const bagisci = analizData.bagiscilar[sahip];
+          const yillar = Array.from(bagisci.yillar).sort();
+          
+          if (yillar.length === 3 && yillar.includes(2023) && yillar.includes(2024) && yillar.includes(2025)) {
+            if (!tumPersonelRaporData.genelBagisciAnaliz.daimi.includes(sahip)) {
+              tumPersonelRaporData.genelBagisciAnaliz.daimi.push(sahip);
+            }
+          } else if (yillar.length === 1 && yillar.includes(2025)) {
+            if (!tumPersonelRaporData.genelBagisciAnaliz.yeni.includes(sahip)) {
+              tumPersonelRaporData.genelBagisciAnaliz.yeni.push(sahip);
+            }
+          } else if (!yillar.includes(2025) && (yillar.includes(2023) || yillar.includes(2024))) {
+            if (!tumPersonelRaporData.genelBagisciAnaliz.pasif.includes(sahip)) {
+              tumPersonelRaporData.genelBagisciAnaliz.pasif.push(sahip);
+            }
+          }
+        });
+        
+        // Sıralama
+        tumPersonelRaporData.genelBagisciAnaliz.daimi.sort((a, b) => a.localeCompare(b, 'tr-TR'));
+        tumPersonelRaporData.genelBagisciAnaliz.yeni.sort((a, b) => a.localeCompare(b, 'tr-TR'));
+        tumPersonelRaporData.genelBagisciAnaliz.pasif.sort((a, b) => a.localeCompare(b, 'tr-TR'));
+        
+        // Verileri localStorage'a kaydet
+        const storageKey = 'tumPersonelRaporData_' + Date.now();
+        localStorage.setItem(storageKey, JSON.stringify(tumPersonelRaporData));
+        
+        // Yeni pencerede aç
+        const printUrl = `ramazanıseriftümraporyazdır.html?key=${storageKey}`;
+        window.open(printUrl, '_blank');
+      } catch (e) {
+        console.error('Tüm personel raporu oluşturulurken hata:', e);
+        alert('Rapor oluşturulurken bir hata oluştu: ' + e.message);
+      }
+    });
+
+    /* ===== Detaylı Personel Bazlı Raporlama (2023-2024-2025) ===== */
+    
+    // Yardımcı fonksiyonlar
+    function normalizePersonelName(name) {
+      if (!name) return '';
+      const trimmed = String(name).trim();
+      if (!trimmed) return '';
+      // Türkçe karakter desteği ile büyük harf
+      return trimmed.toLocaleUpperCase('tr-TR');
+    }
+    
+    function normalizeTurkish(str) {
+      if (!str) return '';
+      return String(str).toLocaleLowerCase('tr-TR').trim();
+    }
+
+    let allYearsData = {}; // 2023, 2024, 2025 verileri
+    
+    // Tüm yılların verilerini yükle (analiz collection'ından)
+    async function loadAllYearsData() {
+      allYearsData = {};
+      const yillar = [2023, 2024, 2025];
+      
+      for (const yil of yillar) {
+        try {
+          // Önce analiz collection'ından dene (personel/referans bilgileri burada)
+          const analizSnap = await db.collection('ramazan_serif').doc('analiz').collection('veriler')
+            .where('yil', '==', yil)
+            .get();
+          
+          let veriler = [];
+          
+          if (!analizSnap.empty) {
+            // Analiz collection'ından veri var
+            veriler = analizSnap.docs.map(d => {
+              const data = d.data();
+              return {
+                id: d.id,
+                yil: data.yil || yil,
+                tip: data.tip || '',
+                sahip: data.sahip || '',
+                tutar: Number(data.tutar) || 0,
+                referans: data.referans || '',
+                personel: data.personel || data.referans || '',
+                diger: data.diger || '',
+                tarih: data.tarih || null
+              };
+            });
+          } else {
+            // Analiz collection'ında yoksa kayitlar collection'ından dene
+            console.log(`${yil} için analiz verisi yok, kayitlar collection'ından yükleniyor...`);
+            const kayitlarSnap = await db.collection('ramazan_serif').doc(String(yil)).collection('kayitlar').get();
+            
+            veriler = kayitlarSnap.docs.map(d => {
+              const data = d.data();
+              return {
+                id: d.id,
+                yil: data.yil || yil,
+                tip: data.tip || '',
+                sahip: data.sahip || '',
+                tutar: Number(data.tutar) || 0,
+                referans: data.referans || '',
+                personel: data.personel || data.referans || '',
+                diger: data.diger || '',
+                tarih: data.tarih || null
+              };
+            });
+          }
+          
+          allYearsData[yil] = veriler;
+          console.log(`${yil} yılı için ${veriler.length} kayıt yüklendi`);
+        } catch (e) {
+          console.error(`${yil} yılı verileri yüklenemedi:`, e);
+          allYearsData[yil] = [];
+        }
+      }
+    }
+
+    // Personel bazlı verileri analiz et (genel/hususi ayrımı yok)
+    function analizPersonelVerileri() {
+      const personeller = {};
+      const bagiscilar = {}; // Tüm bağışçılar (sahip)
+      let personelAdiYokSayisi = 0;
+      let toplamIslenen = 0;
+      
+      // Her yıl için veri işle
+      Object.keys(allYearsData).forEach(yilStr => {
+        const yil = parseInt(yilStr);
+        const veriler = allYearsData[yil] || [];
+        
+        veriler.forEach(v => {
+          toplamIslenen++;
+          
+          // Bağışçı takibi (sahip)
+          const sahip = (v.sahip || '').trim();
+          if (sahip) {
+            if (!bagiscilar[sahip]) {
+              bagiscilar[sahip] = { yillar: new Set(), personeller: new Set() };
+            }
+            bagiscilar[sahip].yillar.add(yil);
+          }
+          
+          // Personel belirleme
+          let rawPersonel = v.personel || v.referans || '';
+          if (v.referans && normalizeTurkish(v.referans) === 'diğer') {
+            rawPersonel = 'DİĞER';
+          }
+          const personelAdi = normalizePersonelName(rawPersonel);
+          
+          if (!personelAdi) {
+            personelAdiYokSayisi++;
+            return;
+          }
+          
+          // Bağışçıya personel ekle
+          if (sahip) {
+            bagiscilar[sahip].personeller.add(personelAdi);
+          }
+          
+          // Personel yapısını oluştur (genel/hususi ayrımı yok)
+          if (!personeller[personelAdi]) {
+            personeller[personelAdi] = {
+              adi: personelAdi,
+              veriler: {}, // { 2023: { iftar: [], sahur: [], taahhut: [], teberru: [] }, ... }
+              yillar: new Set(),
+              bagiscilar: new Set() // Bu personele ait bağışçılar
+            };
+          }
+          
+          personeller[personelAdi].yillar.add(yil);
+          
+          if (!personeller[personelAdi].veriler[yil]) {
+            personeller[personelAdi].veriler[yil] = {
+              iftar: [],
+              sahur: [],
+              taahhut: [],
+              teberru: []
+            };
+          }
+          
+          const tip = (v.tip || '').toLowerCase();
+          if (['iftar', 'sahur', 'taahhut', 'teberru'].includes(tip)) {
+            personeller[personelAdi].veriler[yil][tip].push({
+              sahip: v.sahip || '',
+              tutar: Number(v.tutar) || 0,
+              tarih: v.tarih,
+              referans: v.referans || '',
+              diger: v.diger || ''
+            });
+            
+            if (sahip) {
+              personeller[personelAdi].bagiscilar.add(sahip);
+            }
+          }
+        });
+      });
+      
+      console.log('Analiz sonuçları:', {
+        toplamIslenen: toplamIslenen,
+        personelAdiYokSayisi: personelAdiYokSayisi,
+        personelSayisi: Object.keys(personeller).length,
+        bagisciSayisi: Object.keys(bagiscilar).length,
+        personelListesi: Object.keys(personeller)
+      });
+      
+      return { personeller, bagiscilar };
+    }
+
+    // Bağışçı analizi (belirli bir personel için)
+    function analizBagisciPersonel(bagiscilar, personelAdi) {
+      const daimi = [];
+      const yeni = [];
+      const pasif = [];
+      
+      Object.keys(bagiscilar).forEach(sahip => {
+        const bagisci = bagiscilar[sahip];
+        // Sadece bu personele ait bağışçıları kontrol et
+        if (!bagisci.personeller.has(personelAdi)) return;
+        
+        const yillar = Array.from(bagisci.yillar).sort();
+        
+        if (yillar.length === 3 && yillar.includes(2023) && yillar.includes(2024) && yillar.includes(2025)) {
+          daimi.push(sahip);
+        } else if (yillar.length === 1 && yillar.includes(2025)) {
+          yeni.push(sahip);
+        } else if (!yillar.includes(2025) && (yillar.includes(2023) || yillar.includes(2024))) {
+          pasif.push(sahip);
+        }
+      });
+      
+      return { daimi, yeni, pasif };
+    }
+
+    let analizData = null; // Global analiz verisi
+    
+    // Personel seçim listesini doldur
+    function doldurPersonelListesi(personeller) {
+      const select = qs('#personelSecimi');
+      select.innerHTML = '<option value="">Personel Seçiniz...</option>';
+      
+      const personelListesi = Object.values(personeller).sort((a, b) => 
+        a.adi.localeCompare(b.adi, 'tr-TR')
+      );
+      
+      personelListesi.forEach(personel => {
+        const option = document.createElement('option');
+        option.value = personel.adi;
+        option.textContent = personel.adi;
+        select.appendChild(option);
+      });
+    }
+    
+    // Seçilen personelin raporunu render et
+    function renderPersonelRaporu(personelAdi, { personeller, bagiscilar }) {
+      const personel = personeller[personelAdi];
+      if (!personel) {
+        qs('#personelAnalizContainer').style.display = 'none';
+        qs('#personelSecilmediMesaj').style.display = 'block';
+        return;
+      }
+      
+      qs('#personelSecilmediMesaj').style.display = 'none';
+      qs('#personelAnalizContainer').style.display = 'block';
+      
+      // Personel başlık
+      qs('#personelBaslik').textContent = personel.adi;
+      qs('#personelAktifYillar').textContent = `Aktif Yıllar: ${Array.from(personel.yillar).sort().join(', ')}`;
+      
+      // Yıl bazlı özet
+      renderYilBazliOzet(personel);
+      
+      // Detaylı kayıtlar
+      renderDetayliKayitlar(personel);
+      
+      // Bağışçı analizi
+      const bagisciAnaliz = analizBagisciPersonel(bagiscilar, personelAdi);
+      qs('#daimiBagisciSayisi').textContent = bagisciAnaliz.daimi.length;
+      qs('#yeniBagisciSayisi').textContent = bagisciAnaliz.yeni.length;
+      qs('#pasifBagisciSayisi').textContent = bagisciAnaliz.pasif.length;
+      
+      // Bağışçı detayları
+      renderBagisciDetaylari(personel, bagiscilar, personelAdi);
+      
+      // Bağışçı isim listesi ve kategorileri
+      renderBagisciIsimListesi(personel, bagiscilar, personelAdi, bagisciAnaliz);
+      
+      // Bağışçı isim listesi ve kategorileri
+      renderBagisciIsimListesi(personel, bagiscilar, personelAdi, bagisciAnaliz);
+    }
+    
+    // Bağışçı detayları render (yıl yıl, tip tip)
+    function renderBagisciDetaylari(personel, bagiscilar, personelAdi) {
+      const container = qs('#bagisciDetaylari');
+      const yillar = [2023, 2024, 2025];
+      const tipler = [
+        { key: 'iftar', label: 'İftar', icon: '🌙' },
+        { key: 'sahur', label: 'Sahur', icon: '🌟' },
+        { key: 'taahhut', label: 'Taahhüt', icon: '📋' },
+        { key: 'teberru', label: 'Teberru', icon: '💝' }
+      ];
+      
+      let html = '';
+      
+      yillar.forEach(yil => {
+        const yilData = personel.veriler[yil] || {};
+        
+        html += `
+          <div style="margin-bottom:24px;padding:16px;background:var(--surface2);border-radius:8px;border-left:4px solid var(--accent)">
+            <h6 style="margin:0 0 16px 0;font-size:18px;color:var(--accent);font-weight:700">${yil} Yılı</h6>
+        `;
+        
+        tipler.forEach(tip => {
+          const veriler = yilData[tip.key] || [];
+          if (veriler.length === 0) return;
+          
+          // Bağışçılara göre grupla
+          const bagisciMap = {};
+          veriler.forEach(v => {
+            const sahip = (v.sahip || '').trim();
+            if (!sahip) return;
+            
+            if (!bagisciMap[sahip]) {
+              bagisciMap[sahip] = {
+                isim: sahip,
+                toplamTutar: 0,
+                kayitSayisi: 0
+              };
+            }
+            
+            bagisciMap[sahip].toplamTutar += Number(v.tutar) || 0;
+            bagisciMap[sahip].kayitSayisi++;
+          });
+          
+          // Bağışçıları tutara göre sırala
+          const bagisciListesi = Object.values(bagisciMap).sort((a, b) => b.toplamTutar - a.toplamTutar);
+          
+          if (bagisciListesi.length === 0) return;
+          
+          const tipToplam = bagisciListesi.reduce((sum, b) => sum + b.toplamTutar, 0);
+          
+          html += `
+            <div style="margin-bottom:16px;padding:12px;background:#fff;border-radius:8px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--border)">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="font-size:20px">${tip.icon}</span>
+                  <span style="font-weight:700;font-size:16px;color:var(--accent)">${tip.label}</span>
+                </div>
+                <div style="text-align:right">
+                  <div style="font-weight:700;font-size:16px;color:var(--accent)">₺${tipToplam.toLocaleString('tr-TR', {minimumFractionDigits:2})}</div>
+                  <div style="font-size:12px;color:var(--muted)">${bagisciListesi.length} bağışçı | ${veriler.length} kayıt</div>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px">
+          `;
+          
+          bagisciListesi.forEach(bagisci => {
+            html += `
+              <div style="padding:10px;background:var(--surface2);border-radius:6px;border:1px solid var(--border)">
+                <div style="font-weight:600;font-size:14px;margin-bottom:4px;color:var(--ink)">${bagisci.isim}</div>
+                <div style="font-weight:700;font-size:15px;color:var(--accent)">₺${bagisci.toplamTutar.toLocaleString('tr-TR', {minimumFractionDigits:2})}</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:2px">${bagisci.kayitSayisi} kayıt</div>
+              </div>
+            `;
+          });
+          
+          html += `
+              </div>
+            </div>
+          `;
+        });
+        
+        html += '</div>';
+      });
+      
+      container.innerHTML = html || '<div class="muted" style="text-align:center;padding:20px">Bağışçı detayı bulunamadı</div>';
+    }
+    
+    // Bağışçı isim listesi ve kategorileri render
+    function renderBagisciIsimListesi(personel, bagiscilar, personelAdi, bagisciAnaliz) {
+      const container = qs('#bagisciIsimListesi');
+      const yillar = [2023, 2024, 2025];
+      const tipler = [
+        { key: 'iftar', label: 'İftar', icon: '🌙' },
+        { key: 'sahur', label: 'Sahur', icon: '🌟' },
+        { key: 'taahhut', label: 'Taahhüt', icon: '📋' },
+        { key: 'teberru', label: 'Teberru', icon: '💝' }
+      ];
+      
+      // Tüm bağışçıları birleştir (daimi, yeni, pasif)
+      // Önce kategoriye göre sırala (daimi: 0, yeni: 1, pasif: 2), sonra isme göre alfabetik
+      const kategoriSira = { 'daimi': 0, 'yeni': 1, 'pasif': 2 };
+      const tumBagiscilar = [
+        ...bagisciAnaliz.daimi.map(isim => ({ isim, kategori: 'daimi', label: 'Daimi Bağışçı', renk: '#2d6a4f' })),
+        ...bagisciAnaliz.yeni.map(isim => ({ isim, kategori: 'yeni', label: 'Yeni Bağışçı', renk: '#fff3cd' })),
+        ...bagisciAnaliz.pasif.map(isim => ({ isim, kategori: 'pasif', label: 'Pasif Bağışçı', renk: '#f8d7da' }))
+      ].sort((a, b) => {
+        // Önce kategoriye göre sırala
+        const kategoriFarki = kategoriSira[a.kategori] - kategoriSira[b.kategori];
+        if (kategoriFarki !== 0) return kategoriFarki;
+        // Aynı kategorideyse isme göre alfabetik sırala
+        return a.isim.localeCompare(b.isim, 'tr-TR');
+      });
+      
+      if (tumBagiscilar.length === 0) {
+        container.innerHTML = '<div class="muted" style="text-align:center;padding:20px">Bağışçı bulunamadı</div>';
+        return;
+      }
+      
+      let html = '';
+      
+      tumBagiscilar.forEach(({ isim, kategori, label, renk }) => {
+        // Bu bağışçının yıl yıl, tip tip verilerini topla
+        const bagisciVerileri = {};
+        let toplamGenelTutar = 0;
+        let toplamGenelKayit = 0;
+        
+        yillar.forEach(yil => {
+          bagisciVerileri[yil] = { iftar: { tutar: 0, kayit: 0 }, sahur: { tutar: 0, kayit: 0 }, taahhut: { tutar: 0, kayit: 0 }, teberru: { tutar: 0, kayit: 0 } };
+          
+          tipler.forEach(tip => {
+            const veriler = (personel.veriler[yil] || {})[tip.key] || [];
+            const bagisciKayitlari = veriler.filter(v => (v.sahip || '').trim() === isim);
+            
+            if (bagisciKayitlari.length > 0) {
+              const toplamTutar = bagisciKayitlari.reduce((sum, v) => sum + (v.tutar || 0), 0);
+              bagisciVerileri[yil][tip.key] = {
+                tutar: toplamTutar,
+                kayit: bagisciKayitlari.length
+              };
+              toplamGenelTutar += toplamTutar;
+              toplamGenelKayit += bagisciKayitlari.length;
+            }
+          });
+        });
+        
+        html += `
+          <div style="margin-bottom:24px;padding:16px;background:var(--surface2);border-radius:8px;border-left:4px solid ${renk}">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+              <div>
+                <h6 style="margin:0;font-size:18px;color:var(--accent);font-weight:700">${isim}</h6>
+                <div style="margin-top:4px;padding:4px 10px;border-radius:6px;background:${renk};display:inline-block;font-size:12px;font-weight:600;color:${kategori === 'daimi' ? '#fff' : '#856404'}">${label}</div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-weight:700;font-size:16px;color:var(--accent)">₺${toplamGenelTutar.toLocaleString('tr-TR', {minimumFractionDigits:2})}</div>
+                <div style="font-size:12px;color:var(--muted)">${toplamGenelKayit} kayıt</div>
+              </div>
+            </div>
+            
+            <div style="margin-top:16px">
+        `;
+        
+        yillar.forEach(yil => {
+          const yilVerileri = bagisciVerileri[yil];
+          const yilToplam = tipler.reduce((sum, tip) => sum + (yilVerileri[tip.key].tutar || 0), 0);
+          const yilKayit = tipler.reduce((sum, tip) => sum + (yilVerileri[tip.key].kayit || 0), 0);
+          
+          if (yilToplam === 0 && yilKayit === 0) return;
+          
+          html += `
+            <div style="margin-bottom:16px;padding:12px;background:#fff;border-radius:8px;border:1px solid var(--border)">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--border)">
+                <div style="font-weight:700;font-size:16px;color:var(--accent)">${yil} Yılı</div>
+                <div style="text-align:right">
+                  <div style="font-weight:700;font-size:15px;color:var(--accent)">₺${yilToplam.toLocaleString('tr-TR', {minimumFractionDigits:2})}</div>
+                  <div style="font-size:12px;color:var(--muted)">${yilKayit} kayıt</div>
+                </div>
+              </div>
+              
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px">
+          `;
+          
+          tipler.forEach(tip => {
+            const tipData = yilVerileri[tip.key];
+            if (tipData.tutar === 0 && tipData.kayit === 0) return;
+            
+            html += `
+              <div style="padding:10px;background:var(--surface2);border-radius:6px;border:1px solid var(--border)">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+                  <span style="font-size:18px">${tip.icon}</span>
+                  <span style="font-weight:600;font-size:14px;color:var(--ink)">${tip.label}</span>
+                </div>
+                <div style="font-weight:700;font-size:15px;color:var(--accent)">₺${tipData.tutar.toLocaleString('tr-TR', {minimumFractionDigits:2})}</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:2px">${tipData.kayit} kayıt</div>
+              </div>
+            `;
+          });
+          
+          html += `
+              </div>
+            </div>
+          `;
+        });
+        
+        html += `
+            </div>
+          </div>
+        `;
+      });
+      
+      container.innerHTML = html;
+    }
+    
+    // Yıl bazlı özet render
+    function renderYilBazliOzet(personel) {
+      const container = qs('#yilBazliOzet');
+      const yillar = [2023, 2024, 2025];
+      const tipler = [
+        { key: 'iftar', label: 'İftar', icon: '🌙' },
+        { key: 'sahur', label: 'Sahur', icon: '🌟' },
+        { key: 'taahhut', label: 'Taahhüt', icon: '📋' },
+        { key: 'teberru', label: 'Teberru', icon: '💝' }
+      ];
+      
+      let html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">';
+      
+      yillar.forEach(yil => {
+        const yilData = personel.veriler[yil] || {};
+        let yilToplamTutar = 0;
+        let yilToplamKayit = 0;
+        
+        tipler.forEach(tip => {
+          const veriler = yilData[tip.key] || [];
+          yilToplamTutar += veriler.reduce((sum, v) => sum + (v.tutar || 0), 0);
+          yilToplamKayit += veriler.length;
+        });
+        
+        html += `
+          <div style="padding:12px;background:var(--surface2);border-radius:8px;text-align:center">
+            <div style="font-size:13px;color:var(--muted);margin-bottom:6px;font-weight:600">${yil}</div>
+            <div style="font-weight:700;font-size:18px;color:var(--accent);margin-bottom:4px">
+              ₺${yilToplamTutar.toLocaleString('tr-TR', {minimumFractionDigits:2})}
+            </div>
+            <div style="font-size:11px;color:var(--muted)">${yilToplamKayit} kayıt</div>
+          </div>
+        `;
+      });
+      
+      html += '</div>';
+      container.innerHTML = html;
+    }
+    
+    // Detaylı kayıtlar render
+    function renderDetayliKayitlar(personel) {
+      const container = qs('#detayliKayitlar');
+      const yillar = [2023, 2024, 2025];
+      const tipler = [
+        { key: 'iftar', label: 'İftar', icon: '🌙' },
+        { key: 'sahur', label: 'Sahur', icon: '🌟' },
+        { key: 'taahhut', label: 'Taahhüt', icon: '📋' },
+        { key: 'teberru', label: 'Teberru', icon: '💝' }
+      ];
+      
+      let html = '';
+      
+      yillar.forEach(yil => {
+        const yilData = personel.veriler[yil] || {};
+        let yilToplamTutar = 0;
+        let yilToplamKayit = 0;
+        
+        html += `
+          <div style="margin-bottom:20px;padding:12px;background:var(--surface2);border-radius:8px">
+            <h6 style="margin:0 0 12px 0;font-size:16px;color:var(--accent)">${yil} Yılı</h6>
+        `;
+        
+        tipler.forEach(tip => {
+          const veriler = yilData[tip.key] || [];
+          if (veriler.length === 0) return;
+          
+          const toplamTutar = veriler.reduce((sum, v) => sum + (v.tutar || 0), 0);
+          const kisiSayisi = new Set(veriler.map(v => (v.sahip || '').trim()).filter(s => s)).size;
+          
+          yilToplamTutar += toplamTutar;
+          yilToplamKayit += veriler.length;
+          
+          html += `
+            <div style="margin-bottom:10px;padding:10px;background:#fff;border-radius:6px;border-left:4px solid var(--accent)">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <span style="font-weight:600">${tip.icon} ${tip.label}</span>
+                <span style="font-weight:700;color:var(--accent)">₺${toplamTutar.toLocaleString('tr-TR', {minimumFractionDigits:2})}</span>
+              </div>
+              <div style="font-size:12px;color:var(--muted)">
+                ${veriler.length} kayıt | ${kisiSayisi} farklı bağışçı
+              </div>
+            </div>
+          `;
+        });
+        
+        if (yilToplamKayit > 0) {
+          html += `
+            <div style="margin-top:12px;padding:10px;background:var(--accent);color:#fff;border-radius:6px;text-align:center">
+              <div style="font-size:12px;opacity:0.9;margin-bottom:4px">${yil} Toplam</div>
+              <div style="font-weight:700;font-size:16px">₺${yilToplamTutar.toLocaleString('tr-TR', {minimumFractionDigits:2})}</div>
+              <div style="font-size:11px;opacity:0.9;margin-top:4px">${yilToplamKayit} kayıt</div>
+            </div>
+          `;
+        }
+        
+        html += '</div>';
+      });
+      
+      container.innerHTML = html || '<div class="muted" style="text-align:center;padding:20px">Kayıt bulunamadı</div>';
+    }
+
+    // Personel kategori detayı (Genel/Hususi)
+    function renderPersonelKategoriDetay(personel, kategori, containerId) {
+      const container = qs(`#${containerId}`);
+      const kategoriData = personel[kategori] || {};
+      const yillar = [2023, 2024, 2025];
+      const tipler = [
+        { key: 'iftar', label: 'İftar', icon: '🌙' },
+        { key: 'sahur', label: 'Sahur', icon: '🌟' },
+        { key: 'taahhut', label: 'Taahhüt', icon: '📋' },
+        { key: 'teberru', label: 'Teberru', icon: '💝' }
+      ];
+      
+      let html = '<div style="font-size:13px">';
+      let toplamTutarKategori = 0;
+      let toplamKayitKategori = 0;
+      
+      yillar.forEach(yil => {
+        if (!kategoriData[yil]) return;
+        
+        let yilToplamTutar = 0;
+        let yilToplamKayit = 0;
+        
+        html += `<div style="margin-bottom:12px;padding:10px;background:var(--surface2);border-radius:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <strong style="color:var(--accent);font-size:14px">${yil}</strong>
+            <span id="${containerId}-${yil}-toplam" style="font-weight:700;color:var(--accent);font-size:13px"></span>
+          </div>`;
+        
+        tipler.forEach(tip => {
+          const veriler = kategoriData[yil][tip.key] || [];
+          if (veriler.length === 0) return;
+          
+          const toplamTutar = veriler.reduce((sum, v) => sum + (v.tutar || 0), 0);
+          const kisiSayisi = new Set(veriler.map(v => (v.sahip || '').trim()).filter(s => s)).size;
+          
+          yilToplamTutar += toplamTutar;
+          yilToplamKayit += veriler.length;
+          toplamTutarKategori += toplamTutar;
+          toplamKayitKategori += veriler.length;
+          
+          html += `
+            <div style="margin-top:6px;padding:8px;background:#fff;border-radius:6px;border-left:3px solid var(--accent)">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                <span>${tip.icon} <strong>${tip.label}</strong></span>
+                <span style="font-weight:700;color:var(--accent)">₺${toplamTutar.toLocaleString('tr-TR', {minimumFractionDigits:2})}</span>
+              </div>
+              <div class="muted" style="font-size:11px">${veriler.length} kayıt | ${kisiSayisi} farklı bağışçı</div>
+            </div>
+          `;
+        });
+        
+        if (yilToplamTutar > 0) {
+          // Yıl toplamını göster
+          setTimeout(() => {
+            const toplamEl = qs(`#${containerId}-${yil}-toplam`);
+            if (toplamEl) {
+              toplamEl.textContent = `Toplam: ₺${yilToplamTutar.toLocaleString('tr-TR', {minimumFractionDigits:2})}`;
+            }
+          }, 0);
+        }
+        
+        html += '</div>';
+      });
+      
+      // Kategori toplamı
+      if (toplamTutarKategori > 0) {
+        html += `
+          <div style="margin-top:12px;padding:10px;background:var(--accent);color:#fff;border-radius:8px;text-align:center">
+            <div style="font-size:11px;opacity:0.9;margin-bottom:4px">Kategori Toplamı</div>
+            <div style="font-weight:700;font-size:16px">₺${toplamTutarKategori.toLocaleString('tr-TR', {minimumFractionDigits:2})}</div>
+            <div style="font-size:11px;opacity:0.9;margin-top:4px">${toplamKayitKategori} kayıt</div>
+          </div>
+        `;
+      }
+      
+      html += '</div>';
+      container.innerHTML = html || '<div class="muted" style="font-size:13px;padding:20px;text-align:center">Bu kategori için veri bulunamadı</div>';
+    }
+
+    // Personel özet
+    function renderPersonelOzet(personel, containerId) {
+      const container = qs(`#${containerId}`);
+      const yillar = [2023, 2024, 2025];
+      
+      let html = `
+        <div style="border-top:2px solid var(--border);padding-top:16px">
+          <h5 style="margin:0 0 12px 0">📊 Genel Özet</h5>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px">
+      `;
+      
+      let genelToplamTutar = 0;
+      let hususiToplamTutar = 0;
+      
+      yillar.forEach(yil => {
+        const genelData = personel.genel[yil] || {};
+        const hususiData = personel.hususi[yil] || {};
+        
+        const genelTutar = ['iftar', 'sahur', 'taahhut', 'teberru'].reduce((sum, tip) => {
+          const veriler = genelData[tip] || [];
+          return sum + veriler.reduce((s, v) => s + (v.tutar || 0), 0);
+        }, 0);
+        
+        const hususiTutar = ['iftar', 'sahur', 'taahhut', 'teberru'].reduce((sum, tip) => {
+          const veriler = hususiData[tip] || [];
+          return sum + veriler.reduce((s, v) => s + (v.tutar || 0), 0);
+        }, 0);
+        
+        genelToplamTutar += genelTutar;
+        hususiToplamTutar += hususiTutar;
+        
+        html += `
+          <div style="padding:8px;background:var(--surface2);border-radius:8px;text-align:center">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">${yil}</div>
+            <div style="font-weight:700;font-size:14px">₺${(genelTutar + hususiTutar).toLocaleString('tr-TR', {minimumFractionDigits:2})}</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">
+              Genel: ₺${genelTutar.toLocaleString('tr-TR', {minimumFractionDigits:2})} | 
+              Hususi: ₺${hususiTutar.toLocaleString('tr-TR', {minimumFractionDigits:2})}
+            </div>
+          </div>
+        `;
+      });
+      
+      html += `
+          </div>
+          <div style="padding:12px;background:var(--surface);border-radius:8px;text-align:center">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:4px">3 Yıllık Toplam</div>
+            <div style="font-weight:700;font-size:20px;color:var(--accent)">
+              ₺${(genelToplamTutar + hususiToplamTutar).toLocaleString('tr-TR', {minimumFractionDigits:2})}
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">
+              Genel: ₺${genelToplamTutar.toLocaleString('tr-TR', {minimumFractionDigits:2})} | 
+              Hususi: ₺${hususiToplamTutar.toLocaleString('tr-TR', {minimumFractionDigits:2})}
+            </div>
+          </div>
+        </div>
+      `;
+      
+      container.innerHTML = html;
+    }
+
+    // Detaylı rapor butonu
+    qs('#btnDetayliRapor').addEventListener('click', async () => {
+      const section = qs('#detayliRaporSection');
+      if (section.style.display === 'none') {
+        section.style.display = 'block';
+        section.scrollIntoView({ behavior: 'smooth' });
+        
+        // Verileri yükle ve analiz et
+        qs('#personelAnalizContainer').style.display = 'none';
+        qs('#personelSecilmediMesaj').style.display = 'block';
+        qs('#personelSecimi').innerHTML = '<option value="">Yükleniyor...</option>';
+        
+        try {
+          await loadAllYearsData();
+          
+          // Yüklenen veri kontrolü
+          const toplamKayit = Object.values(allYearsData).reduce((sum, arr) => sum + arr.length, 0);
+          console.log('Toplam yüklenen kayıt:', toplamKayit);
+          
+          if (toplamKayit === 0) {
+            qs('#personelSecilmediMesaj').innerHTML = `
+              <div style="text-align:center;padding:40px">
+                <h4 style="color:var(--warn);margin-bottom:12px">⚠️ Veri Bulunamadı</h4>
+                <p class="muted">2023, 2024 veya 2025 yıllarına ait veri bulunamadı.</p>
+              </div>
+            `;
+            return;
+          }
+          
+          analizData = analizPersonelVerileri();
+          const personelSayisi = Object.keys(analizData.personeller).length;
+          
+          if (personelSayisi === 0) {
+            qs('#personelSecilmediMesaj').innerHTML = `
+              <div style="text-align:center;padding:40px">
+                <h4 style="color:var(--warn);margin-bottom:12px">⚠️ Personel Verisi Bulunamadı</h4>
+                <p class="muted">Kayıtlarda personel/referans bilgisi bulunamadı.</p>
+              </div>
+            `;
+            return;
+          }
+          
+          // Personel listesini doldur
+          doldurPersonelListesi(analizData.personeller);
+        } catch (e) {
+          console.error('Rapor yüklenirken hata:', e);
+          qs('#personelSecilmediMesaj').innerHTML = `
+            <div style="text-align:center;padding:40px">
+              <h4 style="color:var(--bad);margin-bottom:12px">❌ Hata Oluştu</h4>
+              <p class="muted">Veriler yüklenirken bir hata oluştu.</p>
+            </div>
+          `;
+        }
+      } else {
+        section.style.display = 'none';
+      }
+    });
+    
+    // Personel seçimi değiştiğinde
+    qs('#personelSecimi').addEventListener('change', (e) => {
+      const personelAdi = e.target.value;
+      if (!personelAdi || !analizData) return;
+      
+      renderPersonelRaporu(personelAdi, analizData);
+    });
+
+    // Yazdır butonu
+    qs('#btnRaporYazdir').addEventListener('click', () => {
+      const personelAdi = qs('#personelSecimi').value;
+      if (!personelAdi) {
+        alert('Lütfen önce bir personel seçiniz.');
+        return;
+      }
+      
+      const personel = analizData.personeller[personelAdi];
+      if (!personel) return;
+      
+      // Bağışçı analizi
+      const bagisciAnaliz = analizBagisciPersonel(analizData.bagiscilar, personelAdi);
+      
+      // Rapor verilerini hazırla (Set'leri Array'e dönüştür)
+      const raporData = {
+        personel: {
+          adi: personel.adi,
+          yillar: Array.from(personel.yillar).sort(),
+          veriler: {}
+        },
+        bagisciAnaliz: {
+          daimi: bagisciAnaliz.daimi || [],
+          yeni: bagisciAnaliz.yeni || [],
+          pasif: bagisciAnaliz.pasif || []
+        }
+      };
+      
+      // Veriler objesini serialize edilebilir hale getir
+      Object.keys(personel.veriler).forEach(yilStr => {
+        const yil = parseInt(yilStr);
+        raporData.personel.veriler[yil] = {
+          iftar: (personel.veriler[yil].iftar || []).map(v => ({
+            sahip: v.sahip || '',
+            tutar: Number(v.tutar) || 0,
+            tarih: v.tarih || null,
+            referans: v.referans || '',
+            diger: v.diger || ''
+          })),
+          sahur: (personel.veriler[yil].sahur || []).map(v => ({
+            sahip: v.sahip || '',
+            tutar: Number(v.tutar) || 0,
+            tarih: v.tarih || null,
+            referans: v.referans || '',
+            diger: v.diger || ''
+          })),
+          taahhut: (personel.veriler[yil].taahhut || []).map(v => ({
+            sahip: v.sahip || '',
+            tutar: Number(v.tutar) || 0,
+            tarih: v.tarih || null,
+            referans: v.referans || '',
+            diger: v.diger || ''
+          })),
+          teberru: (personel.veriler[yil].teberru || []).map(v => ({
+            sahip: v.sahip || '',
+            tutar: Number(v.tutar) || 0,
+            tarih: v.tarih || null,
+            referans: v.referans || '',
+            diger: v.diger || ''
+          }))
+        };
+      });
+      
+      // Verileri localStorage'a kaydet (URL uzunluğu sınırı nedeniyle)
+      const storageKey = 'personelRaporData_' + Date.now();
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(raporData));
+        console.log('Veri localStorage\'a kaydedildi:', storageKey);
+        
+        // URL parametresi olarak sadece storage key'i gönder
+        const printUrl = `ramazanıserifraporyazdır.html?personel=${encodeURIComponent(personelAdi)}&key=${storageKey}`;
+        console.log('Yazdırma URL oluşturuldu:', printUrl);
+        
+        // Yeni pencerede aç
+        const newWindow = window.open(printUrl, '_blank');
+        if (!newWindow) {
+          alert('Pop-up engellendi. Lütfen pop-up izni verin ve tekrar deneyin.');
+        } else {
+          // 5 saniye sonra localStorage'dan temizle (opsiyonel)
+          setTimeout(() => {
+            try {
+              localStorage.removeItem(storageKey);
+              console.log('Geçici veri temizlendi:', storageKey);
+            } catch (e) {
+              console.warn('LocalStorage temizleme hatası:', e);
+            }
+          }, 30000); // 30 saniye sonra temizle
+        }
+      } catch (e) {
+        console.error('LocalStorage hatası:', e);
+        // Fallback: Eğer localStorage çalışmazsa URL parametresi olarak dene (küçük veriler için)
+        const jsonString = JSON.stringify(raporData);
+        if (jsonString.length < 2000) { // 2KB'dan küçükse URL kullan
+          const dataParam = encodeURIComponent(jsonString);
+          const printUrl = `ramazanıserifraporyazdır.html?personel=${encodeURIComponent(personelAdi)}&data=${dataParam}`;
+          window.open(printUrl, '_blank');
+        } else {
+          alert('Veri çok büyük. Lütfen daha az veri seçin veya tarayıcı ayarlarınızı kontrol edin.');
+        }
+      }
+    });
+    
+    // PDF ve Excel export
+    qs('#btnRaporPDF').addEventListener('click', () => {
+      const personelAdi = qs('#personelSecimi').value;
+      if (!personelAdi) {
+        alert('Lütfen önce bir personel seçiniz.');
+        return;
+      }
+      
+      const el = qs('#personelAnalizContainer');
       const opt = {
         margin: [10, 10, 10, 10],
-        filename: `iftar-sahur-rapor-${qs('#filtreYil').value}.pdf`,
+        filename: `personel-rapor-${personelAdi}-2023-2024-2025.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, scrollY: -window.scrollY },
-        pagebreak: { mode: ['css', 'legacy'] },
+        pagebreak: { mode: ['css', 'legacy', 'avoid-all'] },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
       };
       html2pdf().set(opt).from(el).save();
     });
+
+    qs('#btnRaporExcel').addEventListener('click', () => {
+      const personelAdi = qs('#personelSecimi').value;
+      if (!personelAdi || !analizData) {
+        alert('Lütfen önce bir personel seçiniz.');
+        return;
+      }
+      
+      const personel = analizData.personeller[personelAdi];
+      if (!personel) return;
+      
+      // Excel export için CSV formatında dışa aktar
+      const rows = [['Yıl', 'Tip', 'Bağışçı', 'Tutar', 'Referans', 'Tarih']];
+      
+      [2023, 2024, 2025].forEach(yil => {
+        const yilData = personel.veriler[yil] || {};
+        ['iftar', 'sahur', 'taahhut', 'teberru'].forEach(tip => {
+          const veriler = yilData[tip] || [];
+          veriler.forEach(v => {
+            const tarihStr = v.tarih ? (v.tarih instanceof Date ? v.tarih.toISOString().slice(0, 10) : v.tarih) : '';
+            rows.push([
+              yil,
+              tip,
+              v.sahip || '',
+              v.tutar || 0,
+              v.referans || '',
+              tarihStr
+            ]);
+          });
+        });
+      });
+      
+      const csv = rows.map(r => r.map(cell => {
+        const str = String(cell);
+        return str.includes(',') || str.includes('"') || str.includes('\n')
+          ? `"${str.replace(/"/g, '""')}"`
+          : str;
+      }).join(',')).join('\n');
+      
+      const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `personel-rapor-${personelAdi}-2023-2024-2025.csv`;
+      link.click();
+    });
   </script>
 </body>
 </html>
+
 

@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Yönetici Paneli - Karaağaç Fatih</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary: #2563EB; --bg: #F3F4F6; --sidebar: #FFFFFF; --text: #1F2937; }
+        body { font-family: 'Inter', sans-serif; display: flex; height: 100vh; margin: 0; background: var(--bg); color: var(--text); }
+        
+        /* Sol Menü */
+        #sidebar { width: 300px; background: var(--sidebar); border-right: 1px solid #E5E7EB; display: flex; flex-direction: column; }
+        .brand { padding: 25px; font-size: 20px; font-weight: 800; color: var(--primary); border-bottom: 1px solid #E5E7EB; display: flex; align-items: center; gap: 10px; }
+        .menu-items { flex: 1; overflow-y: auto; padding-top: 10px; }
+        .menu-item { padding: 15px 25px; cursor: pointer; border-left: 4px solid transparent; transition: 0.2s; font-size: 14px; color: #4B5563; }
+        .menu-item:hover { background: #EFF6FF; color: var(--primary); }
+        .menu-item.active { background: #DBEAFE; color: var(--primary); border-left-color: var(--primary); font-weight: 700; }
+
+        /* Ana Alan */
+        #main { flex: 1; padding: 30px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
+        
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+        
+        .status-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .live-badge { background: #DCFCE7; color: #166534; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+        .live-dot { width: 8px; height: 8px; background: #16A34A; border-radius: 50%; animation: pulse 1.5s infinite; }
+
+        h2 { margin: 0 0 10px 0; font-size: 18px; color: #111827; }
+        
+        /* Form Alanları */
+        .control-grid { display: grid; grid-template-columns: 3fr 1fr; gap: 15px; margin-bottom: 15px; }
+        textarea { width: 100%; height: 80px; padding: 12px; border: 1px solid #D1D5DB; border-radius: 8px; resize: none; font-family: inherit; }
+        select { width: 100%; padding: 12px; border: 1px solid #D1D5DB; border-radius: 8px; background: white; }
+
+        .btn-row { display: flex; gap: 10px; }
+        button { padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.2s; }
+        .btn-primary { background: var(--primary); color: white; flex: 1; }
+        .btn-primary:hover { background: #1D4ED8; }
+        .btn-nav { background: white; border: 1px solid #D1D5DB; color: #374151; }
+        .btn-nav:hover { background: #F9FAFB; }
+
+        .decision-log { margin-top: 15px; border-top: 1px solid #E5E7EB; padding-top: 10px; }
+        .log-item { font-size: 13px; padding: 8px; background: #F3F4F6; margin-bottom: 5px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; }
+        .log-item-actions { display: flex; gap: 5px; }
+        .log-item-text { flex: 1; }
+        
+        .slide-controls { display: flex; gap: 10px; align-items: center; }
+        .btn-control { padding: 10px 20px; }
+        .btn-stop { background: #EF4444; color: white; }
+        .btn-stop:hover { background: #DC2626; }
+        .btn-start { background: #10B981; color: white; }
+        .btn-start:hover { background: #059669; }
+        .live-badge.stopped { background: #FEE2E2; color: #991B1B; }
+        .live-badge.stopped .live-dot { background: #EF4444; animation: none; }
+        
+        .link-badge { display: inline-flex; align-items: center; gap: 5px; color: var(--primary); text-decoration: none; font-size: 12px; margin-left: 8px; }
+        .link-badge:hover { text-decoration: underline; }
+        .link-icon { width: 14px; height: 14px; }
+
+        /* Gündem Yönetimi Stilleri */
+        .tab-buttons { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab-btn { padding: 10px 20px; background: white; border: 1px solid #D1D5DB; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .tab-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .agenda-item { background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
+        .agenda-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .agenda-title { font-weight: 700; color: var(--primary); font-size: 16px; }
+        .agenda-actions { display: flex; gap: 8px; }
+        .btn-small { padding: 6px 12px; font-size: 12px; }
+        .btn-edit { background: #F59E0B; color: white; }
+        .btn-edit:hover { background: #D97706; }
+        .btn-delete { background: #EF4444; color: white; }
+        .btn-delete:hover { background: #DC2626; }
+        .btn-add-item { background: #10B981; color: white; }
+        .btn-add-item:hover { background: #059669; }
+        .btn-move { 
+            background: #6B7280; 
+            color: white; 
+            padding: 6px 10px;
+            font-size: 14px;
+            font-weight: 700;
+        }
+        .btn-move:hover:not(:disabled) { 
+            background: #4B5563; 
+        }
+        .btn-move:disabled { 
+            background: #E5E7EB; 
+            color: #9CA3AF; 
+            cursor: not-allowed; 
+            opacity: 0.5;
+        }
+        
+        .agenda-details { font-size: 13px; color: #6B7280; margin-bottom: 10px; }
+        .agenda-content-list { list-style: none; padding: 0; margin: 10px 0; }
+        .agenda-content-list li { padding: 8px; background: white; margin-bottom: 5px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; }
+        .item-actions { display: flex; gap: 5px; }
+        .btn-icon { padding: 4px 8px; font-size: 11px; }
+        
+        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; padding: 30px; border-radius: 12px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-title { font-size: 20px; font-weight: 700; color: var(--primary); }
+        .btn-close { background: none; border: none; font-size: 24px; cursor: pointer; color: #6B7280; }
+        .form-group { margin-bottom: 15px; }
+        .form-label { display: block; margin-bottom: 5px; font-weight: 600; color: #374151; font-size: 14px; }
+        .form-input { width: 100%; padding: 10px; border: 1px solid #D1D5DB; border-radius: 8px; font-family: inherit; }
+        .form-checkbox { margin-right: 8px; }
+        .checkbox-label { display: flex; align-items: center; font-size: 14px; }
+        
+        .table-items { margin-top: 15px; }
+        .table-item { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 10px; padding: 10px; background: white; border-radius: 6px; margin-bottom: 8px; align-items: center; }
+        .table-header { font-weight: 700; color: #374151; background: #F3F4F6; }
+
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <div class="brand">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            YÖNETİM PANELİ
+        </div>
+        <div class="menu-items" id="menu-container"></div>
+    </div>
+
+    <div id="main">
+        <div class="tab-buttons">
+            <button class="tab-btn active" onclick="switchTab('preview')">Yayın Kontrolü</button>
+            <button class="tab-btn" onclick="switchTab('agenda')">Gündem Yönetimi</button>
+            <button class="tab-btn" onclick="finishMeeting()" style="background: #10B981; color: white; margin-left: auto;">✓ Toplantıyı Bitir</button>
+        </div>
+
+        <!-- Yayın Kontrolü Sekmesi -->
+        <div id="tab-preview" class="tab-content active">
+            <div class="status-bar">
+                <h2>Aktif Slayt Önizlemesi</h2>
+                <div class="slide-controls">
+                    <button id="slide-control-btn" class="btn-control btn-stop" onclick="toggleSlideState()">⏸ Slaytı Durdur</button>
+                    <div id="live-badge" class="live-badge"><div class="live-dot"></div> YAYINDA</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 id="prev-title" style="color:#2563EB; margin-top:0;">Başlık</h3>
+                <ul id="prev-list" style="color:#4B5563; padding-left:20px; font-size:14px;"></ul>
+            </div>
+
+            <div class="card" style="background: #F9FAFB; border: 1px solid #E5E7EB;">
+                <h2>Karar / Görev Girişi</h2>
+                <div class="control-grid">
+                    <textarea id="decision-text" placeholder="Alınan kararı veya atanan görevi yazın..."></textarea>
+                    <select id="person-select">
+                        <option value="">-- Personel Seçiniz --</option>
+                        <option value="Tüm Personel">Tüm Personel</option>
+                    </select>
+                </div>
+                
+                <div class="btn-row">
+                    <button class="btn-nav" onclick="changeSlide(-1)">&#8592; Önceki</button>
+                    <button class="btn-primary" onclick="addDecision()">+ YAYINLA</button>
+                    <button class="btn-nav" onclick="changeSlide(1)">Sonraki &#8594;</button>
+                </div>
+
+                <div class="decision-log" id="log-container">
+                    <small style="color:#9CA3AF">Bu maddeye eklenen kararlar burada görünür...</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gündem Yönetimi Sekmesi -->
+        <div id="tab-agenda" class="tab-content">
+            <div class="status-bar">
+                <h2>Gündem Maddeleri</h2>
+                <button class="btn-primary" onclick="openAgendaModal()">+ Yeni Gündem Maddesi</button>
+            </div>
+
+            <div id="agenda-list"></div>
+        </div>
+    </div>
+
+    <!-- Gündem Düzenleme Modal -->
+    <div id="agenda-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-title">Yeni Gündem Maddesi</h3>
+                <button class="btn-close" onclick="closeAgendaModal()">&times;</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Başlık</label>
+                <input type="text" id="modal-baslik" class="form-input" placeholder="Örn: 1. Sohbet Tekrarı ve Personel Arası Ders">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Sorumlu</label>
+                <input type="text" id="modal-sorumlu" class="form-input" placeholder="Örn: Samet Çakır - Mahmut Solmaz">
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="modal-tablo" class="form-checkbox" onchange="toggleTableMode()">
+                    Tablo Modu (İçerik tablo formatında olacak)
+                </label>
+            </div>
+            <div id="content-section">
+                <div class="form-group">
+                    <label class="form-label">İçerik Maddeleri</label>
+                    <div id="content-items"></div>
+                    <button type="button" class="btn-add-item btn-small" onclick="addContentItem()" style="margin-top: 10px;">+ Madde Ekle</button>
+                </div>
+            </div>
+            <div id="table-section" style="display: none;">
+                <div class="form-group">
+                    <label class="form-label">Tablo İçeriği</label>
+                    <div class="table-items">
+                        <div class="table-item table-header">
+                            <div>Ad</div>
+                            <div>Hedef</div>
+                            <div>Sipariş</div>
+                            <div>İşlem</div>
+                        </div>
+                        <div id="table-items-list"></div>
+                    </div>
+                    <button type="button" class="btn-add-item btn-small" onclick="addTableItem()" style="margin-top: 10px;">+ Satır Ekle</button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Link (Opsiyonel - Yeni sayfada açılır)</label>
+                <input type="url" id="modal-link" class="form-input" placeholder="https://example.com">
+            </div>
+            <div class="btn-row" style="margin-top: 20px;">
+                <button class="btn-nav" onclick="closeAgendaModal()">İptal</button>
+                <button class="btn-primary" onclick="saveAgenda()">Kaydet</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Karar Düzenleme Modal -->
+    <div id="decision-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Karar Düzenle</h3>
+                <button class="btn-close" onclick="closeDecisionModal()">&times;</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Karar / Görev Metni</label>
+                <textarea id="edit-decision-text" class="form-input" rows="4" placeholder="Alınan kararı veya atanan görevi yazın..."></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Personel</label>
+                <select id="edit-person-select" class="form-input">
+                    <option value="">-- Personel Seçiniz --</option>
+                    <option value="Tüm Personel">Tüm Personel</option>
+                </select>
+            </div>
+            <div class="btn-row" style="margin-top: 20px;">
+                <button class="btn-nav" onclick="closeDecisionModal()">İptal</button>
+                <button class="btn-delete" onclick="deleteCurrentDecision()" style="flex: 0;">Sil</button>
+                <button class="btn-primary" onclick="saveEditedDecision()">Kaydet</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- İçerik Madde Ekleme Modal -->
+    <div id="content-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="content-modal-title">Yeni İçerik Maddesi</h3>
+                <button class="btn-close" onclick="closeContentModal()">&times;</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">İçerik Metni</label>
+                <textarea id="content-text" class="form-input" rows="3" placeholder="İçerik maddesini yazın..."></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Link veya Görsel Ekle (Opsiyonel)</label>
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <button type="button" class="btn-nav" onclick="setContentType('link')" id="btn-link-type" style="flex: 1;">🔗 Link Ekle</button>
+                    <button type="button" class="btn-nav" onclick="setContentType('image')" id="btn-image-type" style="flex: 1;">🖼️ Görsel Ekle</button>
+                </div>
+                <input type="url" id="content-link" class="form-input" placeholder="https://example.com veya https://example.com/image.jpg" style="display: none;">
+                <input type="url" id="content-image" class="form-input" placeholder="https://example.com/image.jpg" style="display: none;">
+            </div>
+            <div class="btn-row" style="margin-top: 20px;">
+                <button class="btn-nav" onclick="closeContentModal()">İptal</button>
+                <button class="btn-primary" onclick="saveContentItem()">Kaydet</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- VERİ KAYNAĞI (localStorage'dan yükleniyor) ---
+        let SLIDES = [];
+        let decisionsMap = {}; // Kararları hafızada tut
+        let editingIndex = null; // Düzenlenen gündem maddesi indexi
+        let editingContentIndex = null; // Düzenlenen içerik maddesi indexi
+        let editingDecisionId = null; // Düzenlenen karar ID'si
+        let editingContentAgendaIndex = null; // Düzenlenen içerik maddesi için gündem indexi
+        let editingContentItemIndex = null; // Düzenlenen içerik maddesi indexi
+        let isSlideActive = true; // Slayt durumu
+
+        // Personel Listesi
+        const PERSONEL_CANON = [
+            "Muhsin Çelik",
+            "Faruk Nafiz Özgan",
+            "Kerem Kocaoğlu",
+            "Serhan Durak",
+            "Mahmut Solmaz",
+            "Samet Çakır",
+            "Mehmet Taha Keskin",
+            "Ahmetali Emre Şahin",
+            "Muharrem Morcalı",
+            "Burak Serin"
+        ];
+
+        // --- SİSTEM ---
+        const channel = new BroadcastChannel('karaagac_fatih_tv');
+        let currentIndex = 0;
+
+        // localStorage'dan veri yükle
+        function loadSlides() {
+            const saved = localStorage.getItem('karaagac_slides');
+            const defaultSlides = [
+                {
+                    baslik: "1. Sohbet Tekrarı ve Personel Arası Ders",
+                    sorumlu: "Samet Çakır - Mahmut Solmaz",
+                    icerik: ["Muhterem Büyüğümüzün sohbetinin okunduğu (07.11.2025)", "Kur'an-ı Kerim 13.cüz okundu."]
+                },
+                {
+                    baslik: "2. Talebe Hizmetlerimiz",
+                    sorumlu: "Ders Personeli",
+                    icerik: ["Kıraat ve Şifahi imtihan neticelerinin değerlendirilmesi", "10 Ocak: Kudur-i Şerif imtihanı", "Takrir takibi: karaagacfatih.netlify.app", "Yemekhane fare ilaçlamasının tekrarlanması"]
+                },
+                {
+                    baslik: "3. Nehari Hizmeti",
+                    sorumlu: "Mahmut Solmaz",
+                    icerik: ["Toplam 17 nehari talebemiz var (3, 4 ve 5. Sınıflar)", "Akçaburgaz kursuna geçen 5 talebenin takibi", "Kasım ara tatili: Matematik kulübü"]
+                },
+                {
+                    baslik: "6. Fazilet Takvimi & Dergi",
+                    sorumlu: "Mahmut Solmaz",
+                    tablo: true,
+                    icerik: [
+                        {ad: "Blok Takvim", hedef: "1500", siparis: "400"},
+                        {ad: "Ciltli Takvim", hedef: "500", siparis: "500"},
+                        {ad: "Mobil Takvim", hedef: "820", siparis: "100"}
+                    ]
+                },
+                {
+                    baslik: "8. Mali İşler",
+                    sorumlu: "Samet Çakır - Kerem Kocaoğlu",
+                    icerik: ["2024-2025 alacakların incelenmesi", "Muhacir talebelerin resmiyet işlemleri", "27 Kasım: Çapraz denetim"]
+                }
+            ];
+            
+            if(saved) {
+                SLIDES = JSON.parse(saved);
+            } else {
+                SLIDES = defaultSlides;
+                saveSlides();
+            }
+        }
+
+        // localStorage'a kaydet
+        function saveSlides() {
+            localStorage.setItem('karaagac_slides', JSON.stringify(SLIDES));
+        }
+
+        // Kararları yükle
+        function loadDecisions() {
+            const saved = localStorage.getItem('karaagac_decisions');
+            if(saved) {
+                decisionsMap = JSON.parse(saved);
+            }
+        }
+
+        // Kararları kaydet
+        function saveDecisions() {
+            localStorage.setItem('karaagac_decisions', JSON.stringify(decisionsMap));
+        }
+
+        function init() {
+            loadSlides();
+            loadDecisions();
+            loadPersonelList();
+            loadSlideState();
+            renderMenu();
+            renderAgendaList();
+            updateUI();
+        }
+
+        function loadPersonelList() {
+            const select = document.getElementById('person-select');
+            const editSelect = document.getElementById('edit-person-select');
+            
+            // Mevcut "Tüm Personel" seçeneğini koru
+            PERSONEL_CANON.forEach(personel => {
+                const option = document.createElement('option');
+                option.value = personel;
+                option.textContent = personel;
+                select.appendChild(option);
+                
+                const editOption = document.createElement('option');
+                editOption.value = personel;
+                editOption.textContent = personel;
+                editSelect.appendChild(editOption);
+            });
+        }
+
+        function loadSlideState() {
+            const saved = localStorage.getItem('karaagac_slide_state');
+            isSlideActive = saved !== 'false';
+            updateSlideControlButton();
+        }
+
+        function saveSlideState() {
+            localStorage.setItem('karaagac_slide_state', isSlideActive.toString());
+        }
+
+        function toggleSlideState() {
+            isSlideActive = !isSlideActive;
+            saveSlideState();
+            updateSlideControlButton();
+            broadcast();
+        }
+
+        function updateSlideControlButton() {
+            const btn = document.getElementById('slide-control-btn');
+            const badge = document.getElementById('live-badge');
+            
+            if(isSlideActive) {
+                btn.textContent = '⏸ Slaytı Durdur';
+                btn.className = 'btn-control btn-stop';
+                badge.className = 'live-badge';
+                badge.innerHTML = '<div class="live-dot"></div> YAYINDA';
+            } else {
+                btn.textContent = '▶ Slaytı Başlat';
+                btn.className = 'btn-control btn-start';
+                badge.className = 'live-badge stopped';
+                badge.innerHTML = '<div class="live-dot"></div> DURDURULDU';
+            }
+        }
+
+        function renderMenu() {
+            const menu = document.getElementById('menu-container');
+            menu.innerHTML = '';
+            SLIDES.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'menu-item';
+                div.innerText = `${index + 1}. ${item.baslik.substring(0, 30)}${item.baslik.length > 30 ? '...' : ''}`;
+                div.onclick = () => setSlide(index);
+                div.id = `menu-${index}`;
+                menu.appendChild(div);
+            });
+        }
+
+        function updateUI() {
+            if(SLIDES.length === 0) {
+                document.getElementById('prev-title').innerText = 'Henüz gündem maddesi yok';
+                document.getElementById('prev-list').innerHTML = '<li>Gündem Yönetimi sekmesinden yeni madde ekleyin</li>';
+                return;
+            }
+
+            // Menü Aktifliği
+            document.querySelectorAll('.menu-item').forEach(d => d.classList.remove('active'));
+            const activeMenu = document.getElementById(`menu-${currentIndex}`);
+            if(activeMenu) activeMenu.classList.add('active');
+
+            // Önizleme
+            const data = SLIDES[currentIndex];
+            if(data) {
+                document.getElementById('prev-title').innerText = data.baslik;
+                
+                const list = document.getElementById('prev-list');
+                list.innerHTML = '';
+                if(data.tablo) {
+                    if(Array.isArray(data.icerik)) {
+                        data.icerik.forEach(row => {
+                            list.innerHTML += `<li><strong>${row.ad}</strong> - Hedef: ${row.hedef}, Sipariş: ${row.siparis}</li>`;
+                        });
+                    } else {
+                        list.innerHTML = '<li>Tablo Modu Aktif</li>';
+                    }
+                } else {
+                    if(Array.isArray(data.icerik)) {
+                        data.icerik.forEach(i => {
+                            const isObject = typeof i === 'object' && i !== null;
+                            const text = isObject ? i.text : i;
+                            const link = isObject ? i.link : null;
+                            const linkHtml = link ? ` <a href="${link}" target="_blank" class="link-badge" title="Yeni sayfada aç"><svg class="link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg></a>` : '';
+                            list.innerHTML += `<li>${text}${linkHtml}</li>`;
+                        });
+                    }
+                }
+            }
+
+            // Logları Göster
+            renderLogs();
+
+            // YAYINLA (Tüm veriyi paketi karşıya at)
+            broadcast();
+        }
+
+        // yoneticitoplanti.html içindeki addDecision fonksiyonunu güncelle:
+        function addDecision() {
+            const text = document.getElementById('decision-text').value;
+            const person = document.getElementById('person-select').value;
+            if(!text) return;
+
+            if(!decisionsMap[currentIndex]) decisionsMap[currentIndex] = [];
+            
+            decisionsMap[currentIndex].push({
+                text: text,
+                person: person,
+                id: Date.now()
+            });
+
+            // --- BU SATIRI EKLE (Verileri yazdırma sayfası için kaydet) ---
+            localStorage.setItem('toplanti_kararlari', JSON.stringify(decisionsMap)); 
+            // -----------------------------------------------------------
+
+            document.getElementById('decision-text').value = '';
+            renderLogs();
+            broadcast();
+        }
+
+        function renderLogs() {
+            const container = document.getElementById('log-container');
+            container.innerHTML = '';
+            const logs = decisionsMap[currentIndex] || [];
+            
+            if(logs.length === 0) {
+                container.innerHTML = '<small style="color:#9CA3AF">Henüz karar girilmedi.</small>';
+                return;
+            }
+
+            logs.forEach(l => {
+                const item = document.createElement('div');
+                item.className = 'log-item';
+                item.innerHTML = `
+                    <div class="log-item-text">
+                        <span>${l.text}</span>
+                        <b style="margin-left: 10px; color: #6B7280;">${l.person || ''}</b>
+                    </div>
+                    <div class="log-item-actions">
+                        <button class="btn-edit btn-small btn-icon" onclick="editDecision(${l.id})">Düzenle</button>
+                        <button class="btn-delete btn-small btn-icon" onclick="deleteDecision(${l.id})">Sil</button>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function changeSlide(dir) {
+            const newIndex = currentIndex + dir;
+            if(newIndex >= 0 && newIndex < SLIDES.length) {
+                currentIndex = newIndex;
+                updateUI();
+            }
+        }
+        
+        function setSlide(index) {
+            currentIndex = index;
+            updateUI();
+        }
+
+        // Yeni sayfa açıldığında senkronize et
+        channel.onmessage = (e) => {
+            if(e.data.type === 'REQUEST_SYNC') broadcast();
+        };
+
+        // --- GÜNDEM YÖNETİMİ FONKSİYONLARI ---
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            if(tab === 'preview') {
+                document.querySelector('.tab-btn[onclick="switchTab(\'preview\')"]').classList.add('active');
+                document.getElementById('tab-preview').classList.add('active');
+            } else if(tab === 'agenda') {
+                document.querySelector('.tab-btn[onclick="switchTab(\'agenda\')"]').classList.add('active');
+                document.getElementById('tab-agenda').classList.add('active');
+                renderAgendaList();
+            }
+        }
+
+        function renderAgendaList() {
+            const container = document.getElementById('agenda-list');
+            container.innerHTML = '';
+            
+            if(SLIDES.length === 0) {
+                container.innerHTML = '<div class="card"><p style="text-align:center; color:#9CA3AF;">Henüz gündem maddesi eklenmemiş.</p></div>';
+                return;
+            }
+
+            SLIDES.forEach((slide, index) => {
+                const item = document.createElement('div');
+                item.className = 'agenda-item';
+                
+                let contentHtml = '';
+                if(slide.tablo) {
+                    contentHtml = '<div class="table-items" style="margin-top:10px;">';
+                    slide.icerik.forEach((row, rowIndex) => {
+                        contentHtml += `
+                            <div class="table-item">
+                                <div><strong>${row.ad}</strong></div>
+                                <div>Hedef: ${row.hedef}</div>
+                                <div>Sipariş: ${row.siparis}</div>
+                            </div>
+                        `;
+                    });
+                    contentHtml += '</div>';
+                } else {
+                    contentHtml = '<ul class="agenda-content-list">';
+                    slide.icerik.forEach((content, contentIndex) => {
+                        const isObject = typeof content === 'object' && content !== null;
+                        const text = isObject ? content.text : content;
+                        const link = isObject ? content.link : null;
+                        
+                        contentHtml += `
+                            <li>
+                                <span>
+                                    ${text}
+                                    ${link ? `<a href="${link}" target="_blank" class="link-badge" title="Yeni sayfada aç"><svg class="link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg></a>` : ''}
+                                </span>
+                                <div class="item-actions">
+                                    <button class="btn-edit btn-small btn-icon" onclick="openContentModal(${index}, ${contentIndex})">Düzenle</button>
+                                    <button class="btn-delete btn-small btn-icon" onclick="deleteContentItem(${index}, ${contentIndex})">Sil</button>
+                                </div>
+                            </li>
+                        `;
+                    });
+                    contentHtml += '</ul>';
+                }
+
+                item.innerHTML = `
+                    <div class="agenda-header">
+                        <div class="agenda-title">${slide.baslik}</div>
+                        <div class="agenda-actions">
+                            <button class="btn-move btn-small btn-icon" onclick="moveAgenda(${index}, -1)" title="Yukarı taşı" ${index === 0 ? 'disabled' : ''}>↑</button>
+                            <button class="btn-move btn-small btn-icon" onclick="moveAgenda(${index}, 1)" title="Aşağı taşı" ${index === SLIDES.length - 1 ? 'disabled' : ''}>↓</button>
+                            <button class="btn-edit btn-small" onclick="editAgenda(${index})">Düzenle</button>
+                            <button class="btn-delete btn-small" onclick="deleteAgenda(${index})">Sil</button>
+                        </div>
+                    </div>
+                    <div class="agenda-details">Sorumlu: ${slide.sorumlu || 'Belirtilmemiş'}</div>
+                    ${contentHtml}
+                    ${slide.link ? `<div style="margin-top:10px;"><a href="${slide.link}" target="_blank" class="link-badge" style="font-size:14px;"><svg class="link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg> Gündem Linki</a></div>` : ''}
+                    ${!slide.tablo ? `<button class="btn-add-item btn-small" onclick="openContentModal(${index})" style="margin-top:10px;">+ Madde Ekle</button>` : ''}
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function openAgendaModal(index = null) {
+            editingIndex = index;
+            const modal = document.getElementById('agenda-modal');
+            const title = document.getElementById('modal-title');
+            
+            if(index !== null) {
+                title.textContent = 'Gündem Maddesi Düzenle';
+                const slide = SLIDES[index];
+                document.getElementById('modal-baslik').value = slide.baslik;
+                document.getElementById('modal-sorumlu').value = slide.sorumlu || '';
+                document.getElementById('modal-link').value = slide.link || '';
+                document.getElementById('modal-tablo').checked = slide.tablo || false;
+                toggleTableMode();
+                
+                if(slide.tablo) {
+                    renderTableItems(slide.icerik);
+                } else {
+                    renderContentItems(slide.icerik);
+                }
+            } else {
+                title.textContent = 'Yeni Gündem Maddesi';
+                document.getElementById('modal-baslik').value = '';
+                document.getElementById('modal-sorumlu').value = '';
+                document.getElementById('modal-link').value = '';
+                document.getElementById('modal-tablo').checked = false;
+                toggleTableMode();
+                document.getElementById('content-items').innerHTML = '';
+                document.getElementById('table-items-list').innerHTML = '';
+            }
+            
+            modal.classList.add('active');
+        }
+
+        function closeAgendaModal() {
+            document.getElementById('agenda-modal').classList.remove('active');
+            editingIndex = null;
+            editingContentIndex = null;
+        }
+
+        function toggleTableMode() {
+            const isTable = document.getElementById('modal-tablo').checked;
+            document.getElementById('content-section').style.display = isTable ? 'none' : 'block';
+            document.getElementById('table-section').style.display = isTable ? 'block' : 'none';
+            
+            if(!isTable && document.getElementById('content-items').children.length === 0) {
+                addContentItem();
+            }
+            if(isTable && document.getElementById('table-items-list').children.length === 0) {
+                addTableItem();
+            }
+        }
+
+        function renderContentItems(items) {
+            const container = document.getElementById('content-items');
+            container.innerHTML = '';
+            items.forEach((item, index) => {
+                const isObject = typeof item === 'object' && item !== null;
+                const text = isObject ? item.text : item;
+                const link = isObject ? item.link : '';
+                
+                const div = document.createElement('div');
+                div.className = 'form-group';
+                div.style.display = 'flex';
+                div.style.gap = '10px';
+                div.style.flexDirection = 'column';
+                div.innerHTML = `
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" class="form-input" value="${text}" data-index="${index}" placeholder="İçerik maddesi" style="flex: 1;">
+                        <button type="button" class="btn-delete btn-small" onclick="removeContentItem(this)">Sil</button>
+                    </div>
+                    ${link ? `<input type="url" class="form-input" value="${link}" data-link-index="${index}" placeholder="Link (opsiyonel)" style="margin-top: 5px;">` : ''}
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function addContentItem() {
+            const container = document.getElementById('content-items');
+            const div = document.createElement('div');
+            div.className = 'form-group';
+            div.style.display = 'flex';
+            div.style.gap = '10px';
+            div.style.flexDirection = 'column';
+            div.innerHTML = `
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" class="form-input" placeholder="İçerik maddesi" style="flex: 1;">
+                    <button type="button" class="btn-delete btn-small" onclick="removeContentItem(this)">Sil</button>
+                </div>
+            `;
+            container.appendChild(div);
+        }
+
+        function removeContentItem(btn) {
+            btn.parentElement.remove();
+        }
+
+        function renderTableItems(items) {
+            const container = document.getElementById('table-items-list');
+            container.innerHTML = '';
+            items.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'table-item';
+                div.innerHTML = `
+                    <input type="text" class="form-input" value="${item.ad}" placeholder="Ad" style="padding:8px;">
+                    <input type="text" class="form-input" value="${item.hedef}" placeholder="Hedef" style="padding:8px;">
+                    <input type="text" class="form-input" value="${item.siparis}" placeholder="Sipariş" style="padding:8px;">
+                    <button type="button" class="btn-delete btn-small" onclick="removeTableItem(this)">Sil</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function addTableItem() {
+            const container = document.getElementById('table-items-list');
+            const div = document.createElement('div');
+            div.className = 'table-item';
+            div.innerHTML = `
+                <input type="text" class="form-input" placeholder="Ad" style="padding:8px;">
+                <input type="text" class="form-input" placeholder="Hedef" style="padding:8px;">
+                <input type="text" class="form-input" placeholder="Sipariş" style="padding:8px;">
+                <button type="button" class="btn-delete btn-small" onclick="removeTableItem(this)">Sil</button>
+            `;
+            container.appendChild(div);
+        }
+
+        function removeTableItem(btn) {
+            btn.parentElement.remove();
+        }
+
+        function saveAgenda() {
+            const baslik = document.getElementById('modal-baslik').value.trim();
+            const sorumlu = document.getElementById('modal-sorumlu').value.trim();
+            const link = document.getElementById('modal-link').value.trim();
+            const isTable = document.getElementById('modal-tablo').checked;
+            
+            if(!baslik) {
+                alert('Başlık boş olamaz!');
+                return;
+            }
+
+            let icerik = [];
+            if(isTable) {
+                const rows = document.querySelectorAll('#table-items-list .table-item');
+                rows.forEach(row => {
+                    const inputs = row.querySelectorAll('input');
+                    if(inputs[0].value.trim()) {
+                        icerik.push({
+                            ad: inputs[0].value.trim(),
+                            hedef: inputs[1].value.trim(),
+                            siparis: inputs[2].value.trim()
+                        });
+                    }
+                });
+                if(icerik.length === 0) {
+                    alert('En az bir tablo satırı eklemelisiniz!');
+                    return;
+                }
+            } else {
+                const items = document.querySelectorAll('#content-items > div');
+                items.forEach(itemDiv => {
+                    const textInput = itemDiv.querySelector('input[type="text"]');
+                    const linkInput = itemDiv.querySelector('input[type="url"]');
+                    const text = textInput ? textInput.value.trim() : '';
+                    const link = linkInput ? linkInput.value.trim() : '';
+                    
+                    if(text) {
+                        if(link) {
+                            icerik.push({ text: text, link: link });
+                        } else {
+                            icerik.push(text);
+                        }
+                    }
+                });
+                if(icerik.length === 0) {
+                    alert('En az bir içerik maddesi eklemelisiniz!');
+                    return;
+                }
+            }
+
+            const slideData = {
+                baslik: baslik,
+                sorumlu: sorumlu,
+                icerik: icerik
+            };
+            
+            if(isTable) {
+                slideData.tablo = true;
+            }
+            
+            if(link) {
+                slideData.link = link;
+            }
+
+            if(editingIndex !== null) {
+                SLIDES[editingIndex] = slideData;
+            } else {
+                SLIDES.push(slideData);
+            }
+
+            saveSlides();
+            renderMenu();
+            renderAgendaList();
+            updateUI();
+            closeAgendaModal();
+        }
+
+        function editAgenda(index) {
+            openAgendaModal(index);
+        }
+
+        function deleteAgenda(index) {
+            if(confirm('Bu gündem maddesini silmek istediğinize emin misiniz?')) {
+                SLIDES.splice(index, 1);
+                // Kararları da temizle
+                delete decisionsMap[index];
+                // Index'leri yeniden düzenle
+                const newDecisionsMap = {};
+                Object.keys(decisionsMap).forEach(key => {
+                    const keyNum = parseInt(key);
+                    if(keyNum < index) {
+                        newDecisionsMap[keyNum] = decisionsMap[keyNum];
+                    } else if(keyNum > index) {
+                        newDecisionsMap[keyNum - 1] = decisionsMap[keyNum];
+                    }
+                });
+                decisionsMap = newDecisionsMap;
+                
+                if(currentIndex >= SLIDES.length) {
+                    currentIndex = Math.max(0, SLIDES.length - 1);
+                }
+                
+                saveSlides();
+                saveDecisions();
+                renderMenu();
+                renderAgendaList();
+                updateUI();
+            }
+        }
+
+        // --- GÜNDEM SIRALAMA FONKSİYONLARI ---
+        function moveAgenda(index, direction) {
+            const newIndex = index + direction;
+            if(newIndex < 0 || newIndex >= SLIDES.length) return;
+
+            // Slaytları yer değiştir
+            const temp = SLIDES[index];
+            SLIDES[index] = SLIDES[newIndex];
+            SLIDES[newIndex] = temp;
+
+            // Kararları da yer değiştir
+            const tempDecisions = decisionsMap[index];
+            decisionsMap[index] = decisionsMap[newIndex];
+            decisionsMap[newIndex] = tempDecisions;
+
+            // Eğer aktif slayt taşınıyorsa index'i güncelle
+            if(currentIndex === index) {
+                currentIndex = newIndex;
+            } else if(currentIndex === newIndex) {
+                currentIndex = index;
+            }
+
+            saveSlides();
+            saveDecisions();
+            renderMenu();
+            renderAgendaList();
+            updateUI();
+        }
+
+
+        function deleteContentItem(agendaIndex, contentIndex) {
+            if(confirm('Bu maddeyi silmek istediğinize emin misiniz?')) {
+                SLIDES[agendaIndex].icerik.splice(contentIndex, 1);
+                saveSlides();
+                renderAgendaList();
+                updateUI();
+            }
+        }
+
+        // --- KARAR DÜZENLEME FONKSİYONLARI ---
+        function editDecision(decisionId) {
+            const logs = decisionsMap[currentIndex] || [];
+            const decision = logs.find(l => l.id === decisionId);
+            if(!decision) return;
+
+            editingDecisionId = decisionId;
+            document.getElementById('edit-decision-text').value = decision.text;
+            document.getElementById('edit-person-select').value = decision.person || '';
+            document.getElementById('decision-modal').classList.add('active');
+        }
+
+        function closeDecisionModal() {
+            document.getElementById('decision-modal').classList.remove('active');
+            editingDecisionId = null;
+        }
+
+        function saveEditedDecision() {
+            if(!editingDecisionId) return;
+            
+            const text = document.getElementById('edit-decision-text').value.trim();
+            const person = document.getElementById('edit-person-select').value;
+            
+            if(!text) {
+                alert('Karar metni boş olamaz!');
+                return;
+            }
+
+            const logs = decisionsMap[currentIndex] || [];
+            const index = logs.findIndex(l => l.id === editingDecisionId);
+            if(index !== -1) {
+                logs[index].text = text;
+                logs[index].person = person;
+                saveDecisions();
+                renderLogs();
+                broadcast();
+            }
+            
+            closeDecisionModal();
+        }
+
+        function deleteDecision(decisionId) {
+            if(!confirm('Bu kararı silmek istediğinize emin misiniz?')) return;
+            
+            const logs = decisionsMap[currentIndex] || [];
+            const index = logs.findIndex(l => l.id === decisionId);
+            if(index !== -1) {
+                logs.splice(index, 1);
+                saveDecisions();
+                renderLogs();
+                broadcast();
+            }
+        }
+
+        function deleteCurrentDecision() {
+            if(editingDecisionId) {
+                deleteDecision(editingDecisionId);
+                closeDecisionModal();
+            }
+        }
+
+        // --- İÇERİK MADDE EKLEME MODAL FONKSİYONLARI ---
+        let currentContentType = null; // 'link' veya 'image'
+
+        function setContentType(type) {
+            currentContentType = type;
+            const linkInput = document.getElementById('content-link');
+            const imageInput = document.getElementById('content-image');
+            const btnLink = document.getElementById('btn-link-type');
+            const btnImage = document.getElementById('btn-image-type');
+            
+            if(type === 'link') {
+                linkInput.style.display = 'block';
+                imageInput.style.display = 'none';
+                btnLink.style.background = 'var(--primary)';
+                btnLink.style.color = 'white';
+                btnImage.style.background = '';
+                btnImage.style.color = '';
+                imageInput.value = '';
+            } else if(type === 'image') {
+                linkInput.style.display = 'none';
+                imageInput.style.display = 'block';
+                btnImage.style.background = 'var(--primary)';
+                btnImage.style.color = 'white';
+                btnLink.style.background = '';
+                btnLink.style.color = '';
+                linkInput.value = '';
+            }
+        }
+
+        function openContentModal(agendaIndex, contentIndex = null) {
+            editingContentAgendaIndex = agendaIndex;
+            editingContentItemIndex = contentIndex;
+            currentContentType = null;
+            
+            const modal = document.getElementById('content-modal');
+            const title = document.getElementById('content-modal-title');
+            const linkInput = document.getElementById('content-link');
+            const imageInput = document.getElementById('content-image');
+            const btnLink = document.getElementById('btn-link-type');
+            const btnImage = document.getElementById('btn-image-type');
+            
+            // Reset butonlar
+            btnLink.style.background = '';
+            btnLink.style.color = '';
+            btnImage.style.background = '';
+            btnImage.style.color = '';
+            linkInput.style.display = 'none';
+            imageInput.style.display = 'none';
+            
+            if(contentIndex !== null) {
+                title.textContent = 'İçerik Maddesi Düzenle';
+                const item = SLIDES[agendaIndex].icerik[contentIndex];
+                if(typeof item === 'string') {
+                    document.getElementById('content-text').value = item;
+                    linkInput.value = '';
+                    imageInput.value = '';
+                } else if(item.link) {
+                    document.getElementById('content-text').value = item.text || '';
+                    const isImage = item.link.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i);
+                    if(isImage) {
+                        setContentType('image');
+                        imageInput.value = item.link;
+                    } else {
+                        setContentType('link');
+                        linkInput.value = item.link;
+                    }
+                }
+            } else {
+                title.textContent = 'Yeni İçerik Maddesi';
+                document.getElementById('content-text').value = '';
+                linkInput.value = '';
+                imageInput.value = '';
+            }
+            
+            modal.classList.add('active');
+        }
+
+        function closeContentModal() {
+            document.getElementById('content-modal').classList.remove('active');
+            editingContentAgendaIndex = null;
+            editingContentItemIndex = null;
+            currentContentType = null;
+        }
+
+        function saveContentItem() {
+            if(editingContentAgendaIndex === null) return;
+            
+            const text = document.getElementById('content-text').value.trim();
+            const link = document.getElementById('content-link').value.trim();
+            const image = document.getElementById('content-image').value.trim();
+            
+            if(!text) {
+                alert('İçerik metni boş olamaz!');
+                return;
+            }
+
+            const agenda = SLIDES[editingContentAgendaIndex];
+            if(!agenda.icerik) agenda.icerik = [];
+
+            let itemData = text;
+            if(link) {
+                itemData = { text: text, link: link };
+            } else if(image) {
+                itemData = { text: text, link: image };
+            }
+
+            if(editingContentItemIndex !== null) {
+                agenda.icerik[editingContentItemIndex] = itemData;
+            } else {
+                agenda.icerik.push(itemData);
+            }
+
+            saveSlides();
+            renderAgendaList();
+            updateUI();
+            closeContentModal();
+        }
+
+        // --- BROADCAST GÜNCELLEMESİ ---
+        function broadcast() {
+            if(!isSlideActive) {
+                // Slayt durdurulduğunda kapak sayfası gönder
+                channel.postMessage({
+                    type: 'COVER',
+                    isActive: false
+                });
+                return;
+            }
+
+            // SADECE ID DEĞİL, TÜM VERİYİ GÖNDERİYORUZ
+            if(SLIDES.length > 0 && SLIDES[currentIndex]) {
+                channel.postMessage({
+                    type: 'UPDATE',
+                    slideData: SLIDES[currentIndex], // Slaytın kendisi
+                    decisions: decisionsMap[currentIndex] || [], // Kararlar
+                    slideIndex: currentIndex,
+                    totalSlides: SLIDES.length,
+                    isActive: true
+                });
+            }
+        }
+
+        // --- TOPLANTI BİTİRME FONKSİYONU ---
+        function finishMeeting() {
+            if(!confirm('Toplantıyı bitirmek istediğinize emin misiniz? Toplantı raporu yazdırma sayfasına yönlendirileceksiniz.')) {
+                return;
+            }
+            
+            // Tüm verileri localStorage'a kaydet (yazdırma sayfası için)
+            const meetingData = {
+                slides: SLIDES,
+                decisions: decisionsMap,
+                date: new Date().toLocaleDateString('tr-TR', { 
+                    day: 'numeric', 
+                    month: 'long', 
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                })
+            };
+            localStorage.setItem('karaagac_meeting_data', JSON.stringify(meetingData));
+            
+            // Yazdırma sayfasına yönlendir
+            window.location.href = 'toplantiyazdir.html';
+        }
+
+        init();
+    </script>
+</body>
+</html>
