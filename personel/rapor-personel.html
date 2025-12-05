@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="tr">
+
 <head>
   <meta charset="UTF-8" />
   <title>Kişi Bazlı Alacak Raporu</title>
@@ -11,103 +12,391 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
   <script src="../../js/firebase/firebase-init.js"></script>
 
-
   <style>
-    :root{
-      --bg:#f4f6f9; --card:#fff; --ink:#2c3e50; --muted:#6c7a89; --accent:#324960;
-      --good:#2d6a4f; --warn:#d35400; --border:#e6ebf2;
+    :root {
+      --bg: #f4f6f9;
+      --card: #fff;
+      --ink: #2c3e50;
+      --muted: #6c7a89;
+      --accent: #324960;
+      --good: #2d6a4f;
+      --warn: #d35400;
+      --border: #e6ebf2;
+      --danger: #c0392b;
     }
-    *{box-sizing:border-box}
-    body{margin:0;font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;background:var(--bg);color:var(--ink)}
-    .wrap{max-width:1180px;margin:0 auto;padding:12px 16px}
 
-    header{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--border)}
-    .rapor-ust{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-    .rapor-baslik{font-size:22px;line-height:1.25;margin:0;white-space:normal;word-break:break-word;overflow-wrap:anywhere}
-    .kisi-secim{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    select,button{height:38px;border:1px solid var(--border);background:#fff;border-radius:10px;padding:0 12px;font:inherit;color:var(--ink)}
-    button{background:var(--accent);color:#fff;border:none;cursor:pointer}
-    button.secondary{background:#fff;color:var(--ink)}
-
-    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px}
-    .row{display:grid;gap:12px}
-    .row.cols-3{grid-template-columns:repeat(3,1fr)}
-    .row.cols-4{grid-template-columns:repeat(4,1fr)}
-    @media (max-width:900px){.row.cols-3,.row.cols-4{grid-template-columns:1fr 1fr}}
-    @media (max-width:640px){.row.cols-3,.row.cols-4{grid-template-columns:1fr}}
-    .kpi{display:flex;flex-direction:column;gap:4px}
-    .kpi .label{color:var(--muted);font-size:12px}
-    .kpi .value{font-size:20px;font-weight:600}
-    .kpi.warn .value{color:var(--warn)}
-    .kpi.good .value{color:var(--good)}
-
-    .siralama-etiketleri{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px}
-    .badge-siralama{padding:6px 10px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid #e2e8f0;background:#f8fafc}
-
-    /* FAALİYET ÖZETİ – masaüstü: başlık, tahakkuk, tahsilat; altta ortalı Kalan */
-    .faaliyet-grid{display:grid;gap:10px;grid-template-columns:repeat(4,1fr)}
-    @media (max-width:900px){.faaliyet-grid{grid-template-columns:1fr 1fr}}
-    @media (max-width:640px){.faaliyet-grid{grid-template-columns:1fr}}
-    .faaliyet-kart{
-      display:grid !important;
-      grid-template-columns: 1fr auto;
-      grid-template-areas:
-        "title   ."
-        "tah     ."
-        "tas     ."
-        "kalan   kalan";
-      align-items:center;
-      gap:6px 12px;
-      padding:12px 14px;
-      border:1px solid #eef2f7;border-radius:12px;background:#fff;
+    * {
+      box-sizing: border-box
     }
-    .f-title{ grid-area:title; font-weight:700; }
-    .f-tah{ grid-area:tah; color:var(--muted); }
-    .f-tas{ grid-area:tas; color:var(--muted); }
-    .kalan-etiket{ grid-area:kalan; justify-self:center; white-space:nowrap;
-      padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid transparent }
-    .kalan-pozitif{ background:#fff7ed; color:#9a3412; border-color:#fdba74 }
-    .kalan-non{ background:#ecfdf5; color:#065f46; border-color:#86efac }
-    .kalan-negatif{ background:#eff6ff; color:#1d4ed8; border-color:#93c5fd }
-    @media (max-width:640px){
-      .faaliyet-kart{
-        grid-template-columns:1fr;
-        grid-template-areas:
-          "title"
-          "tah"
-          "tas"
-          "kalan";
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--ink)
+    }
+
+    .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 12px 16px
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background: var(--card);
+      border-bottom: 1px solid var(--border)
+    }
+
+    .rapor-ust {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      padding: 12px 0
+    }
+
+    .rapor-baslik {
+      font-size: 22px;
+      line-height: 1.25;
+      margin: 0;
+      white-space: normal;
+      word-break: break-word;
+      overflow-wrap: anywhere
+    }
+
+    .kisi-secim {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap
+    }
+
+    select,
+    button {
+      height: 38px;
+      border: 1px solid var(--border);
+      background: #fff;
+      border-radius: 10px;
+      padding: 0 12px;
+      font: inherit;
+      color: var(--ink)
+    }
+
+    button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      cursor: pointer
+    }
+
+    button.secondary {
+      background: #fff;
+      color: var(--ink);
+      border: 1px solid var(--border)
+    }
+
+    button:hover {
+      opacity: 0.9
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      margin-top: 12px
+    }
+
+    .row {
+      display: grid;
+      gap: 12px
+    }
+
+    .row.cols-4 {
+      grid-template-columns: repeat(4, 1fr)
+    }
+
+    @media (max-width:900px) {
+      .row.cols-4 {
+        grid-template-columns: 1fr 1fr
       }
-      .kalan-etiket{ justify-self:start }
     }
 
-    .table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px}
-    table{width:100%;border-collapse:collapse;background:#fff;min-width:760px}
-    thead th{position:sticky;top:0;background:#fafbfc;border-bottom:1px solid var(--border);font-weight:600;text-align:left;font-size:13px;color:var(--muted);padding:10px;user-select:none;cursor:pointer}
-    thead th.sort-asc::after{content:" ▲";font-weight:700}
-    thead th.sort-desc::after{content:" ▼";font-weight:700}
-    tbody td{border-bottom:1px solid var(--border);padding:10px;font-size:14px}
-    tbody tr.zero{background:#f2fbf6}
-    tfoot td{border-top:2px solid var(--border);padding:10px;font-weight:600}
-    .right{text-align:right}
+    @media (max-width:640px) {
+      .row.cols-4 {
+        grid-template-columns: 1fr
+      }
+    }
+
+    .kpi {
+      display: flex;
+      flex-direction: column;
+      gap: 4px
+    }
+
+    .kpi .label {
+      color: var(--muted);
+      font-size: 12px
+    }
+
+    .kpi .value {
+      font-size: 20px;
+      font-weight: 600
+    }
+
+    .kpi.warn .value {
+      color: var(--warn)
+    }
+
+    .kpi.good .value {
+      color: var(--good)
+    }
+
+    /* Sıralama Rozeti */
+    .rank-card {
+      background: linear-gradient(135deg, #fff, #f8fafc);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+    }
+
+    .rank-icon {
+      font-size: 24px
+    }
+
+    .rank-info {
+      flex: 1
+    }
+
+    .rank-title {
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 600
+    }
+
+    .rank-val {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--ink)
+    }
+
+    /* Faaliyet Grid */
+    .faaliyet-grid {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(4, 1fr)
+    }
+
+    @media (max-width:900px) {
+      .faaliyet-grid {
+        grid-template-columns: 1fr 1fr
+      }
+    }
+
+    @media (max-width:640px) {
+      .faaliyet-grid {
+        grid-template-columns: 1fr
+      }
+    }
+
+    .faaliyet-kart {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 12px;
+      border: 1px solid #eef2f7;
+      border-radius: 12px;
+      background: #fff;
+    }
+
+    .f-title {
+      font-weight: 700;
+      margin-bottom: 4px
+    }
+
+    .f-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px
+    }
+
+    .kalan-etiket {
+      align-self: flex-start;
+      margin-top: 6px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .kalan-pozitif {
+      background: #fff7ed;
+      color: #9a3412;
+      border: 1px solid #fdba74
+    }
+
+    .kalan-non {
+      background: #ecfdf5;
+      color: #065f46;
+      border: 1px solid #86efac
+    }
+
+    .kalan-negatif {
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #93c5fd
+    }
+
+    /* Tablo */
+    .table-wrap {
+      overflow: visible;
+      border: 1px solid var(--border);
+      border-radius: 12px
+    }
+
+    /* Scroll kaldırıldı */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      min-width: 760px
+    }
+
+    thead th {
+      position: sticky;
+      top: 60px;
+      background: #fafbfc;
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+      text-align: left;
+      font-size: 13px;
+      color: var(--muted);
+      padding: 10px;
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+      z-index: 4
+    }
+
+    thead th:hover {
+      background: #f1f5f9;
+      color: var(--ink)
+    }
+
+    thead th.sort-asc::after {
+      content: " ▲";
+      font-size: 10px
+    }
+
+    thead th.sort-desc::after {
+      content: " ▼";
+      font-size: 10px
+    }
+
+    tbody td {
+      border-bottom: 1px solid var(--border);
+      padding: 10px;
+      font-size: 14px
+    }
+
+    tbody tr:last-child td {
+      border-bottom: none
+    }
+
+    tfoot td {
+      border-top: 2px solid var(--border);
+      padding: 10px;
+      font-weight: 700;
+      background: #f8fafc;
+      color: var(--ink)
+    }
+
+    .right {
+      text-align: right
+    }
+
+    /* Progress Bar */
+    .progress-bg {
+      background: #e2e8f0;
+      height: 6px;
+      border-radius: 999px;
+      overflow: hidden;
+      width: 80px;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 6px
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 999px
+    }
+
+    .progress-text {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted)
+    }
+
+    /* Ayrılan Personel */
+    .separator-row td {
+      background: #f1f5f9;
+      color: var(--muted);
+      font-weight: 700;
+      text-align: center;
+      padding: 8px;
+      font-size: 12px;
+      letter-spacing: 1px
+    }
+
+    .ayrilan-row {
+      background: #fff1f2
+    }
+
+    .ayrilan-row td {
+      color: #881337
+    }
 
     /* Print */
-    .avoid-break{page-break-inside:avoid;break-inside:avoid}
-    @media print{
-      header{position:static;border:none}
-      .wrap{max-width:100%;padding:0}
-      .card{border:none;padding:0}
-      .table-wrap{border:none}
-      .kisi-secim{display:none!important}
+    @media print {
+      header {
+        display: none
+      }
+
+      .wrap {
+        max-width: 100%;
+        padding: 0
+      }
+
+      .card {
+        border: none;
+        padding: 0;
+        margin: 0
+      }
+
+      .table-wrap {
+        border: none
+      }
     }
   </style>
 </head>
+
 <body>
   <header>
     <div class="wrap">
       <div class="rapor-ust">
-        <h1 id="kisiBaslik" class="rapor-baslik">Kişi Bazlı Alacak Raporu</h1>
-        <div class="kisi-secim">
+        <h1 class="rapor-baslik">Kişi Bazlı Alacak Raporu</h1>
+        <div class="kisi-secim" id="controlPanel" style="display:none">
           <select id="personelSecim"></select>
           <select id="selYil">
             <option value="2023">2023</option>
@@ -116,437 +405,611 @@
             <option value="tum">Tüm Yıllar</option>
           </select>
           <button id="btnYukle">Yükle</button>
-          <button id="btnGizle" class="secondary" title="Kalan sıfır olanları gizle/göster">Kalan Sıfır Olanları Gizle</button>
+          <button id="btnGizle" class="secondary">Kalan Sıfır Olanları Gizle</button>
+          <button id="btnYazdir" class="secondary">🖨️ Yazdır</button>
         </div>
       </div>
     </div>
   </header>
 
-  <main class="wrap" id="pdf-root">
-    <div class="card avoid-break" style="margin-top:12px">
+  <main class="wrap">
+
+    <!-- Üst Bilgi Kartı -->
+    <div class="card" id="infoCard">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
         <div>
-          <h2 id="baslik" style="margin:0">Ad Soyad</h2>
-          <div class="muted" id="altBaslik">Yıl: 2025</div>
+          <h2 id="baslik" style="margin:0">Yükleniyor...</h2>
+          <div class="muted" id="altBaslik"></div>
         </div>
-        <div><span class="pill" id="pillAdet">0 kayıt</span></div>
+        <div><span class="pill" id="pillAdet"
+            style="background:#f1f5f9;padding:4px 10px;border-radius:6px;font-size:13px;font-weight:600"></span></div>
       </div>
     </div>
 
-    <!-- Sıralama rozetleri -->
-    <div id="siralamaEtiketleri" class="siralama-etiketleri"></div>
+    <!-- Sıralama Kartı (Tek Personel Modu) -->
+    <div id="rankArea" style="margin-top:12px; display:none"></div>
 
-    <!-- KPI kartları -->
-    <div class="row cols-4 avoid-break" style="margin-top:12px">
-      <div class="card kpi"><span class="label">Toplam Tahakkuk</span><span class="value" id="kpiTahakkuk">₺0</span><span class="label" style="font-size:11px;margin-top:2px" id="kpiTahakkukPct"></span></div>
-      <div class="card kpi good"><span class="label">Toplam Tahsilat</span><span class="value" id="kpiTahsilat">₺0</span><span class="label" style="font-size:11px;margin-top:2px" id="kpiTahsilatPct"></span></div>
-      <div class="card kpi warn"><span class="label">Kalan</span><span class="value" id="kpiKalan">₺0</span><span class="label" style="font-size:11px;margin-top:2px" id="kpiKalanPct"></span></div>
-      <div class="card kpi good"><span class="label">Tahsilat Nispeti</span><span class="value" id="kpiNispet">0%</span></div>
+    <!-- KPI Kartları -->
+    <div class="row cols-4" style="margin-top:12px">
+      <div class="card kpi"><span class="label">Toplam Tahakkuk</span><span class="value" id="kpiTahakkuk">₺0</span>
+      </div>
+      <div class="card kpi good"><span class="label">Toplam Tahsilat</span><span class="value"
+          id="kpiTahsilat">₺0</span></div>
+      <div class="card kpi warn"><span class="label">Kalan</span><span class="value" id="kpiKalan">₺0</span></div>
+      <div class="card kpi good"><span class="label">Tahsilat Nispeti</span><span class="value" id="kpiNispet">0%</span>
+      </div>
     </div>
 
-    <!-- Faaliyet özeti -->
-    <div class="card avoid-break" style="margin-top:12px">
-      <h3 style="margin:0 0 8px">Faaliyet Bazlı Özet</h3>
+    <!-- Faaliyet Özeti (Tek Personel Modu) -->
+    <div class="card" id="faaliyetCard" style="margin-top:12px; display:none">
+      <h3 style="margin:0 0 12px">Faaliyet Bazlı Özet</h3>
       <div class="faaliyet-grid" id="faaliyetGrid"></div>
     </div>
 
-    <!-- Detay tablo -->
-    <div class="card" style="margin-top:12px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
-        <h3 style="margin:0">Detaylı Liste</h3>
-        <span class="muted" id="detayAciklama">Yıl / Faaliyet / Borçlu / Ödeyen / Tahakkuk / Tahsilat / Yeni Tahsilat / Kalan</span>
-      </div>
-      <div class="table-wrap avoid-break">
-        <table id="tbl">
+    <!-- Başarı Sıralaması Tablosu (Sadece Tüm Personel Modunda) -->
+    <div class="card" id="rankTableCard" style="margin-top:12px; display:none">
+      <h3 style="margin:0 0 12px">Personel Başarı Sıralaması</h3>
+      <div class="table-wrap">
+        <table id="rankTbl">
           <thead>
-            <tr id="hdr">
-              <th data-col="yil" data-type="num">Yıl</th>
-              <th data-col="faaliyet" data-type="str">Faaliyet</th>
-              <th data-col="personel" data-type="str" id="thPersonel" style="display:none">Personel Adı</th>
-              <th data-col="borclu" data-type="str">Borçlu Adı Soyadı</th>
-              <th data-col="odeyen" data-type="str">Ödeyen Kişi</th>
-              <th class="right" data-col="tahakkuk" data-type="num">Tahakkuk</th>
-              <th class="right" data-col="tahsilat" data-type="num">Tahsilat</th>
-              <th class="right" data-col="yeni" data-type="num">Yeni Tahsilat</th>
-              <th class="right" data-col="kalan" data-type="num">Kalan</th>
+            <tr>
+              <th style="width:50px">#</th>
+              <th>Personel</th>
+              <th class="right">Toplam Tahakkuk</th>
+              <th class="right">Toplam Tahsilat</th>
+              <th class="right">Kalan</th>
+              <th style="width:200px">Tahsilat Nispeti</th>
             </tr>
           </thead>
-          <tbody id="tbody"></tbody>
-          <tfoot>
-            <tr>
-              <td colspan="4" class="right" id="tfootColspan">TOPLAM</td>
-              <td class="right" id="sumTahakkuk">₺0</td>
-              <td class="right" id="sumTahsilat">₺0</td>
-              <td class="right" id="sumYeni">₺0</td>
-              <td class="right" id="sumKalan">₺0</td>
-            </tr>
-            <tr>
-              <td colspan="4" class="right" id="tfootColspan2">YÜZDE</td>
-              <td class="right" id="sumTahakkukPct">—</td>
-              <td class="right" id="sumTahsilatPct">—</td>
-              <td class="right" id="sumYeniPct">—</td>
-              <td class="right" id="sumKalanPct">—</td>
-            </tr>
-          </tfoot>
+          <tbody id="rankTbody"></tbody>
         </table>
       </div>
     </div>
+
+    <!-- Detay Tablo -->
+    <div class="card" style="margin-top:12px">
+      <h3 style="margin:0 0 12px" id="tabloBaslik">Detaylı Liste</h3>
+      <div class="table-wrap">
+        <table id="tbl">
+          <thead id="thead"></thead>
+          <tbody id="tbody"></tbody>
+          <tfoot id="tfoot"></tfoot>
+        </table>
+      </div>
+    </div>
+
   </main>
 
   <script>
-    // ---------- Yardımcılar
+    // --- Ayarlar & Sabitler ---
+    const ADMINS = ['samet çakır', 'muhsin çelik'];
+    const MERGE_MAP = {
+      'keramettin kocaoğlu': 'Kerem Kocaoğlu',
+      'kerem kocaoğlu': 'Kerem Kocaoğlu'
+    };
+    const AYRILANLAR = ['burak serin'];
+
     const db = window.db;
-    const qs  = s => document.querySelector(s);
-    const qsa = s => [...document.querySelectorAll(s)];
-    const money = n => new Intl.NumberFormat('tr-TR',{style:'currency',currency:'TRY',maximumFractionDigits:2}).format(n||0);
-    const norm  = s => (s||'').toString().trim().toLocaleLowerCase('tr-TR');
-const tidy   = s => (s||'').toString().trim().replace(/\s+/g,' ');
-const normTR = s => tidy(s).toLocaleLowerCase('tr-TR');   // eşleştirme/anahtar
+    const auth = firebase.auth();
 
-// TR title-case: ayırıcıları korur (boşluk, -, ', ʼ, _, /, ., , ; : ( ) vs.)
-function titleTR(s){
-  const lower = normTR(s);
-  const SEP = /([ \t\r\n\-\u2019'_/.,;:()]+)/;  // U+2019 sağ apostrof da dahil
-  return lower.split(SEP).map(part=>{
-    if (!part || SEP.test(part)) return part;
-    return part.charAt(0).toLocaleUpperCase('tr-TR') + part.slice(1);
-  }).join('');
-}
+    // --- Yardımcılar ---
+    const qs = s => document.querySelector(s);
+    const money = n => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 2 }).format(n || 0);
+    const tidy = s => (s || '').toString().trim().replace(/\s+/g, ' ');
+    const normTR = s => tidy(s).toLocaleLowerCase('tr-TR');
 
-    const chunk = (arr,size)=>arr.length? [arr.slice(0,size)].concat(chunk(arr.slice(size),size)) : [];
-    const sevenDaysAgo = (()=>{ const d=new Date(); d.setDate(d.getDate()-7); return d.toISOString().slice(0,10); })();
-
-    // ---------- Parametreler
-    const params = new URLSearchParams(location.search);
-    const paramPersonel = params.get('personel') ? decodeURIComponent(params.get('personel')) : 'ALL';
-    const paramYil = params.get('yil') || '2025';
-    let hideZeroKalan = false; // Kalan sıfır olanları gizle durumu
-
-    // ---------- Kişi listesi
-    async function loadPeople(){
-      const snap = await db.collection('tahakkuklar').get();
-      const set = new Set();
-      snap.forEach(d=>{ const p=(d.data().personel||'').toString().trim(); if(p) set.add(p); });
-      const arr = [...set].sort((a,b)=>a.localeCompare(b,'tr'));
-      const sel = qs('#personelSecim');
-      sel.innerHTML = `<option value="ALL">Tüm Personel</option>` +
-  arr.map(n=>`<option value="${n}">${titleTR(n)}</option>`).join('');
-      qs('#selYil').value = ['2023','2024','2025','tum'].includes(paramYil) ? paramYil : '2025';
-      if (arr.includes(paramPersonel)) sel.value = paramPersonel; else sel.value = 'ALL';
+    function titleTR(s) {
+      const lower = normTR(s);
+      const SEP = /([ \t\r\n\-\u2019'_/.,;:()]+)/;
+      return lower.split(SEP).map(part => {
+        if (!part || SEP.test(part)) return part;
+        return part.charAt(0).toLocaleUpperCase('tr-TR') + part.slice(1);
+      }).join('');
     }
 
-    // ---------- Sıralama rozetleri
-    async function calcRanksForYear(yil){
-      let qTah = db.collection('tahakkuklar');
-      if(yil!=='tum') qTah = qTah.where('yil','==',Number(yil));
-      const tSnap = await qTah.get();
-      const sumTah = {};
-      tSnap.forEach(d=>{
-        const x=d.data(); const p=(x.personel||'').toString().trim();
-        sumTah[p]=(sumTah[p]||0)+Number(x.tahakkuk||0);
-      });
-
-      let qTsl = db.collection('tahsilatlar');
-      if(yil!=='tum') qTsl = qTsl.where('yil','==',Number(yil));
-      const sSnap = await qTsl.get();
-      const sumTsl = {};
-      sSnap.forEach(d=>{
-        const x=d.data(); const p=(x.personel||'').toString().trim();
-        sumTsl[p]=(sumTsl[p]||0)+Number(x.tutar||0);
-      });
-
-      const everyone = Object.keys({...sumTah, ...sumTsl});
-      const list = everyone.map(p=>{
-        const tah = sumTah[p]||0, tsl=sumTsl[p]||0;
-        const oran = tah>0 ? (tsl/tah) : 0;
-        return {p, tah, oran};
-      });
-
-      const borcOrder = [...list].sort((a,b)=>b.tah - a.tah).map((r,i)=>({p:r.p,sira:i+1}));
-      const oranOrder = [...list].sort((a,b)=>b.oran - a.oran).map((r,i)=>({p:r.p,sira:i+1}));
-
-      return function getRank(person){
-        const b = borcOrder.find(x=>x.p===person)?.sira ?? '-';
-        const o = oranOrder.find(x=>x.p===person)?.sira ?? '-';
-        return {borcSira:b, oranSira:o};
-      };
+    function resolveName(name) {
+      const n = normTR(name);
+      if (MERGE_MAP[n]) return MERGE_MAP[n];
+      return titleTR(name);
     }
 
-    function renderSiralamaRozetleri({borcSira, oranSira}, toplamTahakkuk, toplamTahsilat){
-      const oran = toplamTahakkuk>0 ? (100*toplamTahsilat/toplamTahakkuk) : 0;
-      qs('#siralamaEtiketleri').innerHTML =
-        `<span class="badge-siralama">Toplam Tahakkuk Borç Sıralaması: <strong>${borcSira}. sıradasınız</strong></span>
-         <span class="badge-siralama">Tahsilat Oranı Sıralaması: <strong>${oranSira}. sıradasınız</strong> (Mevcut oran: ${oran.toFixed(1)}%)</span>`;
-    }
+    // --- Ana Mantık ---
+    let currentUser = null;
+    let isAdmin = false;
+    let allTahakkuk = [];
+    let allTahsilat = [];
+    let currentRows = []; // Sıralama için aktif satırlar
+    let sortCol = null;
+    let sortDir = 'asc';
+    let hideZero = false; // Kalan sıfır gizle
+    let rankSortCol = null; // Personel sıralaması için sıralama sütunu
+    let rankSortDir = 'desc'; // Varsayılan: Tahsilat nispetine göre azalan
+    let rankListData = []; // Sıralama tablosu için veri
 
-    // ---------- Rapor (ALL & kişi)
-    async function loadReport(){
-      const person = qs('#personelSecim').value || 'ALL';
-      const yil    = qs('#selYil').value;
+    auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        let adSoyad = 'Bilinmeyen';
+        try {
+          const uDoc = await db.collection('kullanicilar').doc(user.uid).get();
+          const uData = uDoc.data() || {};
+          adSoyad = uData.adSoyad || uData.isim || user.displayName || 'Bilinmeyen';
+        } catch (e) { console.error(e); }
 
-      qs('#baslik').textContent = person==='ALL' ? 'Tüm Personel' : person;
-      qs('#altBaslik').textContent = `Yıl: ${yil==='tum' ? 'Tümü' : yil}`;
-      qs('#kisiBaslik').textContent = person==='ALL' ? 'Kişi Bazlı Alacak Raporu' : person;
-
-      // Tahakkuklar
-      let qTah = db.collection('tahakkuklar');
-      if (person!=='ALL') qTah = qTah.where('personel','==', person);
-      if (yil!=='tum')    qTah = qTah.where('yil','==', Number(yil));
-      const tSnap = await qTah.get();
-      const tahakkuklar = tSnap.docs.map(d=>({id:d.id, ...d.data()}));
-
-      // Tahsilatlar (id ve kişi bazlı birleştir)
-      let tahsilatlar = [];
-      const ids = tahakkuklar.map(x=>x.id);
-      for (const part of chunk(ids,10)){
-        if(part.length===0) continue;
-        const s = await db.collection('tahsilatlar').where('tahakkukId','in',part).get();
-        tahsilatlar = tahsilatlar.concat(s.docs.map(d=>({id:d.id, ...d.data()})));
-      }
-      let qTsl = db.collection('tahsilatlar');
-      if (person!=='ALL') qTsl = qTsl.where('personel','==', person);
-      if (yil!=='tum')    qTsl = qTsl.where('yil','==', Number(yil));
-      const sSnap = await qTsl.get();
-      const extra = sSnap.docs.map(d=>({id:d.id, ...d.data()}));
-      const seen = new Set(tahsilatlar.map(x=>x.id));
-      extra.forEach(x=>{ if(!seen.has(x.id)) tahsilatlar.push(x); });
-
-      // İndeksler
-      const byId = new Map();
-      tahsilatlar.forEach(s=>{
-        const arr = byId.get(s.tahakkukId)||[];
-        arr.push(s); byId.set(s.tahakkukId,arr);
-      });
-      const keyOf = (y,fa,p,bor)=>`${y}|${norm(fa)}|${norm(p)}|${norm(bor)}`;
-      const byKey = new Map();
-      tahsilatlar.forEach(s=>{
-        const k = keyOf(s.yil, s.faaliyet, s.personel||'', s.borclu||'');
-        const arr = byKey.get(k)||[]; arr.push(s); byKey.set(k,arr);
-      });
-
-      // Satırlar
-      const rows = tahakkuklar.map(t=>{
-        const k = keyOf(t.yil, t.faaliyet, t.personel||'', t.borclu||'');
-        const rel = (byId.get(t.id)||[]).concat(byKey.get(k)||[]);
-        const uniq = []; const mem = new Set();
-        rel.forEach(x=>{ if(!mem.has(x.id)){ mem.add(x.id); uniq.push(x); } });
-        const sumAll = uniq.reduce((a,b)=>a+Number(b.tutar||0),0);
-        const sumNew = uniq.filter(x=>(x.tarih||'')>=sevenDaysAgo).reduce((a,b)=>a+Number(b.tutar||0),0);
-
-        return {
-          yil: t.yil,
-          faaliyet: titleTR(t.faaliyet),
-          personel: titleTR(t.personel||''),
-          borclu:   titleTR(t.borclu||''),
-          odeyen:   titleTR(uniq[uniq.length-1]?.odeyen || ''),
-          tahakkuk: +Number(t.tahakkuk||0),
-          tahsilat: +Number(sumAll - sumNew),
-          yeni: +Number(sumNew),
-          kalan: +Number(t.tahakkuk||0) - +Number(sumAll)
-        };
-      });
-
-      renderAll(rows, person, yil);
-
-      if(person==='ALL'){
-        qs('#siralamaEtiketleri').innerHTML = '';
-      }else{
-        const getRank = await calcRanksForYear(yil);
-        const totals = rows.reduce((a,b)=>{ a.tah+=(b.tahakkuk||0); a.tsl+=(b.tahsilat||0)+(b.yeni||0); return a; }, {tah:0, tsl:0});
-        renderSiralamaRozetleri(getRank(person), totals.tah, totals.tsl);
-      }
-    }
-
-    // ---------- Render
-    let currentSort = {col:null, dir:'asc'};
-    const numCols = new Set(['tahakkuk','tahsilat','yeni','kalan','yil']);
-
-    function sortRows(rows){
-      const {col,dir} = currentSort;
-      if(!col) return rows;
-      const type = numCols.has(col) ? 'num' : 'str';
-      const cmp = (a,b)=> type==='num' ? ((+a||0)-(+b||0)) : String(a||'').localeCompare(String(b||''),'tr',{sensitivity:'base'});
-      const arr = rows.slice().sort((x,y)=>cmp(x[col], y[col]));
-      return dir==='asc' ? arr : arr.reverse();
-    }
-
-    function renderAll(rows, person, yil){
-      // Kalan sıfır olanları filtrele
-      let filteredRows = rows;
-      if(hideZeroKalan){
-        filteredRows = rows.filter(r => Math.abs(r.kalan || 0) > 0.001);
-      }
-      
-      qs('#pillAdet').textContent = `${filteredRows.length} kayıt${filteredRows.length !== rows.length ? ` (${rows.length - filteredRows.length} gizli)` : ''}`;
-
-      const tTah = filteredRows.reduce((a,b)=>a+(b.tahakkuk||0),0);
-      const tTsl = filteredRows.reduce((a,b)=>a+(b.tahsilat||0)+(b.yeni||0),0);
-      const tKal = tTah - tTsl;
-      
-      // Yüzde hesaplamaları (Toplam Tahakkuk referans olarak kullanılıyor)
-      const nispetPct = tTah > 0 ? ((tTsl / tTah) * 100).toFixed(1) : '0.0';
-      
-      qs('#kpiTahakkuk').textContent = money(tTah);
-      qs('#kpiTahakkukPct').textContent = '100.0%'; // Referans değer
-      qs('#kpiTahsilat').textContent = money(tTsl);
-      qs('#kpiTahsilatPct').textContent = tTah > 0 ? `${nispetPct}%` : '0.0%'; // Tahsilat/Tahakkuk oranı
-      qs('#kpiKalan').textContent    = money(tKal);
-      qs('#kpiKalanPct').textContent = tTah > 0 ? `${(100 - parseFloat(nispetPct)).toFixed(1)}%` : '0.0%'; // Kalan/Tahakkuk oranı
-      qs('#kpiNispet').textContent = `${nispetPct}%`;
-
-      // ---- faaliyet özeti: TR locale ile tekilleştir/birleştir
-const fMap = new Map();
-rows.forEach(r=>{
-  const key = normTR(r.faaliyet);
-  if(!key) return;
-  if(!fMap.has(key)) fMap.set(key, { display: titleTR(r.faaliyet), tah:0, tsl:0 });
-  const o = fMap.get(key);
-  o.tah += +r.tahakkuk || 0;
-  o.tsl += (+r.tahsilat || 0) + (+r.yeni || 0); // toplam tahsilat = eski + yeni
-});
-
-      const grid = qs('#faaliyetGrid'); grid.innerHTML='';
-      [...fMap.values()]
-        .map(v => ({ ...v, kalan: v.tah - v.tsl }))
-        .sort((a,b) => b.kalan - a.kalan)
-        .forEach(item=>{
-          let cls='kalan-non'; if(item.kalan>0) cls='kalan-pozitif'; if(item.kalan<0) cls='kalan-negatif';
-          const div = document.createElement('div');
-          div.className='faaliyet-kart';
-          div.innerHTML = `
-            <div class="f-title">${item.display}</div>
-            <div class="f-tah">Tahakkuk: ${money(item.tah)}</div>
-            <div class="f-tas">Tahsilat: ${money(item.tsl)}</div>
-            <span class="kalan-etiket ${cls}">Kalan: ${money(item.kalan)}</span>`;
-          grid.appendChild(div);
-        });
-
-      // ---- tablo
-      // Personel kolonu görünürlüğü
-      const thPersonel = qs('#thPersonel');
-      const showPersonel = person === 'ALL';
-      if(showPersonel){
-        thPersonel.style.display = '';
-        qs('#detayAciklama').textContent = 'Yıl / Faaliyet / Personel Adı / Borçlu / Ödeyen / Tahakkuk / Tahsilat / Yeni Tahsilat / Kalan';
+        currentUser = resolveName(adSoyad);
+        isAdmin = ADMINS.includes(normTR(currentUser));
+        initPage();
       } else {
-        thPersonel.style.display = 'none';
-        qs('#detayAciklama').textContent = 'Yıl / Faaliyet / Borçlu / Ödeyen / Tahakkuk / Tahsilat / Yeni Tahsilat / Kalan';
+        location.href = '../../index.html';
       }
-      
-      const tbody = qs('#tbody'); tbody.innerHTML='';
-      let sTah=0,sTsl=0,sYeni=0,sKal=0;
-      const allRows = sortRows(filteredRows);
-      const totalTah = allRows.reduce((a,b)=>a+(b.tahakkuk||0),0);
-      
-      allRows.forEach(r=>{
-        sTah+=r.tahakkuk||0; sTsl+=r.tahsilat||0; sYeni+=r.yeni||0; sKal+=r.kalan||0;
-        const tr=document.createElement('tr');
-        if(Math.abs(r.kalan)<0.001) tr.classList.add('zero');
-        
-        const personelCell = showPersonel ? `<td>${r.personel||''}</td>` : '';
-        tr.innerHTML = `
-          <td>${r.yil}</td>
-          <td>${r.faaliyet||''}</td>
-          ${personelCell}
-          <td>${r.borclu||''}</td>
-          <td>${r.odeyen||''}</td>
-          <td class="right">${money(r.tahakkuk)}</td>
-          <td class="right">${money(r.tahsilat)}</td>
-          <td class="right">${money(r.yeni)}</td>
-          <td class="right">${money(r.kalan)}</td>`;
-        tbody.appendChild(tr);
-      });
-      
-      // Toplam satırı
-      const colspan = showPersonel ? '5' : '4';
-      qs('#tfootColspan').setAttribute('colspan', colspan);
-      qs('#tfootColspan2').setAttribute('colspan', colspan);
-      
-      qs('#sumTahakkuk').textContent = money(sTah);
-      qs('#sumTahsilat').textContent = money(sTsl);
-      qs('#sumYeni').textContent     = money(sYeni);
-      qs('#sumKalan').textContent    = money(sKal);
-      
-      // Yüzde satırı (Toplam Tahakkuk referans olarak kullanılıyor)
-      const sumTahPct = totalTah > 0 ? '100.0' : '0.0'; // Referans değer
-      const sumTslPct = totalTah > 0 ? ((sTsl / totalTah) * 100).toFixed(1) : '0.0'; // Tahsilat/Tahakkuk
-      const sumYeniPct = totalTah > 0 ? ((sYeni / totalTah) * 100).toFixed(1) : '0.0'; // Yeni Tahsilat/Tahakkuk
-      const sumKalPct = totalTah > 0 ? ((sKal / totalTah) * 100).toFixed(1) : '0.0'; // Kalan/Tahakkuk
-      
-      qs('#sumTahakkukPct').textContent = `(${sumTahPct}%)`;
-      qs('#sumTahsilatPct').textContent = `(${sumTslPct}%)`;
-      qs('#sumYeniPct').textContent = `(${sumYeniPct}%)`;
-      qs('#sumKalanPct').textContent = `(${sumKalPct}%)`;
+    });
+
+    async function initPage() {
+      await loadData();
+
+      const sel = qs('#personelSecim');
+      const controlPanel = qs('#controlPanel');
+
+      const personSet = new Set();
+      allTahakkuk.forEach(t => personSet.add(t.personel));
+      const personList = [...personSet].sort((a, b) => a.localeCompare(b, 'tr'));
+
+      sel.innerHTML = `<option value="ALL">Tüm Personel (Özet + Detay)</option>` +
+        personList.map(p => `<option value="${p}">${p}</option>`).join('');
+
+      if (isAdmin) {
+        controlPanel.style.display = 'flex';
+        sel.value = 'ALL';
+      } else {
+        controlPanel.style.display = 'none';
+        sel.innerHTML = `<option value="${currentUser}">${currentUser}</option>`;
+        sel.value = currentUser;
+      }
+
+      renderReport();
     }
 
-    // ---------- Sütun başlıklarına tıklama ile sıralama (isteğe bağlı)
-    qsa('#hdr th').forEach(th=>{
-      th.addEventListener('click', ()=>{
-        const col = th.dataset.col; if(!col) return;
-        currentSort.dir = (currentSort.col===col && currentSort.dir==='asc') ? 'desc' : 'asc';
-        currentSort.col = col;
-        qsa('#hdr th').forEach(x=>x.classList.remove('sort-asc','sort-desc'));
-        th.classList.add(currentSort.dir==='asc'?'sort-asc':'sort-desc');
-
-        // mevcut gövdeden veriyi okuyup yeniden çiz
-        const person = qs('#personelSecim').value||'ALL';
-        const yil = qs('#selYil').value;
-        const showPersonel = person === 'ALL';
-        const rows = [...qs('#tbody').querySelectorAll('tr')].map(tr=>{
-          const tds = tr.querySelectorAll('td');
-          const parseMoney = s => +tds[s].textContent.replace(/\D/g,'')/100;
-          let idx = 0;
-          return {
-            yil: +tds[idx++].textContent,
-            faaliyet: tds[idx++].textContent,
-            personel: showPersonel ? tds[idx++].textContent : '',
-            borclu: tds[idx++].textContent,
-            odeyen: tds[idx++].textContent,
-            tahakkuk: parseMoney(idx++),
-            tahsilat: parseMoney(idx++),
-            yeni: parseMoney(idx++),
-            kalan: parseMoney(idx++),
-          };
-        });
-        renderAll(rows, person, yil);
-      });
-    });
-
-    // ---------- Olaylar
-    qs('#btnYukle').addEventListener('click', loadReport);
-    qs('#personelSecim').addEventListener('change', loadReport);
-    qs('#selYil').addEventListener('change', loadReport);
-    qs('#btnGizle').addEventListener('click', ()=>{
-      hideZeroKalan = !hideZeroKalan;
-      qs('#btnGizle').textContent = hideZeroKalan ? 'Kalan Sıfır Olanları Göster' : 'Kalan Sıfır Olanları Gizle';
-      const person = qs('#personelSecim').value || 'ALL';
-      const yil = qs('#selYil').value;
-      // Mevcut veriyi yeniden render et
-      const rows = [...qs('#tbody').querySelectorAll('tr')].map(tr=>{
-        const tds = tr.querySelectorAll('td');
-        const parseMoney = s => +tds[s].textContent.replace(/\D/g,'')/100;
-        const showPersonel = person === 'ALL';
-        let idx = 0;
+    async function loadData() {
+      const tSnap = await db.collection('tahakkuklar').get();
+      allTahakkuk = tSnap.docs.map(d => {
+        const x = d.data();
         return {
-          yil: +tds[idx++].textContent,
-          faaliyet: tds[idx++].textContent,
-          personel: showPersonel ? tds[idx++].textContent : '',
-          borclu: tds[idx++].textContent,
-          odeyen: tds[idx++].textContent,
-          tahakkuk: parseMoney(idx++),
-          tahsilat: parseMoney(idx++),
-          yeni: parseMoney(idx++),
-          kalan: parseMoney(idx++),
+          id: d.id,
+          ...x,
+          personel: resolveName(x.personel),
+          borclu: resolveName(x.borclu),
+          faaliyet: titleTR(x.faaliyet)
         };
       });
-      renderAll(rows, person, yil);
+
+      const sSnap = await db.collection('tahsilatlar').get();
+      allTahsilat = sSnap.docs.map(d => {
+        const x = d.data();
+        return {
+          id: d.id,
+          ...x,
+          personel: resolveName(x.personel),
+          borclu: resolveName(x.borclu),
+          faaliyet: titleTR(x.faaliyet)
+        };
+      });
+    }
+
+    function renderReport() {
+      const selectedPerson = qs('#personelSecim').value;
+      const selectedYil = qs('#selYil').value;
+
+      qs('#baslik').textContent = selectedPerson === 'ALL' ? 'Tüm Personel Özeti' : selectedPerson;
+      qs('#altBaslik').textContent = `Yıl: ${selectedYil === 'tum' ? 'Tümü' : selectedYil}`;
+
+      let fTahakkuk = allTahakkuk;
+      let fTahsilat = allTahsilat;
+
+      if (selectedYil !== 'tum') {
+        fTahakkuk = fTahakkuk.filter(x => String(x.yil) === selectedYil);
+        fTahsilat = fTahsilat.filter(x => String(x.yil) === selectedYil);
+      }
+
+      if (selectedPerson !== 'ALL') {
+        fTahakkuk = fTahakkuk.filter(x => x.personel === selectedPerson);
+        fTahsilat = fTahsilat.filter(x => x.personel === selectedPerson);
+
+        qs('#rankTableCard').style.display = 'none';
+        renderSinglePerson(fTahakkuk, fTahsilat, selectedPerson, selectedYil);
+      } else {
+        renderAllPersons(fTahakkuk, fTahsilat, selectedYil);
+      }
+    }
+
+    // Eşleştirme Fonksiyonu (Güçlendirilmiş)
+    function getRelatedTahsilat(tahakkuk, allTahsilatList) {
+      return allTahsilatList.filter(s => {
+        if (s.tahakkukId && s.tahakkukId === tahakkuk.id) return true;
+        if (String(s.yil) === String(tahakkuk.yil) &&
+          s.faaliyet === tahakkuk.faaliyet &&
+          s.personel === tahakkuk.personel &&
+          s.borclu === tahakkuk.borclu) return true;
+        return false;
+      });
+    }
+
+    function renderSinglePerson(tahakkuklar, tahsilatlar, personName, yil) {
+      // 1. KPI Hesapla (Daha basit ve doğru)
+      const sumTah = tahakkuklar.reduce((a, b) => a + (b.tahakkuk || 0), 0);
+      const sumTsl = tahsilatlar.reduce((a, b) => a + (b.tutar || 0), 0);
+
+      const kalan = sumTah - sumTsl;
+      const nispet = sumTah > 0 ? (sumTsl / sumTah) * 100 : 0;
+
+      qs('#kpiTahakkuk').textContent = money(sumTah);
+      qs('#kpiTahsilat').textContent = money(sumTsl);
+      qs('#kpiKalan').textContent = money(kalan);
+      qs('#kpiNispet').textContent = `%${nispet.toFixed(1)}`;
+
+      // 2. Sıralama Analizi
+      const stats = {};
+      let globalTah = allTahakkuk;
+      let globalTsl = allTahsilat;
+      if (yil !== 'tum') {
+        globalTah = globalTah.filter(x => String(x.yil) === yil);
+        globalTsl = globalTsl.filter(x => String(x.yil) === yil);
+      }
+
+      globalTah.forEach(t => { if (!stats[t.personel]) stats[t.personel] = { t: 0, s: 0 }; stats[t.personel].t += (t.tahakkuk || 0); });
+      globalTsl.forEach(t => { if (!stats[t.personel]) stats[t.personel] = { t: 0, s: 0 }; stats[t.personel].s += (t.tutar || 0); });
+
+      const ranking = Object.entries(stats).map(([p, v]) => ({ p, r: v.t > 0 ? (v.s / v.t) * 100 : 0 })).sort((a, b) => b.r - a.r);
+      const myRank = ranking.findIndex(r => r.p === personName) + 1;
+
+      const rankArea = qs('#rankArea');
+      rankArea.style.display = 'block';
+      rankArea.innerHTML = `
+        <div class="rank-card">
+          <div class="rank-icon">🏆</div>
+          <div class="rank-info">
+            <div class="rank-title">Tahsilat Başarı Sıralaması</div>
+            <div class="rank-val">${yil === 'tum' ? 'Tüm Yıllar' : yil} yılında ${ranking.length} personel arasında <strong>${myRank}.</strong> sıradasınız.</div>
+          </div>
+          <div style="font-size:20px; font-weight:800; color:var(--accent)">#${myRank}</div>
+        </div>
+      `;
+
+      // 3. Faaliyet Özeti
+      qs('#faaliyetCard').style.display = 'block';
+      const fMap = {};
+      tahakkuklar.forEach(t => {
+        const k = t.faaliyet;
+        if (!fMap[k]) fMap[k] = { tah: 0, tsl: 0 };
+        fMap[k].tah += (t.tahakkuk || 0);
+      });
+      tahsilatlar.forEach(t => {
+        const k = t.faaliyet;
+        if (!fMap[k]) fMap[k] = { tah: 0, tsl: 0 };
+        fMap[k].tsl += (t.tutar || 0);
+      });
+
+      const fGrid = qs('#faaliyetGrid');
+      fGrid.innerHTML = '';
+      Object.entries(fMap).forEach(([key, val]) => {
+        const kal = val.tah - val.tsl;
+        let cls = 'kalan-non';
+        if (kal > 0.1) cls = 'kalan-pozitif';
+        if (kal < -0.1) cls = 'kalan-negatif';
+        fGrid.innerHTML += `
+          <div class="faaliyet-kart">
+            <div class="f-title">${key}</div>
+            <div class="f-row"><span>Tahakkuk:</span> <span>${money(val.tah)}</span></div>
+            <div class="f-row"><span>Tahsilat:</span> <span>${money(val.tsl)}</span></div>
+            <span class="kalan-etiket ${cls}">Kalan: ${money(kal)}</span>
+          </div>
+        `;
+      });
+
+      // 4. Detay Tablo
+      prepareTableData(tahakkuklar, tahsilatlar, false);
+    }
+
+    function renderAllPersons(tahakkuklar, tahsilatlar, yil) {
+      // KPI Hesapla
+      const sumTah = tahakkuklar.reduce((a, b) => a + (b.tahakkuk || 0), 0);
+      const sumTsl = tahsilatlar.reduce((a, b) => a + (b.tutar || 0), 0);
+      const kalan = sumTah - sumTsl;
+      const nispet = sumTah > 0 ? (sumTsl / sumTah) * 100 : 0;
+
+      qs('#kpiTahakkuk').textContent = money(sumTah);
+      qs('#kpiTahsilat').textContent = money(sumTsl);
+      qs('#kpiKalan').textContent = money(kalan);
+      qs('#kpiNispet').textContent = `%${nispet.toFixed(1)}`;
+
+      qs('#rankArea').style.display = 'none';
+      qs('#faaliyetCard').style.display = 'none';
+      qs('#rankTableCard').style.display = 'block';
+
+      // Sıralama Tablosu
+      const stats = {};
+      tahakkuklar.forEach(t => {
+        const p = t.personel;
+        if (!stats[p]) stats[p] = { t: 0, s: 0 };
+        stats[p].t += (t.tahakkuk || 0);
+      });
+      tahsilatlar.forEach(t => {
+        const p = t.personel;
+        if (!stats[p]) stats[p] = { t: 0, s: 0 };
+        stats[p].s += (t.tutar || 0);
+      });
+
+      let list = Object.entries(stats).map(([p, v]) => {
+        const k = v.t - v.s;
+        const n = v.t > 0 ? (v.s / v.t) * 100 : 0;
+        return { p, t: v.t, s: v.s, k, n, isAyrilan: AYRILANLAR.includes(normTR(p)) };
+      });
+
+      // Ayrılan personelleri ayır
+      const ayrilanList = list.filter(r => r.isAyrilan);
+      const aktifList = list.filter(r => !r.isAyrilan);
+
+      // Aktif personelleri sırala (ayrılanlar sıralamaya dahil değil)
+      if (rankSortCol) {
+        aktifList.sort((a, b) => {
+          let va = a[rankSortCol], vb = b[rankSortCol];
+          if (typeof va === 'string') {
+            return rankSortDir === 'asc' ? va.localeCompare(vb, 'tr') : vb.localeCompare(va, 'tr');
+          }
+          return rankSortDir === 'asc' ? va - vb : vb - va;
+        });
+      } else {
+        // Varsayılan sıralama: Tahsilat nispetine göre azalan
+        aktifList.sort((a, b) => b.n - a.n);
+      }
+
+      rankListData = [...aktifList, ...ayrilanList];
+      renderRankTable(aktifList, ayrilanList);
+
+      prepareTableData(tahakkuklar, tahsilatlar, true);
+    }
+
+    function renderRankTable(aktifList, ayrilanList) {
+      const rankTbl = qs('#rankTbl');
+      const rankThead = rankTbl.querySelector('thead');
+      const rBody = qs('#rankTbody');
+
+      // Thead'i güncelle - sıralama özellikleri ekle
+      rankThead.innerHTML = `
+        <tr>
+          <th style="width:50px" data-key="index">#</th>
+          <th data-key="p">Personel</th>
+          <th class="right" data-key="t">Toplam Tahakkuk</th>
+          <th class="right" data-key="s">Toplam Tahsilat</th>
+          <th class="right" data-key="k">Kalan</th>
+          <th style="width:200px" data-key="n">Tahsilat Nispeti</th>
+        </tr>
+      `;
+
+      // Sıralama class'larını ekle
+      rankThead.querySelectorAll('th').forEach(th => {
+        const key = th.dataset.key;
+        if (key && rankSortCol === key) {
+          th.classList.add(rankSortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+        }
+        // Click event listener ekle
+        if (key && key !== 'index') {
+          th.addEventListener('click', () => {
+            if (rankSortCol === key) {
+              rankSortDir = rankSortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+              rankSortCol = key;
+              rankSortDir = 'asc';
+            }
+            // Sıralamayı yeniden yap
+            const selectedYil = qs('#selYil').value;
+            let fTahakkuk = allTahakkuk;
+            let fTahsilat = allTahsilat;
+            if (selectedYil !== 'tum') {
+              fTahakkuk = fTahakkuk.filter(x => String(x.yil) === selectedYil);
+              fTahsilat = fTahsilat.filter(x => String(x.yil) === selectedYil);
+            }
+            renderAllPersons(fTahakkuk, fTahsilat, selectedYil);
+          });
+        }
+      });
+
+      rBody.innerHTML = '';
+      let sep = false;
+
+      // Aktif personelleri göster
+      aktifList.forEach((r, idx) => {
+        let color = '#ef4444';
+        if (r.n >= 50) color = '#f59e0b';
+        if (r.n >= 80) color = '#22c55e';
+        if (r.n >= 100) color = '#15803d';
+
+        rBody.innerHTML += `
+          <tr>
+            <td>${idx + 1}</td>
+            <td style="font-weight:600">${r.p}</td>
+            <td class="right">${money(r.t)}</td>
+            <td class="right">${money(r.s)}</td>
+            <td class="right" style="color:${r.k > 0 ? 'var(--warn)' : 'var(--muted)'}">${money(r.k)}</td>
+            <td>
+              <div style="display:flex;align-items:center">
+                <div class="progress-bg"><div class="progress-fill" style="width:${Math.min(r.n, 100)}%; background:${color}"></div></div>
+                <span class="progress-text" style="color:${color}">%${r.n.toFixed(1)}</span>
+              </div>
+            </td>
+          </tr>
+        `;
+      });
+
+      // Ayrılan personelleri göster
+      if (ayrilanList.length > 0) {
+        rBody.innerHTML += `<tr class="separator-row"><td colspan="6">AYRILAN PERSONEL</td></tr>`;
+        ayrilanList.forEach((r) => {
+          let color = '#ef4444';
+          if (r.n >= 50) color = '#f59e0b';
+          if (r.n >= 80) color = '#22c55e';
+          if (r.n >= 100) color = '#15803d';
+
+          rBody.innerHTML += `
+            <tr class="ayrilan-row">
+              <td>-</td>
+              <td style="font-weight:600">${r.p}</td>
+              <td class="right">${money(r.t)}</td>
+              <td class="right">${money(r.s)}</td>
+              <td class="right" style="color:${r.k > 0 ? 'var(--warn)' : 'var(--muted)'}">${money(r.k)}</td>
+              <td>
+                <div style="display:flex;align-items:center">
+                  <div class="progress-bg"><div class="progress-fill" style="width:${Math.min(r.n, 100)}%; background:${color}"></div></div>
+                  <span class="progress-text" style="color:${color}">%${r.n.toFixed(1)}</span>
+                </div>
+              </td>
+            </tr>
+          `;
+        });
+      }
+    }
+
+    function prepareTableData(tahakkuklar, tahsilatlar, showPersonelColumn) {
+      const usedTahsilatIds = new Set();
+      const rows = [];
+
+      // 1. Tahakkukları ve eşleşen tahsilatları işle
+      tahakkuklar.forEach(t => {
+        const related = getRelatedTahsilat(t, tahsilatlar);
+        related.forEach(s => usedTahsilatIds.add(s.id)); // Kullanılanları işaretle
+
+        const tslSum = related.reduce((a, b) => a + (b.tutar || 0), 0);
+        const odeyen = related.length > 0 ? related[related.length - 1].odeyen : '-';
+
+        rows.push({
+          yil: t.yil,
+          faaliyet: t.faaliyet,
+          personel: t.personel,
+          borclu: t.borclu,
+          odeyen: odeyen,
+          tah: t.tahakkuk,
+          tsl: tslSum,
+          kal: t.tahakkuk - tslSum,
+          isOrphan: false
+        });
+      });
+
+      // 2. Eşleşmeyen (Yetim) Tahsilatları Bul
+      tahsilatlar.forEach(s => {
+        if (!usedTahsilatIds.has(s.id)) {
+          rows.push({
+            yil: s.yil,
+            faaliyet: s.faaliyet,
+            personel: s.personel,
+            borclu: s.borclu,
+            odeyen: s.odeyen || '-',
+            tah: 0, // Tahakkuk yok
+            tsl: s.tutar,
+            kal: 0 - s.tutar, // Eksi bakiye (Alacaklı)
+            isOrphan: true
+          });
+        }
+      });
+
+      currentRows = rows;
+      renderTable(showPersonelColumn);
+    }
+
+    function renderTable(showPersonelColumn) {
+      const thead = qs('#thead');
+      const tbody = qs('#tbody');
+      const tfoot = qs('#tfoot');
+
+      let headers = [
+        { key: 'yil', label: 'Yıl' },
+        { key: 'faaliyet', label: 'Faaliyet' },
+        ...(showPersonelColumn ? [{ key: 'personel', label: 'Personel' }] : []),
+        { key: 'borclu', label: 'Borçlu' },
+        { key: 'odeyen', label: 'Ödeyen' },
+        { key: 'tah', label: 'Tahakkuk', cls: 'right' },
+        { key: 'tsl', label: 'Tahsilat', cls: 'right' },
+        { key: 'kal', label: 'Kalan', cls: 'right' }
+      ];
+
+      thead.innerHTML = '<tr>' + headers.map(h =>
+        `<th data-key="${h.key}" class="${h.cls || ''} ${sortCol === h.key ? (sortDir === 'asc' ? 'sort-asc' : 'sort-desc') : ''}">${h.label}</th>`
+      ).join('') + '</tr>';
+
+      thead.querySelectorAll('th').forEach(th => {
+        th.addEventListener('click', () => {
+          const key = th.dataset.key;
+          if (sortCol === key) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+          else { sortCol = key; sortDir = 'asc'; }
+          renderTable(showPersonelColumn);
+        });
+      });
+
+      let displayRows = [...currentRows];
+
+      if (hideZero) {
+        displayRows = displayRows.filter(r => Math.abs(r.kal) > 0.1);
+      }
+
+      if (sortCol) {
+        displayRows.sort((a, b) => {
+          let va = a[sortCol], vb = b[sortCol];
+          if (typeof va === 'string') return sortDir === 'asc' ? va.localeCompare(vb, 'tr') : vb.localeCompare(va, 'tr');
+          return sortDir === 'asc' ? va - vb : vb - va;
+        });
+      }
+
+      tbody.innerHTML = '';
+      let totTah = 0, totTsl = 0, totKal = 0;
+
+      displayRows.forEach(r => {
+        totTah += r.tah; totTsl += r.tsl; totKal += r.kal;
+
+        // Yetim kayıtlar için farklı bir stil (opsiyonel)
+        const rowStyle = r.isOrphan ? 'background:#fff7ed' : ''; // Hafif turuncu
+
+        tbody.innerHTML += `
+          <tr style="${rowStyle}">
+            <td>${r.yil}</td>
+            <td>${r.faaliyet} ${r.isOrphan ? '<span style="color:red;font-size:10px">(Tahakkuksuz)</span>' : ''}</td>
+            ${showPersonelColumn ? `<td>${r.personel}</td>` : ''}
+            <td>${r.borclu}</td>
+            <td>${r.odeyen}</td>
+            <td class="right">${money(r.tah)}</td>
+            <td class="right">${money(r.tsl)}</td>
+            <td class="right" style="color:${r.kal > 0 ? 'var(--warn)' : 'var(--ink)'}">${money(r.kal)}</td>
+          </tr>
+        `;
+      });
+
+      const colSpan = showPersonelColumn ? 5 : 4;
+      tfoot.innerHTML = `
+        <tr>
+          <td colspan="${colSpan}" class="right">GENEL TOPLAM</td>
+          <td class="right">${money(totTah)}</td>
+          <td class="right">${money(totTsl)}</td>
+          <td class="right">${money(totKal)}</td>
+        </tr>
+      `;
+
+      qs('#pillAdet').textContent = `${displayRows.length} Kayıt`;
+    }
+
+    // --- Event Listeners ---
+    qs('#btnYukle').addEventListener('click', renderReport);
+    qs('#personelSecim').addEventListener('change', renderReport);
+    qs('#selYil').addEventListener('change', renderReport);
+    qs('#btnYazdir').addEventListener('click', () => {
+      const p = qs('#personelSecim').value;
+      const y = qs('#selYil').value;
+      window.open(`rapor-yazdir.html?personel=${encodeURIComponent(p)}&yil=${y}`, '_blank');
     });
 
-    // ---------- Başlat
-    (async ()=>{
-      await loadPeople();
-      await loadReport();
-    })();
+    qs('#btnGizle').addEventListener('click', () => {
+      hideZero = !hideZero;
+      qs('#btnGizle').textContent = hideZero ? 'Kalan Sıfır Olanları Göster' : 'Kalan Sıfır Olanları Gizle';
+      const isAll = qs('#personelSecim').value === 'ALL';
+      renderTable(isAll);
+    });
+
   </script>
 </body>
+
 </html>
