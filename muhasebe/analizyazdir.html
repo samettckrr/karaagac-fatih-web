@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Finansal Analiz Dashboard - Yazdır | Karaağaç Fatih</title>
+<link rel="icon" type="image/png" href="../img/logo.png" />
+
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="../js/firebase/firebase-init.js"></script>
+
+<style>
+  @media print {
+    body { margin: 0; padding: 20px; }
+    .no-print { display: none !important; }
+    .page-break { page-break-after: always; }
+  }
+
+  @media screen {
+    body { 
+      background: #f5f5f5; 
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    .print-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      padding: 40px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #111827;
+    line-height: 1.6;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 40px;
+    padding-bottom: 20px;
+    border-bottom: 3px solid #2563eb;
+  }
+
+  .header h1 {
+    margin: 0 0 10px;
+    font-size: 32px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .header .subtitle {
+    font-size: 16px;
+    color: #6b7280;
+  }
+
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin: 30px 0;
+  }
+
+  .report-description {
+    margin: 30px 0;
+    padding: 20px;
+    background: #f8fafc;
+    border-left: 4px solid #2563eb;
+    border-radius: 8px;
+    color: #374151;
+    line-height: 1.8;
+    font-size: 14px;
+  }
+
+  .report-description h3 {
+    margin: 0 0 12px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .kpi-card {
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #2563eb, #1d4ed8);
+  }
+
+  .kpi-card.success::before {
+    background: linear-gradient(90deg, #16a34a, #15803d);
+  }
+
+  .kpi-label {
+    font-size: 12px;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+    font-weight: 500;
+  }
+
+  .kpi-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 6px;
+  }
+
+  .kpi-sub {
+    font-size: 12px;
+    color: #6b7280;
+  }
+
+  .section {
+    margin: 40px 0;
+    page-break-inside: avoid;
+  }
+
+  .section-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #e5e7eb;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+  }
+
+  thead {
+    background: #f8fafc;
+  }
+
+  th {
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 13px;
+    color: #111827;
+    border-bottom: 2px solid #e5e7eb;
+  }
+
+  th.text-right {
+    text-align: right;
+  }
+
+  td {
+    padding: 12px 16px;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 14px;
+  }
+
+  td.text-right {
+    text-align: right;
+  }
+
+  tbody tr:hover {
+    background: #f8fafc;
+  }
+
+  tbody tr.total-row {
+    background: #f8fafc;
+    font-weight: 700;
+    border-top: 2px solid #e5e7eb;
+  }
+
+  tbody tr.total-row td {
+    padding: 16px;
+    font-size: 15px;
+  }
+
+  .alt-kategori-row {
+    background: #f8fafc !important;
+    border-left: 4px solid #2563eb;
+  }
+
+  .alt-kategori-row td {
+    padding: 10px 16px 10px 40px;
+    font-size: 13px;
+    color: #6b7280;
+  }
+
+  .no-print {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    display: flex;
+    gap: 12px;
+  }
+
+  .btn {
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    border: none;
+    background: #2563eb;
+    color: white;
+    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+  }
+
+  .btn:hover {
+    background: #1d4ed8;
+  }
+
+  .btn-secondary {
+    background: #6b7280;
+  }
+
+  .btn-secondary:hover {
+    background: #4b5563;
+  }
+</style>
+</head>
+<body>
+
+<div class="no-print">
+  <button class="btn" onclick="window.print()">🖨️ Yazdır</button>
+  <button class="btn btn-secondary" onclick="window.close()">✕ Kapat</button>
+</div>
+
+<div class="print-container">
+  <div class="header">
+    <h1>📊 Finansal Analiz Dashboard</h1>
+    <div class="subtitle" id="printDate">Yükleniyor...</div>
+  </div>
+
+  <div id="printContent">
+    <div style="text-align:center; padding:60px; color:#6b7280">
+      Yükleniyor...
+    </div>
+  </div>
+</div>
+
+<script>
+  const db = firebase.firestore();
+  const auth = firebase.auth();
+  const fmt = (n) => (Number(n||0)).toLocaleString("tr-TR",{minimumFractionDigits:2, maximumFractionDigits:2}) + " ₺";
+  
+  let planlamaData = {};
+  let gerceklesenData = {};
+  let altKategorilerData = {};
+
+  // Verileri yükle
+  async function loadData(){
+    try{
+      // Tarih göster
+      document.getElementById('printDate').textContent = new Date().toLocaleDateString('tr-TR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+
+      // Planlama verilerini yükle
+      const planlamaSnap = await db.collection('muhasebe_planlama').get();
+      planlamaData = {};
+      planlamaSnap.forEach(doc => {
+        const d = doc.data();
+        const yil = d.yil || 2025;
+        const tip = (d.tip || 'gider').toLowerCase();
+        const kategori = d.kategori || 'Diğer';
+        const planlanan = +(d.planlanan || 0);
+        
+        if(!planlamaData[yil]) planlamaData[yil] = {};
+        if(!planlamaData[yil][tip]) planlamaData[yil][tip] = {};
+        planlamaData[yil][tip][kategori] = (planlamaData[yil][tip][kategori] || 0) + planlanan;
+      });
+
+      // Gerçekleşen verilerini yükle
+      const gerceklesenSnap = await db.collection('muhasebe_gerceklesen').get();
+      gerceklesenData = {};
+      gerceklesenSnap.forEach(doc => {
+        const d = doc.data();
+        const yil = d.yil || 2024;
+        const ay = d.ay || 1;
+        const tip = (d.tip || 'gider').toLowerCase();
+        const kategori = d.kategori || 'Diğer';
+        const gerceklesen = +(d.gerceklesen || 0);
+        
+        if(!gerceklesenData[yil]) gerceklesenData[yil] = {};
+        if(!gerceklesenData[yil][ay]) gerceklesenData[yil][ay] = {};
+        if(!gerceklesenData[yil][ay][tip]) gerceklesenData[yil][ay][tip] = {};
+        gerceklesenData[yil][ay][tip][kategori] = (gerceklesenData[yil][ay][tip][kategori] || 0) + gerceklesen;
+      });
+
+      // Alt kategorileri yükle
+      const altKategoriSnap = await db.collection('muhasebe_alt_kategoriler').get();
+      altKategorilerData = {};
+      altKategoriSnap.forEach(doc => {
+        const d = doc.data();
+        const tip = (d.tip || 'gider').toLowerCase();
+        const kategori = d.kategori || '';
+        if(!altKategorilerData[tip]) altKategorilerData[tip] = {};
+        if(!altKategorilerData[tip][kategori]) altKategorilerData[tip][kategori] = [];
+        altKategorilerData[tip][kategori].push({
+          id: doc.id,
+          isim: d.isim || '',
+          aciklama: d.aciklama || '',
+          tutar: +(d.tutar || 0)
+        });
+      });
+
+      // Alt kategorileri sırala
+      Object.keys(altKategorilerData).forEach(tip => {
+        Object.keys(altKategorilerData[tip]).forEach(kategori => {
+          altKategorilerData[tip][kategori].sort((a, b) => 
+            (a.isim || '').localeCompare(b.isim || '', 'tr')
+          );
+        });
+      });
+
+      renderPrint();
+    }catch(e){
+      console.error('Veri yüklenirken hata:', e);
+      document.getElementById('printContent').innerHTML = '<div style="text-align:center; padding:60px; color:#dc2626">Veriler yüklenirken hata oluştu</div>';
+    }
+  }
+
+  // Kategori verilerini hesapla
+  function calculateKategoriData(kategoriAd, tip){
+    let gerceklesen2024 = 0;
+    if(gerceklesenData[2024]){
+      Object.keys(gerceklesenData[2024]).forEach(a => {
+        if(gerceklesenData[2024][a][tip] && gerceklesenData[2024][a][tip][kategoriAd]){
+          gerceklesen2024 += gerceklesenData[2024][a][tip][kategoriAd];
+        }
+      });
+    }
+
+    let gerceklesen2025 = 0;
+    if(gerceklesenData[2025]){
+      Object.keys(gerceklesenData[2025]).forEach(a => {
+        if(gerceklesenData[2025][a][tip] && gerceklesenData[2025][a][tip][kategoriAd]){
+          gerceklesen2025 += gerceklesenData[2025][a][tip][kategoriAd];
+        }
+      });
+    }
+
+    const artis = gerceklesen2025 - gerceklesen2024;
+    const artisYuzde = gerceklesen2024 > 0 
+      ? ((artis / gerceklesen2024) * 100).toFixed(1) 
+      : (gerceklesen2025 > 0 ? '100.0' : '0.0');
+
+    const planlanan2025 = planlamaData[2025] && planlamaData[2025][tip] && planlamaData[2025][tip][kategoriAd]
+      ? planlamaData[2025][tip][kategoriAd]
+      : 0;
+
+    const planlananGecmesiYuzde = planlanan2025 > 0
+      ? ((gerceklesen2025 / planlanan2025) * 100).toFixed(1)
+      : (gerceklesen2025 > 0 ? '∞' : '0.0');
+
+    return {
+      gerceklesen2024,
+      gerceklesen2025,
+      artis,
+      artisYuzde,
+      planlanan2025,
+      planlananGecmesiYuzde
+    };
+  }
+
+  // Toplamları hesapla
+  function calculateTotals(tip, kategoriler){
+    let total2024 = 0, total2025 = 0, totalPlanlanan = 0;
+    
+    kategoriler.forEach(kat => {
+      const data = calculateKategoriData(kat.ad, tip);
+      total2024 += data.gerceklesen2024;
+      total2025 += data.gerceklesen2025;
+      totalPlanlanan += data.planlanan2025;
+    });
+
+    const totalArtis = total2025 - total2024;
+    const totalArtisYuzde = total2024 > 0 
+      ? ((totalArtis / total2024) * 100).toFixed(1) 
+      : (total2025 > 0 ? '100.0' : '0.0');
+
+    const totalPlanlananGecmesi = totalPlanlanan > 0
+      ? ((total2025 / totalPlanlanan) * 100).toFixed(1)
+      : (total2025 > 0 ? '∞' : '0.0');
+
+    return { total2024, total2025, totalArtis, totalArtisYuzde, totalPlanlanan, totalPlanlananGecmesi };
+  }
+
+  // Yazdırma içeriğini render et
+  function renderPrint(){
+    const content = document.getElementById('printContent');
+
+    // KPI kartları - Toplamları hesapla
+    let gider2024 = 0, gider2025 = 0, gelir2024 = 0, gelir2025 = 0;
+
+    if(gerceklesenData[2024]){
+      Object.keys(gerceklesenData[2024]).forEach(a => {
+        if(gerceklesenData[2024][a].gider){
+          Object.values(gerceklesenData[2024][a].gider).forEach(v => gider2024 += v);
+        }
+        if(gerceklesenData[2024][a].gelir){
+          Object.values(gerceklesenData[2024][a].gelir).forEach(v => gelir2024 += v);
+        }
+      });
+    }
+
+    if(gerceklesenData[2025]){
+      Object.keys(gerceklesenData[2025]).forEach(a => {
+        if(gerceklesenData[2025][a].gider){
+          Object.values(gerceklesenData[2025][a].gider).forEach(v => gider2025 += v);
+        }
+        if(gerceklesenData[2025][a].gelir){
+          Object.values(gerceklesenData[2025][a].gelir).forEach(v => gelir2025 += v);
+        }
+      });
+    }
+
+    // Kategorileri yükle
+    const kategoriSet = new Set();
+    if(gerceklesenData[2024]){
+      Object.keys(gerceklesenData[2024]).forEach(a => {
+        Object.keys(gerceklesenData[2024][a]).forEach(tip => {
+          Object.keys(gerceklesenData[2024][a][tip] || {}).forEach(kat => {
+            kategoriSet.add(JSON.stringify({tip, kategori: kat}));
+          });
+        });
+      });
+    }
+    if(gerceklesenData[2025]){
+      Object.keys(gerceklesenData[2025]).forEach(a => {
+        Object.keys(gerceklesenData[2025][a]).forEach(tip => {
+          Object.keys(gerceklesenData[2025][a][tip] || {}).forEach(kat => {
+            kategoriSet.add(JSON.stringify({tip, kategori: kat}));
+          });
+        });
+      });
+    }
+
+    const allKategoriler = Array.from(kategoriSet).map(s => JSON.parse(s));
+    const giderKategoriler = allKategoriler.filter(k => k.tip === 'gider')
+      .map(k => ({ad: k.kategori, tip: 'gider'}))
+      .sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
+    const gelirKategoriler = allKategoriler.filter(k => k.tip === 'gelir')
+      .map(k => ({ad: k.kategori, tip: 'gelir'}))
+      .sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
+
+    let html = `
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">2024 Gider</div>
+          <div class="kpi-value">${fmt(gider2024)}</div>
+          <div class="kpi-sub">2024 Yılı Toplam Gider</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">2025 Gider</div>
+          <div class="kpi-value">${fmt(gider2025)}</div>
+          <div class="kpi-sub">2025 Yılı Toplam Gider</div>
+        </div>
+        <div class="kpi-card success">
+          <div class="kpi-label">2024 Gelir</div>
+          <div class="kpi-value">${fmt(gelir2024)}</div>
+          <div class="kpi-sub">2024 Yılı Toplam Gelir</div>
+        </div>
+        <div class="kpi-card success">
+          <div class="kpi-label">2025 Gelir</div>
+          <div class="kpi-value">${fmt(gelir2025)}</div>
+          <div class="kpi-sub">2025 Yılı Toplam Gelir</div>
+        </div>
+      </div>
+
+      <div class="report-description">
+        <h3>📋 Rapor Açıklaması</h3>
+        <p>
+          Bu rapor, 2024 ve 2025 yıllarına ait finansal verilerin detaylı analizini içermektedir. 
+          Rapor, gider ve gelir kalemlerinin yıllık karşılaştırmasını, artış/azalış oranlarını, 
+          planlanan bütçe hedeflerine göre gerçekleşme durumunu ve alt kategorilerin detaylı 
+          dağılımını sunmaktadır. Tüm veriler gerçekleşen tutarlar ve planlanan bütçe hedefleri 
+          baz alınarak hazırlanmıştır.
+        </p>
+        <p style="margin-top: 12px; margin-bottom: 0;">
+          <strong>Rapor Tarihi:</strong> ${new Date().toLocaleDateString('tr-TR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          })}
+        </p>
+      </div>
+
+      <div class="section page-break">
+        <div class="section-title">💸 Gider Kalemleri Analizi</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Kategori</th>
+              <th class="text-right">2024 Gerçekleşen</th>
+              <th class="text-right">2025 Gerçekleşen</th>
+              <th class="text-right">2024 > 2025 Artış (₺)</th>
+              <th class="text-right">Yüzde Artış</th>
+              <th class="text-right">2025 Planlanan</th>
+              <th class="text-right">Planlanan Geçmesi %</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    giderKategoriler.forEach(kat => {
+      const data = calculateKategoriData(kat.ad, 'gider');
+      const artisRenk = data.artis >= 0 ? '#dc2626' : '#16a34a';
+      const planlananGecmesiRenk = parseFloat(data.planlananGecmesiYuzde) > 100 ? '#dc2626' : '#16a34a';
+      
+      const altKategoriler = altKategorilerData['gider'] && altKategorilerData['gider'][kat.ad]
+        ? altKategorilerData['gider'][kat.ad]
+        : [];
+
+      html += `
+        <tr>
+          <td style="font-weight:500">${kat.ad}${altKategoriler.length > 0 ? ` <span style="color:#6b7280; font-size:11px">(${altKategoriler.length} alt kategori)</span>` : ''}</td>
+          <td class="text-right">${fmt(data.gerceklesen2024)}</td>
+          <td class="text-right">${fmt(data.gerceklesen2025)}</td>
+          <td class="text-right" style="color:${artisRenk}; font-weight:600">
+            ${data.artis >= 0 ? '+' : ''}${fmt(data.artis)}
+          </td>
+          <td class="text-right" style="color:${artisRenk}; font-weight:600">
+            ${data.artisYuzde}%
+          </td>
+          <td class="text-right">${fmt(data.planlanan2025)}</td>
+          <td class="text-right" style="color:${planlananGecmesiRenk}; font-weight:600">${data.planlananGecmesiYuzde}%</td>
+        </tr>
+      `;
+
+      // Alt kategorileri ekle
+      altKategoriler.forEach(alt => {
+        html += `
+          <tr class="alt-kategori-row">
+            <td style="padding-left:40px">
+              <div style="display:flex; align-items:flex-start; gap:8px">
+                <span style="color:#2563eb; flex-shrink:0; margin-top:2px">➔</span>
+                <div style="flex:1">
+                  <div style="font-weight:500; margin-bottom:4px">${alt.isim}</div>
+                  ${alt.aciklama ? `<div style="color:#6b7280; font-size:11px">${alt.aciklama}</div>` : ''}
+                </div>
+              </div>
+            </td>
+            <td class="text-right" style="color:#6b7280">-</td>
+            <td class="text-right" style="font-weight:600">${fmt(alt.tutar)}</td>
+            <td class="text-right" style="color:#6b7280">-</td>
+            <td class="text-right" style="color:#6b7280">-</td>
+            <td class="text-right" style="color:#6b7280">-</td>
+            <td class="text-right" style="color:#6b7280">-</td>
+          </tr>
+        `;
+      });
+    });
+
+    const giderTotals = calculateTotals('gider', giderKategoriler);
+    html += `
+      <tr class="total-row">
+        <td><strong>TOPLAM</strong></td>
+        <td class="text-right"><strong>${fmt(giderTotals.total2024)}</strong></td>
+        <td class="text-right"><strong>${fmt(giderTotals.total2025)}</strong></td>
+        <td class="text-right"><strong style="color:${giderTotals.totalArtis >= 0 ? '#dc2626' : '#16a34a'}">
+          ${giderTotals.totalArtis >= 0 ? '+' : ''}${fmt(giderTotals.totalArtis)}
+        </strong></td>
+        <td class="text-right"><strong style="color:${giderTotals.totalArtis >= 0 ? '#dc2626' : '#16a34a'}">
+          ${giderTotals.totalArtisYuzde}%
+        </strong></td>
+        <td class="text-right"><strong>${fmt(giderTotals.totalPlanlanan)}</strong></td>
+        <td class="text-right"><strong style="color:${parseFloat(giderTotals.totalPlanlananGecmesi) > 100 ? '#dc2626' : '#16a34a'}">
+          ${giderTotals.totalPlanlananGecmesi}%
+        </strong></td>
+      </tr>
+    </tbody></table></div>`;
+
+    // Gelir tablosu
+    html += `
+      <div class="section page-break">
+        <div class="section-title">💰 Gelir Kalemleri Analizi</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Kategori</th>
+              <th class="text-right">2024 Gerçekleşen</th>
+              <th class="text-right">2025 Gerçekleşen</th>
+              <th class="text-right">2024 > 2025 Artış (₺)</th>
+              <th class="text-right">Yüzde Artış</th>
+              <th class="text-right">2025 Planlanan</th>
+              <th class="text-right">Planlanan Geçmesi %</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    gelirKategoriler.forEach(kat => {
+      const data = calculateKategoriData(kat.ad, 'gelir');
+      const artisRenk = data.artis >= 0 ? '#16a34a' : '#dc2626';
+      const planlananGecmesiRenk = parseFloat(data.planlananGecmesiYuzde) > 100 ? '#16a34a' : '#dc2626';
+      
+      const altKategoriler = altKategorilerData['gelir'] && altKategorilerData['gelir'][kat.ad]
+        ? altKategorilerData['gelir'][kat.ad]
+        : [];
+
+      html += `
+        <tr>
+          <td style="font-weight:500">${kat.ad}${altKategoriler.length > 0 ? ` <span style="color:#6b7280; font-size:11px">(${altKategoriler.length} alt kategori)</span>` : ''}</td>
+          <td class="text-right">${fmt(data.gerceklesen2024)}</td>
+          <td class="text-right">${fmt(data.gerceklesen2025)}</td>
+          <td class="text-right" style="color:${artisRenk}; font-weight:600">
+            ${data.artis >= 0 ? '+' : ''}${fmt(data.artis)}
+          </td>
+          <td class="text-right" style="color:${artisRenk}; font-weight:600">
+            ${data.artisYuzde}%
+          </td>
+          <td class="text-right">${fmt(data.planlanan2025)}</td>
+          <td class="text-right" style="color:${planlananGecmesiRenk}; font-weight:600">${data.planlananGecmesiYuzde}%</td>
+        </tr>
+      `;
+
+      // Alt kategorileri ekle
+      altKategoriler.forEach(alt => {
+        html += `
+          <tr class="alt-kategori-row">
+            <td style="padding-left:40px">
+              <div style="display:flex; align-items:flex-start; gap:8px">
+                <span style="color:#2563eb; flex-shrink:0; margin-top:2px">➔</span>
+                <div style="flex:1">
+                  <div style="font-weight:500; margin-bottom:4px">${alt.isim}</div>
+                  ${alt.aciklama ? `<div style="color:#6b7280; font-size:11px">${alt.aciklama}</div>` : ''}
+                </div>
+              </div>
+            </td>
+            <td class="text-right" style="color:#6b7280">-</td>
+            <td class="text-right" style="font-weight:600">${fmt(alt.tutar)}</td>
+            <td class="text-right" style="color:#6b7280">-</td>
+            <td class="text-right" style="color:#6b7280">-</td>
+            <td class="text-right" style="color:#6b7280">-</td>
+            <td class="text-right" style="color:#6b7280">-</td>
+          </tr>
+        `;
+      });
+    });
+
+    const gelirTotals = calculateTotals('gelir', gelirKategoriler);
+    html += `
+      <tr class="total-row">
+        <td><strong>TOPLAM</strong></td>
+        <td class="text-right"><strong>${fmt(gelirTotals.total2024)}</strong></td>
+        <td class="text-right"><strong>${fmt(gelirTotals.total2025)}</strong></td>
+        <td class="text-right"><strong style="color:${gelirTotals.totalArtis >= 0 ? '#16a34a' : '#dc2626'}">
+          ${gelirTotals.totalArtis >= 0 ? '+' : ''}${fmt(gelirTotals.totalArtis)}
+        </strong></td>
+        <td class="text-right"><strong style="color:${gelirTotals.totalArtis >= 0 ? '#16a34a' : '#dc2626'}">
+          ${gelirTotals.totalArtisYuzde}%
+        </strong></td>
+        <td class="text-right"><strong>${fmt(gelirTotals.totalPlanlanan)}</strong></td>
+        <td class="text-right"><strong style="color:${parseFloat(gelirTotals.totalPlanlananGecmesi) > 100 ? '#16a34a' : '#dc2626'}">
+          ${gelirTotals.totalPlanlananGecmesi}%
+        </strong></td>
+      </tr>
+    </tbody></table></div>`;
+
+    content.innerHTML = html;
+  }
+
+  // Auth kontrolü
+  auth.onAuthStateChanged(async (user) => {
+    if(!user){
+      setTimeout(() => {
+        if(!auth.currentUser) window.location.replace('index.html');
+      }, 150);
+      return;
+    }
+
+    await loadData();
+  });
+</script>
+</body>
+</html>

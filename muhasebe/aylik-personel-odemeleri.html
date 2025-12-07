@@ -6,32 +6,28 @@
 <title>Personel Ödeme Takibi</title>
 <link rel="icon" type="image/png" href="../img/logo.png" />
 
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- html2pdf.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
 <style>
   :root{
     --appbar-h:56px;
-    --radius:14px; --shadow:0 12px 28px rgba(0,0,0,.14);
-    --bg:#0f172a; --bg2:#0b1324;
-    --grad1:#0ea5e922; --grad2:#22d3ee22;
-    --card:rgba(15,23,42,.92); --stroke:rgba(148,163,184,.18);
-    --text:#e5e7eb; --muted:#9aa4b2;
-    --brand:#38bdf8; --brand2:#0ea5e9;
-    --pill:#0b1220; --pill-hover:#101a2b; --surface:rgba(2,6,23,.08);
+    --radius:14px; --shadow:0 4px 12px rgba(0,0,0,.08);
+    --bg:#f8fafc; --bg2:#f1f5f9;
+    --grad1:#3b82f622; --grad2:#06b6d422;
+    --card:#ffffff; --stroke:#e2e8f0;
+    --text:#1e293b; --muted:#64748b;
+    --brand:#3b82f6; --brand2:#2563eb;
+    --pill:#f1f5f9; --pill-hover:#e2e8f0; --surface:#f8fafc;
     --danger:#ef4444; --success:#22c55e;
-  }
-  @media (prefers-color-scheme: light){
-    :root{
-      --bg:#eef6ff; --bg2:#f7fbff; --grad1:#38bdf822; --grad2:#22d3ee22;
-      --card:rgba(255,255,255,.96); --stroke:rgba(15,23,42,.12);
-      --text:#0b1220; --muted:#4b5563; --brand:#0ea5e9; --brand2:#0284c7;
-      --pill:#f5f8ff; --pill-hover:#e9f2ff; --surface:#eef3ff;
-      --danger:#b91c1c; --success:#16a34a;
-    }
   }
 
   *{box-sizing:border-box}
   html,body{height:100%}
   body{margin:0;padding:0;font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;background:var(--bg);color:var(--text)}
-  a{color:#c7e9ff; text-decoration:none}
+  a{color:var(--brand); text-decoration:none}
   a:hover{text-decoration:underline}
 
   /* APPBAR */
@@ -60,7 +56,7 @@
   .iconbtn{position:relative; border:1px solid var(--stroke); background:var(--card); color:var(--text); border-radius:999px; padding:8px 12px; cursor:pointer; display:flex; align-items:center; gap:8px}
   .badge{position:absolute; top:-6px; right:-6px; background:var(--danger); color:#fff; font-size:11px; padding:2px 6px; border-radius:999px; border:2px solid var(--card)}
   .drop-right{left:auto; right:0}
-  .avatar{width:22px;height:22px;border-radius:999px;background:linear-gradient(180deg,#94a3b8,#64748b)}
+  .avatar{width:22px;height:22px;border-radius:999px;background:linear-gradient(180deg,var(--brand),var(--brand2))}
   @media (max-width: 960px){ .nav-center{display:none} .hamb{display:inline-flex} }
 
   /* Drawer */
@@ -71,7 +67,7 @@
   .drawer a:hover{background:var(--pill-hover)}
 
   /* CONTENT */
-  .container{max-width:1200px; margin:0 auto; padding:16px}
+  .container{max-width:100%; margin:0 auto; padding:16px}
   .card{background:var(--card); border:1px solid var(--stroke); border-radius:14px; box-shadow:var(--shadow); padding:14px}
   .muted{color:var(--muted)}
 
@@ -101,22 +97,316 @@
     .ctrl.wide{grid-column:span 6}
   }
 
-  /* Tables */
-  .tablo-kart{background:var(--card); border:1px solid var(--stroke); border-radius:12px; box-shadow:var(--shadow); padding:10px 12px; overflow:auto}
-  table{width:100%; border-collapse:collapse; min-width:880px}
-  th,td{padding:10px 12px; text-align:center; border-bottom:1px solid var(--stroke); font-size:14px}
-  thead th{position:sticky; top:0; background:var(--pill); z-index:1}
-  tbody tr:hover{background:var(--surface)}
-  .chip{border-radius:999px; padding:4px 10px; font-weight:700; font-size:12px; display:inline-block}
-  .chip.ok{background:rgba(34,197,94,.16); color:var(--success); border:1px solid rgba(34,197,94,.28)}
-  .chip.no{background:rgba(239,68,68,.16); color:var(--danger); border:1px solid rgba(239,68,68,.28)}
+  /* Tables - Compact Single Screen Design */
+  .tablo-kart{
+    background:var(--card); 
+    border:1px solid var(--stroke); 
+    border-radius:12px; 
+    box-shadow:0 2px 8px rgba(0,0,0,.06); 
+    padding:16px; 
+    overflow:visible;
+    background:#fff;
+  }
+  
+  table{
+    width:100%; 
+    border-collapse:collapse; 
+    table-layout:fixed;
+    background:#fff;
+    font-size:13px;
+  }
+  
+  thead{
+    background:#f8fafc;
+    border-bottom:2px solid #e2e8f0;
+  }
+  
+  th{
+    padding:12px 8px; 
+    text-align:center; 
+    font-size:12px;
+    font-weight:700;
+    color:#475569;
+    white-space:nowrap;
+    background:#f8fafc;
+    border-bottom:2px solid #e2e8f0;
+    letter-spacing:0.3px;
+    text-transform:uppercase;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  
+  th:first-child{
+    text-align:left; 
+    padding-left:16px; 
+    width:160px;
+    text-transform:none;
+    font-size:13px;
+    font-weight:800;
+    color:#0f172a;
+  }
+  
+  /* Kategori sütunları - eşit genişlik */
+  th:not(:first-child):not(:last-child):not(:nth-last-child(2)){
+    width:calc((100% - 160px - 240px) / 11);
+    min-width:75px;
+    max-width:100px;
+  }
+  
+  /* Resmî Maaş sütunu */
+  th:nth-last-child(3){
+    width:110px;
+  }
+  
+  /* Toplam sütunu */
+  th:nth-last-child(2){
+    width:120px;
+  }
+  
+  /* Kalan sütunu */
+  th:last-child{
+    width:120px;
+  }
+  
+  td{
+    padding:12px 8px; 
+    text-align:center; 
+    font-size:13px;
+    color:#334155;
+    white-space:nowrap;
+    border-bottom:1px solid #f1f5f9;
+    background:#fff;
+    transition:background 0.15s ease;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  
+  td:first-child{
+    text-align:left; 
+    padding-left:16px; 
+    font-weight:600; 
+    color:#0f172a;
+    font-size:13px;
+    background:#fafbfc;
+    border-right:1px solid #f1f5f9;
+  }
+  
+  thead th{
+    cursor:pointer; 
+    user-select:none; 
+    transition:all .15s;
+  }
+  
+  thead th:hover{
+    background:#f1f5f9;
+    color:var(--brand);
+  }
+  
+  thead th.sortable::after{
+    content:' ↕'; 
+    opacity:.3; 
+    margin-left:6px; 
+    font-size:10px;
+  }
+  
+  thead th.sort-asc::after{
+    content:' ↑'; 
+    opacity:1; 
+    color:var(--brand); 
+    font-weight:900;
+    font-size:11px;
+  }
+  
+  thead th.sort-desc::after{
+    content:' ↓'; 
+    opacity:1; 
+    color:var(--brand); 
+    font-weight:900;
+    font-size:11px;
+  }
+  
+  tbody tr{
+    transition:background 0.15s ease;
+  }
+  
+  tbody tr:hover{
+    background:#f8fafc;
+  }
+  
+  tbody tr:hover td:first-child{
+    background:#f1f5f9;
+  }
+  
+  tbody tr:last-child td{
+    border-bottom:none;
+  }
+  
+  /* Chip Design - Readable */
+  .chip{
+    border-radius:5px; 
+    padding:5px 10px; 
+    font-weight:600; 
+    font-size:12px; 
+    display:inline-block; 
+    white-space:nowrap; 
+    text-align:center;
+    line-height:1.4;
+    min-width:65px;
+  }
+  
+  .chip.ok{
+    background:#dcfce7;
+    color:#166534;
+    border:1px solid #86efac;
+  }
+  
+  .chip.no{
+    background:#fee2e2;
+    color:#991b1b;
+    border:1px solid #fca5a5;
+  }
+  
+  td strong{
+    font-size:14px; 
+    font-weight:700;
+  }
+  
+  /* Toplam ve Kalan sütunları */
+  td:nth-last-child(2){
+    font-weight:700;
+    color:#2563eb;
+    font-size:13px;
+  }
+  
+  td:last-child{
+    font-weight:700;
+    font-size:13px;
+  }
+  
+  /* Empty cells */
+  td.muted{
+    opacity:0.4;
+    font-size:12px;
+  }
+
+  /* Mobile Card View */
+  .mobile-cards{display:none}
+  .mobile-summary-cards{display:none}
+  @media (max-width: 960px){
+    .tablo-kart table{display:none}
+    .mobile-cards{display:block}
+    .person-card{
+      background:var(--card); border:1px solid var(--stroke); border-radius:12px;
+      padding:14px; margin-bottom:12px; box-shadow:var(--shadow);
+    }
+    .person-card-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid var(--stroke)}
+    .person-card-header h3{margin:0; font-size:16px; color:var(--text)}
+    .person-card-row{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px}
+    .person-card-row:last-child{margin-bottom:0}
+    .person-card-label{font-size:12px; color:var(--muted); font-weight:600}
+    .person-card-value{font-size:14px; font-weight:700; color:var(--text)}
+    .person-card-total{background:var(--pill); padding:10px; border-radius:8px; margin-top:10px; text-align:center}
+    .person-card-total .person-card-label{font-size:14px; margin-bottom:4px}
+    .person-card-total .person-card-value{font-size:18px; color:var(--brand)}
+    
+    /* Summary mobile */
+    #ozetTable{display:none}
+    .mobile-summary-cards{display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:12px}
+    .summary-card{
+      background:var(--card); border:1px solid var(--stroke); border-radius:12px;
+      padding:12px; box-shadow:var(--shadow);
+    }
+    .summary-card-label{font-size:11px; color:var(--muted); font-weight:600; text-transform:capitalize; margin-bottom:6px}
+    .summary-card-value{font-size:16px; font-weight:700; color:var(--text); margin-bottom:4px}
+    .summary-card-kalan{font-size:13px; color:var(--brand); font-weight:600}
+    .summary-card-total{
+      grid-column:1/-1; background:var(--pill); padding:14px; border-radius:10px;
+      text-align:center; margin-top:8px;
+    }
+    .summary-card-total .summary-card-label{font-size:14px; margin-bottom:6px}
+    .summary-card-total .summary-card-value{font-size:20px; color:var(--brand)}
+  }
 
   /* Modals & Toast */
-  .modal{display:none; position:fixed; inset:0; background:rgba(2,6,23,.6); z-index:99; align-items:center; justify-content:center; padding:16px}
-  .modal-content{background:var(--card); border:1px solid var(--stroke); width:95%; max-width:640px; border-radius:16px; box-shadow:var(--shadow); padding:16px}
+  .modal{
+    display:none; 
+    position:fixed; 
+    inset:0; 
+    background:rgba(30,41,59,.6); 
+    backdrop-filter:blur(4px); 
+    z-index:99; 
+    align-items:center; 
+    justify-content:center; 
+    padding:16px;
+    overflow-y:auto;
+    overflow-x:hidden;
+  }
+  .modal-content{
+    background:var(--card); 
+    border:1px solid var(--stroke); 
+    width:95%; 
+    max-width:640px; 
+    max-height:90vh;
+    border-radius:16px; 
+    box-shadow:var(--shadow); 
+    padding:16px;
+    margin:auto;
+    position:relative;
+    overflow-y:auto;
+    overflow-x:hidden;
+  }
   .modal-content h3{margin:0 0 10px; text-align:center}
   .modal-content label{display:block; margin-top:8px; font-size:13px; color:var(--muted)}
   .modal-content input{width:100%; padding:10px 12px; border:1px solid var(--stroke); border-radius:10px; background:var(--pill); color:var(--text); margin-top:4px}
+  
+  /* Modal açıldığında body scroll'unu engelle */
+  body.modal-open{
+    overflow:hidden;
+    position:fixed;
+    width:100%;
+  }
+  
+  /* Ödeme modalı için özel stil - uzun içerik için */
+  #odemeModal .modal-content{
+    max-height:85vh;
+    display:flex;
+    flex-direction:column;
+  }
+  #odemeModal #odemeKategoriAlani{
+    max-height:400px;
+    overflow-y:auto;
+    overflow-x:hidden;
+    padding-right:4px;
+  }
+  #odemeModal #odemeTutarAlani{
+    max-height:300px;
+    overflow-y:auto;
+    overflow-x:hidden;
+  }
+  
+  /* Scrollbar stilleri */
+  .modal-content::-webkit-scrollbar,
+  #odemeModal #odemeKategoriAlani::-webkit-scrollbar,
+  #odemeModal #odemeTutarAlani::-webkit-scrollbar{
+    width:8px;
+  }
+  .modal-content::-webkit-scrollbar-track,
+  #odemeModal #odemeKategoriAlani::-webkit-scrollbar-track,
+  #odemeModal #odemeTutarAlani::-webkit-scrollbar-track{
+    background:var(--pill);
+    border-radius:4px;
+  }
+  .modal-content::-webkit-scrollbar-thumb,
+  #odemeModal #odemeKategoriAlani::-webkit-scrollbar-thumb,
+  #odemeModal #odemeTutarAlani::-webkit-scrollbar-thumb{
+    background:var(--muted);
+    border-radius:4px;
+  }
+  .modal-content::-webkit-scrollbar-thumb:hover,
+  #odemeModal #odemeKategoriAlani::-webkit-scrollbar-thumb:hover,
+  #odemeModal #odemeTutarAlani::-webkit-scrollbar-thumb:hover{
+    background:var(--text);
+  }
 
   /* Modal ve Bulk içindeki selectler: sade beyaz */
   .modal-content select{
@@ -136,7 +426,7 @@
 
   .modal-buttons{display:flex; justify-content:flex-end; gap:8px; margin-top:14px}
   .btn-danger{border:1px solid #ef444422; background:#ef4444; color:#fff; border-radius:10px; padding:8px 12px; cursor:pointer}
-  .toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:rgba(2,6,23,.95); color:#fff; border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:10px 12px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:200}
+  .toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:#1e293b; color:#fff; border:1px solid var(--stroke); border-radius:12px; padding:10px 12px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:200; box-shadow:var(--shadow)}
   .toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
 
   /* === Toplu toolbar: beyaz kart + pastel butonlar === */
@@ -174,6 +464,61 @@
   @media (max-width: 768px){
     .bulk-toolbar{ grid-template-columns:1fr; }
     .bulk-buttons{ justify-content:flex-start; }
+  }
+
+  /* Analiz Modal - Aylık Dağılım - Responsive Grid */
+  #analizAylikDagilim{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(80px, 1fr));
+    gap:8px;
+  }
+  
+  /* Minimum genişlik garantisi - her zaman en az 2 sütun */
+  @media (min-width: 1200px){
+    #analizAylikDagilim{
+      grid-template-columns:repeat(6,1fr);
+    }
+  }
+  
+  @media (min-width: 960px) and (max-width: 1199px){
+    #analizAylikDagilim{
+      grid-template-columns:repeat(4,1fr);
+    }
+  }
+  
+  @media (min-width: 640px) and (max-width: 959px){
+    #analizAylikDagilim{
+      grid-template-columns:repeat(3,1fr);
+    }
+  }
+  
+  @media (max-width: 639px){
+    #analizAylikDagilim{
+      grid-template-columns:repeat(2,1fr);
+    }
+  }
+
+  /* Analiz Modal - Mobil düzenlemeler */
+  @media (max-width: 640px){
+    #analizDataArea > div:first-child > div{
+      flex-direction:column;
+      align-items:flex-start !important;
+      gap:12px;
+    }
+    #analizDataArea > div:first-child > div > div:last-child{
+      text-align:left !important;
+    }
+    #analizTable{
+      font-size:12px;
+    }
+    #analizTable th,
+    #analizTable td{
+      padding:8px 4px;
+    }
+    /* Kategori detay özet kartları mobilde 2 sütun */
+    #kategoriDetayArea > div:first-child{
+      grid-template-columns:repeat(2,1fr) !important;
+    }
   }
 </style>
 
@@ -232,47 +577,40 @@
     </div>
   </section>
 
-  <section class="card header-card">
-    <div class="primary-actions">
-      <button class="cta" id="btnAdd">+ Personel Tahakkuk</button>
-      <button class="btn-ghost" id="btnCopy">⟳ Tahakkuk Kopyala</button>
+  <!-- SUMMARY - Moved here -->
+  <section class="card" style="margin:0 0 16px">
+    <h3 style="margin:0 0 6px; font-size:16px">Kategori Toplamları</h3>
+    <div class="muted" style="margin-bottom:12px; font-size:13px" id="ozetTarihBilgisi">—</div>
+    <div class="tablo-kart" style="padding:0">
+      <table id="ozetTable">
+        <thead>
+          <tr><th>Kategori</th><th>Toplam</th><th>Ödenen</th><th>Kalan</th></tr>
+        </thead>
+        <tbody id="ozetAlani"></tbody>
+        <tfoot>
+          <tr><td colspan="4" style="text-align:right;padding:12px 16px" id="ozetToplamSatir"></td></tr>
+        </tfoot>
+      </table>
     </div>
+    <div class="mobile-summary-cards" id="mobileSummaryCards"></div>
   </section>
 
-  <!-- FILTERS / BULK CARD -->
+  <!-- FILTERS - 2. sıra -->
   <section class="card filters-card">
     <div class="controls-grid">
       <div class="ctrl"><span>Ay</span><select id="aySec"></select></div>
       <div class="ctrl"><span>Yıl</span><select id="yilSec"></select></div>
-
       <div class="ctrl wide">🔎 <input id="searchInput" type="text" placeholder="İsim ara…"></div>
+    </div>
   </section>
 
-  <section class="card filters-card">
-    <!-- YENİ: 3’lü responsive toolbar -->
-    <div class="bulk-toolbar" role="group" aria-label="Toplu işlem">
-      <div class="bulk-select">
-        <span>Toplu Kategori</span>
-        <select id="bulkKategori">
-          <option value="hediye">Hediye</option>
-          <option value="kira">Kira</option>
-          <option value="cocuk">Çocuk</option>
-          <option value="ssk">SSK</option>
-          <option value="yol">Yol</option>
-          <option value="haberlesme">Haberleşme</option>
-          <option value="maas">Resmî Maaş</option>
-        </select>
-      </div>
-
-      <div class="bulk-buttons">
-        <button class="pill-btn ok" id="btnBulkOk">Toplu: Ödendi</button>
-        <button class="pill-btn no" id="btnBulkNo">Toplu: Ödenmedi</button>
-      </div>
-    </div>
-
-    </div>
-    <div class="muted" style="margin-top:8px;font-size:13px">
-      Hücre renkleri: <span class="chip ok">Ödendi</span> / <span class="chip no">Ödenmedi</span>   • Toplu işaretleme, arama filtresi + seçili ay/yıl kapsamındadır.
+  <section class="card header-card">
+    <div class="primary-actions">
+      <button class="cta" id="btnAdd">+ Personel Tahakkuk</button>
+      <button class="btn-ghost" id="btnCopy">⟳ Tahakkuk Kopyala</button>
+      <button class="btn-ghost" id="btnBulkManage">⚙️ Toplu Yönetim</button>
+      <button class="btn-ghost" id="btnPersonelManage">👤 Personel Yönetim</button>
+      <button class="btn-ghost" id="btnAnaliz">📊 Analiz</button>
     </div>
   </section>
 
@@ -281,29 +619,24 @@
     <table>
       <thead>
         <tr>
-          <th style="text-align:left">Ad</th>
-          <th>Hediye</th><th>Kira</th><th>Çocuk</th><th>SSK</th><th>Yol</th><th>Haberleşme</th>
-          <th>Resmî Maaş</th><th>Toplam</th>
+          <th class="sortable" data-sort="ad" style="text-align:left">Ad</th>
+          <th class="sortable" data-sort="hediye">Hediye</th>
+          <th class="sortable" data-sort="kira">Kira</th>
+          <th class="sortable" data-sort="cocuk">Çocuk</th>
+          <th class="sortable" data-sort="yol">Yol</th>
+          <th class="sortable" data-sort="haberlesme">Haberleşme</th>
+          <th class="sortable" data-sort="ikramiye">İkramiye</th>
+          <th class="sortable" data-sort="yakacak">Yakacak</th>
+          <th class="sortable" data-sort="elbise">Elbise</th>
+          <th class="sortable" data-sort="ssk">SSK</th>
+          <th class="sortable" data-sort="maas">Resmî Maaş</th>
+          <th class="sortable" data-sort="toplam">Toplam</th>
+          <th class="sortable" data-sort="kalan">Kalan</th>
         </tr>
       </thead>
       <tbody id="listeAlani"></tbody>
     </table>
-  </section>
-
-  <!-- SUMMARY -->
-  <section class="card" style="margin:16px 0 8px">
-    <h3>Kategori Toplamları</h3>
-    <div class="tablo-kart" style="padding:0">
-      <table>
-        <thead>
-          <tr><th>Kategori</th><th>Toplam</th><th>Ödenen</th><th>Kalan</th></tr>
-        </thead>
-        <tbody id="ozetAlani"></tbody>
-        <tfoot>
-          <tr><td colspan="4" style="text-align:right;padding:12px 16px">Kalan Toplam: <span id="kalanToplamGoster">0 ₺</span></td></tr>
-        </tfoot>
-      </table>
-    </div>
+    <div class="mobile-cards" id="mobileCards"></div>
   </section>
 
   <div style="height:120px"></div>
@@ -322,9 +655,12 @@
       <div><label>Hediye</label><input id="hediyeInput" type="number" value="0" min="0" step="0.01"></div>
       <div><label>Kira</label><input id="kiraInput" type="number" value="0" min="0" step="0.01"></div>
       <div><label>Çocuk</label><input id="cocukInput" type="number" value="0" min="0" step="0.01"></div>
-      <div><label>SSK</label><input id="sskInput" type="number" value="0" min="0" step="0.01"></div>
       <div><label>Yol</label><input id="yolInput" type="number" value="0" min="0" step="0.01"></div>
       <div><label>Haberleşme</label><input id="haberInput" type="number" value="0" min="0" step="0.01"></div>
+      <div><label>İkramiye</label><input id="ikramiyeInput" type="number" value="0" min="0" step="0.01"></div>
+      <div><label>Yakacak</label><input id="yakacakInput" type="number" value="0" min="0" step="0.01"></div>
+      <div><label>Elbise</label><input id="elbiseInput" type="number" value="0" min="0" step="0.01"></div>
+      <div><label>SSK</label><input id="sskInput" type="number" value="0" min="0" step="0.01"></div>
     </div>
     <div class="modal-buttons">
       <button class="btn-ghost" onclick="closeModals()">İptal</button>
@@ -336,11 +672,31 @@
 <div class="modal" id="odemeModal">
   <div class="modal-content">
     <h3 id="odemeModalBaslik">Ödeme Durumu</h3>
+    <div id="odemeUyariAlani" style="display:none; margin-bottom:12px; padding:10px; background:#fef3c7; border:1px solid #fbbf24; border-radius:8px; color:#92400e; font-size:13px"></div>
     <div id="odemeKategoriAlani"></div>
+    <div id="odemeTutarAlani" style="display:none; margin-top:16px; padding-top:16px; border-top:1px solid var(--stroke)">
+      <h4 style="margin:0 0 12px; font-size:14px; color:var(--muted)">Tutar Düzenleme</h4>
+      <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px">
+        <div><label>Hediye</label><input id="edit_hediye" type="number" value="0" min="0" step="0.01" style="width:100%; padding:8px 12px; border:1px solid var(--stroke); border-radius:8px; background:var(--pill); color:var(--text)"></div>
+        <div><label>Kira</label><input id="edit_kira" type="number" value="0" min="0" step="0.01" style="width:100%; padding:8px 12px; border:1px solid var(--stroke); border-radius:8px; background:var(--pill); color:var(--text)"></div>
+        <div><label>Çocuk</label><input id="edit_cocuk" type="number" value="0" min="0" step="0.01" style="width:100%; padding:8px 12px; border:1px solid var(--stroke); border-radius:8px; background:var(--pill); color:var(--text)"></div>
+        <div><label>Yol</label><input id="edit_yol" type="number" value="0" min="0" step="0.01" style="width:100%; padding:8px 12px; border:1px solid var(--stroke); border-radius:8px; background:var(--pill); color:var(--text)"></div>
+        <div><label>Haberleşme</label><input id="edit_haberlesme" type="number" value="0" min="0" step="0.01" style="width:100%; padding:8px 12px; border:1px solid var(--stroke); border-radius:8px; background:var(--pill); color:var(--text)"></div>
+        <div><label>İkramiye</label><input id="edit_ikramiye" type="number" value="0" min="0" step="0.01" style="width:100%; padding:8px 12px; border:1px solid var(--stroke); border-radius:8px; background:var(--pill); color:var(--text)"></div>
+        <div><label>Yakacak</label><input id="edit_yakacak" type="number" value="0" min="0" step="0.01" style="width:100%; padding:8px 12px; border:1px solid var(--stroke); border-radius:8px; background:var(--pill); color:var(--text)"></div>
+        <div><label>Elbise</label><input id="edit_elbise" type="number" value="0" min="0" step="0.01" style="width:100%; padding:8px 12px; border:1px solid var(--stroke); border-radius:8px; background:var(--pill); color:var(--text)"></div>
+        <div><label>SSK</label><input id="edit_ssk" type="number" value="0" min="0" step="0.01" style="width:100%; padding:8px 12px; border:1px solid var(--stroke); border-radius:8px; background:var(--pill); color:var(--text)"></div>
+      </div>
+      <div style="margin-top:12px; padding:10px; background:var(--pill); border-radius:8px; text-align:center">
+        <div style="font-size:12px; color:var(--muted); margin-bottom:4px">Yeni Toplam</div>
+        <div id="editToplamGoster" style="font-size:18px; font-weight:700; color:var(--brand)">0 ₺</div>
+      </div>
+    </div>
     <div class="modal-buttons">
       <button class="btn-ghost" onclick="closeModals()">Kapat</button>
-      <button class="btn-danger" onclick="silVeri()">Sil</button>
-      <button class="cta" onclick="kaydetOdeme()">Kaydet</button>
+      <button class="btn-ghost" id="btnEditTutarlar" onclick="toggleEditMode()" style="display:none">Düzenle</button>
+      <button class="btn-danger" id="btnSilVeri" onclick="silVeri()" style="display:none">Sil</button>
+      <button class="cta" id="btnKaydetOdeme" onclick="kaydetOdeme()" style="display:none">Kaydet</button>
     </div>
   </div>
 </div>
@@ -371,23 +727,233 @@
   </div>
 </div>
 
+<div class="modal" id="bulkModal">
+  <div class="modal-content">
+    <h3>Toplu Kategori Yönetimi</h3>
+    <label>Kategori Seçin</label>
+    <select id="bulkKategoriModal">
+      <option value="hediye">Hediye</option>
+      <option value="kira">Kira</option>
+      <option value="cocuk">Çocuk</option>
+      <option value="yol">Yol</option>
+      <option value="haberlesme">Haberleşme</option>
+      <option value="ikramiye">İkramiye</option>
+      <option value="yakacak">Yakacak</option>
+      <option value="elbise">Elbise</option>
+      <option value="ssk">SSK</option>
+      <option value="maas">Resmî Maaş</option>
+    </select>
+    <div class="muted" style="margin-top:12px; padding:10px; background:var(--pill); border-radius:8px; font-size:13px">
+      <strong>Bilgi:</strong> Seçili ay/yıl ve arama filtresi kapsamındaki tüm personeller için işlem yapılacaktır.
+    </div>
+    <div class="modal-buttons" style="margin-top:16px">
+      <button class="btn-ghost" onclick="closeModals()">İptal</button>
+      <button class="pill-btn ok" id="btnBulkOkModal" style="padding:10px 16px">Toplu: Ödendi</button>
+      <button class="pill-btn no" id="btnBulkNoModal" style="padding:10px 16px">Toplu: Ödenmedi</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="personelManageModal">
+  <div class="modal-content" style="max-width:900px; max-height:90vh; overflow-y:auto">
+    <h3 style="margin-bottom:20px">👤 Personel Yönetim</h3>
+    
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px">
+      <div>
+        <label style="display:block; margin-bottom:6px; font-weight:600; color:var(--text)">Personel Seçin</label>
+        <select id="personelSelect" style="width:100%; padding:10px 12px; border:1px solid var(--stroke); border-radius:10px; background:var(--pill); color:var(--text); font-weight:600; font-size:14px">
+          <option value="">Yükleniyor...</option>
+        </select>
+      </div>
+      <div>
+        <label style="display:block; margin-bottom:6px; font-weight:600; color:var(--text)">Yıl Seçin</label>
+        <select id="personelYilSelect" style="width:100%; padding:10px 12px; border:1px solid var(--stroke); border-radius:10px; background:var(--pill); color:var(--text); font-weight:600; font-size:14px">
+          <option value="">Yıl seçin</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="personelDataArea" style="display:none">
+      <div style="background:linear-gradient(135deg, var(--brand)15, var(--brand2)15); border:1px solid var(--stroke); border-radius:12px; padding:16px; margin-bottom:16px">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
+          <div>
+            <h4 id="personelAdGoster" style="margin:0; font-size:18px; color:var(--text)">—</h4>
+            <div class="muted" id="personelYilGoster" style="font-size:13px; margin-top:4px">—</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:12px; color:var(--muted); margin-bottom:4px">Yıllık Toplam</div>
+            <div id="yillikToplamGoster" style="font-size:24px; font-weight:700; color:var(--brand)">0 ₺</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="personelAylarListesi" style="display:grid; gap:12px"></div>
+    </div>
+
+    <div id="personelEmptyState" style="text-align:center; padding:40px; color:var(--muted)">
+      <div style="font-size:48px; margin-bottom:12px">📋</div>
+      <div style="font-size:16px; font-weight:600">Personel ve yıl seçin</div>
+      <div style="font-size:13px; margin-top:6px">Seçim yaptığınızda veriler burada görünecek</div>
+    </div>
+
+    <div class="modal-buttons" style="margin-top:20px; border-top:1px solid var(--stroke); padding-top:16px">
+      <button class="btn-ghost" onclick="closeModals()">Kapat</button>
+      <button class="cta" id="btnPersonelKaydet" style="display:none" onclick="kaydetPersonelYonetim()">Tüm Değişiklikleri Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="analizModal">
+  <div class="modal-content" style="max-width:1000px; max-height:90vh; overflow-y:auto">
+    <h3 style="margin-bottom:20px">📊 Personel Ödeme Analizi</h3>
+    
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px">
+      <div>
+        <label style="display:block; margin-bottom:6px; font-weight:600; color:var(--text)">Personel Seçimi</label>
+        <select id="analizPersonelSelect" style="width:100%; padding:10px 12px; border:1px solid var(--stroke); border-radius:10px; background:var(--pill); color:var(--text); font-weight:600; font-size:14px">
+          <option value="tum">Tüm Personeller</option>
+        </select>
+      </div>
+      <div>
+        <label style="display:block; margin-bottom:6px; font-weight:600; color:var(--text)">Yıl Seçin</label>
+        <select id="analizYilSelect" style="width:100%; padding:10px 12px; border:1px solid var(--stroke); border-radius:10px; background:var(--pill); color:var(--text); font-weight:600; font-size:14px">
+          <option value="">Yıl seçin</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="analizDataArea" style="display:none">
+      <div style="background:linear-gradient(135deg, var(--brand)15, var(--brand2)15); border:1px solid var(--stroke); border-radius:12px; padding:16px; margin-bottom:16px">
+        <div style="display:flex; justify-content:space-between; align-items:center">
+          <div>
+            <h4 id="analizBaslikGoster" style="margin:0; font-size:18px; color:var(--text)">—</h4>
+            <div class="muted" id="analizYilGoster" style="font-size:13px; margin-top:4px">—</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:12px; color:var(--muted); margin-bottom:4px">Yıllık Toplam</div>
+            <div id="analizYillikToplamGoster" style="font-size:24px; font-weight:700; color:var(--brand)">0 ₺</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tablo-kart" style="padding:0">
+        <table id="analizTable">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding-left:16px">Kategori</th>
+              <th>Toplam</th>
+              <th>Ödenen</th>
+              <th>Kalan</th>
+            </tr>
+          </thead>
+          <tbody id="analizTableBody"></tbody>
+          <tfoot>
+            <tr style="background:var(--pill)">
+              <td style="text-align:right; padding:12px 16px; font-weight:700" colspan="4" id="analizToplamSatir"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div style="margin-top:16px; padding:16px; background:var(--pill); border-radius:12px">
+        <h4 style="margin:0 0 12px; font-size:16px">Aylık Dağılım</h4>
+        <div id="analizAylikDagilim"></div>
+      </div>
+
+      <!-- Kategori Detay Analizi -->
+      <div style="margin-top:20px; padding:16px; background:var(--card); border:1px solid var(--stroke); border-radius:12px">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px">
+          <h4 style="margin:0; font-size:16px">Kategori Detay Analizi</h4>
+          <select id="analizKategoriSelect" style="padding:8px 12px; border:1px solid var(--stroke); border-radius:8px; background:var(--pill); color:var(--text); font-weight:600; font-size:14px; min-width:150px">
+            <option value="">Kategori seçin</option>
+            <option value="tum">Tüm Kategoriler</option>
+            <option value="hediye">Hediye</option>
+            <option value="kira">Kira</option>
+            <option value="cocuk">Çocuk</option>
+            <option value="yol">Yol</option>
+            <option value="haberlesme">Haberleşme</option>
+            <option value="ikramiye">İkramiye</option>
+            <option value="yakacak">Yakacak</option>
+            <option value="elbise">Elbise</option>
+            <option value="ssk">SSK</option>
+          </select>
+        </div>
+
+        <div id="kategoriDetayArea" style="display:none">
+          <!-- Tek Kategori İçin -->
+          <div id="tekKategoriDetay">
+            <!-- Özet Kartlar -->
+            <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px">
+              <div style="background:linear-gradient(135deg, var(--brand)15, var(--brand2)15); border:1px solid var(--stroke); border-radius:10px; padding:12px">
+                <div style="font-size:11px; color:var(--muted); font-weight:600; margin-bottom:6px">Toplam</div>
+                <div id="kategoriToplam" style="font-size:20px; font-weight:700; color:var(--text)">0 ₺</div>
+              </div>
+              <div style="background:#dcfce7; border:1px solid #86efac; border-radius:10px; padding:12px">
+                <div style="font-size:11px; color:#166534; font-weight:600; margin-bottom:6px">Ödenen</div>
+                <div id="kategoriOdenen" style="font-size:20px; font-weight:700; color:#166534">0 ₺</div>
+              </div>
+              <div style="background:#fee2e2; border:1px solid #fca5a5; border-radius:10px; padding:12px">
+                <div style="font-size:11px; color:#991b1b; font-weight:600; margin-bottom:6px">Kalan</div>
+                <div id="kategoriKalan" style="font-size:20px; font-weight:700; color:#991b1b">0 ₺</div>
+              </div>
+              <div style="background:var(--pill); border:1px solid var(--stroke); border-radius:10px; padding:12px">
+                <div style="font-size:11px; color:var(--muted); font-weight:600; margin-bottom:6px">Ödeme %</div>
+                <div id="kategoriYuzde" style="font-size:20px; font-weight:700; color:var(--brand)">0%</div>
+              </div>
+            </div>
+
+            <!-- Grafik -->
+            <div style="margin-bottom:20px">
+              <canvas id="kategoriChart" style="max-height:300px"></canvas>
+            </div>
+
+            <!-- Aylık Detay Tablosu -->
+            <div class="tablo-kart" style="padding:0">
+              <table id="kategoriDetayTable">
+                <thead>
+                  <tr>
+                    <th style="text-align:left; padding-left:16px">Ay</th>
+                    <th>Toplam</th>
+                    <th>Ödenen</th>
+                    <th>Kalan</th>
+                    <th>Durum</th>
+                  </tr>
+                </thead>
+                <tbody id="kategoriDetayTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+          
+          <!-- Tüm Kategoriler İçin -->
+          <div id="tumKategorilerDetay" style="display:none"></div>
+        </div>
+
+        <div id="kategoriDetayEmpty" style="text-align:center; padding:40px; color:var(--muted); display:block">
+          <div style="font-size:48px; margin-bottom:12px">📈</div>
+          <div style="font-size:14px; font-weight:600">Kategori seçin</div>
+          <div style="font-size:12px; margin-top:6px">Detaylı analiz için bir kategori seçin</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="analizEmptyState" style="text-align:center; padding:40px; color:var(--muted)">
+      <div style="font-size:48px; margin-bottom:12px">📊</div>
+      <div style="font-size:16px; font-weight:600">Yıl seçin</div>
+      <div style="font-size:13px; margin-top:6px">Analiz için bir yıl seçin</div>
+    </div>
+
+    <div class="modal-buttons" style="margin-top:20px; border-top:1px solid var(--stroke); padding-top:16px">
+      <button class="btn-ghost" onclick="closeModals()">Kapat</button>
+      <button class="cta" id="btnAnalizPDF" onclick="exportAnalizPDF()" style="display:none">📄 PDF İndir</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
-  /* Tema + Tarih */
+  /* Tarih */
   (function(){
-    const root=document.documentElement, saved=localStorage.getItem('kf_theme')||'auto';
-    function apply(mode){
-      localStorage.setItem('kf_theme',mode);
-      const sysDark=()=>window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const eff=(mode==='auto')?(sysDark()?'dark':'light'):mode;
-      root.setAttribute('data-theme',eff);
-    }
-    apply(saved);
-    if(window.matchMedia){
-      const m=window.matchMedia('(prefers-color-scheme: dark)');
-      m.addEventListener?.('change',()=>{ if((localStorage.getItem('kf_theme')||'auto')==='auto') apply('auto'); });
-    }
     const d=new Date(); const days=['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
     document.getElementById('todayText').textContent=`${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()} • ${days[d.getDay()]}`;
   })();
@@ -395,12 +961,53 @@
   /* Firebase & helpers */
   const db=firebase.firestore(), auth=firebase.auth();
   const monthsTR=["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
+  const KATEGORILER = ["hediye","kira","cocuk","yol","haberlesme","ikramiye","yakacak","elbise","ssk"]; // Sıralı kategori listesi
   const fmt=(n)=> (Number(n||0)).toLocaleString("tr-TR",{minimumFractionDigits:2, maximumFractionDigits:2}) + " ₺";
   const norm = (s) => String(s||'')
   .normalize('NFD').replace(/[\u0300-\u036f]/g,'') // diakritik temizle
   .toLowerCase().trim();
   function toast(msg){const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(window.__to); window.__to=setTimeout(()=>t.classList.remove('show'),2500);}
-  function closeModals(){['ekleModal','odemeModal','copyModal'].forEach(id=>{const el=document.getElementById(id); if(el) el.style.display='none';});}
+  function closeModals(){
+    ['ekleModal','odemeModal','copyModal','bulkModal','personelManageModal','analizModal'].forEach(id=>{
+      const el=document.getElementById(id); 
+      if(el) el.style.display='none';
+    });
+    // Body scroll'unu geri aç
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.width = '';
+  }
+  
+  function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if(modal) {
+      modal.style.display = 'flex';
+      // Body scroll'unu engelle
+      document.body.classList.add('modal-open');
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+      
+      // ESC tuşu ile kapatma
+      const escHandler = (e) => {
+        if(e.key === 'Escape') {
+          closeModals();
+          document.removeEventListener('keydown', escHandler);
+        }
+      };
+      document.addEventListener('keydown', escHandler);
+      
+      // Modal dışına tıklayınca kapatma
+      const clickHandler = (e) => {
+        if(e.target === modal) {
+          closeModals();
+          modal.removeEventListener('click', clickHandler);
+        }
+      };
+      modal.addEventListener('click', clickHandler);
+    }
+  }
 
   function normalizeUrl(u){
   if(!u) return '#';
@@ -507,15 +1114,18 @@ document.getElementById('btnLogout')?.addEventListener('click', async (e) => {
   })();
 
   /* ===== Sayfa verileri ===== */
-  let CACHE_ROWS = [];   // Seçili Ay/Yıl’ın tamamı (tek sorgu)
+  let CACHE_ROWS = [];   // Seçili Ay/Yıl'ın tamamı (tek sorgu)
   let LAST_ROWS  = [];   // Arama filtresi sonrası ekranda görünen
+  let SORT_COL = null;   // Aktif sıralama kolonu
+  let SORT_DIR = 'asc';  // Sıralama yönü: 'asc' veya 'desc'
+  let IS_ADMIN = false;  // Yetkili kullanıcı kontrolü
 
   const aktifKoleksiyon="personel_odeme";
   const aySec=document.getElementById("aySec"), yilSec=document.getElementById("yilSec");
   const searchInput=document.getElementById("searchInput");
-  const bulkKategori=document.getElementById("bulkKategori");
-  const btnBulkOk=document.getElementById("btnBulkOk"), btnBulkNo=document.getElementById("btnBulkNo");
   const btnAdd=document.getElementById("btnAdd"), btnCopy=document.getElementById("btnCopy");
+  const btnBulkManage=document.getElementById("btnBulkManage");
+  const btnBulkOkModal=document.getElementById("btnBulkOkModal"), btnBulkNoModal=document.getElementById("btnBulkNoModal");
 
   // Select doldurma
   (function(){
@@ -542,9 +1152,25 @@ document.getElementById('btnLogout')?.addEventListener('click', async (e) => {
   srcAy.addEventListener('change', loadCopyPreview);
   srcYil.addEventListener('change', loadCopyPreview);
 
-  // Modallar
-  btnAdd.onclick=()=> document.getElementById("ekleModal").style.display="flex";
-  btnCopy.onclick=async ()=>{ await loadCopyPreview(); document.getElementById("copyModal").style.display="flex"; };
+  // Modallar - Yetki kontrolü ile
+  btnAdd.onclick=()=> {
+    if(!IS_ADMIN) { toast('Bu işlem için yetkiniz yok.'); return; }
+    openModal("ekleModal");
+  };
+  btnCopy.onclick=async ()=> {
+    if(!IS_ADMIN) { toast('Bu işlem için yetkiniz yok.'); return; }
+    await loadCopyPreview(); 
+    openModal("copyModal"); 
+  };
+  btnBulkManage.onclick=()=> {
+    if(!IS_ADMIN) { toast('Bu işlem için yetkiniz yok.'); return; }
+    openModal("bulkModal"); 
+  };
+  document.getElementById("btnPersonelManage").onclick=async ()=> {
+    if(!IS_ADMIN) { toast('Bu işlem için yetkiniz yok.'); return; }
+    await openPersonelManageModal(); 
+  };
+  document.getElementById("btnAnaliz").onclick=async ()=>{ await openAnalizModal(); };
 
   async function loadCopyPreview(){
     const sa=Number(srcAy.value), sy=Number(srcYil.value);
@@ -553,7 +1179,7 @@ document.getElementById('btnLogout')?.addEventListener('click', async (e) => {
     if(snap.empty){ body.innerHTML='<tr><td colspan="3" class="muted" style="text-align:center;padding:12px">Kayıt yok</td></tr>'; return; }
     snap.forEach(doc=>{
       const d=doc.data()||{};
-      const odSay=["hediye","kira","cocuk","ssk","yol","haberlesme"].reduce((c,k)=> c + (d.odemeler?.[k]?1:0), 0);
+      const odSay=KATEGORILER.reduce((c,k)=> c + (d.odemeler?.[k]?1:0), 0);
       const tr=document.createElement('tr');
       tr.innerHTML=`<td style="text-align:left">${d.ad||'-'}</td><td>${fmt(d.toplam||0)}</td><td>${odSay}</td>`;
       body.appendChild(tr);
@@ -588,18 +1214,15 @@ document.getElementById('btnLogout')?.addEventListener('click', async (e) => {
           hediye: false,
           kira: false,
           cocuk: false,
-          ssk: false,
           yol: false,
-          haberlesme: false
+          haberlesme: false,
+          ikramiye: false,
+          yakacak: false,
+          elbise: false,
+          ssk: false
         },
         maas: "ödenmedi",
-        toplam:
-          (+(d.hediye || 0)) +
-          (+(d.kira || 0)) +
-          (+(d.cocuk || 0)) +
-          (+(d.ssk || 0)) +
-          (+(d.yol || 0)) +
-          (+(d.haberlesme || 0)),
+        toplam: KATEGORILER.reduce((sum, k) => sum + (+(d[k] || 0)), 0),
         tarih: new Date()
       };    
       if(existingByName.has(key)){
@@ -617,15 +1240,22 @@ document.getElementById('btnLogout')?.addEventListener('click', async (e) => {
   async function kaydetEkle(){
     const veri={
       ad:(document.getElementById("adInput").value||"").trim(),
-      ay:+document.getElementById("ayInput").value, yil:+document.getElementById("yilInput").value,
-      hediye:+document.getElementById("hediyeInput").value||0, kira:+document.getElementById("kiraInput").value||0,
-      cocuk:+document.getElementById("cocukInput").value||0, ssk:+document.getElementById("sskInput").value||0,
-      yol:+document.getElementById("yolInput").value||0, haberlesme:+document.getElementById("haberInput").value||0,
+      ay:+document.getElementById("ayInput").value, 
+      yil:+document.getElementById("yilInput").value,
+      hediye:+document.getElementById("hediyeInput").value||0, 
+      kira:+document.getElementById("kiraInput").value||0,
+      cocuk:+document.getElementById("cocukInput").value||0, 
+      yol:+document.getElementById("yolInput").value||0,
+      haberlesme:+document.getElementById("haberInput").value||0, 
+      ikramiye:+document.getElementById("ikramiyeInput").value||0,
+      yakacak:+document.getElementById("yakacakInput").value||0, 
+      elbise:+document.getElementById("elbiseInput").value||0,
+      ssk:+document.getElementById("sskInput").value||0,
       maas:"ödenmedi",
-      odemeler:{hediye:false,kira:false,cocuk:false,ssk:false,yol:false,haberlesme:false},
+      odemeler:{hediye:false,kira:false,cocuk:false,yol:false,haberlesme:false,ikramiye:false,yakacak:false,elbise:false,ssk:false},
       tarih:new Date()
     };
-    veri.toplam = veri.hediye+veri.kira+veri.cocuk+veri.ssk+veri.yol+veri.haberlesme;
+    veri.toplam = KATEGORILER.reduce((sum, k) => sum + (veri[k] || 0), 0);
     if(!veri.ad){ toast("Ad Soyad boş olamaz."); return; }
     try{ await db.collection(aktifKoleksiyon).add(veri); closeModals(); toast("Tahakkuk oluşturuldu."); listele(); }
     catch(e){ console.error(e); toast("Kayıt başarısız."); }
@@ -637,43 +1267,124 @@ document.getElementById('btnLogout')?.addEventListener('click', async (e) => {
 function applySearch() {
   const q = norm(searchInput.value);
   LAST_ROWS = CACHE_ROWS.filter(d => !q || norm(d.ad||'').includes(q));
+  applySort();
+}
+
+function applySort() {
+  if(!SORT_COL) return;
+  LAST_ROWS.sort((a, b) => {
+    let valA, valB;
+    if(SORT_COL === 'ad') {
+      valA = (a.ad || '').toLowerCase();
+      valB = (b.ad || '').toLowerCase();
+    } else if(SORT_COL === 'maas') {
+      valA = a.maas === 'ödendi' ? 1 : 0;
+      valB = b.maas === 'ödendi' ? 1 : 0;
+    } else if(SORT_COL === 'kalan') {
+      // Kalan hesapla
+      const calcKalan = (d) => {
+        let kalan = 0;
+        KATEGORILER.forEach(k => {
+          const tutar = +(d[k] || 0);
+          if(tutar > 0 && !d.odemeler?.[k]) kalan += tutar;
+        });
+        return kalan;
+      };
+      valA = calcKalan(a);
+      valB = calcKalan(b);
+    } else {
+      valA = +(a[SORT_COL] || 0);
+      valB = +(b[SORT_COL] || 0);
+    }
+    if(valA < valB) return SORT_DIR === 'asc' ? -1 : 1;
+    if(valA > valB) return SORT_DIR === 'asc' ? 1 : -1;
+    return 0;
+  });
 }
 
 function renderTableAndSummary(rows) {
   const tbody = document.getElementById("listeAlani");
+  const mobileCards = document.getElementById("mobileCards");
   tbody.innerHTML = "";
+  mobileCards.innerHTML = "";
 
-  let ozet = {
-    hediye:{toplam:0,odenen:0},
-    kira:{toplam:0,odenen:0},
-    cocuk:{toplam:0,odenen:0},
-    ssk:{toplam:0,odenen:0},
-    yol:{toplam:0,odenen:0},
-    haberlesme:{toplam:0,odenen:0}
-  };
+  let ozet = {};
+  KATEGORILER.forEach(k => { ozet[k] = {toplam:0,odenen:0}; });
   let genelKalan = 0;
 
   const fmt=(n)=> (Number(n||0)).toLocaleString("tr-TR",{minimumFractionDigits:2, maximumFractionDigits:2}) + " ₺";
   const cell=(val,ok)=> Number(val||0)===0
-    ? `<td class="muted">-</td>`
+    ? `<td class="muted" style="opacity:0.4; font-size:12px">—</td>`
     : `<td>${ ok ? `<span class="chip ok">${fmt(val)}</span>` : `<span class="chip no">${fmt(val)}</span>` }</td>`;
 
   rows.forEach(d=>{
+    // Kalan hesapla
+    let kalanTutar = 0;
+    KATEGORILER.forEach(k => {
+      const tutar = +(d[k] || 0);
+      if(tutar > 0 && !d.odemeler?.[k]) {
+        kalanTutar += tutar;
+      }
+    });
+    
+    // Desktop table row
     const tr=document.createElement('tr');
     tr.innerHTML=`
-      <td style="text-align:left;font-weight:700">${d.ad||'-'}</td>
-      ${cell(d.hediye, d.odemeler?.hediye)}
-      ${cell(d.kira, d.odemeler?.kira)}
-      ${cell(d.cocuk, d.odemeler?.cocuk)}
-      ${cell(d.ssk, d.odemeler?.ssk)}
-      ${cell(d.yol, d.odemeler?.yol)}
-      ${cell(d.haberlesme, d.odemeler?.haberlesme)}
+      <td style="text-align:left;font-weight:600; color:#0f172a; font-size:13px">${d.ad||'-'}</td>
+      ${KATEGORILER.map(k => cell(d[k], d.odemeler?.[k])).join('')}
       <td>${ d.maas==='ödendi' ? '<span class="chip ok">Ödendi</span>' : '<span class="chip no">Ödenmedi</span>' }</td>
-      <td><strong>${fmt(d.toplam||0)}</strong></td>
+      <td style="font-weight:700; color:#2563eb; font-size:13px">${fmt(d.toplam||0)}</td>
+      <td style="font-weight:700; color:${kalanTutar > 0 ? '#dc2626' : '#16a34a'}; font-size:13px">${fmt(kalanTutar)}</td>
     `;
-    tr.style.cursor='pointer';
-    tr.onclick=()=> openOdeme(d.id, d);
+    // Sadece admin için tıklanabilir
+    if(IS_ADMIN) {
+      tr.style.cursor='pointer';
+      tr.onclick=()=> openOdeme(d.id, d);
+    } else {
+      tr.style.cursor='default';
+    }
     tbody.appendChild(tr);
+
+    // Mobile card
+    const card = document.createElement('div');
+    card.className = 'person-card';
+    // Sadece admin için tıklanabilir
+    if(IS_ADMIN) {
+      card.style.cursor = 'pointer';
+      card.onclick = () => openOdeme(d.id, d);
+    } else {
+      card.style.cursor = 'default';
+    }
+    const cellValue = (val, ok) => {
+      if(Number(val||0) === 0) return '<span class="muted">-</span>';
+      return ok ? `<span class="chip ok">${fmt(val)}</span>` : `<span class="chip no">${fmt(val)}</span>`;
+    };
+    const kategoriLabels = {hediye:'Hediye',kira:'Kira',cocuk:'Çocuk',yol:'Yol',haberlesme:'Haberleşme',ikramiye:'İkramiye',yakacak:'Yakacak',elbise:'Elbise',ssk:'SSK'};
+    const kategoriRows = [];
+    for(let i=0; i<KATEGORILER.length; i+=2) {
+      const k1 = KATEGORILER[i];
+      const k2 = KATEGORILER[i+1];
+      kategoriRows.push(`
+        <div class="person-card-row">
+          <div><div class="person-card-label">${kategoriLabels[k1]}</div><div class="person-card-value">${cellValue(d[k1], d.odemeler?.[k1])}</div></div>
+          ${k2 ? `<div><div class="person-card-label">${kategoriLabels[k2]}</div><div class="person-card-value">${cellValue(d[k2], d.odemeler?.[k2])}</div></div>` : '<div></div>'}
+        </div>
+      `);
+    }
+    card.innerHTML = `
+      <div class="person-card-header">
+        <h3>${d.ad||'-'}</h3>
+      </div>
+      ${kategoriRows.join('')}
+      <div class="person-card-row">
+        <div><div class="person-card-label">Resmî Maaş</div><div class="person-card-value">${d.maas==='ödendi' ? '<span class="chip ok">Ödendi</span>' : '<span class="chip no">Ödenmedi</span>'}</div></div>
+      </div>
+      <div class="person-card-row">
+        <div><div class="person-card-label">Toplam</div><div class="person-card-value">${fmt(d.toplam||0)}</div></div>
+        <div><div class="person-card-label">Kalan</div><div class="person-card-value" style="color:${kalanTutar > 0 ? 'var(--danger)' : 'var(--success)'}">${fmt(kalanTutar)}</div></div>
+      </div>
+    `;
+    mobileCards.appendChild(card);
 
     for(const k of Object.keys(ozet)){
       ozet[k].toplam += +(d[k]||0);
@@ -682,14 +1393,62 @@ function renderTableAndSummary(rows) {
   });
 
   const ozetAlani=document.getElementById("ozetAlani");
+  const mobileSummaryCards=document.getElementById("mobileSummaryCards");
+  const ozetTarihBilgisi=document.getElementById("ozetTarihBilgisi");
+  const ay = +aySec.value, yil = +yilSec.value;
+  const ayAdi = monthsTR[ay - 1] || '';
+  
+  // Tarih bilgisini güncelle
+  ozetTarihBilgisi.textContent = `${ayAdi} ${yil}`;
+  
   ozetAlani.innerHTML="";
+  mobileSummaryCards.innerHTML="";
+  
+  let toplamBorç = 0, toplamÖdenen = 0;
+  
   Object.entries(ozet).forEach(([k,{toplam,odenen}])=>{
-    const kalan = (+(toplam||0) - +(odenen||0)); genelKalan+=kalan;
+    const kalan = (+(toplam||0) - +(odenen||0)); 
+    genelKalan+=kalan;
+    toplamBorç += +(toplam||0);
+    toplamÖdenen += +(odenen||0);
+    
+    // Desktop table
     const tr=document.createElement('tr');
     tr.innerHTML=`<td style="text-transform:capitalize">${k}</td><td>${fmt(toplam)}</td><td>${fmt(odenen)}</td><td>${fmt(kalan)}</td>`;
     ozetAlani.appendChild(tr);
+    
+    // Mobile card
+    const card=document.createElement('div');
+    card.className='summary-card';
+    card.innerHTML=`
+      <div class="summary-card-label">${k}</div>
+      <div class="summary-card-value">${fmt(toplam)}</div>
+      <div style="font-size:12px; color:var(--muted); margin-bottom:4px">Ödenen: ${fmt(odenen)}</div>
+      <div class="summary-card-kalan">Kalan: ${fmt(kalan)}</div>
+    `;
+    mobileSummaryCards.appendChild(card);
   });
-  document.getElementById("kalanToplamGoster").textContent = fmt(genelKalan);
+  
+  // Toplam satırı - Desktop
+  const ozetToplamSatir = document.getElementById("ozetToplamSatir");
+  ozetToplamSatir.innerHTML = `
+    <strong>Toplam Borç: ${fmt(toplamBorç)}</strong> + 
+    <strong style="color:var(--success)">Ödenen: ${fmt(toplamÖdenen)}</strong> + 
+    <strong style="color:var(--danger)">Kalan: ${fmt(genelKalan)}</strong>
+  `;
+  
+  // Total card - Mobile
+  const totalCard=document.createElement('div');
+  totalCard.className='summary-card summary-card-total';
+  totalCard.innerHTML=`
+    <div class="summary-card-label">Toplam Borç</div>
+    <div class="summary-card-value">${fmt(toplamBorç)}</div>
+    <div style="margin-top:8px; padding-top:8px; border-top:1px solid var(--stroke)">
+      <div style="font-size:13px; margin-bottom:4px"><strong style="color:var(--success)">Ödenen: ${fmt(toplamÖdenen)}</strong></div>
+      <div style="font-size:13px"><strong style="color:var(--danger)">Kalan: ${fmt(genelKalan)}</strong></div>
+    </div>
+  `;
+  mobileSummaryCards.appendChild(totalCard);
 }
 
 async function listele() {
@@ -703,6 +1462,26 @@ async function listele() {
   applySearch();                   // arama kutusundaki mevcut değere göre filtrele
   renderTableAndSummary(LAST_ROWS);
 }
+
+  // Sıralama
+  document.querySelectorAll('th.sortable').forEach(th => {
+    th.addEventListener('click', () => {
+      const col = th.dataset.sort;
+      if(SORT_COL === col) {
+        SORT_DIR = SORT_DIR === 'asc' ? 'desc' : 'asc';
+      } else {
+        SORT_COL = col;
+        SORT_DIR = 'asc';
+      }
+      // Sıralama işaretlerini güncelle
+      document.querySelectorAll('th.sortable').forEach(t => {
+        t.classList.remove('sort-asc', 'sort-desc');
+      });
+      th.classList.add(SORT_DIR === 'asc' ? 'sort-asc' : 'sort-desc');
+      applySort();
+      renderTableAndSummary(LAST_ROWS);
+    });
+  });
 
   // Arama debounce
   let sTO=null;
@@ -718,52 +1497,1227 @@ async function listele() {
   // Toplu set
   async function bulkSet(paid){
     if(!LAST_ROWS.length){ toast("İşaretlenecek kayıt yok."); return; }
-    const cat=bulkKategori.value;
+    const cat=document.getElementById("bulkKategoriModal").value;
     const batch=db.batch();
     if(cat==="maas"){
       LAST_ROWS.forEach(r=> batch.update(db.collection(aktifKoleksiyon).doc(r.id), { maas: paid ? "ödendi":"ödenmedi" }));
     }else{
       LAST_ROWS.forEach(r=> batch.update(db.collection(aktifKoleksiyon).doc(r.id), { [`odemeler.${cat}`]: !!paid }));
     }
-    await batch.commit(); toast(`Toplu güncellendi: ${LAST_ROWS.length} kayıt`); listele();
+    await batch.commit(); 
+    closeModals();
+    toast(`Toplu güncellendi: ${LAST_ROWS.length} kayıt`); 
+    listele();
   }
-  btnBulkOk.onclick=()=>bulkSet(true);
-  btnBulkNo.onclick=()=>bulkSet(false);
+  btnBulkOkModal.onclick=()=>bulkSet(true);
+  btnBulkNoModal.onclick=()=>bulkSet(false);
 
   // Ödeme modal
-  let aktifID=null;
+  let aktifID=null, aktifVeri=null, editMode=false;
   function openOdeme(id, veri){
+    if(!IS_ADMIN) {
+      toast('Bu işlem için yetkiniz yok.');
+      return;
+    }
     aktifID=id;
+    aktifVeri=veri;
+    editMode=false;
+    const ayAdi = monthsTR[veri.ay - 1] || veri.ay;
     document.getElementById("odemeModalBaslik").textContent=`${veri.ad||'-'} (${String(veri.ay).padStart(2,'0')}/${veri.yil})`;
+    
+    // Uyarı kontrolü
+    const uyariAlani = document.getElementById("odemeUyariAlani");
+    const odemelerYapildi = KATEGORILER.some(k => veri.odemeler?.[k]) || veri.maas==="ödendi";
+    if(odemelerYapildi) {
+      const kategoriLabels = {hediye:'Hediye',kira:'Kira',cocuk:'Çocuk',yol:'Yol',haberlesme:'Haberleşme',ikramiye:'İkramiye',yakacak:'Yakacak',elbise:'Elbise',ssk:'SSK'};
+      const odenenKategoriler = [];
+      KATEGORILER.forEach(k => {
+        if(veri.odemeler?.[k]) odenenKategoriler.push(kategoriLabels[k]);
+      });
+      if(veri.maas==="ödendi") odenenKategoriler.push("Resmî Maaş");
+      uyariAlani.innerHTML = `⚠️ <strong>${veri.ad}</strong> personelinin ${ayAdi} ${veri.yil} ayındaki ${odenenKategoriler.join(", ")} ödenmiş.`;
+      uyariAlani.style.display = "block";
+    } else {
+      uyariAlani.style.display = "none";
+    }
+    
     const div=document.getElementById("odemeKategoriAlani"); div.innerHTML="";
-    ["hediye","kira","cocuk","ssk","yol","haberlesme"].forEach(key=>{
+    const disabledAttr = IS_ADMIN ? '' : 'disabled';
+    KATEGORILER.forEach(key=>{
       div.innerHTML += `
         <label>${key.toUpperCase()}</label>
-        <select id="odeme_${key}">
+        <select id="odeme_${key}" ${disabledAttr}>
           <option value="true"  ${veri.odemeler?.[key] ? "selected":""}>Ödendi</option>
           <option value="false" ${!veri.odemeler?.[key] ? "selected":""}>Ödenmedi</option>
         </select>`;
     });
     div.innerHTML += `
       <label>RESMÎ MAAŞ</label>
-      <select id="odeme_maas">
+      <select id="odeme_maas" ${disabledAttr}>
         <option value="ödendi"   ${veri.maas==="ödendi" ? "selected":""}>Ödendi</option>
         <option value="ödenmedi" ${veri.maas==="ödenmedi" ? "selected":""}>Ödenmedi</option>
       </select>`;
-    document.getElementById("odemeModal").style.display="flex";
+    
+    // Tutar alanlarını doldur
+    KATEGORILER.forEach(k => {
+      const input = document.getElementById(`edit_${k}`);
+      if(input) {
+        input.value = veri[k] || 0;
+        if(!IS_ADMIN) input.disabled = true;
+      }
+    });
+    updateEditToplam();
+    
+    // Edit mode'u kapat
+    document.getElementById("odemeTutarAlani").style.display = "none";
+    const btnEdit = document.getElementById("btnEditTutarlar");
+    const btnSil = document.getElementById("btnSilVeri");
+    const btnKaydet = document.getElementById("btnKaydetOdeme");
+    
+    if(btnEdit) {
+      btnEdit.textContent = "Düzenle";
+      btnEdit.style.display = IS_ADMIN ? "inline-block" : "none";
+    }
+    if(btnSil) {
+      btnSil.style.display = IS_ADMIN ? "inline-block" : "none";
+    }
+    if(btnKaydet) {
+      btnKaydet.style.display = IS_ADMIN ? "inline-block" : "none";
+    }
+    
+    // Event listener'ları ekle (her modal açılışında)
+    setTimeout(() => {
+      KATEGORILER.forEach(k => {
+        const input = document.getElementById(`edit_${k}`);
+        if(input) {
+          input.removeEventListener('input', updateEditToplam);
+          input.addEventListener('input', updateEditToplam);
+        }
+      });
+    }, 100);
+    
+    openModal("odemeModal");
   }
+  
+  function toggleEditMode() {
+    editMode = !editMode;
+    const tutarAlani = document.getElementById("odemeTutarAlani");
+    const btnEdit = document.getElementById("btnEditTutarlar");
+    
+    if(editMode) {
+      tutarAlani.style.display = "block";
+      btnEdit.textContent = "İptal";
+    } else {
+      tutarAlani.style.display = "none";
+      btnEdit.textContent = "Düzenle";
+      // Orijinal değerlere geri dön
+      if(aktifVeri) {
+        KATEGORILER.forEach(k => {
+          const input = document.getElementById(`edit_${k}`);
+          if(input) input.value = aktifVeri[k] || 0;
+        });
+        updateEditToplam();
+      }
+    }
+  }
+  
+  function updateEditToplam() {
+    const toplam = KATEGORILER.reduce((sum, k) => {
+      const input = document.getElementById(`edit_${k}`);
+      return sum + (+(input?.value || 0));
+    }, 0);
+    document.getElementById("editToplamGoster").textContent = fmt(toplam);
+  }
+  
+  // Tutar inputlarına event listener ekle (modal açıldığında)
+  // Bu fonksiyon openOdeme içinde çağrılacak
   async function kaydetOdeme(){
-    const fields=["hediye","kira","cocuk","ssk","yol","haberlesme"];
-    const odemeler={}; fields.forEach(k=> odemeler[k] = document.getElementById(`odeme_${k}`).value==="true");
+    if(!IS_ADMIN) {
+      toast('Bu işlem için yetkiniz yok.');
+      return;
+    }
+    const odemeler={}; 
+    KATEGORILER.forEach(k=> odemeler[k] = document.getElementById(`odeme_${k}`)?.value==="true");
     const maas=document.getElementById("odeme_maas").value;
-    try{ await db.collection(aktifKoleksiyon).doc(aktifID).update({ odemeler, maas }); closeModals(); toast("Ödemeler güncellendi."); listele(); }
+    
+    const updateData = { odemeler, maas };
+    
+    // Eğer edit mode aktifse tutarları da güncelle
+    if(editMode) {
+      const yeniTutarlar = {};
+      KATEGORILER.forEach(k => {
+        const input = document.getElementById(`edit_${k}`);
+        yeniTutarlar[k] = +(input?.value || 0);
+      });
+      yeniTutarlar.toplam = KATEGORILER.reduce((sum, k) => sum + (yeniTutarlar[k] || 0), 0);
+      Object.assign(updateData, yeniTutarlar);
+    }
+    
+    try{ 
+      await db.collection(aktifKoleksiyon).doc(aktifID).update(updateData); 
+      closeModals(); 
+      toast(editMode ? "Tutarlar ve ödemeler güncellendi." : "Ödemeler güncellendi."); 
+      listele(); 
+    }
     catch(e){ console.error(e); toast("Güncelleme hata."); }
   }
   async function silVeri(){
+    if(!IS_ADMIN) {
+      toast('Bu işlem için yetkiniz yok.');
+      return;
+    }
     if(!aktifID) return;
     if(confirm("Bu personel kaydı silinsin mi?")){
       try{ await db.collection(aktifKoleksiyon).doc(aktifID).delete(); closeModals(); toast("Kayıt silindi."); listele(); }
       catch(e){ console.error(e); toast("Silme hata."); }
+    }
+  }
+
+  // Personel Yönetim Modal
+  let personelManageData = {};
+  
+  async function openPersonelManageModal() {
+    const modal = document.getElementById("personelManageModal");
+    const personelSelect = document.getElementById("personelSelect");
+    const yilSelect = document.getElementById("personelYilSelect");
+    
+    // Personel listesini yükle
+    try {
+      const snap = await db.collection(aktifKoleksiyon).get();
+      const personeller = new Set();
+      snap.forEach(doc => {
+        const d = doc.data();
+        if(d.ad) personeller.add(d.ad);
+      });
+      
+      personelSelect.innerHTML = '<option value="">Personel seçin</option>';
+      Array.from(personeller).sort().forEach(ad => {
+        personelSelect.add(new Option(ad, ad));
+      });
+    } catch(e) {
+      console.error(e);
+      toast('Personel listesi yüklenemedi.');
+    }
+    
+    // Yıl listesini doldur
+    const bugun = new Date();
+    const sy = bugun.getFullYear() - 5;
+    const ey = bugun.getFullYear() + 1;
+    yilSelect.innerHTML = '<option value="">Yıl seçin</option>';
+    for(let y = ey; y >= sy; y--) {
+      yilSelect.add(new Option(y, y));
+    }
+    
+    // Event listener'lar
+    personelSelect.onchange = yilSelect.onchange = async () => {
+      const personelAd = personelSelect.value;
+      const yil = yilSelect.value;
+      
+      if(!personelAd || !yil) {
+        document.getElementById("personelDataArea").style.display = "none";
+        document.getElementById("personelEmptyState").style.display = "block";
+        return;
+      }
+      
+      await loadPersonelYilData(personelAd, +yil);
+    };
+    
+    document.getElementById("personelDataArea").style.display = "none";
+    document.getElementById("personelEmptyState").style.display = "block";
+    openModal("personelManageModal");
+  }
+  
+  async function loadPersonelYilData(personelAd, yil) {
+    try {
+      const snap = await db.collection(aktifKoleksiyon)
+        .where("ad", "==", personelAd)
+        .where("yil", "==", yil)
+        .get();
+      
+      personelManageData = {};
+      let yillikToplam = 0;
+      
+      snap.forEach(doc => {
+        const d = doc.data();
+        const ay = d.ay;
+        personelManageData[ay] = {
+          id: doc.id,
+          ...d
+        };
+        yillikToplam += +(d.toplam || 0);
+      });
+      
+      // UI güncelle
+      document.getElementById("personelAdGoster").textContent = personelAd;
+      document.getElementById("personelYilGoster").textContent = `${yil} Yılı - ${Object.keys(personelManageData).length} Ay`;
+      document.getElementById("yillikToplamGoster").textContent = fmt(yillikToplam);
+      
+      renderPersonelAylar();
+      
+      document.getElementById("personelDataArea").style.display = "block";
+      document.getElementById("personelEmptyState").style.display = "none";
+      document.getElementById("btnPersonelKaydet").style.display = "inline-block";
+    } catch(e) {
+      console.error(e);
+      toast('Veriler yüklenirken hata.');
+    }
+  }
+  
+  function renderPersonelAylar() {
+    const container = document.getElementById("personelAylarListesi");
+    container.innerHTML = "";
+    
+    const aylar = Object.keys(personelManageData).sort((a, b) => +a - +b);
+    
+    if(aylar.length === 0) {
+      container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--muted)">Bu yıl için kayıt bulunamadı.</div>';
+      return;
+    }
+    
+    aylar.forEach(ay => {
+      const data = personelManageData[ay];
+      const ayAdi = monthsTR[+ay - 1] || ay;
+      
+      const card = document.createElement('div');
+      card.style.cssText = 'background:var(--card); border:1px solid var(--stroke); border-radius:12px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,.06)';
+      
+      card.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--stroke)">
+          <div>
+            <h4 style="margin:0; font-size:16px; color:var(--text)">${ayAdi} ${data.yil}</h4>
+            <div class="muted" style="font-size:12px; margin-top:4px">Toplam: <strong style="color:var(--brand)">${fmt(data.toplam || 0)}</strong></div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:11px; color:var(--muted); margin-bottom:4px">Kalan</div>
+            <div style="font-size:18px; font-weight:700; color:var(--danger)">${fmt(calculateKalan(data))}</div>
+          </div>
+        </div>
+        
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:12px">
+          ${KATEGORILER.map(k => {
+            const labels = {hediye:'Hediye',kira:'Kira',cocuk:'Çocuk',yol:'Yol',haberlesme:'Haberleşme',ikramiye:'İkramiye',yakacak:'Yakacak',elbise:'Elbise',ssk:'SSK'};
+            return `
+              <div>
+                <label style="display:block; font-size:11px; color:var(--muted); margin-bottom:4px">${labels[k]}</label>
+                <input type="number" data-ay="${ay}" data-field="${k}" value="${data[k] || 0}" min="0" step="0.01" 
+                  style="width:100%; padding:6px 8px; border:1px solid var(--stroke); border-radius:6px; background:var(--pill); color:var(--text); font-size:13px">
+              </div>
+            `;
+          }).join('')}
+        </div>
+        
+        <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-top:12px">
+          <div>
+            <label style="display:block; font-size:11px; color:var(--muted); margin-bottom:4px">Ödeme Durumları</label>
+            <div style="display:flex; flex-wrap:wrap; gap:6px">
+              ${KATEGORILER.map(k => {
+                const labels = {hediye:'Hediye',kira:'Kira',cocuk:'Çocuk',yol:'Yol',haberlesme:'Haberleşme',ikramiye:'İkramiye',yakacak:'Yakacak',elbise:'Elbise',ssk:'SSK'};
+                return `
+                  <label style="display:flex; align-items:center; gap:4px; font-size:11px; cursor:pointer; padding:4px 8px; background:${data.odemeler?.[k] ? 'var(--success)22' : 'var(--pill)'}; border:1px solid ${data.odemeler?.[k] ? 'var(--success)' : 'var(--stroke)'}; border-radius:6px">
+                    <input type="checkbox" data-ay="${ay}" data-field="${k}" ${data.odemeler?.[k] ? 'checked' : ''} style="cursor:pointer">
+                    <span style="text-transform:capitalize; font-weight:600; color:${data.odemeler?.[k] ? 'var(--success)' : 'var(--text)'}">${labels[k]}</span>
+                  </label>
+                `;
+              }).join('')}
+            </div>
+          </div>
+          <div>
+            <label style="display:block; font-size:11px; color:var(--muted); margin-bottom:4px">Resmî Maaş</label>
+            <select data-ay="${ay}" data-field="maas" style="width:100%; padding:6px 8px; border:1px solid var(--stroke); border-radius:6px; background:var(--pill); color:var(--text); font-size:13px">
+              <option value="ödenmedi" ${data.maas==='ödenmedi' ? 'selected' : ''}>Ödenmedi</option>
+              <option value="ödendi" ${data.maas==='ödendi' ? 'selected' : ''}>Ödendi</option>
+            </select>
+          </div>
+        </div>
+      `;
+      
+      container.appendChild(card);
+    });
+    
+    // Input değişikliklerinde toplam güncelle
+    container.querySelectorAll('input[type="number"]').forEach(input => {
+      input.addEventListener('input', () => {
+        const ay = input.dataset.ay;
+        updateAyToplam(ay);
+      });
+    });
+  }
+  
+  function calculateKalan(data) {
+    let kalan = 0;
+    KATEGORILER.forEach(k => {
+      const tutar = +(data[k] || 0);
+      if(tutar > 0 && !data.odemeler?.[k]) kalan += tutar;
+    });
+    return kalan;
+  }
+  
+  function updateAyToplam(ay) {
+    const data = personelManageData[ay];
+    if(!data) return;
+    
+    const inputs = document.querySelectorAll(`input[data-ay="${ay}"][data-field]`);
+    let toplam = 0;
+    inputs.forEach(input => {
+      if(input.type === 'number') {
+        const field = input.dataset.field;
+        data[field] = +(input.value || 0);
+        toplam += data[field];
+      }
+    });
+    
+    data.toplam = toplam;
+    
+    // UI'da toplamı güncelle
+    const card = document.querySelector(`input[data-ay="${ay}"]`)?.closest('div[style*="border-radius:12px"]');
+    if(card) {
+      const toplamEl = card.querySelector('strong[style*="color:var(--brand)"]');
+      if(toplamEl) toplamEl.textContent = fmt(toplam);
+      
+      // Kalan hesapla ve güncelle
+      const checkboxes = card.querySelectorAll('input[type="checkbox"]');
+      checkboxes.forEach(cb => {
+        const field = cb.dataset.field;
+        data.odemeler = data.odemeler || {};
+        data.odemeler[field] = cb.checked;
+      });
+      
+      const kalanEl = card.querySelector('div[style*="color:var(--danger)"]');
+      if(kalanEl) kalanEl.textContent = fmt(calculateKalan(data));
+    }
+    
+    // Yıllık toplamı güncelle
+    let yillikToplam = 0;
+    Object.keys(personelManageData).forEach(a => {
+      yillikToplam += +(personelManageData[a].toplam || 0);
+    });
+    document.getElementById("yillikToplamGoster").textContent = fmt(yillikToplam);
+  }
+  
+  async function kaydetPersonelYonetim() {
+    if(Object.keys(personelManageData).length === 0) {
+      toast('Kaydedilecek veri yok.');
+      return;
+    }
+    
+    try {
+      const batch = db.batch();
+      let updated = 0;
+      
+      Object.keys(personelManageData).forEach(ay => {
+        const data = personelManageData[ay];
+        const docRef = db.collection(aktifKoleksiyon).doc(data.id);
+        
+        // Checkbox'ları güncelle
+        const card = document.querySelector(`input[data-ay="${ay}"]`)?.closest('div[style*="border-radius:12px"]');
+        if(card) {
+          const checkboxes = card.querySelectorAll('input[type="checkbox"]');
+          checkboxes.forEach(cb => {
+            const field = cb.dataset.field;
+            data.odemeler = data.odemeler || {};
+            data.odemeler[field] = cb.checked;
+          });
+          
+          const maasSelect = card.querySelector('select[data-field="maas"]');
+          if(maasSelect) data.maas = maasSelect.value;
+        }
+        
+        // Toplamı hesapla
+        data.toplam = KATEGORILER.reduce((sum, k) => sum + (+(data[k] || 0)), 0);
+        
+        const updateObj = { toplam: data.toplam, odemeler: data.odemeler || {}, maas: data.maas || 'ödenmedi' };
+        KATEGORILER.forEach(k => {
+          updateObj[k] = +(data[k] || 0);
+        });
+        
+        batch.update(docRef, updateObj);
+        updated++;
+      });
+      
+      await batch.commit();
+      closeModals();
+      toast(`${updated} ay verisi güncellendi.`);
+      listele();
+    } catch(e) {
+      console.error(e);
+      toast('Kayıt sırasında hata oluştu.');
+    }
+  }
+
+  // Analiz Modal - Global değişkenler
+  let kategoriChartInstance = null;
+  
+  // PDF Export Fonksiyonu - Yeni sayfaya yönlendir
+  async function exportAnalizPDF() {
+    try {
+      const analizDataArea = document.getElementById("analizDataArea");
+      if(!analizDataArea || analizDataArea.style.display === "none") {
+        toast("Önce analiz verilerini yükleyin.");
+        return;
+      }
+      
+      // Verileri topla
+      const baslik = document.getElementById("analizBaslikGoster").textContent;
+      const yil = document.getElementById("analizYilGoster").textContent;
+      const yillikToplam = document.getElementById("analizYillikToplamGoster").textContent;
+      
+      // Analiz tablosu verilerini topla
+      const analizTable = document.getElementById("analizTable");
+      const tableData = [];
+      if(analizTable) {
+        const rows = analizTable.querySelectorAll("tbody tr");
+        rows.forEach(row => {
+          const cells = row.querySelectorAll("td");
+          if(cells.length >= 4) {
+            tableData.push({
+              kategori: cells[0].textContent.trim(),
+              toplam: cells[1].textContent.trim(),
+              odenen: cells[2].textContent.trim(),
+              kalan: cells[3].textContent.trim()
+            });
+          }
+        });
+      }
+      
+      // Aylık dağılım verilerini topla
+      const aylikDagilim = document.getElementById("analizAylikDagilim");
+      const aylikData = [];
+      if(aylikDagilim && aylikDagilim.children.length > 0) {
+        Array.from(aylikDagilim.children).forEach(card => {
+          const text = card.textContent.trim();
+          const lines = text.split('\n').filter(l => l.trim());
+          if(lines.length >= 4) {
+            aylikData.push({
+              ay: lines[0].trim(),
+              toplam: lines[1].trim(),
+              odenen: lines[2].trim(),
+              kalan: lines[3].trim()
+            });
+          }
+        });
+      }
+      
+      // Kategori detay verilerini topla (eğer varsa)
+      const kategoriDetayArea = document.getElementById("kategoriDetayArea");
+      let kategoriDetay = null;
+      
+      if(kategoriDetayArea && kategoriDetayArea.style.display !== "none") {
+        const kategoriSelect = document.getElementById("analizKategoriSelect");
+        const seciliKategori = kategoriSelect.value;
+        
+        // Tüm kategoriler seçildiyse
+        if(seciliKategori === 'tum') {
+          const tumKategorilerDiv = document.getElementById("tumKategorilerDetay");
+          const tumKategoriler = ['hediye', 'kira', 'cocuk', 'yol', 'haberlesme', 'ikramiye', 'yakacak', 'elbise'];
+          const kategoriLabels = {
+            hediye: 'Hediye',
+            kira: 'Kira',
+            cocuk: 'Çocuk',
+            yol: 'Yol',
+            haberlesme: 'Haberleşme',
+            ikramiye: 'İkramiye',
+            yakacak: 'Yakacak',
+            elbise: 'Elbise'
+          };
+          
+          const tumKategoriDetaylari = [];
+          
+          // window.currentAnalizSnap kullanarak doğrudan hesapla
+          const analizSnap = window.currentAnalizSnap;
+          const monthsTR = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
+          const fmt = (n) => (Number(n||0)).toLocaleString("tr-TR",{minimumFractionDigits:2, maximumFractionDigits:2}) + " ₺";
+          
+          tumKategoriler.forEach(kat => {
+            // Her kategori için veri topla (loadKategoriDetay ile aynı mantık)
+            const aylikKategoriData = {};
+            for(let ay = 1; ay <= 12; ay++) {
+              aylikKategoriData[ay] = { toplam: 0, odenen: 0, kalan: 0 };
+            }
+            
+            if(analizSnap) {
+              analizSnap.forEach(doc => {
+                const d = doc.data();
+                const ay = d.ay || 1;
+                const tutar = +(d[kat] || 0);
+                
+                if(tutar > 0) {
+                  aylikKategoriData[ay].toplam += tutar;
+                  if(d.odemeler?.[kat]) {
+                    aylikKategoriData[ay].odenen += tutar;
+                  } else {
+                    aylikKategoriData[ay].kalan += tutar;
+                  }
+                }
+              });
+            }
+            
+            // Toplam hesapla
+            let kategoriToplam = 0, kategoriOdenen = 0, kategoriKalan = 0;
+            Object.values(aylikKategoriData).forEach(data => {
+              kategoriToplam += data.toplam;
+              kategoriOdenen += data.odenen;
+              kategoriKalan += data.kalan;
+            });
+            
+            const yuzde = kategoriToplam > 0 ? ((kategoriOdenen / kategoriToplam) * 100).toFixed(1) : 0;
+            
+            // Detay tablosu verilerini topla
+            const kategoriSection = tumKategorilerDiv.querySelector(`#kategoriDetayTableBody_${kat}`);
+            const detayTableData = [];
+            
+            if(kategoriSection) {
+              const rows = kategoriSection.querySelectorAll("tr");
+              rows.forEach(row => {
+                const cells = row.querySelectorAll("td");
+                if(cells.length >= 5) {
+                  detayTableData.push({
+                    ay: cells[0].textContent.trim(),
+                    toplam: cells[1].textContent.trim(),
+                    odenen: cells[2].textContent.trim(),
+                    kalan: cells[3].textContent.trim(),
+                    durum: cells[4].textContent.trim()
+                  });
+                }
+              });
+            } else {
+              // Tablo yoksa aylık verilerden oluştur
+              const monthsTR = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
+              for(let ay = 1; ay <= 12; ay++) {
+                const ayData = aylikKategoriData[ay];
+                const ayAdi = monthsTR[ay - 1] || ay;
+                
+                let durum = '—';
+                if(ayData.toplam === 0) {
+                  durum = '—';
+                } else if(ayData.kalan === 0) {
+                  durum = 'Tamamlandı';
+                } else if(ayData.odenen === 0) {
+                  durum = 'Ödenmedi';
+                } else {
+                  const durumYuzde = ((ayData.odenen / ayData.toplam) * 100).toFixed(0);
+                  durum = `%${durumYuzde}`;
+                }
+                
+                detayTableData.push({
+                  ay: ayAdi,
+                  toplam: fmt(ayData.toplam),
+                  odenen: fmt(ayData.odenen),
+                  kalan: fmt(ayData.kalan),
+                  durum: durum
+                });
+              }
+            }
+            
+            tumKategoriDetaylari.push({
+              kategoriAdi: kategoriLabels[kat],
+              toplam: fmt(kategoriToplam),
+              odenen: fmt(kategoriOdenen),
+              kalan: fmt(kategoriKalan),
+              yuzde: `${yuzde}%`,
+              detayTable: detayTableData
+            });
+          });
+          
+          kategoriDetay = {
+            kategoriAdi: 'Tüm Kategoriler',
+            tumKategoriler: tumKategoriDetaylari
+          };
+        } else {
+          // Tek kategori seçildiyse
+          const kategoriAdi = kategoriSelect.options[kategoriSelect.selectedIndex]?.text || "Kategori";
+          
+          const toplam = document.getElementById("kategoriToplam").textContent;
+          const odenen = document.getElementById("kategoriOdenen").textContent;
+          const kalan = document.getElementById("kategoriKalan").textContent;
+          const yuzde = document.getElementById("kategoriYuzde").textContent;
+          
+          // Chart.js grafiğini base64'e çevir
+          let chartImage = null;
+          const chartCanvas = document.getElementById("kategoriChart");
+          if(chartCanvas && kategoriChartInstance) {
+            chartImage = chartCanvas.toDataURL("image/png");
+          }
+          
+          // Kategori detay tablosu verilerini topla
+          const kategoriDetayTable = document.getElementById("kategoriDetayTable");
+          const detayTableData = [];
+          if(kategoriDetayTable) {
+            const rows = kategoriDetayTable.querySelectorAll("tbody tr");
+            rows.forEach(row => {
+              const cells = row.querySelectorAll("td");
+              if(cells.length >= 5) {
+                detayTableData.push({
+                  ay: cells[0].textContent.trim(),
+                  toplam: cells[1].textContent.trim(),
+                  odenen: cells[2].textContent.trim(),
+                  kalan: cells[3].textContent.trim(),
+                  durum: cells[4].textContent.trim()
+                });
+              }
+            });
+          }
+          
+          kategoriDetay = {
+            kategoriAdi,
+            toplam,
+            odenen,
+            kalan,
+            yuzde,
+            chartImage,
+            detayTable: detayTableData
+          };
+        }
+      }
+      
+      // Verileri localStorage'a kaydet
+      const exportData = {
+        baslik,
+        yil,
+        yillikToplam,
+        tableData,
+        aylikData,
+        kategoriDetay,
+        timestamp: Date.now()
+      };
+      
+      localStorage.setItem('analizPDFData', JSON.stringify(exportData));
+      
+      // Yeni sayfaya yönlendir
+      window.open('personelodemeanaliz.html', '_blank');
+      
+    } catch(e) {
+      console.error(e);
+      toast("Veriler hazırlanırken hata oluştu.");
+    }
+  }
+  
+  // Analiz Modal
+  async function openAnalizModal() {
+    const modal = document.getElementById("analizModal");
+    const personelSelect = document.getElementById("analizPersonelSelect");
+    const yilSelect = document.getElementById("analizYilSelect");
+    
+    // Personel listesini yükle
+    try {
+      const snap = await db.collection(aktifKoleksiyon).get();
+      const personeller = new Set();
+      snap.forEach(doc => {
+        const d = doc.data();
+        if(d.ad) personeller.add(d.ad);
+      });
+      
+      personelSelect.innerHTML = '<option value="tum">Tüm Personeller</option>';
+      Array.from(personeller).sort().forEach(ad => {
+        personelSelect.add(new Option(ad, ad));
+      });
+    } catch(e) {
+      console.error(e);
+      toast('Personel listesi yüklenemedi.');
+    }
+    
+    // Yıl listesini doldur
+    const bugun = new Date();
+    const sy = bugun.getFullYear() - 5;
+    const ey = bugun.getFullYear() + 1;
+    yilSelect.innerHTML = '<option value="">Yıl seçin</option>';
+    for(let y = ey; y >= sy; y--) {
+      yilSelect.add(new Option(y, y));
+    }
+    
+    // Event listener'lar
+    personelSelect.onchange = yilSelect.onchange = async () => {
+      const personelAd = personelSelect.value;
+      const yil = yilSelect.value;
+      
+      if(!yil) {
+        document.getElementById("analizDataArea").style.display = "none";
+        document.getElementById("analizEmptyState").style.display = "block";
+        return;
+      }
+      
+      await loadAnalizData(personelAd === "tum" ? null : personelAd, +yil);
+    };
+    
+    document.getElementById("analizDataArea").style.display = "none";
+    document.getElementById("analizEmptyState").style.display = "block";
+    
+    // Kategori detay alanını sıfırla
+    document.getElementById("analizKategoriSelect").value = "";
+    document.getElementById("kategoriDetayArea").style.display = "none";
+    document.getElementById("kategoriDetayEmpty").style.display = "block";
+    if(kategoriChartInstance) {
+      kategoriChartInstance.destroy();
+      kategoriChartInstance = null;
+    }
+    
+    openModal("analizModal");
+  }
+  
+  async function loadAnalizData(personelAd, yil) {
+    try {
+      let query = db.collection(aktifKoleksiyon).where("yil", "==", yil);
+      if(personelAd) {
+        query = query.where("ad", "==", personelAd);
+      }
+      
+      const snap = await query.get();
+      
+      if(snap.empty) {
+        document.getElementById("analizDataArea").style.display = "none";
+        document.getElementById("analizEmptyState").style.display = "block";
+        document.getElementById("analizEmptyState").innerHTML = `
+          <div style="font-size:48px; margin-bottom:12px">📊</div>
+          <div style="font-size:16px; font-weight:600">Veri bulunamadı</div>
+          <div style="font-size:13px; margin-top:6px">Seçilen kriterlere uygun kayıt bulunamadı</div>
+        `;
+        return;
+      }
+      
+      // Verileri topla
+      const analizData = {
+        kategoriler: {},
+        aylik: {},
+        toplam: 0,
+        odenen: 0,
+        kalan: 0
+      };
+      
+      // Kategorileri başlat
+      KATEGORILER.forEach(k => {
+        analizData.kategoriler[k] = { toplam: 0, odenen: 0, kalan: 0 };
+      });
+      
+      // Ayları başlat
+      for(let ay = 1; ay <= 12; ay++) {
+        analizData.aylik[ay] = { toplam: 0, odenen: 0, kalan: 0 };
+      }
+      
+      snap.forEach(doc => {
+        const d = doc.data();
+        const ay = d.ay || 1;
+        
+        // Kategori toplamları
+        KATEGORILER.forEach(k => {
+          const tutar = +(d[k] || 0);
+          if(tutar > 0) {
+            analizData.kategoriler[k].toplam += tutar;
+            analizData.toplam += tutar;
+            
+            if(d.odemeler?.[k]) {
+              analizData.kategoriler[k].odenen += tutar;
+              analizData.odenen += tutar;
+            } else {
+              analizData.kategoriler[k].kalan += tutar;
+              analizData.kalan += tutar;
+            }
+          }
+        });
+        
+        // Aylık toplamlar (sadece kategori toplamları)
+        let ayToplam = 0;
+        let ayOdenen = 0;
+        KATEGORILER.forEach(k => {
+          const tutar = +(d[k] || 0);
+          if(tutar > 0) {
+            ayToplam += tutar;
+            if(d.odemeler?.[k]) {
+              ayOdenen += tutar;
+            }
+          }
+        });
+        analizData.aylik[ay].toplam += ayToplam;
+        analizData.aylik[ay].odenen += ayOdenen;
+        analizData.aylik[ay].kalan += (ayToplam - ayOdenen);
+      });
+      
+      // UI güncelle
+      const baslik = personelAd ? personelAd : "Tüm Personeller";
+      document.getElementById("analizBaslikGoster").textContent = baslik;
+      document.getElementById("analizYilGoster").textContent = `${yil} Yılı Analizi`;
+      document.getElementById("analizYillikToplamGoster").textContent = fmt(analizData.toplam);
+      
+      // Tablo oluştur
+      const tbody = document.getElementById("analizTableBody");
+      tbody.innerHTML = "";
+      
+      const kategoriLabels = {
+        hediye: 'Hediye',
+        kira: 'Kira',
+        cocuk: 'Çocuk',
+        yol: 'Yol',
+        haberlesme: 'Haberleşme',
+        ikramiye: 'İkramiye',
+        yakacak: 'Yakacak',
+        elbise: 'Elbise',
+        ssk: 'SSK'
+      };
+      
+      KATEGORILER.forEach(k => {
+        const data = analizData.kategoriler[k];
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td style="text-align:left; padding-left:16px; font-weight:600">${kategoriLabels[k]}</td>
+          <td style="text-align:center; font-weight:600">${fmt(data.toplam)}</td>
+          <td style="text-align:center; color:var(--success); font-weight:600">${fmt(data.odenen)}</td>
+          <td style="text-align:center; color:var(--danger); font-weight:600">${fmt(data.kalan)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+      
+      // Toplam satırı
+      document.getElementById("analizToplamSatir").innerHTML = `
+        <strong>Toplam: ${fmt(analizData.toplam)}</strong> | 
+        <strong style="color:var(--success)">Ödenen: ${fmt(analizData.odenen)}</strong> | 
+        <strong style="color:var(--danger)">Kalan: ${fmt(analizData.kalan)}</strong>
+      `;
+      
+      // Aylık dağılım
+      const aylikDagilim = document.getElementById("analizAylikDagilim");
+      aylikDagilim.innerHTML = "";
+      
+      for(let ay = 1; ay <= 12; ay++) {
+        const ayData = analizData.aylik[ay];
+        const ayAdi = monthsTR[ay - 1] || ay;
+        const card = document.createElement('div');
+        card.style.cssText = 'background:var(--card); border:1px solid var(--stroke); border-radius:8px; padding:10px; text-align:center';
+        card.innerHTML = `
+          <div style="font-size:11px; color:var(--muted); font-weight:600; margin-bottom:6px">${ayAdi}</div>
+          <div style="font-size:14px; font-weight:700; color:var(--text); margin-bottom:4px">${fmt(ayData.toplam)}</div>
+          <div style="font-size:11px; color:var(--success)">Ö: ${fmt(ayData.odenen)}</div>
+          <div style="font-size:11px; color:var(--danger)">K: ${fmt(ayData.kalan)}</div>
+        `;
+        aylikDagilim.appendChild(card);
+      }
+      
+      document.getElementById("analizDataArea").style.display = "block";
+      document.getElementById("analizEmptyState").style.display = "none";
+      
+      // PDF butonunu göster
+      document.getElementById("btnAnalizPDF").style.display = "inline-block";
+      
+      // Analiz verilerini global değişkene kaydet (kategori detay için)
+      window.currentAnalizData = analizData;
+      window.currentAnalizYil = yil;
+      window.currentAnalizPersonel = personelAd;
+      window.currentAnalizSnap = snap;
+      
+      // Kategori seçimi event listener
+      const kategoriSelect = document.getElementById("analizKategoriSelect");
+      if(kategoriSelect) {
+        kategoriSelect.onchange = () => {
+          const kategori = kategoriSelect.value;
+          if(kategori) {
+            loadKategoriDetay(kategori, analizData, yil, snap);
+          } else {
+            document.getElementById("kategoriDetayArea").style.display = "none";
+            document.getElementById("kategoriDetayEmpty").style.display = "block";
+            if(kategoriChartInstance) {
+              kategoriChartInstance.destroy();
+              kategoriChartInstance = null;
+            }
+          }
+        };
+      }
+    } catch(e) {
+      console.error(e);
+      toast('Analiz verileri yüklenirken hata.');
+    }
+  }
+  
+  // Kategori detay analizi
+  function loadKategoriDetay(kategori, analizData, yil, snap) {
+    try {
+      const kategoriLabels = {
+        hediye: 'Hediye',
+        kira: 'Kira',
+        cocuk: 'Çocuk',
+        yol: 'Yol',
+        haberlesme: 'Haberleşme',
+        ikramiye: 'İkramiye',
+        yakacak: 'Yakacak',
+        elbise: 'Elbise',
+        ssk: 'SSK'
+      };
+      
+      // Tüm kategoriler seçildiyse
+      if(kategori === 'tum') {
+        document.getElementById("tekKategoriDetay").style.display = "none";
+        document.getElementById("tumKategorilerDetay").style.display = "block";
+        
+        const tumKategorilerDiv = document.getElementById("tumKategorilerDetay");
+        tumKategorilerDiv.innerHTML = "";
+        
+        // Sıralı kategori listesi (SSK hariç)
+        const tumKategoriler = ['hediye', 'kira', 'cocuk', 'yol', 'haberlesme', 'ikramiye', 'yakacak', 'elbise'];
+        
+        tumKategoriler.forEach((kat, index) => {
+          // Her kategori için veri topla
+          const aylikKategoriData = {};
+          for(let ay = 1; ay <= 12; ay++) {
+            aylikKategoriData[ay] = { toplam: 0, odenen: 0, kalan: 0 };
+          }
+          
+          snap.forEach(doc => {
+            const d = doc.data();
+            const ay = d.ay || 1;
+            const tutar = +(d[kat] || 0);
+            
+            if(tutar > 0) {
+              aylikKategoriData[ay].toplam += tutar;
+              if(d.odemeler?.[kat]) {
+                aylikKategoriData[ay].odenen += tutar;
+              } else {
+                aylikKategoriData[ay].kalan += tutar;
+              }
+            }
+          });
+          
+          // Toplam hesapla
+          let kategoriToplam = 0, kategoriOdenen = 0, kategoriKalan = 0;
+          Object.values(aylikKategoriData).forEach(data => {
+            kategoriToplam += data.toplam;
+            kategoriOdenen += data.odenen;
+            kategoriKalan += data.kalan;
+          });
+          
+          const yuzde = kategoriToplam > 0 ? ((kategoriOdenen / kategoriToplam) * 100).toFixed(1) : 0;
+          
+          // Kategori bölümü oluştur
+          const kategoriSection = document.createElement('div');
+          kategoriSection.style.cssText = 'margin-bottom:32px; padding:20px; background:var(--card); border:1px solid var(--stroke); border-radius:12px';
+          
+          kategoriSection.innerHTML = `
+            <h4 style="margin:0 0 16px; font-size:18px; font-weight:700; color:var(--text); border-bottom:2px solid var(--brand); padding-bottom:8px">
+              ${kategoriLabels[kat]}
+            </h4>
+            
+            <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px">
+              <div style="background:linear-gradient(135deg, var(--brand)15, var(--brand2)15); border:1px solid var(--stroke); border-radius:10px; padding:12px">
+                <div style="font-size:11px; color:var(--muted); font-weight:600; margin-bottom:6px">Toplam</div>
+                <div style="font-size:20px; font-weight:700; color:var(--text)">${fmt(kategoriToplam)}</div>
+              </div>
+              <div style="background:#dcfce7; border:1px solid #86efac; border-radius:10px; padding:12px">
+                <div style="font-size:11px; color:#166534; font-weight:600; margin-bottom:6px">Ödenen</div>
+                <div style="font-size:20px; font-weight:700; color:#166534">${fmt(kategoriOdenen)}</div>
+              </div>
+              <div style="background:#fee2e2; border:1px solid #fca5a5; border-radius:10px; padding:12px">
+                <div style="font-size:11px; color:#991b1b; font-weight:600; margin-bottom:6px">Kalan</div>
+                <div style="font-size:20px; font-weight:700; color:#991b1b">${fmt(kategoriKalan)}</div>
+              </div>
+              <div style="background:var(--pill); border:1px solid var(--stroke); border-radius:10px; padding:12px">
+                <div style="font-size:11px; color:var(--muted); font-weight:600; margin-bottom:6px">Ödeme %</div>
+                <div style="font-size:20px; font-weight:700; color:var(--brand)">${yuzde}%</div>
+              </div>
+            </div>
+            
+            <div class="tablo-kart" style="padding:0">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="text-align:left; padding-left:16px">Ay</th>
+                    <th>Toplam</th>
+                    <th>Ödenen</th>
+                    <th>Kalan</th>
+                    <th>Durum</th>
+                  </tr>
+                </thead>
+                <tbody id="kategoriDetayTableBody_${kat}"></tbody>
+              </table>
+            </div>
+          `;
+          
+          tumKategorilerDiv.appendChild(kategoriSection);
+          
+          // Aylık detay tablosu
+          const tbody = document.getElementById(`kategoriDetayTableBody_${kat}`);
+          for(let ay = 1; ay <= 12; ay++) {
+            const ayData = aylikKategoriData[ay];
+            const ayAdi = monthsTR[ay - 1] || ay;
+            const tr = document.createElement('tr');
+            
+            let durumHTML = '';
+            if(ayData.toplam === 0) {
+              durumHTML = '<span class="muted" style="opacity:0.5">—</span>';
+            } else if(ayData.kalan === 0) {
+              durumHTML = '<span class="chip ok">Tamamlandı</span>';
+            } else if(ayData.odenen === 0) {
+              durumHTML = '<span class="chip no">Ödenmedi</span>';
+            } else {
+              const durumYuzde = ((ayData.odenen / ayData.toplam) * 100).toFixed(0);
+              durumHTML = `<span style="color:var(--warn); font-weight:600">%${durumYuzde}</span>`;
+            }
+            
+            tr.innerHTML = `
+              <td style="text-align:left; padding-left:16px; font-weight:600">${ayAdi}</td>
+              <td style="text-align:center; font-weight:600">${fmt(ayData.toplam)}</td>
+              <td style="text-align:center; color:var(--success); font-weight:600">${fmt(ayData.odenen)}</td>
+              <td style="text-align:center; color:var(--danger); font-weight:600">${fmt(ayData.kalan)}</td>
+              <td style="text-align:center">${durumHTML}</td>
+            `;
+            tbody.appendChild(tr);
+          }
+        });
+        
+        document.getElementById("kategoriDetayArea").style.display = "block";
+        document.getElementById("kategoriDetayEmpty").style.display = "none";
+        return;
+      }
+      
+      // Tek kategori seçildiyse (eski kod)
+      document.getElementById("tekKategoriDetay").style.display = "block";
+      document.getElementById("tumKategorilerDetay").style.display = "none";
+      
+      // Aylık kategori verilerini topla
+      const aylikKategoriData = {};
+      for(let ay = 1; ay <= 12; ay++) {
+        aylikKategoriData[ay] = { toplam: 0, odenen: 0, kalan: 0 };
+      }
+      
+      snap.forEach(doc => {
+        const d = doc.data();
+        const ay = d.ay || 1;
+        const tutar = +(d[kategori] || 0);
+        
+        if(tutar > 0) {
+          aylikKategoriData[ay].toplam += tutar;
+          if(d.odemeler?.[kategori]) {
+            aylikKategoriData[ay].odenen += tutar;
+          } else {
+            aylikKategoriData[ay].kalan += tutar;
+          }
+        }
+      });
+      
+      // Toplam hesapla
+      let kategoriToplam = 0, kategoriOdenen = 0, kategoriKalan = 0;
+      Object.values(aylikKategoriData).forEach(data => {
+        kategoriToplam += data.toplam;
+        kategoriOdenen += data.odenen;
+        kategoriKalan += data.kalan;
+      });
+      
+      // Özet kartları güncelle
+      document.getElementById("kategoriToplam").textContent = fmt(kategoriToplam);
+      document.getElementById("kategoriOdenen").textContent = fmt(kategoriOdenen);
+      document.getElementById("kategoriKalan").textContent = fmt(kategoriKalan);
+      const yuzde = kategoriToplam > 0 ? ((kategoriOdenen / kategoriToplam) * 100).toFixed(1) : 0;
+      document.getElementById("kategoriYuzde").textContent = `${yuzde}%`;
+      
+      // Grafik oluştur
+      const ctx = document.getElementById("kategoriChart");
+      if(ctx) {
+        if(kategoriChartInstance) {
+          kategoriChartInstance.destroy();
+        }
+        
+        const ayLabels = monthsTR;
+        const toplamData = [];
+        const odenenData = [];
+        const kalanData = [];
+        
+        for(let ay = 1; ay <= 12; ay++) {
+          toplamData.push(aylikKategoriData[ay].toplam);
+          odenenData.push(aylikKategoriData[ay].odenen);
+          kalanData.push(aylikKategoriData[ay].kalan);
+        }
+        
+        kategoriChartInstance = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: ayLabels,
+            datasets: [
+              {
+                label: 'Toplam',
+                data: toplamData,
+                backgroundColor: 'rgba(100, 116, 139, 0.3)',
+                borderColor: 'rgb(100, 116, 139)',
+                borderWidth: 1
+              },
+              {
+                label: 'Ödenen',
+                data: odenenData,
+                backgroundColor: 'rgba(34, 197, 94, 0.5)',
+                borderColor: 'rgb(34, 197, 94)',
+                borderWidth: 1
+              },
+              {
+                label: 'Kalan',
+                data: kalanData,
+                backgroundColor: 'rgba(239, 68, 68, 0.5)',
+                borderColor: 'rgb(239, 68, 68)',
+                borderWidth: 1
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+              legend: {
+                display: true,
+                position: 'top'
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    return context.dataset.label + ': ' + fmt(context.parsed.y);
+                  }
+                }
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  callback: function(value) {
+                    if(value >= 1000) {
+                      return (value / 1000).toFixed(1) + 'K ₺';
+                    }
+                    return value + ' ₺';
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+      
+      // Aylık detay tablosu
+      const tbody = document.getElementById("kategoriDetayTableBody");
+      tbody.innerHTML = "";
+      
+      for(let ay = 1; ay <= 12; ay++) {
+        const ayData = aylikKategoriData[ay];
+        const ayAdi = monthsTR[ay - 1] || ay;
+        const tr = document.createElement('tr');
+        
+        let durumHTML = '';
+        if(ayData.toplam === 0) {
+          durumHTML = '<span class="muted" style="opacity:0.5">—</span>';
+        } else if(ayData.kalan === 0) {
+          durumHTML = '<span class="chip ok">Tamamlandı</span>';
+        } else if(ayData.odenen === 0) {
+          durumHTML = '<span class="chip no">Ödenmedi</span>';
+        } else {
+          const durumYuzde = ((ayData.odenen / ayData.toplam) * 100).toFixed(0);
+          durumHTML = `<span style="color:var(--warn); font-weight:600">%${durumYuzde}</span>`;
+        }
+        
+        tr.innerHTML = `
+          <td style="text-align:left; padding-left:16px; font-weight:600">${ayAdi}</td>
+          <td style="text-align:center; font-weight:600">${fmt(ayData.toplam)}</td>
+          <td style="text-align:center; color:var(--success); font-weight:600">${fmt(ayData.odenen)}</td>
+          <td style="text-align:center; color:var(--danger); font-weight:600">${fmt(ayData.kalan)}</td>
+          <td style="text-align:center">${durumHTML}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+      
+      document.getElementById("kategoriDetayArea").style.display = "block";
+      document.getElementById("kategoriDetayEmpty").style.display = "none";
+    } catch(e) {
+      console.error(e);
+      toast('Kategori detay analizi yüklenirken hata.');
     }
   }
 
@@ -778,6 +2732,35 @@ async function listele() {
     }catch(e){}
   })();
 
+  // Yetkili kullanıcı kontrolü ve UI güncelleme
+  function updateAdminUI(isAdmin) {
+    IS_ADMIN = isAdmin;
+    
+    // Butonları göster/gizle
+    const btnAdd = document.getElementById("btnAdd");
+    const btnCopy = document.getElementById("btnCopy");
+    const btnBulkManage = document.getElementById("btnBulkManage");
+    const btnPersonelManage = document.getElementById("btnPersonelManage");
+    
+    if(btnAdd) btnAdd.style.display = isAdmin ? "inline-block" : "none";
+    if(btnCopy) btnCopy.style.display = isAdmin ? "inline-block" : "none";
+    if(btnBulkManage) btnBulkManage.style.display = isAdmin ? "inline-block" : "none";
+    if(btnPersonelManage) btnPersonelManage.style.display = isAdmin ? "inline-block" : "none";
+    
+    // Tablo satırlarına tıklama - sadece admin için aktif
+    const tbody = document.getElementById("listeAlani");
+    if(tbody) {
+      tbody.querySelectorAll('tr').forEach(tr => {
+        if(isAdmin) {
+          tr.style.cursor = "pointer";
+        } else {
+          tr.style.cursor = "default";
+          tr.onclick = null;
+        }
+      });
+    }
+  }
+
   // Auth + yetki
   try{ firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL); }catch(e){}
   auth.onAuthStateChanged(async (user)=>{
@@ -791,6 +2774,12 @@ async function listele() {
       CURRENT_DENY =new Set(rawPerms.filter(s=> String(s).trim().startsWith('-') || String(s).trim().startsWith('!')).map(s=>norm(String(s).replace(/^[-!]\s*/,''))));
       const panels=await fetchPanels(CURRENT_ALLOW, CURRENT_DENY);
       renderNav(panels);
+      
+      // Email kontrolü - sadece samettckrr@gmail.com yetkili
+      const userEmail = user.email || '';
+      const isAdmin = userEmail.toLowerCase() === 'samettckrr@gmail.com';
+      updateAdminUI(isAdmin);
+      
       await listele();
     }catch(e){ console.error(e); toast('Veriler yüklenirken hata.'); }
   });

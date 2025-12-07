@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>2026 Bütçe Simülatörü - Yazdır | Karaağaç Fatih</title>
+<link rel="icon" type="image/png" href="../img/logo.png" />
+
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="../js/firebase/firebase-init.js"></script>
+
+<style>
+  @media print {
+    body { margin: 0; padding: 20px; }
+    .no-print { display: none !important; }
+    .page-break { page-break-after: always; }
+  }
+
+  @media screen {
+    body { 
+      background: #f5f5f5; 
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    .print-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      padding: 40px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #111827;
+    line-height: 1.6;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 40px;
+    padding-bottom: 20px;
+    border-bottom: 3px solid #2563eb;
+  }
+
+  .header h1 {
+    margin: 0 0 10px;
+    font-size: 32px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .header .subtitle {
+    font-size: 16px;
+    color: #6b7280;
+  }
+
+  .section {
+    margin: 40px 0;
+    page-break-inside: avoid;
+  }
+
+  .section-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #e5e7eb;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+  }
+
+  thead {
+    background: #f8fafc;
+  }
+
+  th {
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 13px;
+    color: #111827;
+    border-bottom: 2px solid #e5e7eb;
+  }
+
+  th.text-right {
+    text-align: right;
+  }
+
+  td {
+    padding: 12px 16px;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 14px;
+  }
+
+  td.text-right {
+    text-align: right;
+  }
+
+  tbody tr.total-row {
+    background: #f8fafc;
+    font-weight: 700;
+    border-top: 2px solid #e5e7eb;
+  }
+
+  tbody tr.total-row td {
+    padding: 16px;
+    font-size: 15px;
+  }
+
+  .no-print {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    display: flex;
+    gap: 12px;
+  }
+
+  .btn {
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    border: none;
+    background: #2563eb;
+    color: white;
+    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+  }
+
+  .btn:hover {
+    background: #1d4ed8;
+  }
+
+  .btn-secondary {
+    background: #6b7280;
+  }
+
+  .btn-secondary:hover {
+    background: #4b5563;
+  }
+</style>
+</head>
+<body>
+
+<div class="no-print">
+  <button class="btn" onclick="window.print()">🖨️ Yazdır</button>
+  <button class="btn btn-secondary" onclick="window.close()">✕ Kapat</button>
+</div>
+
+<div class="print-container">
+  <div class="header">
+    <h1>🚀 2026 Bütçe Simülatörü</h1>
+    <div class="subtitle" id="planlamaAdi">Yükleniyor...</div>
+  </div>
+
+  <div id="printContent">
+    <div style="text-align:center; padding:60px; color:#6b7280">
+      Yükleniyor...
+    </div>
+  </div>
+</div>
+
+<script>
+  const db = firebase.firestore();
+  const auth = firebase.auth();
+  const fmt = (n) => (Number(n||0)).toLocaleString("tr-TR",{minimumFractionDigits:2, maximumFractionDigits:2}) + " ₺";
+  
+  let gerceklesenData = {};
+  let allKategoriler = [];
+  let budget2026Data = {};
+
+  // URL'den planlama adını al
+  const urlParams = new URLSearchParams(window.location.search);
+  const planlamaAdi = urlParams.get('planlama') || localStorage.getItem('currentPlanlamaAdi') || '';
+
+  // Verileri yükle
+  async function loadData(){
+    try{
+      // Planlama adını göster
+      document.getElementById('planlamaAdi').textContent = planlamaAdi || 'Planlama Seçilmemiş';
+
+      // Kategorileri yükle
+      const kategoriSnap = await db.collection('muhasebe_kategoriler').get();
+      allKategoriler = [];
+      kategoriSnap.forEach(doc => {
+        const d = doc.data();
+        allKategoriler.push({
+          id: doc.id,
+          ad: d.ad || doc.id,
+          tip: d.tip || 'gider'
+        });
+      });
+
+      // Gerçekleşen verilerini yükle
+      const gerceklesenSnap = await db.collection('muhasebe_gerceklesen').get();
+      gerceklesenData = {};
+      gerceklesenSnap.forEach(doc => {
+        const d = doc.data();
+        const yil = d.yil || 2024;
+        const ay = d.ay || 1;
+        const tip = (d.tip || 'gider').toLowerCase();
+        const kategori = d.kategori || 'Diğer';
+        const gerceklesen = +(d.gerceklesen || 0);
+        
+        if(!gerceklesenData[yil]) gerceklesenData[yil] = {};
+        if(!gerceklesenData[yil][ay]) gerceklesenData[yil][ay] = {};
+        if(!gerceklesenData[yil][ay][tip]) gerceklesenData[yil][ay][tip] = {};
+        gerceklesenData[yil][ay][tip][kategori] = (gerceklesenData[yil][ay][tip][kategori] || 0) + gerceklesen;
+      });
+
+      // 2026 bütçe planlarını yükle
+      budget2026Data = {};
+      if(planlamaAdi){
+        const budgetSnap = await db.collection('muhasebe_planlama_2026').get();
+        
+        budgetSnap.forEach(doc => {
+          const d = doc.data();
+          const docPlanlamaAdi = d.planlamaAdi || d.heyet || '';
+          if(docPlanlamaAdi === planlamaAdi){
+            const tip = (d.tip || 'gider').toLowerCase();
+            const kategori = d.kategori || '';
+            if(kategori){
+              if(!budget2026Data[tip]) budget2026Data[tip] = {};
+              budget2026Data[tip][kategori] = +(d.targetAmount || 0);
+            }
+          }
+        });
+      }
+
+      renderPrint();
+    }catch(e){
+      console.error('Veri yüklenirken hata:', e);
+      document.getElementById('printContent').innerHTML = '<div style="text-align:center; padding:60px; color:#dc2626">Veriler yüklenirken hata oluştu</div>';
+    }
+  }
+
+  // Kategori verilerini hesapla
+  function calculateKategoriData(kategoriAd, tip){
+    let gerceklesen2024 = 0;
+    if(gerceklesenData[2024]){
+      Object.keys(gerceklesenData[2024]).forEach(a => {
+        if(gerceklesenData[2024][a][tip] && gerceklesenData[2024][a][tip][kategoriAd]){
+          gerceklesen2024 += gerceklesenData[2024][a][tip][kategoriAd];
+        }
+      });
+    }
+
+    let gerceklesen2025 = 0;
+    if(gerceklesenData[2025]){
+      Object.keys(gerceklesenData[2025]).forEach(a => {
+        if(gerceklesenData[2025][a][tip] && gerceklesenData[2025][a][tip][kategoriAd]){
+          gerceklesen2025 += gerceklesenData[2025][a][tip][kategoriAd];
+        }
+      });
+    }
+
+    const artisYuzde = gerceklesen2024 > 0 
+      ? ((gerceklesen2025 - gerceklesen2024) / gerceklesen2024 * 100).toFixed(1) 
+      : (gerceklesen2025 > 0 ? '100.0' : '0.0');
+
+    const planlama2026 = budget2026Data[tip] && budget2026Data[tip][kategoriAd] 
+      ? budget2026Data[tip][kategoriAd] 
+      : 0;
+
+    const planlamaYuzde = gerceklesen2025 > 0 
+      ? ((planlama2026 - gerceklesen2025) / gerceklesen2025 * 100).toFixed(1) 
+      : '0.0';
+
+    return {
+      gerceklesen2024,
+      gerceklesen2025,
+      artisYuzde,
+      planlama2026,
+      planlamaYuzde
+    };
+  }
+
+  // Toplamları hesapla
+  function calculateTotals(tip, kategoriler){
+    let total2024 = 0, total2025 = 0, total2026 = 0;
+    
+    kategoriler.forEach(kat => {
+      const data = calculateKategoriData(kat.ad, tip);
+      total2024 += data.gerceklesen2024;
+      total2025 += data.gerceklesen2025;
+      total2026 += budget2026Data[tip] && budget2026Data[tip][kat.ad] 
+        ? budget2026Data[tip][kat.ad] 
+        : 0;
+    });
+
+    const artisYuzde = total2024 > 0 
+      ? ((total2025 - total2024) / total2024 * 100).toFixed(1) 
+      : (total2025 > 0 ? '100.0' : '0.0');
+
+    const planlamaYuzde = total2025 > 0 
+      ? ((total2026 - total2025) / total2025 * 100).toFixed(1) 
+      : '0.0';
+
+    return { total2024, total2025, total2026, artisYuzde, planlamaYuzde };
+  }
+
+  // Yazdırma içeriğini render et
+  function renderPrint(){
+    const content = document.getElementById('printContent');
+
+    // Gider kategorileri
+    const giderKategoriler = allKategoriler.filter(k => k.tip === 'gider')
+      .sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
+    
+    let giderHTML = '<div class="section"><div class="section-title">💸 Giderler</div><table><thead><tr><th>Kategori</th><th class="text-right">2024 Gerçekleşen</th><th class="text-right">2025 Gerçekleşen</th><th class="text-right">Artış Yüzdesi</th><th class="text-right">2026 Planlama</th><th class="text-right">Bütçe Planlama Yüzdesi</th></tr></thead><tbody>';
+    
+    giderKategoriler.forEach(kat => {
+      const data = calculateKategoriData(kat.ad, 'gider');
+      giderHTML += `
+        <tr>
+          <td>${kat.ad}</td>
+          <td class="text-right">${fmt(data.gerceklesen2024)}</td>
+          <td class="text-right">${fmt(data.gerceklesen2025)}</td>
+          <td class="text-right" style="color:${parseFloat(data.artisYuzde) >= 0 ? '#dc2626' : '#16a34a'}">
+            ${parseFloat(data.artisYuzde) >= 0 ? '+' : ''}${data.artisYuzde}%
+          </td>
+          <td class="text-right">${fmt(data.planlama2026)}</td>
+          <td class="text-right" style="color:${parseFloat(data.planlamaYuzde) >= 0 ? '#dc2626' : '#16a34a'}">
+            ${parseFloat(data.planlamaYuzde) >= 0 ? '+' : ''}${data.planlamaYuzde}%
+          </td>
+        </tr>
+      `;
+    });
+    
+    const giderTotals = calculateTotals('gider', giderKategoriler);
+    giderHTML += `
+      <tr class="total-row">
+        <td><strong>TOPLAM</strong></td>
+        <td class="text-right"><strong>${fmt(giderTotals.total2024)}</strong></td>
+        <td class="text-right"><strong>${fmt(giderTotals.total2025)}</strong></td>
+        <td class="text-right"><strong>${giderTotals.artisYuzde}%</strong></td>
+        <td class="text-right"><strong>${fmt(giderTotals.total2026)}</strong></td>
+        <td class="text-right"><strong>${giderTotals.planlamaYuzde}%</strong></td>
+      </tr>
+    </tbody></table></div>`;
+
+    // Gelir kategorileri
+    const gelirKategoriler = allKategoriler.filter(k => k.tip === 'gelir')
+      .sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
+    
+    let gelirHTML = '<div class="section page-break"><div class="section-title">💰 Gelirler</div><table><thead><tr><th>Kategori</th><th class="text-right">2024 Gerçekleşen</th><th class="text-right">2025 Gerçekleşen</th><th class="text-right">Artış Yüzdesi</th><th class="text-right">2026 Planlama</th><th class="text-right">Bütçe Planlama Yüzdesi</th></tr></thead><tbody>';
+    
+    gelirKategoriler.forEach(kat => {
+      const data = calculateKategoriData(kat.ad, 'gelir');
+      gelirHTML += `
+        <tr>
+          <td>${kat.ad}</td>
+          <td class="text-right">${fmt(data.gerceklesen2024)}</td>
+          <td class="text-right">${fmt(data.gerceklesen2025)}</td>
+          <td class="text-right" style="color:${parseFloat(data.artisYuzde) >= 0 ? '#16a34a' : '#dc2626'}">
+            ${parseFloat(data.artisYuzde) >= 0 ? '+' : ''}${data.artisYuzde}%
+          </td>
+          <td class="text-right">${fmt(data.planlama2026)}</td>
+          <td class="text-right" style="color:${parseFloat(data.planlamaYuzde) >= 0 ? '#16a34a' : '#dc2626'}">
+            ${parseFloat(data.planlamaYuzde) >= 0 ? '+' : ''}${data.planlamaYuzde}%
+          </td>
+        </tr>
+      `;
+    });
+    
+    const gelirTotals = calculateTotals('gelir', gelirKategoriler);
+    gelirHTML += `
+      <tr class="total-row">
+        <td><strong>TOPLAM</strong></td>
+        <td class="text-right"><strong>${fmt(gelirTotals.total2024)}</strong></td>
+        <td class="text-right"><strong>${fmt(gelirTotals.total2025)}</strong></td>
+        <td class="text-right"><strong>${gelirTotals.artisYuzde}%</strong></td>
+        <td class="text-right"><strong>${fmt(gelirTotals.total2026)}</strong></td>
+        <td class="text-right"><strong>${gelirTotals.planlamaYuzde}%</strong></td>
+      </tr>
+    </tbody></table></div>`;
+
+    content.innerHTML = giderHTML + gelirHTML;
+  }
+
+  // Auth kontrolü
+  auth.onAuthStateChanged(async (user) => {
+    if(!user){
+      setTimeout(() => {
+        if(!auth.currentUser) window.location.replace('index.html');
+      }, 150);
+      return;
+    }
+
+    await loadData();
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>2026 Bütçe Simülatörü | Karaağaç Fatih</title>
+<link rel="icon" type="image/png" href="../img/logo.png" />
+
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="../js/firebase/firebase-init.js"></script>
+
+<style>
+  :root{
+    --radius:12px; 
+    --shadow:0 2px 8px rgba(0,0,0,.06);
+    --bg:#ffffff; 
+    --bg2:#f8fafc;
+    --card:#ffffff; 
+    --stroke:#e5e7eb;
+    --text:#111827; 
+    --muted:#6b7280;
+    --brand:#2563eb; 
+    --brand2:#1d4ed8;
+    --danger:#dc2626; 
+    --success:#16a34a; 
+    --warn:#ca8a04;
+    --transition:all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%; margin:0; padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+    background:var(--bg2);
+    color:var(--text);
+    font-size:14px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .container{
+    max-width:1400px;
+    margin:0 auto;
+    padding:32px 24px;
+  }
+
+  .header{
+    background:var(--card);
+    padding:24px 32px;
+    border-bottom:1px solid var(--stroke);
+    box-shadow:0 1px 3px rgba(0,0,0,.05);
+    margin-bottom:32px;
+  }
+
+  .header h1{
+    margin:0 0 8px;
+    font-size:28px;
+    font-weight:700;
+    letter-spacing:-0.03em;
+    color:var(--text);
+  }
+
+  .header .subtitle{
+    font-size:14px;
+    color:var(--muted);
+  }
+
+  .back-btn{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:8px 16px;
+    background:var(--bg2);
+    border:1px solid var(--stroke);
+    border-radius:8px;
+    color:var(--text);
+    text-decoration:none;
+    font-size:14px;
+    font-weight:500;
+    transition:var(--transition);
+    margin-bottom:16px;
+  }
+
+  .back-btn:hover{
+    background:var(--stroke);
+    transform:translateX(-2px);
+  }
+
+  .section{
+    background:var(--card);
+    border:1px solid var(--stroke);
+    border-radius:var(--radius);
+    padding:28px;
+    margin-bottom:32px;
+    box-shadow:var(--shadow);
+  }
+
+  .section-title{
+    font-size:20px;
+    font-weight:700;
+    color:var(--text);
+    margin:0 0 24px;
+    padding-bottom:16px;
+    border-bottom:2px solid var(--stroke);
+    letter-spacing:-0.02em;
+  }
+
+  .table-wrapper{
+    overflow-x:auto;
+  }
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+  }
+
+  thead{
+    background:var(--bg2);
+  }
+
+  th{
+    padding:12px 16px;
+    text-align:left;
+    font-weight:600;
+    font-size:13px;
+    color:var(--text);
+    border-bottom:2px solid var(--stroke);
+    white-space:nowrap;
+  }
+
+  td{
+    padding:14px 16px;
+    border-bottom:1px solid var(--stroke);
+    font-size:14px;
+  }
+
+  tbody tr:hover{
+    background:var(--bg2);
+  }
+
+  tbody tr.total-row{
+    background:var(--bg2);
+    font-weight:700;
+    border-top:2px solid var(--stroke);
+  }
+
+  tbody tr.total-row td{
+    padding:16px;
+    font-size:15px;
+  }
+
+  input[type="text"]{
+    width:100%;
+    padding:8px 12px;
+    border:1px solid var(--stroke);
+    border-radius:6px;
+    font-size:14px;
+    font-family:inherit;
+    transition:var(--transition);
+    background:var(--card);
+    color:var(--text);
+  }
+
+  input[type="text"]:focus{
+    outline:none;
+    border-color:var(--brand);
+    box-shadow:0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+
+  .number-input{
+    text-align:right;
+    font-weight:500;
+  }
+
+  .text-success{
+    color:var(--success);
+  }
+
+  .text-danger{
+    color:var(--danger);
+  }
+
+  .text-muted{
+    color:var(--muted);
+    font-size:12px;
+  }
+
+  .save-btn{
+    background:var(--brand);
+    color:#fff;
+    border:none;
+    padding:12px 24px;
+    border-radius:8px;
+    font-weight:500;
+    font-size:14px;
+    cursor:pointer;
+    transition:var(--transition);
+    box-shadow:0 2px 4px rgba(37, 99, 235, 0.2);
+  }
+
+  .save-btn:hover{
+    background:var(--brand2);
+    transform:translateY(-1px);
+    box-shadow:0 4px 12px rgba(37, 99, 235, 0.3);
+  }
+
+  .save-btn:active{
+    transform:translateY(0);
+  }
+
+  .actions{
+    display:flex;
+    gap:12px;
+    justify-content:flex-end;
+    margin-top:24px;
+  }
+
+  /* Modal */
+  .modal{
+    display:none;
+    position:fixed;
+    top:0;
+    left:0;
+    right:0;
+    bottom:0;
+    background:rgba(0,0,0,0.6);
+    backdrop-filter:blur(4px);
+    z-index:1000;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+    animation:fadeIn 0.2s ease-out;
+  }
+
+  @keyframes fadeIn{
+    from{opacity:0}
+    to{opacity:1}
+  }
+
+  .modal-content{
+    background:var(--card);
+    border-radius:16px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.3);
+    max-width:500px;
+    width:100%;
+    padding:32px;
+    animation:slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border:1px solid var(--stroke);
+  }
+
+  @keyframes slideUp{
+    from{
+      opacity:0;
+      transform:translateY(20px) scale(0.95);
+    }
+    to{
+      opacity:1;
+      transform:translateY(0) scale(1);
+    }
+  }
+
+  .modal-header{
+    margin-bottom:24px;
+  }
+
+  .modal-header h3{
+    margin:0 0 8px;
+    font-size:22px;
+    font-weight:700;
+    color:var(--text);
+    letter-spacing:-0.02em;
+  }
+
+  .modal-header p{
+    margin:0;
+    font-size:14px;
+    color:var(--muted);
+  }
+
+  .form-group{
+    margin-bottom:20px;
+  }
+
+  .form-group label{
+    display:block;
+    margin-bottom:8px;
+    font-size:13px;
+    font-weight:500;
+    color:var(--text);
+  }
+
+  .form-group input,
+  .form-group select{
+    width:100%;
+    padding:10px 12px;
+    border:1px solid var(--stroke);
+    border-radius:8px;
+    font-size:14px;
+    font-family:inherit;
+    transition:var(--transition);
+    background:var(--card);
+    color:var(--text);
+  }
+
+  .form-group input:focus,
+  .form-group select:focus{
+    outline:none;
+    border-color:var(--brand);
+    box-shadow:0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+
+  .modal-actions{
+    display:flex;
+    gap:12px;
+    justify-content:flex-end;
+    margin-top:24px;
+  }
+
+  .btn-secondary{
+    background:var(--bg2);
+    color:var(--text);
+    border:1px solid var(--stroke);
+    padding:10px 20px;
+    border-radius:8px;
+    font-weight:500;
+    font-size:14px;
+    cursor:pointer;
+    transition:var(--transition);
+  }
+
+  .btn-secondary:hover{
+    background:var(--stroke);
+  }
+
+  .planlama-selector{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin-bottom:24px;
+    padding:16px;
+    background:var(--bg2);
+    border-radius:var(--radius);
+    border:1px solid var(--stroke);
+  }
+
+  .planlama-selector label{
+    font-weight:600;
+    font-size:14px;
+    color:var(--text);
+    white-space:nowrap;
+  }
+
+  .planlama-selector select{
+    flex:1;
+    padding:8px 12px;
+    border:1px solid var(--stroke);
+    border-radius:8px;
+    font-size:14px;
+    background:var(--card);
+    color:var(--text);
+  }
+
+  .planlama-list-item{
+    padding:12px 16px;
+    border:1px solid var(--stroke);
+    border-radius:8px;
+    margin-bottom:8px;
+    cursor:pointer;
+    transition:var(--transition);
+  }
+
+  .planlama-list-item:hover{
+    background:var(--bg2);
+    border-color:var(--brand);
+  }
+
+  .planlama-list-item.selected{
+    background:var(--brand);
+    color:#fff;
+    border-color:var(--brand);
+  }
+
+  .planlama-list-item h4{
+    margin:0 0 4px;
+    font-size:15px;
+    font-weight:600;
+  }
+
+  .planlama-list-item p{
+    margin:0;
+    font-size:12px;
+    opacity:0.8;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="container">
+    <a href="bütceplanlama.html" class="back-btn">← Geri Dön</a>
+    <h1>🚀 2026 Bütçe Simülatörü</h1>
+    <div class="subtitle">2024-2025 verilerine göre 2026 bütçe planlaması yapın</div>
+    
+    <div class="planlama-selector">
+      <label>Planlama Seçimi:</label>
+      <select id="planlamaSelect" onchange="loadPlanlama()">
+        <option value="">Yeni Planlama...</option>
+      </select>
+      <button class="save-btn" onclick="openViewPlanlamalarModal()" style="white-space:nowrap">📋 Planlanmış Verileri Gör</button>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <!-- GİDER TABLOSU -->
+  <div class="section">
+    <h2 class="section-title">💸 Giderler</h2>
+    <div class="table-wrapper">
+      <table id="giderTable">
+        <thead>
+          <tr>
+            <th>Kategori</th>
+            <th style="text-align:right">2024 Gerçekleşen</th>
+            <th style="text-align:right">2025 Gerçekleşen</th>
+            <th style="text-align:right">Artış Yüzdesi</th>
+            <th style="text-align:right">2026 Planlama</th>
+            <th style="text-align:right">Bütçe Planlama Yüzdesi</th>
+          </tr>
+        </thead>
+        <tbody id="giderTableBody">
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- GELİR TABLOSU -->
+  <div class="section">
+    <h2 class="section-title">💰 Gelirler</h2>
+    <div class="table-wrapper">
+      <table id="gelirTable">
+        <thead>
+          <tr>
+            <th>Kategori</th>
+            <th style="text-align:right">2024 Gerçekleşen</th>
+            <th style="text-align:right">2025 Gerçekleşen</th>
+            <th style="text-align:right">Artış Yüzdesi</th>
+            <th style="text-align:right">2026 Planlama</th>
+            <th style="text-align:right">Bütçe Planlama Yüzdesi</th>
+          </tr>
+        </thead>
+        <tbody id="gelirTableBody">
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="save-btn" onclick="saveBudget2026()">💾 2026 Bütçe Planını Kaydet</button>
+    <button class="save-btn" onclick="openPrintPage()" style="background:var(--muted)">🖨️ Yazdır</button>
+  </div>
+</div>
+
+<!-- İLK AÇILIŞ MODAL -->
+<div class="modal" id="firstTimeModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>📋 Planlama Başlat</h3>
+      <p>Soru-1: Planlama kimle yapılıyor?</p>
+    </div>
+    <div class="form-group">
+      <label>Planlama Adı / Heyet</label>
+      <input type="text" id="firstPlanlamaAdi" placeholder="Örn: Personel Heyeti, Hesap Heyeti, Yönetim Kurulu..." autofocus onkeypress="if(event.key==='Enter') saveFirstPlanlama()">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeFirstTimeModal()">İptal</button>
+      <button class="save-btn" onclick="saveFirstPlanlama()">Kaydet ve Devam</button>
+    </div>
+  </div>
+</div>
+
+<!-- PLANLANMIŞ VERİLERİ GÖR MODAL -->
+<div class="modal" id="viewPlanlamalarModal">
+  <div class="modal-content" style="max-width:600px">
+    <div class="modal-header">
+      <h3>📋 Planlanmış Veriler</h3>
+      <p>Yüklemek istediğiniz planlamayı seçin</p>
+    </div>
+    <div id="planlamaList" style="max-height:400px; overflow-y:auto">
+      <div style="padding:40px; text-align:center; color:var(--muted)">Yükleniyor...</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('viewPlanlamalarModal')">Kapat</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const db = firebase.firestore();
+  const auth = firebase.auth();
+  const fmt = (n) => (Number(n||0)).toLocaleString("tr-TR",{minimumFractionDigits:2, maximumFractionDigits:2}) + " ₺";
+  
+  let gerceklesenData = {};
+  let allKategoriler = [];
+  let budget2026Data = {}; // {tip: {kategori: tutar}}
+  let currentPlanlamaAdi = ''; // Seçili planlama adı
+  let allPlanlamalar = []; // Tüm planlamalar listesi
+
+  // Sayıyı parse et (virgül/nokta uyumu)
+  function parseNumber(str){
+    if(!str) return 0;
+    // Türkçe format: 1.234,56 veya 1234,56
+    str = str.toString().trim();
+    // Noktaları kaldır (binlik ayırıcı)
+    str = str.replace(/\./g, '');
+    // Virgülü noktaya çevir
+    str = str.replace(/,/g, '.');
+    const num = parseFloat(str);
+    return isNaN(num) ? 0 : num;
+  }
+
+  // Sayıyı Türkçe formata çevir (input için)
+  function formatNumberForInput(num){
+    if(!num || num === 0) return '';
+    return num.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  }
+
+  // Modal aç/kapa
+  function openModal(id){
+    document.getElementById(id).style.display = 'flex';
+  }
+
+  window.closeModal = function(id){
+    document.getElementById(id).style.display = 'none';
+  };
+
+  // İlk açılış kontrolü
+  async function checkFirstTime(){
+    const hasPlanlama = localStorage.getItem('hasPlanlama');
+    if(!hasPlanlama){
+      // Modal açmadan önce kısa bir gecikme
+      setTimeout(() => {
+        openModal('firstTimeModal');
+      }, 100);
+    } else {
+      await loadPlanlamalar();
+      await loadData();
+    }
+  }
+
+  // İlk açılış modal'ını kapat (geri dön)
+  window.closeFirstTimeModal = function(){
+    window.location.href = 'bütceplanlama.html';
+  };
+
+  // İlk planlamayı kaydet
+  window.saveFirstPlanlama = async function(){
+    const planlamaAdi = document.getElementById('firstPlanlamaAdi').value.trim();
+    if(!planlamaAdi){
+      alert('Lütfen planlama adı girin!');
+      return;
+    }
+
+    currentPlanlamaAdi = planlamaAdi;
+    localStorage.setItem('hasPlanlama', 'true');
+    localStorage.setItem('currentPlanlamaAdi', planlamaAdi);
+    
+    closeModal('firstTimeModal');
+    
+    // Kısa bir gecikme ile planlamaları yükle (DOM hazır olsun)
+    setTimeout(async () => {
+      await loadPlanlamalar();
+      await loadData();
+    }, 100);
+  };
+
+  // Tüm planlamaları yükle
+  async function loadPlanlamalar(){
+    try{
+      const snap = await db.collection('muhasebe_planlama_2026').get();
+      const planlamaSet = new Set();
+      
+      snap.forEach(doc => {
+        const d = doc.data();
+        const planlamaAdi = d.planlamaAdi || d.heyet || '';
+        if(planlamaAdi){
+          planlamaSet.add(planlamaAdi);
+        }
+      });
+
+      allPlanlamalar = Array.from(planlamaSet).sort();
+      
+      // Dropdown'ı güncelle
+      const select = document.getElementById('planlamaSelect');
+      if(!select) {
+        console.error('planlamaSelect elementi bulunamadı');
+        return;
+      }
+      
+      select.innerHTML = '<option value="">Yeni Planlama...</option>';
+      allPlanlamalar.forEach(plan => {
+        const option = document.createElement('option');
+        option.value = plan;
+        option.textContent = plan;
+        if(plan === currentPlanlamaAdi){
+          option.selected = true;
+        }
+        select.appendChild(option);
+      });
+
+      // Eğer currentPlanlamaAdi varsa seç
+      if(currentPlanlamaAdi && allPlanlamalar.includes(currentPlanlamaAdi)){
+        select.value = currentPlanlamaAdi;
+      }
+    }catch(e){
+      console.error('Planlamalar yüklenirken hata:', e);
+    }
+  }
+
+  // Seçilen planlamayı yükle
+  window.loadPlanlama = async function(){
+    const select = document.getElementById('planlamaSelect');
+    const selectedPlanlama = select.value;
+    
+    if(!selectedPlanlama){
+      // Yeni planlama - planlama adı sor
+      const planlamaAdi = prompt('Yeni planlama adı girin:');
+      if(!planlamaAdi || !planlamaAdi.trim()){
+        // İptal edildi, önceki seçime geri dön
+        if(currentPlanlamaAdi){
+          select.value = currentPlanlamaAdi;
+        }
+        return;
+      }
+      
+      currentPlanlamaAdi = planlamaAdi.trim();
+      localStorage.setItem('currentPlanlamaAdi', currentPlanlamaAdi);
+      
+      // Dropdown'a ekle
+      const option = document.createElement('option');
+      option.value = currentPlanlamaAdi;
+      option.textContent = currentPlanlamaAdi;
+      option.selected = true;
+      select.insertBefore(option, select.firstChild.nextSibling);
+      
+      // Yeni planlama, verileri temizle
+      budget2026Data = {};
+      renderTables();
+      return;
+    }
+
+    currentPlanlamaAdi = selectedPlanlama;
+    localStorage.setItem('currentPlanlamaAdi', selectedPlanlama);
+    
+    // Seçilen planlamanın verilerini yükle
+    await loadData();
+  };
+
+  // Verileri yükle
+  async function loadData(){
+    try{
+      // Kategorileri yükle
+      const kategoriSnap = await db.collection('muhasebe_kategoriler').get();
+      allKategoriler = [];
+      kategoriSnap.forEach(doc => {
+        const d = doc.data();
+        allKategoriler.push({
+          id: doc.id,
+          ad: d.ad || doc.id,
+          tip: d.tip || 'gider'
+        });
+      });
+
+      // Gerçekleşen verilerini yükle
+      const gerceklesenSnap = await db.collection('muhasebe_gerceklesen').get();
+      gerceklesenData = {};
+      gerceklesenSnap.forEach(doc => {
+        const d = doc.data();
+        const yil = d.yil || 2024;
+        const ay = d.ay || 1;
+        const tip = (d.tip || 'gider').toLowerCase();
+        const kategori = d.kategori || 'Diğer';
+        const gerceklesen = +(d.gerceklesen || 0);
+        
+        if(!gerceklesenData[yil]) gerceklesenData[yil] = {};
+        if(!gerceklesenData[yil][ay]) gerceklesenData[yil][ay] = {};
+        if(!gerceklesenData[yil][ay][tip]) gerceklesenData[yil][ay][tip] = {};
+        gerceklesenData[yil][ay][tip][kategori] = (gerceklesenData[yil][ay][tip][kategori] || 0) + gerceklesen;
+      });
+
+      // 2026 bütçe planlarını yükle (sadece seçili planlama)
+      budget2026Data = {};
+      if(currentPlanlamaAdi){
+        const budgetSnap = await db.collection('muhasebe_planlama_2026').get();
+        
+        budgetSnap.forEach(doc => {
+          const d = doc.data();
+          const planlamaAdi = d.planlamaAdi || d.heyet || '';
+          if(planlamaAdi === currentPlanlamaAdi){
+            const tip = (d.tip || 'gider').toLowerCase();
+            const kategori = d.kategori || '';
+            if(kategori){
+              if(!budget2026Data[tip]) budget2026Data[tip] = {};
+              budget2026Data[tip][kategori] = +(d.targetAmount || 0);
+            }
+          }
+        });
+      }
+
+      renderTables();
+    }catch(e){
+      console.error('Veri yüklenirken hata:', e);
+      alert('Veriler yüklenirken hata oluştu: ' + e.message);
+    }
+  }
+
+  // Kategori verilerini hesapla
+  function calculateKategoriData(kategoriAd, tip){
+    let gerceklesen2024 = 0;
+    if(gerceklesenData[2024]){
+      Object.keys(gerceklesenData[2024]).forEach(a => {
+        if(gerceklesenData[2024][a][tip] && gerceklesenData[2024][a][tip][kategoriAd]){
+          gerceklesen2024 += gerceklesenData[2024][a][tip][kategoriAd];
+        }
+      });
+    }
+
+    let gerceklesen2025 = 0;
+    if(gerceklesenData[2025]){
+      Object.keys(gerceklesenData[2025]).forEach(a => {
+        if(gerceklesenData[2025][a][tip] && gerceklesenData[2025][a][tip][kategoriAd]){
+          gerceklesen2025 += gerceklesenData[2025][a][tip][kategoriAd];
+        }
+      });
+    }
+
+    const artisYuzde = gerceklesen2024 > 0 
+      ? ((gerceklesen2025 - gerceklesen2024) / gerceklesen2024 * 100).toFixed(1) 
+      : (gerceklesen2025 > 0 ? '100.0' : '0.0');
+
+    const planlama2026 = budget2026Data[tip] && budget2026Data[tip][kategoriAd] 
+      ? budget2026Data[tip][kategoriAd] 
+      : 0;
+
+    const planlamaYuzde = gerceklesen2025 > 0 
+      ? ((planlama2026 - gerceklesen2025) / gerceklesen2025 * 100).toFixed(1) 
+      : '0.0';
+
+    return {
+      gerceklesen2024,
+      gerceklesen2025,
+      artisYuzde,
+      planlama2026,
+      planlamaYuzde
+    };
+  }
+
+  // Tabloları render et
+  function renderTables(){
+    // Gider kategorileri
+    const giderKategoriler = allKategoriler.filter(k => k.tip === 'gider')
+      .sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
+    
+    const giderTbody = document.getElementById('giderTableBody');
+    let giderHTML = '';
+    
+    giderKategoriler.forEach(kat => {
+      const data = calculateKategoriData(kat.ad, 'gider');
+      giderHTML += `
+        <tr>
+          <td>${kat.ad}</td>
+          <td style="text-align:right">${fmt(data.gerceklesen2024)}</td>
+          <td style="text-align:right">${fmt(data.gerceklesen2025)}</td>
+          <td style="text-align:right; color:${parseFloat(data.artisYuzde) >= 0 ? 'var(--danger)' : 'var(--success)'}">
+            ${parseFloat(data.artisYuzde) >= 0 ? '+' : ''}${data.artisYuzde}%
+          </td>
+          <td style="text-align:right">
+            <input type="text" 
+                   class="number-input budget-input" 
+                   data-tip="gider" 
+                   data-kategori="${kat.ad}"
+                   value="${formatNumberForInput(data.planlama2026)}"
+                   onblur="updateBudget2026('gider', '${kat.ad}', this.value)"
+                   style="width:150px; text-align:right">
+          </td>
+          <td style="text-align:right; color:${parseFloat(data.planlamaYuzde) >= 0 ? 'var(--danger)' : 'var(--success)'}">
+            <span class="planlama-yuzde" data-tip="gider" data-kategori="${kat.ad}">
+              ${parseFloat(data.planlamaYuzde) >= 0 ? '+' : ''}${data.planlamaYuzde}%
+            </span>
+          </td>
+        </tr>
+      `;
+    });
+    
+    // Toplam satırını ekle
+    const giderTotals = calculateTotals('gider', giderKategoriler);
+    giderHTML = `
+      <tr class="total-row">
+        <td><strong>TOPLAM</strong></td>
+        <td style="text-align:right"><strong id="giderTotal2024">${fmt(giderTotals.total2024)}</strong></td>
+        <td style="text-align:right"><strong id="giderTotal2025">${fmt(giderTotals.total2025)}</strong></td>
+        <td style="text-align:right"><strong id="giderTotalArtis">${giderTotals.artisYuzde}%</strong></td>
+        <td style="text-align:right"><strong id="giderTotal2026">${fmt(giderTotals.total2026)}</strong></td>
+        <td style="text-align:right"><strong id="giderTotalYuzde">${giderTotals.planlamaYuzde}%</strong></td>
+      </tr>
+    ` + giderHTML;
+    
+    giderTbody.innerHTML = giderHTML;
+
+    // Gelir kategorileri
+    const gelirKategoriler = allKategoriler.filter(k => k.tip === 'gelir')
+      .sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
+    
+    const gelirTbody = document.getElementById('gelirTableBody');
+    let gelirHTML = '';
+    
+    gelirKategoriler.forEach(kat => {
+      const data = calculateKategoriData(kat.ad, 'gelir');
+      gelirHTML += `
+        <tr>
+          <td>${kat.ad}</td>
+          <td style="text-align:right">${fmt(data.gerceklesen2024)}</td>
+          <td style="text-align:right">${fmt(data.gerceklesen2025)}</td>
+          <td style="text-align:right; color:${parseFloat(data.artisYuzde) >= 0 ? 'var(--success)' : 'var(--danger)'}">
+            ${parseFloat(data.artisYuzde) >= 0 ? '+' : ''}${data.artisYuzde}%
+          </td>
+          <td style="text-align:right">
+            <input type="text" 
+                   class="number-input budget-input" 
+                   data-tip="gelir" 
+                   data-kategori="${kat.ad}"
+                   value="${formatNumberForInput(data.planlama2026)}"
+                   onblur="updateBudget2026('gelir', '${kat.ad}', this.value)"
+                   style="width:150px; text-align:right">
+          </td>
+          <td style="text-align:right; color:${parseFloat(data.planlamaYuzde) >= 0 ? 'var(--success)' : 'var(--danger)'}">
+            <span class="planlama-yuzde" data-tip="gelir" data-kategori="${kat.ad}">
+              ${parseFloat(data.planlamaYuzde) >= 0 ? '+' : ''}${data.planlamaYuzde}%
+            </span>
+          </td>
+        </tr>
+      `;
+    });
+    
+    // Toplam satırını ekle
+    const gelirTotals = calculateTotals('gelir', gelirKategoriler);
+    gelirHTML = `
+      <tr class="total-row">
+        <td><strong>TOPLAM</strong></td>
+        <td style="text-align:right"><strong id="gelirTotal2024">${fmt(gelirTotals.total2024)}</strong></td>
+        <td style="text-align:right"><strong id="gelirTotal2025">${fmt(gelirTotals.total2025)}</strong></td>
+        <td style="text-align:right"><strong id="gelirTotalArtis">${gelirTotals.artisYuzde}%</strong></td>
+        <td style="text-align:right"><strong id="gelirTotal2026">${fmt(gelirTotals.total2026)}</strong></td>
+        <td style="text-align:right"><strong id="gelirTotalYuzde">${gelirTotals.planlamaYuzde}%</strong></td>
+      </tr>
+    ` + gelirHTML;
+    
+    gelirTbody.innerHTML = gelirHTML;
+  }
+
+  // Toplamları hesapla
+  function calculateTotals(tip, kategoriler){
+    let total2024 = 0, total2025 = 0, total2026 = 0;
+    
+    kategoriler.forEach(kat => {
+      const data = calculateKategoriData(kat.ad, tip);
+      total2024 += data.gerceklesen2024;
+      total2025 += data.gerceklesen2025;
+      total2026 += budget2026Data[tip] && budget2026Data[tip][kat.ad] 
+        ? budget2026Data[tip][kat.ad] 
+        : 0;
+    });
+
+    const artisYuzde = total2024 > 0 
+      ? ((total2025 - total2024) / total2024 * 100).toFixed(1) 
+      : (total2025 > 0 ? '100.0' : '0.0');
+
+    const planlamaYuzde = total2025 > 0 
+      ? ((total2026 - total2025) / total2025 * 100).toFixed(1) 
+      : '0.0';
+
+    return { total2024, total2025, total2026, artisYuzde, planlamaYuzde };
+  }
+
+  // Bütçe 2026'yı güncelle
+  window.updateBudget2026 = function(tip, kategori, value){
+    const numValue = parseNumber(value);
+    if(!budget2026Data[tip]) budget2026Data[tip] = {};
+    budget2026Data[tip][kategori] = numValue;
+
+    // Yüzdeyi güncelle
+    const data = calculateKategoriData(kategori, tip);
+    const planlamaYuzde = data.gerceklesen2025 > 0 
+      ? ((numValue - data.gerceklesen2025) / data.gerceklesen2025 * 100).toFixed(1) 
+      : '0.0';
+    
+    const yuzdeEl = document.querySelector(`.planlama-yuzde[data-tip="${tip}"][data-kategori="${kategori}"]`);
+    if(yuzdeEl){
+      yuzdeEl.textContent = `${parseFloat(planlamaYuzde) >= 0 ? '+' : ''}${planlamaYuzde}%`;
+      yuzdeEl.parentElement.style.color = parseFloat(planlamaYuzde) >= 0 
+        ? (tip === 'gider' ? 'var(--danger)' : 'var(--success)')
+        : (tip === 'gider' ? 'var(--success)' : 'var(--danger)');
+    }
+
+    // Toplamları güncelle
+    updateTotals(tip);
+  };
+
+  // Toplamları güncelle
+  function updateTotals(tip){
+    const kategoriler = allKategoriler.filter(k => k.tip === tip);
+    const totals = calculateTotals(tip, kategoriler);
+    
+    if(tip === 'gider'){
+      document.getElementById('giderTotal2026').textContent = fmt(totals.total2026);
+      document.getElementById('giderTotalYuzde').textContent = `${totals.planlamaYuzde}%`;
+    } else {
+      document.getElementById('gelirTotal2026').textContent = fmt(totals.total2026);
+      document.getElementById('gelirTotalYuzde').textContent = `${totals.planlamaYuzde}%`;
+    }
+  }
+
+  // Input formatını düzelt (virgül/nokta uyumu)
+  document.addEventListener('DOMContentLoaded', function(){
+    document.addEventListener('input', function(e){
+      if(e.target.classList.contains('budget-input')){
+        let value = e.target.value;
+        // Sadece rakam, nokta ve virgül kabul et
+        value = value.replace(/[^\d.,]/g, '');
+        // Birden fazla nokta/virgül varsa sadece birini tut
+        const parts = value.split(/[,.]/);
+        if(parts.length > 2){
+          value = parts[0] + ',' + parts.slice(1).join('');
+        }
+        e.target.value = value;
+      }
+    });
+  });
+
+  // 2026 Bütçe Planını Kaydet
+  window.saveBudget2026 = async function(){
+    if(!currentPlanlamaAdi){
+      const planlamaAdi = prompt('Planlama adı girin:');
+      if(!planlamaAdi || !planlamaAdi.trim()){
+        alert('Planlama adı gereklidir!');
+        return;
+      }
+      currentPlanlamaAdi = planlamaAdi.trim();
+    }
+
+    try{
+      // Önce bu planlamanın mevcut verilerini sil
+      if(currentPlanlamaAdi){
+        const existingSnap = await db.collection('muhasebe_planlama_2026').get();
+        const deletePromises = [];
+        existingSnap.forEach(doc => {
+          const d = doc.data();
+          const planlamaAdi = d.planlamaAdi || d.heyet || '';
+          if(planlamaAdi === currentPlanlamaAdi){
+            deletePromises.push(doc.ref.delete());
+          }
+        });
+        await Promise.all(deletePromises);
+      }
+
+      // Yeni planları ekle
+      const addPromises = [];
+      Object.keys(budget2026Data).forEach(tip => {
+        Object.keys(budget2026Data[tip]).forEach(kategori => {
+          const tutar = budget2026Data[tip][kategori];
+          if(tutar > 0){
+            const data = calculateKategoriData(kategori, tip);
+            addPromises.push(
+              db.collection('muhasebe_planlama_2026').add({
+                planlamaAdi: currentPlanlamaAdi,
+                tip: tip,
+                kategori: kategori,
+                targetAmount: tutar,
+                baseAmount: data.gerceklesen2025,
+                artisYuzde: data.gerceklesen2025 > 0 
+                  ? ((tutar - data.gerceklesen2025) / data.gerceklesen2025 * 100) 
+                  : 0,
+                yil: 2026,
+                olusturmaTarihi: firebase.firestore.FieldValue.serverTimestamp()
+              })
+            );
+          }
+        });
+      });
+
+      await Promise.all(addPromises);
+      
+      // Planlamalar listesini güncelle
+      await loadPlanlamalar();
+      
+      alert('2026 bütçe planı başarıyla kaydedildi!');
+    }catch(e){
+      console.error('Kaydetme hatası:', e);
+      alert('Kaydetme sırasında hata oluştu: ' + e.message);
+    }
+  };
+
+  // Planlanmış verileri gör modal'ını aç
+  window.openViewPlanlamalarModal = async function(){
+    await loadPlanlamalarList();
+    openModal('viewPlanlamalarModal');
+  };
+
+  // Planlamalar listesini yükle (modal için)
+  async function loadPlanlamalarList(){
+    try{
+      const snap = await db.collection('muhasebe_planlama_2026').get();
+      const planlamaMap = {};
+      
+      snap.forEach(doc => {
+        const d = doc.data();
+        const planlamaAdi = d.planlamaAdi || d.heyet || '';
+        if(!planlamaAdi) return;
+        
+        const olusturmaTarihi = d.olusturmaTarihi ? d.olusturmaTarihi.toDate() : new Date();
+        
+        if(!planlamaMap[planlamaAdi]){
+          planlamaMap[planlamaAdi] = {
+            adi: planlamaAdi,
+            olusturmaTarihi: olusturmaTarihi,
+            kategoriSayisi: 0
+          };
+        }
+        planlamaMap[planlamaAdi].kategoriSayisi++;
+      });
+
+      const planlamalar = Object.values(planlamaMap).sort((a, b) => 
+        b.olusturmaTarihi - a.olusturmaTarihi
+      );
+
+      const listContainer = document.getElementById('planlamaList');
+      
+      if(planlamalar.length === 0){
+        listContainer.innerHTML = '<div style="padding:40px; text-align:center; color:var(--muted)">Henüz planlama yapılmamış</div>';
+        return;
+      }
+
+      let html = '';
+      planlamalar.forEach(plan => {
+        const tarihStr = plan.olusturmaTarihi.toLocaleDateString('tr-TR', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        
+        html += `
+          <div class="planlama-list-item">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px">
+              <div style="flex:1; cursor:pointer" onclick="selectPlanlamaFromModal('${plan.adi}')">
+                <h4>${plan.adi}</h4>
+                <p>${plan.kategoriSayisi} kategori • ${tarihStr}</p>
+              </div>
+              <div style="display:flex; gap:8px">
+                <button onclick="deletePlanlama('${plan.adi}')" style="padding:6px 12px; background:var(--danger); color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:12px; font-weight:500">🗑️ Sil</button>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+
+      listContainer.innerHTML = html;
+    }catch(e){
+      console.error('Planlamalar listesi yüklenirken hata:', e);
+      document.getElementById('planlamaList').innerHTML = '<div style="padding:40px; text-align:center; color:var(--danger)">Yüklenirken hata oluştu</div>';
+    }
+  }
+
+  // Modal'dan planlama seç
+  window.selectPlanlamaFromModal = async function(planlamaAdi){
+    currentPlanlamaAdi = planlamaAdi;
+    localStorage.setItem('currentPlanlamaAdi', planlamaAdi);
+    
+    // Dropdown'ı güncelle
+    const select = document.getElementById('planlamaSelect');
+    if(select.querySelector(`option[value="${planlamaAdi}"]`)){
+      select.value = planlamaAdi;
+    } else {
+      // Yeni planlama, dropdown'a ekle
+      const option = document.createElement('option');
+      option.value = planlamaAdi;
+      option.textContent = planlamaAdi;
+      option.selected = true;
+      select.appendChild(option);
+    }
+    
+    closeModal('viewPlanlamalarModal');
+    await loadData();
+  };
+
+  // Planlamayı sil
+  window.deletePlanlama = async function(planlamaAdi){
+    if(!confirm(`"${planlamaAdi}" planlamasını silmek istediğinize emin misiniz? Bu işlem geri alınamaz!`)){
+      return;
+    }
+
+    try{
+      const snap = await db.collection('muhasebe_planlama_2026').get();
+      const deletePromises = [];
+      
+      snap.forEach(doc => {
+        const d = doc.data();
+        const docPlanlamaAdi = d.planlamaAdi || d.heyet || '';
+        if(docPlanlamaAdi === planlamaAdi){
+          deletePromises.push(doc.ref.delete());
+        }
+      });
+
+      await Promise.all(deletePromises);
+      
+      // Eğer silinen planlama seçili ise, seçimi temizle
+      if(currentPlanlamaAdi === planlamaAdi){
+        currentPlanlamaAdi = '';
+        localStorage.removeItem('currentPlanlamaAdi');
+        const select = document.getElementById('planlamaSelect');
+        select.value = '';
+        budget2026Data = {};
+        renderTables();
+      }
+      
+      // Listeyi yenile
+      await loadPlanlamalarList();
+      await loadPlanlamalar();
+      
+      alert('Planlama başarıyla silindi!');
+    }catch(e){
+      console.error('Silme hatası:', e);
+      alert('Silme sırasında hata oluştu: ' + e.message);
+    }
+  };
+
+  // Yazdırma sayfasını aç
+  window.openPrintPage = function(){
+    if(!currentPlanlamaAdi){
+      alert('Lütfen önce bir planlama seçin!');
+      return;
+    }
+    const url = `bütcesimulatoryazdir.html?planlama=${encodeURIComponent(currentPlanlamaAdi)}`;
+    window.open(url, '_blank');
+  };
+
+  // Auth kontrolü
+  auth.onAuthStateChanged(async (user) => {
+    if(!user){
+      setTimeout(() => {
+        if(!auth.currentUser) window.location.replace('index.html');
+      }, 150);
+      return;
+    }
+
+    // Mevcut planlama adını yükle
+    const savedPlanlama = localStorage.getItem('currentPlanlamaAdi');
+    if(savedPlanlama){
+      currentPlanlamaAdi = savedPlanlama;
+    }
+
+    // DOM hazır olana kadar bekle
+    if(document.readyState === 'loading'){
+      document.addEventListener('DOMContentLoaded', async () => {
+        await checkFirstTime();
+      });
+    } else {
+      await checkFirstTime();
+    }
+  });
+</script>
+</body>
+</html>

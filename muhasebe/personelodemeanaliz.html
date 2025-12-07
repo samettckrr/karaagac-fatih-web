@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Personel Ödeme Analizi - PDF</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+<style>
+  /* GENEL AYARLAR */
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; padding: 0; }
+  
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+    color: #1e293b;
+    padding: 20px;
+    min-height: 100vh;
+    /* Yazdırma sırasında renklerin tam çıkması için kritik kod */
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  
+  .container {
+    max-width: 210mm; /* A4 Genişliği */
+    margin: 0 auto;
+    background: #fff;
+    padding: 40px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.3);
+    border-radius: 16px;
+  }
+  
+  /* HEADER */
+  .header {
+    text-align: center;
+    margin-bottom: 40px;
+    padding: 30px;
+    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+    border-radius: 16px;
+    color: #fff;
+    box-shadow: 0 10px 30px rgba(14, 165, 233, 0.3);
+  }
+  .header h1 { 
+    margin: 0 0 16px; 
+    font-size: 32px; 
+    color: #fff; 
+    font-weight: 800;
+    text-shadow: 0 2px 10px rgba(0,0,0,.2);
+  }
+  .header .subtitle { 
+    font-size: 20px; 
+    color: rgba(255,255,255,.95); 
+    margin-bottom: 10px; 
+    font-weight: 600;
+  }
+  .header .year { 
+    font-size: 16px; 
+    color: rgba(255,255,255,.85); 
+    margin-bottom: 20px; 
+  }
+  .header .total { 
+    margin-top: 20px; 
+    font-size: 28px; 
+    font-weight: 800; 
+    color: #fff; 
+    background: rgba(255,255,255,.2);
+    padding: 16px 24px;
+    border-radius: 12px;
+    display: inline-block;
+    backdrop-filter: blur(10px);
+  }
+  
+  /* BÖLÜMLER */
+  .section { 
+    margin-bottom: 40px; 
+    page-break-inside: avoid; 
+    background: #fff;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.08);
+  }
+  .section-title {
+    font-size: 20px; 
+    font-weight: 800; 
+    color: #0f172a;
+    margin-bottom: 20px; 
+    padding-bottom: 12px; 
+    border-bottom: 3px solid #0ea5e9;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title::before {
+    content: '▸';
+    color: #0ea5e9;
+    font-size: 24px;
+  }
+  
+  /* TABLO */
+  table { 
+    width: 100%; 
+    border-collapse: collapse; 
+    margin-bottom: 24px; 
+    font-size: 14px;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,.05);
+  }
+  th, td { 
+    padding: 14px 12px; 
+    text-align: left; 
+    border: 1px solid #e2e8f0; 
+  }
+  th { 
+    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+    font-weight: 700; 
+    color: #fff; 
+    text-transform: uppercase; 
+    font-size: 12px;
+    letter-spacing: 0.5px;
+  }
+  tbody tr:nth-child(even) { 
+    background: #f8fafc; 
+  }
+  tbody tr:hover {
+    background: #f1f5f9;
+    transform: scale(1.01);
+    transition: all 0.2s;
+  }
+  
+  /* AYLIK GRID - 4-4-4 Düzeni */
+  .aylik-grid {
+    display: grid; 
+    grid-template-columns: repeat(3, 1fr); 
+    gap: 16px; 
+    margin-bottom: 24px;
+  }
+  .aylik-card {
+    background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+    border: 2px solid #e2e8f0; 
+    border-radius: 12px;
+    padding: 18px; 
+    text-align: center; 
+    font-size: 13px;
+    page-break-inside: avoid;
+    transition: all 0.3s;
+    box-shadow: 0 2px 8px rgba(0,0,0,.05);
+  }
+  .aylik-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(14, 165, 233, 0.2);
+    border-color: #0ea5e9;
+  }
+  .aylik-card .ay { 
+    font-size: 13px; 
+    color: #0ea5e9; 
+    font-weight: 700; 
+    margin-bottom: 10px; 
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .aylik-card .toplam { 
+    font-size: 18px; 
+    font-weight: 800; 
+    color: #0f172a; 
+    margin-bottom: 10px; 
+  }
+  .aylik-card .odenen { 
+    font-size: 12px; 
+    color: #fff;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    display: inline-block;
+    min-width: 80px;
+  }
+  .aylik-card .kalan { 
+    font-size: 12px; 
+    color: #fff;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-weight: 700;
+    display: inline-block;
+    min-width: 80px;
+  }
+  
+  /* KATEGORI KARTLARI */
+  .kategori-ozet {
+    display: grid; 
+    grid-template-columns: repeat(4, 1fr); 
+    gap: 16px; 
+    margin-bottom: 24px;
+  }
+  .kategori-kart { 
+    border-radius: 14px; 
+    padding: 20px; 
+    text-align: center; 
+    page-break-inside: avoid;
+    box-shadow: 0 4px 12px rgba(0,0,0,.1);
+    transition: all 0.3s;
+  }
+  .kategori-kart:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0,0,0,.15);
+  }
+  .kategori-kart .label { 
+    font-size: 12px; 
+    font-weight: 700; 
+    margin-bottom: 10px; 
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .kategori-kart .value { 
+    font-size: 24px; 
+    font-weight: 800; 
+  }
+  
+  .kategori-kart.toplam { 
+    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+    border: none; 
+    color: #fff; 
+  }
+  .kategori-kart.toplam .label {
+    color: rgba(255,255,255,.9);
+  }
+  .kategori-kart.odenen { 
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    border: none; 
+    color: #fff; 
+  }
+  .kategori-kart.odenen .label {
+    color: rgba(255,255,255,.9);
+  }
+  .kategori-kart.kalan { 
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    border: none; 
+    color: #fff; 
+  }
+  .kategori-kart.kalan .label {
+    color: rgba(255,255,255,.9);
+  }
+  .kategori-kart.yuzde { 
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    border: none; 
+    color: #fff; 
+  }
+  .kategori-kart.yuzde .label {
+    color: rgba(255,255,255,.9);
+  }
+  
+  .chart-container { margin: 24px 0; text-align: center; }
+  .chart-container img { max-width: 100%; height: auto; border: 1px solid #e2e8f0; border-radius: 8px; }
+  
+  /* BUTONLAR */
+  .actions {
+    position: fixed; bottom: 20px; right: 20px; display: flex; gap: 10px; z-index: 100;
+  }
+  .btn {
+    padding: 12px 24px; border: none; border-radius: 8px; font-weight: 700;
+    cursor: pointer; font-size: 14px; box-shadow: 0 4px 12px rgba(0,0,0,.15);
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,.2); }
+  .btn:active { transform: translateY(0); }
+  
+  .btn-primary { 
+    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); 
+    color: #fff; 
+    box-shadow: 0 4px 15px rgba(14, 165, 233, 0.4);
+  }
+  .btn-primary:hover {
+    box-shadow: 0 6px 20px rgba(14, 165, 233, 0.5);
+  }
+  .btn-print { 
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
+    color: #fff; 
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+  }
+  .btn-print:hover {
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+  }
+  .btn-secondary { 
+    background: #fff; 
+    color: #1e293b; 
+    border: 2px solid #e2e8f0; 
+    box-shadow: 0 4px 12px rgba(0,0,0,.1);
+  }
+  .btn-secondary:hover {
+    border-color: #0ea5e9;
+    color: #0ea5e9;
+  }
+  
+  .empty-state { text-align: center; padding: 60px 20px; color: #64748b; }
+  .empty-state h2 { font-size: 24px; margin-bottom: 12px; color: #475569; }
+  
+  /* DURUM BADGES */
+  .durum-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .durum-badge.tamamlandi {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: #fff;
+  }
+  .durum-badge.odenmedi {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: #fff;
+  }
+  .durum-badge.kismi {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #fff;
+  }
+
+  /* YAZDIRMA AYARLARI (Native Print) */
+  @media print {
+    @page { margin: 10mm; size: A4; }
+    body { background: #fff; padding: 0; margin: 0; }
+    .container {
+      box-shadow: none; border: none; padding: 0; margin: 0; width: 100%; max-width: 100%;
+    }
+    .actions { display: none !important; } /* Butonları gizle */
+    .section { page-break-inside: avoid; } /* Bölümlerin sayfa ortasında kesilmesini engelle */
+  }
+</style>
+</head>
+<body>
+
+<div class="container" id="pdfContainer">
+  <div id="contentArea">
+    <div class="empty-state">
+      <h2>📊 Veriler Yükleniyor...</h2>
+      <p>Analiz verileri hazırlanıyor.</p>
+    </div>
+  </div>
+</div>
+
+<div class="actions">
+  <button class="btn btn-secondary" onclick="window.close()">Kapat</button>
+  <button class="btn btn-print" onclick="window.print()">🖨️ Yazdır / PDF Kaydet</button>
+  <button class="btn btn-primary" onclick="exportPDF()">📄 Resim PDF İndir</button>
+</div>
+
+<script>
+  const fmt = (n) => {
+    if(typeof n === 'string' && n.includes('₺')) return n;
+    const num = Number(n) || 0;
+    return num.toLocaleString("tr-TR", {minimumFractionDigits:2, maximumFractionDigits:2}) + " ₺";
+  };
+  
+  function loadAnalizData() {
+    try {
+      const dataStr = localStorage.getItem('analizPDFData');
+      if(!dataStr) {
+        document.getElementById('contentArea').innerHTML = `
+          <div class="empty-state">
+            <h2>⚠️ Veri Bulunamadı</h2>
+            <p>Analiz verileri bulunamadı. Lütfen analiz sayfasından tekrar deneyin.</p>
+          </div>
+        `;
+        return;
+      }
+      
+      const data = JSON.parse(dataStr);
+      
+      let html = `
+        <div class="header">
+          <h1>Personel Ödeme Analizi</h1>
+          <div class="subtitle">${data.baslik || 'Genel Rapor'}</div>
+          <div class="year">${data.yil || new Date().getFullYear()}</div>
+          <div class="total">Yıllık Toplam: ${data.yillikToplam || '0,00 ₺'}</div>
+        </div>
+      `;
+      
+      // Analiz Tablosu
+      if(data.tableData && data.tableData.length > 0) {
+        html += `
+          <div class="section">
+            <div class="section-title">Kategori Analizi</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Kategori</th>
+                  <th style="text-align:center">Toplam</th>
+                  <th style="text-align:center">Ödenen</th>
+                  <th style="text-align:center">Kalan</th>
+                </tr>
+              </thead>
+              <tbody>
+        `;
+        
+        // Toplamları hesapla
+        let toplamToplam = 0;
+        let toplamOdenen = 0;
+        let toplamKalan = 0;
+        
+        data.tableData.forEach(row => {
+          // Değerleri sayıya çevir (₺ ve virgülü temizle)
+          const toplamVal = parseFloat(row.toplam.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+          const odenenVal = parseFloat(row.odenen.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+          const kalanVal = parseFloat(row.kalan.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+          
+          toplamToplam += toplamVal;
+          toplamOdenen += odenenVal;
+          toplamKalan += kalanVal;
+          
+          html += `
+            <tr>
+              <td style="font-weight:700; color:#0f172a">${row.kategori}</td>
+              <td style="text-align:center; font-weight:700; color:#0ea5e9">${row.toplam}</td>
+              <td style="text-align:center; color:#10b981; font-weight:700">${row.odenen}</td>
+              <td style="text-align:center; color:#ef4444; font-weight:700">${row.kalan}</td>
+            </tr>
+          `;
+        });
+        
+        // Toplam satırını ekle
+        html += `
+            <tr style="background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-top: 3px solid #0ea5e9;">
+              <td style="font-weight:800; color:#0f172a; font-size:15px;">TOPLAM</td>
+              <td style="text-align:center; font-weight:800; color:#0ea5e9; font-size:15px;">${fmt(toplamToplam)}</td>
+              <td style="text-align:center; color:#10b981; font-weight:800; font-size:15px;">${fmt(toplamOdenen)}</td>
+              <td style="text-align:center; color:#ef4444; font-weight:800; font-size:15px;">${fmt(toplamKalan)}</td>
+            </tr>
+        `;
+        
+        html += `</tbody></table></div>`;
+      }
+      
+      // Aylık Dağılım
+      if(data.aylikData && data.aylikData.length > 0) {
+        html += `
+          <div class="section">
+            <div class="section-title">Aylık Dağılım</div>
+            <div class="aylik-grid">
+        `;
+        
+        data.aylikData.forEach(ay => {
+          // Ödenen ve kalan değerlerini temizle (Ö: ve K: öneklerini kaldır)
+          const odenenValue = ay.odenen.replace(/^Ö:\s*/, '').trim();
+          const kalanValue = ay.kalan.replace(/^K:\s*/, '').trim();
+          
+          html += `
+            <div class="aylik-card">
+              <div class="ay">${ay.ay}</div>
+              <div class="toplam">${ay.toplam}</div>
+              <div class="odenen">Ö: ${odenenValue}</div>
+              <div class="kalan">K: ${kalanValue}</div>
+            </div>
+          `;
+        });
+        
+        html += `</div></div>`;
+      }
+      
+      // Kategori Detay
+      if(data.kategoriDetay) {
+        const kd = data.kategoriDetay;
+        
+        // Tüm kategoriler seçildiyse
+        if(kd.tumKategoriler && Array.isArray(kd.tumKategoriler)) {
+          kd.tumKategoriler.forEach((katDetay, index) => {
+            html += `
+              <div class="section" style="${index > 0 ? 'page-break-before:always; ' : ''}margin-top:40px">
+                <div class="section-title">Kategori Detay Analizi - ${katDetay.kategoriAdi}</div>
+                
+                <div class="kategori-ozet">
+                  <div class="kategori-kart toplam">
+                    <div class="label">Toplam</div>
+                    <div class="value">${katDetay.toplam}</div>
+                  </div>
+                  <div class="kategori-kart odenen">
+                    <div class="label">Ödenen</div>
+                    <div class="value">${katDetay.odenen}</div>
+                  </div>
+                  <div class="kategori-kart kalan">
+                    <div class="label">Kalan</div>
+                    <div class="value">${katDetay.kalan}</div>
+                  </div>
+                  <div class="kategori-kart yuzde">
+                    <div class="label">Ödeme %</div>
+                    <div class="value">${katDetay.yuzde}</div>
+                  </div>
+                </div>
+            `;
+            
+            if(katDetay.detayTable && katDetay.detayTable.length > 0) {
+              html += `
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Ay</th>
+                      <th style="text-align:center">Toplam</th>
+                      <th style="text-align:center">Ödenen</th>
+                      <th style="text-align:center">Kalan</th>
+                      <th style="text-align:center">Durum</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+              `;
+              
+              katDetay.detayTable.forEach(row => {
+                // Durum badge'i oluştur
+                let durumBadge = '';
+                const durumText = row.durum.toLowerCase().trim();
+                if(durumText.includes('tamamlandı') || durumText.includes('tamamlan')) {
+                  durumBadge = '<span class="durum-badge tamamlandi">Tamamlandı</span>';
+                } else if(durumText.includes('ödenmedi') || durumText.includes('ödenmemiş')) {
+                  durumBadge = '<span class="durum-badge odenmedi">Ödenmedi</span>';
+                } else if(durumText.includes('%') || durumText.includes('kısmi')) {
+                  durumBadge = `<span class="durum-badge kismi">${row.durum}</span>`;
+                } else {
+                  durumBadge = row.durum;
+                }
+                
+                html += `
+                  <tr>
+                    <td style="font-weight:700; color:#0f172a">${row.ay}</td>
+                    <td style="text-align:center; font-weight:700; color:#0ea5e9">${row.toplam}</td>
+                    <td style="text-align:center; color:#10b981; font-weight:700">${row.odenen}</td>
+                    <td style="text-align:center; color:#ef4444; font-weight:700">${row.kalan}</td>
+                    <td style="text-align:center">${durumBadge}</td>
+                  </tr>
+                `;
+              });
+              html += `</tbody></table>`;
+            }
+            html += `</div>`;
+          });
+        } else {
+          // Tek kategori seçildiyse
+          html += `
+            <div class="section" style="page-break-before:always; margin-top:40px">
+              <div class="section-title">Kategori Detay Analizi - ${kd.kategoriAdi}</div>
+              
+              <div class="kategori-ozet">
+                <div class="kategori-kart toplam">
+                  <div class="label">Toplam</div>
+                  <div class="value">${kd.toplam}</div>
+                </div>
+                <div class="kategori-kart odenen">
+                  <div class="label">Ödenen</div>
+                  <div class="value">${kd.odenen}</div>
+                </div>
+                <div class="kategori-kart kalan">
+                  <div class="label">Kalan</div>
+                  <div class="value">${kd.kalan}</div>
+                </div>
+                <div class="kategori-kart yuzde">
+                  <div class="label">Ödeme %</div>
+                  <div class="value">${kd.yuzde}</div>
+                </div>
+              </div>
+          `;
+          
+          if(kd.chartImage) {
+            html += `
+              <div class="chart-container">
+                <img src="${kd.chartImage}" alt="Kategori Grafiği" />
+              </div>
+            `;
+          }
+          
+          if(kd.detayTable && kd.detayTable.length > 0) {
+            html += `
+              <table>
+                <thead>
+                  <tr>
+                    <th>Ay</th>
+                    <th style="text-align:center">Toplam</th>
+                    <th style="text-align:center">Ödenen</th>
+                    <th style="text-align:center">Kalan</th>
+                    <th style="text-align:center">Durum</th>
+                  </tr>
+                </thead>
+                <tbody>
+            `;
+            
+            kd.detayTable.forEach(row => {
+              // Durum badge'i oluştur
+              let durumBadge = '';
+              const durumText = row.durum.toLowerCase().trim();
+              if(durumText.includes('tamamlandı') || durumText.includes('tamamlan')) {
+                durumBadge = '<span class="durum-badge tamamlandi">Tamamlandı</span>';
+              } else if(durumText.includes('ödenmedi') || durumText.includes('ödenmemiş')) {
+                durumBadge = '<span class="durum-badge odenmedi">Ödenmedi</span>';
+              } else if(durumText.includes('%') || durumText.includes('kısmi')) {
+                durumBadge = `<span class="durum-badge kismi">${row.durum}</span>`;
+              } else {
+                durumBadge = row.durum;
+              }
+              
+              html += `
+                <tr>
+                  <td style="font-weight:700; color:#0f172a">${row.ay}</td>
+                  <td style="text-align:center; font-weight:700; color:#0ea5e9">${row.toplam}</td>
+                  <td style="text-align:center; color:#10b981; font-weight:700">${row.odenen}</td>
+                  <td style="text-align:center; color:#ef4444; font-weight:700">${row.kalan}</td>
+                  <td style="text-align:center">${durumBadge}</td>
+                </tr>
+              `;
+            });
+            html += `</tbody></table>`;
+          }
+          html += `</div>`;
+        }
+      }
+      
+      document.getElementById('contentArea').innerHTML = html;
+      
+      // Veriler yüklendikten sonra otomatik yazdırma penceresini açmak isterseniz:
+      // setTimeout(() => window.print(), 1000); 
+
+    } catch(e) {
+      console.error(e);
+      document.getElementById('contentArea').innerHTML = `
+        <div class="empty-state">
+          <h2>❌ Hata</h2>
+          <p>Veriler yüklenirken bir hata oluştu: ${e.message}</p>
+        </div>
+      `;
+    }
+  }
+  
+  // html2pdf Kütüphanesi ile İndirme (Yedek)
+  async function exportPDF() {
+    try {
+      const element = document.getElementById('pdfContainer');
+      const dataStr = localStorage.getItem('analizPDFData');
+      const data = dataStr ? JSON.parse(dataStr) : { baslik: 'Rapor', yil: '2025' };
+      const filename = `personel-analiz-${(data.baslik||'').replace(/\s+/g, '-')}.pdf`;
+      
+      const opt = {
+        margin: [5, 5, 5, 5],
+        filename: filename,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      };
+      
+      // Kullanıcıya bilgi ver
+      const btn = document.querySelector('.btn-primary');
+      const oldText = btn.innerText;
+      btn.innerText = 'Hazırlanıyor...';
+      
+      await html2pdf().set(opt).from(element).save();
+      
+      btn.innerText = oldText;
+      
+    } catch(e) {
+      console.error(e);
+      alert('PDF oluşturulurken hata oluştu: ' + e.message);
+    }
+  }
+  
+  window.addEventListener('DOMContentLoaded', loadAnalizData);
+</script>
+</body>
+</html>

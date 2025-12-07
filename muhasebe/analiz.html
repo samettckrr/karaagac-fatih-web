@@ -1,0 +1,4259 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Finansal Analiz Dashboard | Karaağaç Fatih</title>
+<link rel="icon" type="image/png" href="../img/logo.png" />
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- PapaParse (CSV) -->
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+<style>
+  :root{
+    --appbar-h:56px;
+    --radius:14px; --shadow:0 4px 12px rgba(0,0,0,.08);
+    --bg:#f8fafc; --bg2:#f1f5f9;
+    --grad1:#3b82f622; --grad2:#06b6d422;
+    --card:#ffffff; --stroke:#e2e8f0;
+    --text:#1e293b; --muted:#64748b;
+    --brand:#3b82f6; --brand2:#2563eb;
+    --pill:#f1f5f9; --pill-hover:#e2e8f0; --surface:#f8fafc;
+    --danger:#ef4444; --success:#22c55e; --warn:#f59e0b;
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;padding:0;font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;background:var(--bg);color:var(--text)}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* APPBAR */
+  .appbar{
+    position:sticky; top:0; z-index:60; height:var(--appbar-h);
+    background:var(--card); backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--stroke);
+    display:flex; align-items:center; gap:10px; padding:0 12px;
+  }
+  .brand{display:flex; align-items:center; gap:10px; cursor:pointer}
+  .brand img{width:24px; height:24px}
+  .brand span{font-weight:900; letter-spacing:.02em}
+  .nav-center{margin:0 auto; height:100%}
+  .nav-list{display:flex; gap:22px; align-items:center; height:100%; list-style:none; margin:0; padding:0}
+  .nav-item{position:relative; height:100%}
+  .nav-btn{height:100%; display:flex; align-items:center; gap:6px; font-weight:800; cursor:pointer}
+  .nav-btn:hover{color:var(--brand)}
+  .caret{font-size:12px; opacity:.6}
+  .dropdown{position:absolute; top:100%; left:0; min-width:240px; background:var(--card); border:1px solid var(--stroke); border-radius:10px; box-shadow:var(--shadow); padding:8px; display:none}
+  .dropdown a{display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px; color:var(--text); text-decoration:none}
+  .dropdown a:hover{background:var(--surface)}
+  .nav-item.open .dropdown{display:block}
+  .nav-right{display:flex; gap:8px; align-items:center}
+  .btn{border:1px solid var(--stroke); background:var(--card); color:var(--text); border-radius:999px; padding:8px 12px; cursor:pointer; white-space:nowrap}
+  .hamb{display:none}
+  .iconbtn{position:relative; border:1px solid var(--stroke); background:var(--card); color:var(--text); border-radius:999px; padding:8px 12px; cursor:pointer; display:flex; align-items:center; gap:8px}
+  .badge{position:absolute; top:-6px; right:-6px; background:var(--danger); color:#fff; font-size:11px; padding:2px 6px; border-radius:999px; border:2px solid var(--card)}
+  .drop-right{left:auto; right:0}
+  .avatar{width:22px;height:22px;border-radius:999px;background:linear-gradient(180deg,var(--brand),var(--brand2))}
+  @media (max-width: 960px){ .nav-center{display:none} .hamb{display:inline-flex} }
+
+  /* Drawer */
+  .drawer{position:fixed; top:var(--appbar-h); right:0; bottom:0; left:30%; transform:translateX(100%); transition:.25s; background:var(--card); border-left:1px solid var(--stroke); z-index:70; overflow:auto; padding:12px}
+  .drawer.open{transform:translateX(0)}
+  .drawer .panel-title{margin:14px 4px 6px; font-weight:800; color:var(--muted); font-size:13px}
+  .drawer a{display:block; padding:10px; border-radius:10px; border:1px solid var(--stroke); margin:6px 0; color:var(--text); background:var(--pill)}
+  .drawer a:hover{background:var(--pill-hover)}
+
+  /* CONTENT */
+  .container{max-width:100%; margin:0 auto; padding:16px}
+  .card{background:var(--card); border:1px solid var(--stroke); border-radius:14px; box-shadow:var(--shadow); padding:14px}
+  .muted{color:var(--muted)}
+
+  /* Header Card */
+  .header-card{display:flex; justify-content:space-between; align-items:center; gap:16px; margin:16px 0}
+  .header-left h2{margin:0 0 6px; font-size:18px}
+  .primary-actions{display:flex; gap:10px; flex-wrap:wrap}
+  .cta{border:1px solid var(--stroke); background:linear-gradient(180deg,var(--brand),var(--brand2)); color:#fff; border-radius:999px; padding:10px 16px; cursor:pointer; font-weight:800; white-space:nowrap}
+  .btn-ghost{border:1px solid var(--stroke); background:var(--pill); border-radius:999px; padding:10px 14px; cursor:pointer; white-space:nowrap}
+
+  /* Filters Card */
+  .filters-card{margin:10px 0 14px}
+  .controls-grid{
+    display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); gap:10px; align-items:center;
+  }
+  .ctrl{grid-column:span 3; display:flex; align-items:center; gap:10px; padding:6px 10px; border:1px solid var(--stroke); background:var(--pill); border-radius:999px; height:40px; min-width:0}
+  .ctrl span{white-space:nowrap}
+  .ctrl select{appearance:none; background:transparent; color:var(--text); border:none; outline:none; font-weight:700; height:26px; line-height:26px; width:100%}
+  .ctrl input{background:transparent; border:none; outline:none; color:var(--text); font-weight:600; width:100%}
+  .ctrl.wide{grid-column:span 6}
+
+  /* Dashboard Grid */
+  .dashboard-grid{display:grid; gap:14px; grid-template-columns:repeat(12, minmax(0,1fr)); margin:16px 0}
+  .col-12{grid-column:span 12}
+  .col-6{grid-column:span 6}
+  .col-4{grid-column:span 4}
+  .col-3{grid-column:span 3}
+
+  /* KPI Cards */
+  .kpi-card{background:var(--card); border:1px solid var(--stroke); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow); position:relative; overflow:hidden}
+  .kpi-card::before{content:''; position:absolute; top:0; left:0; right:0; height:4px; background:linear-gradient(90deg, var(--brand), var(--brand2))}
+  .kpi-card.success::before{background:linear-gradient(90deg, var(--success), #16a34a)}
+  .kpi-card.danger::before{background:linear-gradient(90deg, var(--danger), #dc2626)}
+  .kpi-card.warn::before{background:linear-gradient(90deg, var(--warn), #d97706)}
+  .kpi-label{font-size:12px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px}
+  .kpi-value{font-size:28px; font-weight:800; color:var(--text); margin-bottom:4px}
+  .kpi-sub{font-size:13px; color:var(--muted)}
+  .kpi-change{font-size:12px; font-weight:600; margin-top:8px; padding:4px 8px; border-radius:6px; display:inline-block}
+  .kpi-change.positive{background:#dcfce7; color:#166534}
+  .kpi-change.negative{background:#fee2e2; color:#991b1b}
+
+  /* Chart Containers */
+  .chart-container{position:relative; height:300px; margin-top:12px}
+  .chart-container.large{height:400px}
+  .chart-container.small{height:250px}
+
+  /* Sunum Modu */
+  body.presentation-mode .appbar{display:none}
+  body.presentation-mode .filters-card{display:none}
+  body.presentation-mode .primary-actions{display:none}
+  body.presentation-mode .drawer{display:none}
+  body.presentation-mode .container{padding:24px}
+  body.presentation-mode .card{padding:20px}
+  body.presentation-mode #kategoriAciklamalarPanel{display:block !important}
+
+  /* Toast */
+  .toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:#1e293b; color:#fff; border:1px solid var(--stroke); border-radius:12px; padding:10px 12px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:200; box-shadow:var(--shadow)}
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+
+  /* Sıralama */
+  .sortable:hover{background:var(--card) !important}
+  .sort-icon{opacity:0.4; font-size:12px; margin-left:4px}
+  .sortable.sort-asc .sort-icon::before{content:'↑'; opacity:1}
+  .sortable.sort-desc .sort-icon::before{content:'↓'; opacity:1}
+
+  /* Upload Modal */
+  .modal{display:none; position:fixed; inset:0; background:rgba(30,41,59,.6); backdrop-filter:blur(4px); z-index:99; align-items:center; justify-content:center; padding:16px}
+  .modal-content{background:var(--card); border:1px solid var(--stroke); width:95%; max-width:1200px; border-radius:16px; box-shadow:var(--shadow); padding:16px}
+  .modal-content h3{margin:0 0 10px}
+  .modal-content h4{margin:0 0 6px; font-size:16px}
+  .modal-content label{display:block; margin-top:8px; font-size:13px; color:var(--muted); font-weight:600}
+  .modal-content input{width:100%; padding:10px 12px; border:1px solid var(--stroke); border-radius:10px; background:var(--pill); color:var(--text); margin-top:4px}
+  .modal-content select{width:100%; padding:10px 12px; border:1px solid var(--stroke); border-radius:10px; background:var(--pill); color:var(--text); margin-top:4px}
+  .modal-buttons{display:flex; justify-content:flex-end; gap:8px; margin-top:14px}
+
+  /* Preview Table */
+  #previewTable{width:100%; border-collapse:collapse; font-size:13px; background:var(--card)}
+  #previewTable thead{background:var(--surface); position:sticky; top:0; z-index:10}
+  #previewTable th{padding:10px 8px; text-align:left; font-weight:700; font-size:12px; color:var(--muted); border-bottom:2px solid var(--stroke); white-space:nowrap}
+  #previewTable td{padding:8px; border-bottom:1px solid var(--stroke); vertical-align:middle}
+  #previewTable tbody tr:hover{background:var(--surface)}
+  #previewTable tbody tr.row-error{background:#fee2e2}
+  #previewTable tbody tr.row-error:hover{background:#fecaca}
+  #previewTable tbody tr.row-ok{background:#f0fdf4}
+  #previewTable .cell-editable{cursor:pointer; padding:4px 6px; border-radius:4px; border:1px solid transparent; transition:all 0.2s}
+  #previewTable .cell-editable:hover{border-color:var(--brand); background:var(--pill)}
+  #previewTable .cell-editable.editing{border-color:var(--brand); background:var(--card); box-shadow:0 0 0 2px rgba(59,130,246,0.2)}
+  #previewTable input.cell-input{width:100%; padding:4px 6px; border:1px solid var(--brand); border-radius:4px; background:var(--card); font-size:13px; outline:none}
+  #previewTable .cell-error{color:#dc2626; font-size:11px; margin-top:2px}
+  #previewTable .cell-ok{color:#16a34a; font-size:11px; margin-top:2px}
+  
+  /* Entry Preview Table */
+  #entryPreviewTable{width:100%; border-collapse:collapse; font-size:13px; background:var(--card)}
+  #entryPreviewTable thead{background:var(--surface); position:sticky; top:0}
+  #entryPreviewTable th{padding:10px 8px; text-align:left; font-weight:700; font-size:12px; color:var(--muted); border-bottom:2px solid var(--stroke)}
+  #entryPreviewTable td{padding:8px; border-bottom:1px solid var(--stroke)}
+  #entryPreviewTable tbody tr:hover{background:var(--surface)}
+
+  /* Context Menu */
+  .context-menu{position:fixed; background:var(--card); border:1px solid var(--stroke); border-radius:10px; box-shadow:var(--shadow); padding:6px; z-index:200; display:none; min-width:220px}
+  .context-menu-item{padding:10px 12px; border-radius:6px; cursor:pointer; font-size:13px; color:var(--text); display:flex; align-items:center; gap:8px; transition:background 0.2s}
+  .context-menu-item:hover{background:var(--pill)}
+  .context-menu-item.danger{color:var(--danger)}
+  .context-menu-item.danger:hover{background:#fee2e2}
+
+  @media (max-width: 960px){
+    .nav-center{display:none}
+    .hamb{display:inline-flex}
+    .controls-grid{grid-template-columns:repeat(6,minmax(0,1fr))}
+    .ctrl{grid-column:span 3}
+    .ctrl.wide{grid-column:span 6}
+    .col-6,.col-4,.col-3{grid-column:span 12}
+  }
+</style>
+
+<!-- Firebase (compat) -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="../js/firebase/firebase-init.js"></script>
+</head>
+<body>
+
+<!-- APPBAR -->
+<div class="appbar">
+  <div class="brand" onclick="location.href='../panel.html'">
+    <img src="../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
+  </div>
+
+  <nav class="nav-center"><ul class="nav-list" id="navMain"></ul></nav>
+
+  <div class="nav-right">
+    <button class="btn hamb" id="hamburger" title="Menü">☰</button>
+
+    <div class="nav-item">
+      <button class="iconbtn" id="btnNotif" title="Bildirimler">🔔
+        <span class="badge" id="notifBadge" style="display:none">0</span>
+      </button>
+      <div class="dropdown drop-right" id="notifDropdown">
+        <div class="muted" style="padding:6px 8px">Son bildirimler</div>
+        <div id="notifList" style="max-height:300px;overflow:auto"></div>
+        <a href="/diger/bildirim.html">Tüm bildirimleri gör →</a>
+      </div>
+    </div>
+
+    <div class="nav-item">
+      <button class="iconbtn" id="btnProfile" title="Profil">
+        <span class="avatar"></span> <span id="profName" class="muted">Profil</span>
+      </button>
+      <div class="dropdown drop-right" id="profDropdown">
+        <a href="/diger/kullanici-yonetimi.html" >👤 Profil</a>
+        <a href="/diger/sistem-ayarlari.html" >⚙️ Ayarlar</a>
+        <a href="#" id="btnLogout">🚪 Çıkış Yap</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<aside class="drawer" id="drawer"></aside>
+
+<main class="container">
+
+  <!-- HEADER CARD -->
+  <section class="card header-card">
+    <div class="header-left">
+      <h2>📊 Finansal Analiz Dashboard</h2>
+      <div class="muted">Bugün: <span id="todayText">—</span></div>
+    </div>
+    <div class="primary-actions">
+      <button class="btn-ghost" id="btnDataEdit">✏️ Veri Düzenleme</button>
+      <button class="btn-ghost" id="btnDataEntry">📝 Veri Girişi</button>
+      <button class="btn-ghost" id="btnUpload">📤 Veri Yükle</button>
+      <button class="btn-ghost" id="btnPresentation">🖥️ Sunum Modu</button>
+      <button class="btn-ghost" onclick="openPrintPage()" style="background:var(--muted); color:#fff">🖨️ Yazdır</button>
+    </div>
+  </section>
+
+
+  <!-- DASHBOARD GRID -->
+  <div class="dashboard-grid">
+    
+    <!-- KPI Cards -->
+    <div class="col-3">
+      <div class="kpi-card">
+        <div class="kpi-label">2024 Gider</div>
+        <div class="kpi-value" id="kpi2024Gider">₺0</div>
+        <div class="kpi-sub">2024 Yılı Toplam Gider</div>
+      </div>
+    </div>
+    <div class="col-3">
+      <div class="kpi-card">
+        <div class="kpi-label">2025 Gider</div>
+        <div class="kpi-value" id="kpi2025Gider">₺0</div>
+        <div class="kpi-sub">2025 Yılı Toplam Gider</div>
+      </div>
+    </div>
+    <div class="col-3">
+      <div class="kpi-card success">
+        <div class="kpi-label">2024 Gelir</div>
+        <div class="kpi-value" id="kpi2024Gelir">₺0</div>
+        <div class="kpi-sub">2024 Yılı Toplam Gelir</div>
+      </div>
+    </div>
+    <div class="col-3">
+      <div class="kpi-card success">
+        <div class="kpi-label">2025 Gelir</div>
+        <div class="kpi-value" id="kpi2025Gelir">₺0</div>
+        <div class="kpi-sub">2025 Yılı Toplam Gelir</div>
+      </div>
+    </div>
+
+    <!-- Gider Kalemleri Analiz Tablosu -->
+    <div class="col-12">
+      <div class="card">
+        <h3 style="margin:0 0 12px">Gider Kalemleri Analizi</h3>
+        <div style="overflow-x:auto">
+          <table id="giderAnalizTablosu" style="width:100%; border-collapse:collapse">
+            <thead>
+              <tr style="background:var(--pill); border-bottom:2px solid var(--stroke)">
+                <th class="sortable" data-sort="kategori" style="padding:12px; text-align:left; font-weight:600; color:var(--text); cursor:pointer; user-select:none">
+                  Kategori <span class="sort-icon">⇅</span>
+                </th>
+                <th class="sortable" data-sort="gerceklesen2024" style="padding:12px; text-align:right; font-weight:600; color:var(--text); cursor:pointer; user-select:none">
+                  2024 Gerçekleşen <span class="sort-icon">⇅</span>
+                </th>
+                <th class="sortable" data-sort="gerceklesen2025" style="padding:12px; text-align:right; font-weight:600; color:var(--text); cursor:pointer; user-select:none">
+                  2025 Gerçekleşen <span class="sort-icon">⇅</span>
+                </th>
+                <th class="sortable" data-sort="artis" style="padding:12px; text-align:right; font-weight:600; color:var(--text); cursor:pointer; user-select:none">
+                  2024 > 2025 Artış (₺) <span class="sort-icon">⇅</span>
+                </th>
+                <th class="sortable" data-sort="artisYuzde" style="padding:12px; text-align:right; font-weight:600; color:var(--text); cursor:pointer; user-select:none">
+                  Yüzde Artış <span class="sort-icon">⇅</span>
+                </th>
+                <th class="sortable" data-sort="planlanan2025" style="padding:12px; text-align:right; font-weight:600; color:var(--text); cursor:pointer; user-select:none">
+                  2025 Planlanan <span class="sort-icon">⇅</span>
+                </th>
+                <th class="sortable" data-sort="planlananGecmesi" style="padding:12px; text-align:right; font-weight:600; color:var(--text); cursor:pointer; user-select:none">
+                  Planlanan Geçmesi % <span class="sort-icon">⇅</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody id="giderAnalizTablosuBody">
+              <tr>
+                <td colspan="7" style="padding:40px; text-align:center; color:var(--muted)">Veri yükleniyor...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gelir Kalemleri Analiz Tablosu -->
+    <div class="col-12">
+      <div class="card">
+        <h3 style="margin:0 0 12px">Gelir Kalemleri Analizi</h3>
+        <div style="overflow-x:auto">
+          <table id="gelirAnalizTablosu" style="width:100%; border-collapse:collapse">
+            <thead>
+              <tr style="background:var(--pill); border-bottom:2px solid var(--stroke)">
+                <th class="sortable" data-sort="kategori" style="padding:12px; text-align:left; font-weight:600; color:var(--text); cursor:pointer; user-select:none">
+                  Kategori <span class="sort-icon">⇅</span>
+                </th>
+                <th class="sortable" data-sort="gerceklesen2024" style="padding:12px; text-align:right; font-weight:600; color:var(--text); cursor:pointer; user-select:none">
+                  2024 Gerçekleşen <span class="sort-icon">⇅</span>
+                </th>
+                <th class="sortable" data-sort="gerceklesen2025" style="padding:12px; text-align:right; font-weight:600; color:var(--text); cursor:pointer; user-select:none">
+                  2025 Gerçekleşen <span class="sort-icon">⇅</span>
+                </th>
+                <th class="sortable" data-sort="artis" style="padding:12px; text-align:right; font-weight:600; color:var(--text); cursor:pointer; user-select:none">
+                  2024 > 2025 Artış (₺) <span class="sort-icon">⇅</span>
+                </th>
+                <th class="sortable" data-sort="artisYuzde" style="padding:12px; text-align:right; font-weight:600; color:var(--text); cursor:pointer; user-select:none">
+                  Yüzde Artış <span class="sort-icon">⇅</span>
+                </th>
+                <th class="sortable" data-sort="planlanan2025" style="padding:12px; text-align:right; font-weight:600; color:var(--text); cursor:pointer; user-select:none">
+                  2025 Planlanan <span class="sort-icon">⇅</span>
+                </th>
+                <th class="sortable" data-sort="planlananGecmesi" style="padding:12px; text-align:right; font-weight:600; color:var(--text); cursor:pointer; user-select:none">
+                  Planlanan Geçmesi % <span class="sort-icon">⇅</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody id="gelirAnalizTablosuBody">
+              <tr>
+                <td colspan="7" style="padding:40px; text-align:center; color:var(--muted)">Veri yükleniyor...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Kategori Açıklamaları (Sunum Modunda Görünür) -->
+    <div class="col-12" id="kategoriAciklamalarPanel" style="display:none">
+      <div class="card">
+        <h3 style="margin:0 0 12px">📋 Kategori Açıklamaları</h3>
+        <div id="kategoriAciklamalarList" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:12px">
+          <!-- Dinamik olarak doldurulacak -->
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="height:120px"></div>
+</main>
+
+<!-- VERI DUZENLEME MODAL -->
+<div class="modal" id="dataEditModal">
+  <div class="modal-content" style="max-width:1400px; max-height:90vh; overflow-y:auto">
+    <h3>✏️ Veri Düzenleme</h3>
+    
+    <div style="margin-bottom:16px">
+      <label>Veri Tipi</label>
+      <select id="editDataType" style="width:100%; padding:10px 12px; border:1px solid var(--stroke); border-radius:10px; background:var(--pill); color:var(--text); margin-top:4px">
+        <option value="gerceklesen">Gerçekleşen Veriler</option>
+        <option value="planlama">Planlama Verileri</option>
+      </select>
+    </div>
+
+    <div style="margin-bottom:16px">
+      <label>Yıl</label>
+      <select id="editYear" style="width:100%; padding:10px 12px; border:1px solid var(--stroke); border-radius:10px; background:var(--pill); color:var(--text); margin-top:4px">
+        <option value="2024">2024</option>
+        <option value="2025">2025</option>
+      </select>
+    </div>
+
+    <div id="editMonthContainer" style="margin-bottom:16px; display:none">
+      <label>Ay</label>
+      <select id="editMonth" style="width:100%; padding:10px 12px; border:1px solid var(--stroke); border-radius:10px; background:var(--pill); color:var(--text); margin-top:4px">
+        <option value="tumu">Tüm Aylar</option>
+        <option value="1">Ocak</option>
+        <option value="2">Şubat</option>
+        <option value="3">Mart</option>
+        <option value="4">Nisan</option>
+        <option value="5">Mayıs</option>
+        <option value="6">Haziran</option>
+        <option value="7">Temmuz</option>
+        <option value="8">Ağustos</option>
+        <option value="9">Eylül</option>
+        <option value="10">Ekim</option>
+        <option value="11">Kasım</option>
+        <option value="12">Aralık</option>
+      </select>
+    </div>
+
+    <div style="margin-bottom:16px">
+      <label>Tip</label>
+      <select id="editTip" style="width:100%; padding:10px 12px; border:1px solid var(--stroke); border-radius:10px; background:var(--pill); color:var(--text); margin-top:4px">
+        <option value="tumu">Tümü</option>
+        <option value="gelir">Gelir</option>
+        <option value="gider">Gider</option>
+      </select>
+    </div>
+
+    <div id="editKategoriContainer" style="margin-bottom:16px; display:none">
+      <label>Kategori</label>
+      <select id="editKategori" style="width:100%; padding:10px 12px; border:1px solid var(--stroke); border-radius:10px; background:var(--pill); color:var(--text); margin-top:4px">
+        <option value="tumu">Tüm Kategoriler</option>
+      </select>
+    </div>
+
+    <div style="margin-bottom:16px">
+      <button class="cta" id="btnLoadEditData">📋 Verileri Yükle</button>
+    </div>
+
+    <div style="overflow-x:auto; margin-bottom:16px">
+      <table id="editDataTable" style="width:100%; border-collapse:collapse; display:none">
+        <thead>
+          <tr style="background:var(--pill); border-bottom:2px solid var(--stroke)">
+            <th class="sortable" data-sort="yil" style="padding:12px; text-align:left; font-weight:600; color:var(--text); cursor:pointer; user-select:none">Yıl <span class="sort-icon">⇅</span></th>
+            <th id="editMonthHeader" class="sortable" data-sort="ay" style="padding:12px; text-align:left; font-weight:600; color:var(--text); display:none; cursor:pointer; user-select:none">Ay <span class="sort-icon">⇅</span></th>
+            <th class="sortable" data-sort="tip" style="padding:12px; text-align:left; font-weight:600; color:var(--text); cursor:pointer; user-select:none">Tip <span class="sort-icon">⇅</span></th>
+            <th class="sortable" data-sort="kategori" style="padding:12px; text-align:left; font-weight:600; color:var(--text); cursor:pointer; user-select:none">Kategori <span class="sort-icon">⇅</span></th>
+            <th class="sortable" data-sort="deger" style="padding:12px; text-align:right; font-weight:600; color:var(--text); cursor:pointer; user-select:none">Değer <span class="sort-icon">⇅</span></th>
+            <th style="padding:12px; text-align:center; font-weight:600; color:var(--text)">İşlem</th>
+          </tr>
+        </thead>
+        <tbody id="editDataTableBody">
+        </tbody>
+      </table>
+    </div>
+
+    <div class="modal-buttons">
+      <button class="btn-ghost" onclick="closeModal('dataEditModal')">İptal</button>
+      <button class="cta" id="btnSaveEditData" style="display:none">💾 Değişiklikleri Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<!-- UPLOAD MODAL -->
+<div class="modal" id="uploadModal">
+  <div class="modal-content" style="max-width:1200px; max-height:90vh; overflow-y:auto">
+    <h3>📤 Veri Yükle ve Önizle</h3>
+    
+    <!-- Adım 1: Dosya Seçimi -->
+    <div id="uploadStep1">
+      <label>Veri Tipi</label>
+      <select id="uploadType" style="width:100%; padding:10px 12px; border:1px solid var(--stroke); border-radius:10px; background:var(--pill); color:var(--text); margin-top:4px">
+        <option value="planlama">1. Bütçe Planlama (Yıl - Tip - Kategori - Planlanan)</option>
+        <option value="gerceklesen">2. Bütçe Gerçekleşen (Yıl - Ay - Tip - Kategori - Gerçekleşen)</option>
+      </select>
+      <label style="margin-top:12px">CSV Dosyası Seç</label>
+      <input type="file" id="fileInput" accept=".csv">
+      <div class="muted" style="margin-top:8px; font-size:12px; padding:12px; background:var(--pill); border-radius:8px; line-height:1.6" id="uploadFormatHint">
+        <strong>Bütçe Planlama Formatı:</strong><br>
+        Yıl, Tip (gider/gelir), Kategori, Planlanan (₺)<br><br>
+        Örnek: 2025, gider, Personel Gideri, 50000
+      </div>
+      <div class="modal-buttons" style="margin-top:16px">
+        <button class="btn-ghost" onclick="closeModal('uploadModal')">İptal</button>
+        <button class="cta" id="btnPreviewCSV">📋 Önizle</button>
+      </div>
+    </div>
+
+    <!-- Adım 2: Önizleme ve Düzenleme -->
+    <div id="uploadStep2" style="display:none">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
+        <div>
+          <h4 style="margin:0">Veri Önizleme</h4>
+          <div class="muted" style="font-size:12px; margin-top:4px">
+            <span id="previewStats"></span>
+          </div>
+        </div>
+        <div style="display:flex; gap:8px">
+          <button class="btn-ghost" onclick="backToStep1()">← Geri</button>
+          <button class="cta" id="btnUploadFile">✅ Veritabanına Yükle</button>
+        </div>
+      </div>
+
+      <!-- Hata Özeti -->
+      <div id="errorSummary" style="display:none; margin-bottom:12px; padding:12px; background:#fee2e2; border:1px solid #fca5a5; border-radius:8px">
+        <div style="font-weight:700; color:#991b1b; margin-bottom:6px">⚠️ Hatalı Satırlar Bulundu</div>
+        <div id="errorList" style="font-size:12px; color:#991b1b"></div>
+      </div>
+
+      <!-- Önizleme Tablosu -->
+      <div style="max-height:500px; overflow:auto; border:1px solid var(--stroke); border-radius:8px">
+        <table id="previewTable" style="width:100%; border-collapse:collapse; font-size:13px">
+          <thead id="previewTableHead" style="position:sticky; top:0; background:var(--card); z-index:10">
+            <!-- Dinamik olarak doldurulacak -->
+          </thead>
+          <tbody id="previewTableBody">
+            <!-- Dinamik olarak doldurulacak -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-buttons" style="margin-top:16px">
+        <button class="btn-ghost" onclick="backToStep1()">← Geri</button>
+        <button class="cta" id="btnUploadFile2">✅ Veritabanına Yükle</button>
+      </div>
+    </div>
+
+    <!-- Yükleme Progress -->
+    <div id="uploadProgress" style="display:none; margin-top:12px; padding:10px; background:var(--pill); border-radius:8px">
+      <div style="font-size:12px; margin-bottom:4px">Yükleniyor...</div>
+      <div style="background:var(--stroke); height:8px; border-radius:4px; overflow:hidden">
+        <div id="progressBar" style="background:var(--brand); height:100%; width:0%; transition:width 0.3s"></div>
+      </div>
+      <div id="progressText" style="font-size:11px; margin-top:4px; color:var(--muted)">0 / 0</div>
+    </div>
+  </div>
+</div>
+
+<!-- VERİ GİRİŞİ MODAL -->
+<div class="modal" id="dataEntryModal">
+  <div class="modal-content" style="max-width:900px; max-height:90vh; overflow-y:auto">
+    <h3>✏️ Manuel Veri Girişi</h3>
+    
+    <!-- Mod Seçimi -->
+    <div id="entryModeSelect">
+      <label>Veri Tipi Seçin</label>
+      <select id="entryMode" style="width:100%; padding:10px 12px; border:1px solid var(--stroke); border-radius:10px; background:var(--pill); color:var(--text); margin-top:4px">
+        <option value="kategori">1. Kategori Ekleme</option>
+        <option value="planlama">2. Planlanan Veri Girişi</option>
+        <option value="gerceklesen">3. Gerçekleşen Veri Girişi</option>
+      </select>
+      <div class="modal-buttons" style="margin-top:16px">
+        <button class="btn-ghost" onclick="closeModal('dataEntryModal')">İptal</button>
+        <button class="cta" id="btnStartEntry">Başla</button>
+      </div>
+    </div>
+
+    <!-- 1. KATEGORİ EKLEME -->
+    <div id="entryKategori" style="display:none">
+      <h4 style="margin:0 0 12px">Kategori Ekleme</h4>
+      <label>Tip Seçin</label>
+      <select id="kategoriTip" style="width:100%; padding:10px 12px; border:1px solid var(--stroke); border-radius:10px; background:var(--pill); color:var(--text); margin-top:4px">
+        <option value="gelir">Gelir</option>
+        <option value="gider">Gider</option>
+      </select>
+      
+      <div style="margin-top:16px">
+        <div style="display:grid; grid-template-columns:1fr auto; gap:8px; align-items:end">
+          <div>
+            <label>Kategori Adı</label>
+            <input type="text" id="newKategoriAd" placeholder="Örn: Personel Gideri" style="width:100%; padding:10px 12px; border:1px solid var(--stroke); border-radius:10px; background:var(--pill); color:var(--text); margin-top:4px">
+          </div>
+          <button class="cta" id="btnAddKategori" style="white-space:nowrap">+ Ekle</button>
+        </div>
+        <div style="grid-column:1/-1; margin-top:8px">
+          <label>Açıklama (Sunumda gösterilecek)</label>
+          <textarea id="newKategoriAciklama" placeholder="Örn: Personel maaşları, ikramiyeler ve sosyal haklar dahil tüm personel giderleri" rows="2" style="width:100%; padding:10px 12px; border:1px solid var(--stroke); border-radius:10px; background:var(--pill); color:var(--text); margin-top:4px; resize:vertical; font-family:inherit"></textarea>
+        </div>
+      </div>
+
+      <div style="margin-top:16px">
+        <h5 style="margin:0 0 8px">Eklenen Kategoriler</h5>
+        <div id="kategoriList" style="display:flex; flex-wrap:wrap; gap:8px; padding:12px; background:var(--pill); border-radius:8px; min-height:60px">
+          <div class="muted" style="width:100%; text-align:center; padding:20px">Henüz kategori eklenmedi</div>
+        </div>
+      </div>
+
+      <div class="modal-buttons" style="margin-top:16px">
+        <button class="btn-ghost" onclick="backToModeSelect()">← Geri</button>
+        <button class="cta" id="btnSaveKategoriler">💾 Kaydet</button>
+      </div>
+    </div>
+
+    <!-- 2. PLANLANAN VERİ GİRİŞİ -->
+    <div id="entryPlanlama" style="display:none">
+      <h4 style="margin:0 0 12px">Planlanan Veri Girişi</h4>
+      <label>Yıl Seçin</label>
+      <select id="planlamaYil" style="width:100%; padding:10px 12px; border:1px solid var(--stroke); border-radius:10px; background:var(--pill); color:var(--text); margin-top:4px"></select>
+      
+      <div style="margin-top:16px">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+          <h5 style="margin:0">Veri Satırları</h5>
+          <button class="btn-ghost" id="btnAddPlanlamaRow" style="font-size:12px">+ Satır Ekle</button>
+        </div>
+        <div id="planlamaRows" style="display:flex; flex-direction:column; gap:8px">
+          <!-- Dinamik olarak eklenecek -->
+        </div>
+      </div>
+
+      <div class="modal-buttons" style="margin-top:16px">
+        <button class="btn-ghost" onclick="backToModeSelect()">← Geri</button>
+        <button class="btn-ghost" id="btnPreviewPlanlama">👁️ Önizle</button>
+        <button class="cta" id="btnSavePlanlama">💾 Kaydet</button>
+      </div>
+    </div>
+
+    <!-- 3. GERÇEKLEŞEN VERİ GİRİŞİ -->
+    <div id="entryGerceklesen" style="display:none">
+      <h4 style="margin:0 0 12px">Gerçekleşen Veri Girişi</h4>
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px">
+        <div>
+          <label>Yıl</label>
+          <select id="gerceklesenYil" style="width:100%; padding:10px 12px; border:1px solid var(--stroke); border-radius:10px; background:var(--pill); color:var(--text); margin-top:4px"></select>
+        </div>
+        <div>
+          <label>Ay</label>
+          <select id="gerceklesenAy" style="width:100%; padding:10px 12px; border:1px solid var(--stroke); border-radius:10px; background:var(--pill); color:var(--text); margin-top:4px"></select>
+        </div>
+        <div>
+          <label>Tip</label>
+          <select id="gerceklesenTip" style="width:100%; padding:10px 12px; border:1px solid var(--stroke); border-radius:10px; background:var(--pill); color:var(--text); margin-top:4px">
+            <option value="gelir">Gelir</option>
+            <option value="gider">Gider</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="gerceklesenKategoriler" style="display:flex; flex-direction:column; gap:8px">
+        <!-- Dinamik olarak eklenecek -->
+      </div>
+
+      <div style="margin-top:16px; padding:12px; background:var(--pill); border-radius:8px; display:flex; justify-content:space-between; align-items:center">
+        <div>
+          <strong id="gerceklesenAyBilgi">Ay seçin</strong>
+          <div class="muted" style="font-size:12px; margin-top:4px" id="gerceklesenToplam">Toplam: ₺0</div>
+        </div>
+        <button class="cta" id="btnNextAy" style="display:none">Sonraki Ay →</button>
+      </div>
+
+      <div class="modal-buttons" style="margin-top:16px">
+        <button class="btn-ghost" onclick="backToModeSelect()">← Geri</button>
+        <button class="btn-ghost" id="btnPreviewGerceklesen">👁️ Önizle</button>
+        <button class="cta" id="btnSaveGerceklesen">💾 Kaydet</button>
+      </div>
+    </div>
+
+    <!-- ÖNİZLEME MODAL -->
+    <div id="entryPreview" style="display:none; margin-top:16px; padding:16px; background:var(--pill); border-radius:8px; max-height:400px; overflow:auto">
+      <h5 style="margin:0 0 12px">Önizleme</h5>
+      <table id="entryPreviewTable" style="width:100%; border-collapse:collapse; font-size:13px">
+        <thead style="background:var(--surface); position:sticky; top:0">
+          <tr id="previewTableHeadRow"></tr>
+        </thead>
+        <tbody id="entryPreviewTableBody"></tbody>
+      </table>
+      <div class="modal-buttons" style="margin-top:12px">
+        <button class="btn-ghost" onclick="closePreview()">Kapat</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ALT KATEGORİ YÖNETİMİ MODAL -->
+<div class="modal" id="altKategoriModal">
+  <div class="modal-content" style="max-width:800px; max-height:90vh; overflow-y:auto">
+    <h3 id="altKategoriModalTitle">📋 Alt Kategori Yönetimi</h3>
+    
+    <!-- Üst Bilgi -->
+    <div style="padding:16px; background:var(--pill); border-radius:10px; margin-bottom:16px">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+        <div>
+          <div style="font-size:12px; color:var(--muted); font-weight:600; margin-bottom:4px">Tip</div>
+          <div style="font-size:16px; font-weight:700; color:var(--text)" id="altKategoriModalTip">-</div>
+        </div>
+        <div>
+          <div style="font-size:12px; color:var(--muted); font-weight:600; margin-bottom:4px">Kategori</div>
+          <div style="font-size:16px; font-weight:700; color:var(--text)" id="altKategoriModalKategori">-</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:12px; color:var(--muted); font-weight:600; margin-bottom:4px">2025 Gerçekleşen</div>
+          <div style="font-size:18px; font-weight:800; color:var(--brand)" id="altKategoriModalGerceklesen">₺0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alt Kategori Ekleme Formu -->
+    <div style="padding:16px; border:2px dashed var(--stroke); border-radius:10px; margin-bottom:16px; background:var(--surface)">
+      <h4 style="margin:0 0 12px; font-size:14px; color:var(--muted)">➕ Alt Kategori Ekle</h4>
+      <div style="display:grid; grid-template-columns:2fr 2fr 1fr auto; gap:10px; align-items:end">
+        <div>
+          <label style="display:block; font-size:12px; color:var(--muted); font-weight:600; margin-bottom:4px">İsim</label>
+          <input type="text" id="altKategoriIsim" placeholder="Örn: Su Faturası" style="width:100%; padding:10px 12px; border:1px solid var(--stroke); border-radius:8px; background:var(--card); color:var(--text)">
+        </div>
+        <div>
+          <label style="display:block; font-size:12px; color:var(--muted); font-weight:600; margin-bottom:4px">Açıklama</label>
+          <input type="text" id="altKategoriAciklama" placeholder="Örn: Aylık su faturası" style="width:100%; padding:10px 12px; border:1px solid var(--stroke); border-radius:8px; background:var(--card); color:var(--text)">
+        </div>
+        <div>
+          <label style="display:block; font-size:12px; color:var(--muted); font-weight:600; margin-bottom:4px">Tutar (₺)</label>
+          <input type="number" id="altKategoriTutar" placeholder="0.00" step="0.01" min="0" style="width:100%; padding:10px 12px; border:1px solid var(--stroke); border-radius:8px; background:var(--card); color:var(--text)">
+        </div>
+        <button class="cta" id="btnAltKategoriEkle" style="white-space:nowrap; height:fit-content">+ Ekle</button>
+      </div>
+    </div>
+
+    <!-- Alt Kategoriler Listesi -->
+    <div style="margin-bottom:16px">
+      <h4 style="margin:0 0 12px; font-size:14px; color:var(--muted)">📝 Alt Kategoriler</h4>
+      <div id="altKategorilerList" style="display:flex; flex-direction:column; gap:8px">
+        <div style="padding:20px; text-align:center; color:var(--muted); background:var(--pill); border-radius:8px">
+          Henüz alt kategori eklenmedi
+        </div>
+      </div>
+    </div>
+
+    <!-- Kalan Tutar Bilgisi -->
+    <div style="padding:12px; background:var(--success); background:linear-gradient(135deg, rgba(34,197,94,0.1), rgba(34,197,94,0.05)); border:1px solid rgba(34,197,94,0.3); border-radius:8px; margin-bottom:16px">
+      <div style="display:flex; justify-content:space-between; align-items:center">
+        <div>
+          <div style="font-size:12px; color:var(--muted); font-weight:600; margin-bottom:4px">Kalan Tutar</div>
+          <div style="font-size:16px; font-weight:700; color:var(--text)" id="altKategoriKalanTutar">₺0</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:12px; color:var(--muted); font-weight:600; margin-bottom:4px">Alt Kategori Toplamı</div>
+          <div style="font-size:16px; font-weight:700; color:var(--text)" id="altKategoriToplamTutar">₺0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Butonları -->
+    <div class="modal-buttons">
+      <button class="btn-ghost" onclick="closeModal('altKategoriModal')">Kapat</button>
+      <button class="cta" id="btnAltKategoriKaydet">💾 Kaydet ve Kapat</button>
+    </div>
+  </div>
+</div>
+
+<!-- Context Menu -->
+<div class="context-menu" id="contextMenu">
+  <div class="context-menu-item" data-action="alt-kategori-ekle">➕ Alt Kategori Ekle</div>
+  <div class="context-menu-item" data-action="alt-kategori-duzenle">✏️ Alt Kategori Düzenle</div>
+  <div class="context-menu-item" data-action="kategori-duzenle">📝 Kategori Düzenle</div>
+  <div class="context-menu-item" data-action="gerceklesen-duzenle">💰 Gerçekleşen Veri Düzenle</div>
+  <div class="context-menu-item" data-action="planlanan-duzenle">📊 Planlanan Düzenle</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  /* Tarih */
+  (function(){
+    const d=new Date(); const days=['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
+    document.getElementById('todayText').textContent=`${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()} • ${days[d.getDay()]}`;
+  })();
+
+  /* Firebase & helpers */
+  const db=firebase.firestore(), auth=firebase.auth();
+  const monthsTR=["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
+  const fmt=(n)=> (Number(n||0)).toLocaleString("tr-TR",{minimumFractionDigits:2, maximumFractionDigits:2}) + " ₺";
+  const norm = (s) => String(s||'')
+  .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+  .toLowerCase().trim();
+  function toast(msg){const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(window.__to); window.__to=setTimeout(()=>t.classList.remove('show'),2500);}
+  function closeModal(id){document.getElementById(id).style.display='none';}
+
+  // Menü ve yetki sistemi (mevcut sistemden)
+  let CURRENT_ALLOW=new Set(), CURRENT_DENY=new Set();
+  async function fetchPanels(allowSet, denySet){
+    const res=[];
+    try{
+      const snap=await db.collection('sayfa_manifesti').get();
+      snap.forEach(doc=>{
+        const d=doc.data()||{}, id=doc.id, panelTitle=d.title||id;
+        const panelGrant = allowSet.has(norm(id)) || allowSet.has(norm(panelTitle));
+        let pages = Array.isArray(d.pages)? d.pages : [];
+        pages = pages.filter(pg=>{
+          const keyNorm=norm(pg.key||pg.title||'');
+          const pageGrant=allowSet.has(keyNorm), denied=denySet.has(keyNorm);
+          return !denied && (panelGrant || pageGrant);
+        }).map(pg=>({ baslik: pg.title||pg.key||'Sayfa', url: pg.path||'#', key: pg.key||pg.title||'', sira: typeof pg.order==='number'? pg.order:9999 }))
+          .sort((a,b)=>a.sira-b.sira);
+        if(pages.length) res.push({ id, baslik:panelTitle, sira: typeof d.order==='number'? d.order:9999, pages });
+      });
+      res.sort((a,b)=>a.sira-b.sira);
+    }catch(e){ console.error(e); toast('Menü manifesti yüklenemedi.'); }
+    return res;
+  }
+  function renderNav(panels){
+    const ul=document.getElementById('navMain'), drawer=document.getElementById('drawer');
+    ul.innerHTML=''; drawer.innerHTML='';
+    if(!panels.length){
+      ul.innerHTML='<li class="nav-item"><div class="nav-btn">Hiç panel yok</div></li>';
+      drawer.innerHTML='<div style="color:var(--muted);padding:8px">Hiç panel bulunamadı</div>';
+      return;
+    }
+    panels.forEach(p=>{
+      const li=document.createElement('li'); li.className='nav-item';
+      li.innerHTML=`<div class="nav-btn">${p.baslik} <span class="caret">▾</span></div>`;
+      const dd=document.createElement('div'); dd.className='dropdown';
+      (p.pages||[]).forEach(pg=>{
+        const a=document.createElement('a');
+        const url = pg.url || pg.path || '#';
+        a.href = url;
+        a.textContent = pg.baslik;
+        a.dataset.key=pg.key||pg.baslik; a.dataset.panel=p.id; a.dataset.panelTitle=p.baslik;
+        dd.appendChild(a);
+      });
+      li.appendChild(dd);
+      li.querySelector('.nav-btn').addEventListener('click',(e)=>{
+        e.stopPropagation();
+        ul.querySelectorAll('.nav-item').forEach(x=>{ if(x!==li) x.classList.remove('open'); });
+        li.classList.toggle('open');
+      });
+      ul.appendChild(li);
+
+      // drawer
+      const h=document.createElement('div'); h.className='panel-title'; h.textContent=p.baslik; drawer.appendChild(h);
+      (p.pages||[]).forEach(pg=>{
+        const a=document.createElement('a');
+        const url = pg.url || pg.path || '#';
+        a.href = url;
+        a.textContent = pg.baslik;
+        a.dataset.key=pg.key||pg.baslik; a.dataset.panel=p.id; a.dataset.panelTitle=p.baslik;
+        drawer.appendChild(a);
+      });
+    });
+    document.addEventListener('click',(e)=>{ if(!ul.contains(e.target)) ul.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('open')); });
+  }
+  (function(){ const hamb=document.getElementById('hamburger'), drawer=document.getElementById('drawer'); if(!hamb) return; hamb.addEventListener('click',()=>drawer.classList.toggle('open')); document.addEventListener('click',(e)=>{ if(!drawer.contains(e.target) && !hamb.contains(e.target)) drawer.classList.remove('open'); }); })();
+
+  // Link guard
+  document.addEventListener('click',(e)=>{
+    const a=e.target.closest('a[data-key]'); if(!a) return;
+    const key=norm(a.dataset.key), pnl=norm(a.dataset.panel||''), pnlTitle=norm(a.dataset.panelTitle||'');
+    if(CURRENT_DENY.has(key)){ e.preventDefault(); toast('Bu sayfa için yetkiniz yok.'); return; }
+    const allowed = CURRENT_ALLOW.has(key) || CURRENT_ALLOW.has(pnl) || CURRENT_ALLOW.has(pnlTitle);
+    if(!allowed){ e.preventDefault(); toast('Bu sayfa için yetkiniz yok.'); }
+  });
+
+  // Bildirim/Profil dropdown
+  (function(){
+    const notifBtn=document.getElementById('btnNotif'), notifDD=document.getElementById('notifDropdown');
+    const profBtn=document.getElementById('btnProfile'), profDD=document.getElementById('profDropdown');
+    function closeAll(e){
+      if(!notifDD.contains(e.target) && e.target!==notifBtn) notifDD.parentElement.classList.remove('open');
+      if(!profDD.contains(e.target)  && e.target!==profBtn)  profDD.parentElement.classList.remove('open');
+    }
+    document.addEventListener('click', closeAll);
+    notifBtn?.addEventListener('click',(e)=>{ e.stopPropagation(); notifDD.parentElement.classList.toggle('open'); profDD.parentElement.classList.remove('open'); });
+    profBtn ?.addEventListener('click',(e)=>{ e.stopPropagation(); profDD.parentElement.classList.toggle('open'); notifDD.parentElement.classList.remove('open'); });
+    document.getElementById('btnLogout')?.addEventListener('click', async (e) => {
+      e.preventDefault();
+      try {
+        await auth.signOut();
+        location.assign('/index.html');
+      } catch (err) {
+        console.error(err);
+        toast('Çıkış yapılamadı');
+      }
+    });
+  })();
+
+  /* ===== DASHBOARD VERİ VE GRAFİKLER ===== */
+  let chartInstances = {};
+  let rawData = [];
+  let planlamaData = {}; // {yil: {tip: {kategori: planlanan}}}
+  let gerceklesenData = {}; // {yil: {ay: {tip: {kategori: gerceklesen}}}}
+
+  // Alt kategoriler verisi
+  let altKategorilerData = {}; // {tip: {kategori: [{id, isim, aciklama, tutar}]}}
+
+
+  // Veri yükleme - Firestore'dan
+  async function loadData(){
+    try{
+      // Planlama verilerini yükle
+      const planlamaSnap = await db.collection('muhasebe_planlama').get();
+      planlamaData = {};
+      planlamaSnap.forEach(doc=>{
+        const d = doc.data();
+        const yil = d.yil || 2025;
+        const tip = (d.tip || 'gider').toLowerCase();
+        const kategori = d.kategori || 'Diğer';
+        const planlanan = +(d.planlanan || 0);
+        
+        if(!planlamaData[yil]) planlamaData[yil] = {};
+        if(!planlamaData[yil][tip]) planlamaData[yil][tip] = {};
+        planlamaData[yil][tip][kategori] = (planlamaData[yil][tip][kategori] || 0) + planlanan;
+      });
+
+      // Gerçekleşen verilerini yükle
+      const gerceklesenSnap = await db.collection('muhasebe_gerceklesen').get();
+      gerceklesenData = {};
+      gerceklesenSnap.forEach(doc=>{
+        const d = doc.data();
+        const yil = d.yil || 2024;
+        const ay = d.ay || 1;
+        const tip = (d.tip || 'gider').toLowerCase();
+        const kategori = d.kategori || 'Diğer';
+        const gerceklesen = +(d.gerceklesen || 0);
+        
+        if(!gerceklesenData[yil]) gerceklesenData[yil] = {};
+        if(!gerceklesenData[yil][ay]) gerceklesenData[yil][ay] = {};
+        if(!gerceklesenData[yil][ay][tip]) gerceklesenData[yil][ay][tip] = {};
+        gerceklesenData[yil][ay][tip][kategori] = (gerceklesenData[yil][ay][tip][kategori] || 0) + gerceklesen;
+      });
+
+      await updateKategoriler();
+      await loadKategoriAciklamalari();
+      await loadAltKategoriler();
+      updateDashboard();
+    }catch(e){
+      console.error('Veri yüklenirken hata:', e);
+      toast('Veriler yüklenemedi');
+    }
+  }
+
+  // Dashboard güncelleme
+  function updateDashboard(){
+    // Genel analiz modunda çalış (filtreler kaldırıldı)
+    updateGenelAnaliz(2025, null);
+    
+    // Kategori açıklamaları panelini güncelle
+    updateKategoriAciklamalarPanel();
+  }
+
+  // Genel Analiz: Tablo formatında gider ve gelir kalemleri analizi
+  function updateGenelAnaliz(yil, ay){
+    // 2024 gerçekleşen toplam
+    let gelir2024 = 0, gider2024 = 0;
+    if(gerceklesenData[2024]){
+      Object.keys(gerceklesenData[2024]).forEach(a=>{
+        if(ay && +a !== ay) return;
+        if(gerceklesenData[2024][a].gelir){
+          Object.values(gerceklesenData[2024][a].gelir).forEach(v=> gelir2024 += v);
+        }
+        if(gerceklesenData[2024][a].gider){
+          Object.values(gerceklesenData[2024][a].gider).forEach(v=> gider2024 += v);
+        }
+      });
+    }
+
+    // 2025 gerçekleşen toplam
+    let gelir2025 = 0, gider2025 = 0;
+    if(gerceklesenData[2025]){
+      Object.keys(gerceklesenData[2025]).forEach(a=>{
+        if(ay && +a !== ay) return;
+        if(gerceklesenData[2025][a].gelir){
+          Object.values(gerceklesenData[2025][a].gelir).forEach(v=> gelir2025 += v);
+        }
+        if(gerceklesenData[2025][a].gider){
+          Object.values(gerceklesenData[2025][a].gider).forEach(v=> gider2025 += v);
+        }
+      });
+    }
+
+    // KPI'lar
+    document.getElementById('kpi2024Gelir').textContent = fmt(gelir2024);
+    document.getElementById('kpi2024Gider').textContent = fmt(gider2024);
+    document.getElementById('kpi2025Gelir').textContent = fmt(gelir2025);
+    document.getElementById('kpi2025Gider').textContent = fmt(gider2025);
+
+    // Gider ve gelir kalemleri tablolarını oluştur
+    updateGiderAnalizTablosu(ay);
+    updateGelirAnalizTablosu(ay);
+  }
+
+  // Sıralama durumu
+  let giderSortState = { column: 'gerceklesen2025', direction: 'desc' };
+  let gelirSortState = { column: 'gerceklesen2025', direction: 'desc' };
+
+  // Gider kalemleri analiz tablosunu güncelle
+  function updateGiderAnalizTablosu(ay = null, kategoriFiltre = null){
+    const tbody = document.getElementById('giderAnalizTablosuBody');
+    const table = document.getElementById('giderAnalizTablosu');
+    
+    // Tüm gider kategorilerini topla
+    const giderKategorileri = new Set();
+    
+    // 2024 ve 2025 gerçekleşen verilerinden gider kategorilerini topla
+    [2024, 2025].forEach(yil => {
+      if(gerceklesenData[yil]){
+        Object.keys(gerceklesenData[yil]).forEach(a => {
+          if(ay && +a !== ay) return;
+          if(gerceklesenData[yil][a].gider){
+            Object.keys(gerceklesenData[yil][a].gider).forEach(kat => {
+              if(!kategoriFiltre || kat === kategoriFiltre) giderKategorileri.add(kat);
+            });
+          }
+        });
+      }
+    });
+    
+    // 2025 planlama verilerinden gider kategorilerini topla
+    if(planlamaData[2025] && planlamaData[2025].gider){
+      Object.keys(planlamaData[2025].gider).forEach(kat => {
+        if(!kategoriFiltre || kat === kategoriFiltre) giderKategorileri.add(kat);
+      });
+    }
+
+    if(giderKategorileri.size === 0){
+      tbody.innerHTML = '<tr><td colspan="7" style="padding:40px; text-align:center; color:var(--muted)">Gider verisi bulunamadı</td></tr>';
+      return;
+    }
+
+    // Her kategori için verileri hesapla
+    const tabloSatirlari = Array.from(giderKategorileri).map(kat => {
+      // 2024 gerçekleşen
+      let gerceklesen2024 = 0;
+      if(gerceklesenData[2024]){
+        Object.keys(gerceklesenData[2024]).forEach(a => {
+          if(ay && +a !== ay) return;
+          if(gerceklesenData[2024][a].gider && gerceklesenData[2024][a].gider[kat]){
+            gerceklesen2024 += gerceklesenData[2024][a].gider[kat];
+          }
+        });
+      }
+
+      // 2025 gerçekleşen
+      let gerceklesen2025 = 0;
+      if(gerceklesenData[2025]){
+        Object.keys(gerceklesenData[2025]).forEach(a => {
+          if(ay && +a !== ay) return;
+          if(gerceklesenData[2025][a].gider && gerceklesenData[2025][a].gider[kat]){
+            gerceklesen2025 += gerceklesenData[2025][a].gider[kat];
+          }
+        });
+      }
+
+      // 2025 planlanan
+      let planlanan2025 = 0;
+      if(planlamaData[2025] && planlamaData[2025].gider && planlamaData[2025].gider[kat]){
+        planlanan2025 = planlamaData[2025].gider[kat];
+      }
+
+      // 2024'ten 2025'e artış
+      const artis = gerceklesen2025 - gerceklesen2024;
+      const artisYuzde = gerceklesen2024 > 0 ? ((artis / gerceklesen2024) * 100).toFixed(1) : (gerceklesen2025 > 0 ? '100' : '0');
+
+      // Planlanan geçmesi yüzde
+      const planlananGecmesiYuzde = planlanan2025 > 0 ? ((gerceklesen2025 / planlanan2025) * 100).toFixed(1) : (gerceklesen2025 > 0 ? '∞' : '0');
+
+      // Açıklama tooltip için
+      const aciklama = kategoriAciklamalari[kat] || '';
+
+      return {
+        kategori: kat,
+        gerceklesen2024,
+        gerceklesen2025,
+        artis,
+        artisYuzde,
+        planlanan2025,
+        planlananGecmesiYuzde,
+        aciklama
+      };
+    });
+    
+    // Sıralama uygula
+    tabloSatirlari.sort((a, b) => {
+      const col = giderSortState.column;
+      const dir = giderSortState.direction === 'asc' ? 1 : -1;
+      
+      let aVal, bVal;
+      if(col === 'kategori'){
+        aVal = a.kategori.toLowerCase();
+        bVal = b.kategori.toLowerCase();
+        return dir * (aVal > bVal ? 1 : aVal < bVal ? -1 : 0);
+      } else if(col === 'artis'){
+        aVal = a.artis;
+        bVal = b.artis;
+      } else if(col === 'artisYuzde'){
+        aVal = parseFloat(a.artisYuzde);
+        bVal = parseFloat(b.artisYuzde);
+      } else if(col === 'planlananGecmesi'){
+        aVal = parseFloat(a.planlananGecmesiYuzde);
+        bVal = parseFloat(b.planlananGecmesiYuzde);
+      } else {
+        aVal = a[col] || 0;
+        bVal = b[col] || 0;
+      }
+      
+      return dir * (aVal - bVal);
+    });
+    
+    // Sıralama ikonlarını güncelle
+    if(table){
+      const headers = table.querySelectorAll('thead .sortable');
+      headers.forEach(h => {
+        h.classList.remove('sort-asc', 'sort-desc');
+        if(h.dataset.sort === giderSortState.column){
+          h.classList.add(`sort-${giderSortState.direction}`);
+        }
+      });
+    }
+
+    // Alt kategorileri kontrol et
+    const hasAltKategoriler = (tip, kategori) => {
+      return altKategorilerData[tip] && altKategorilerData[tip][kategori] && altKategorilerData[tip][kategori].length > 0;
+    };
+
+    // Tabloyu oluştur
+    tbody.innerHTML = tabloSatirlari.map((row, idx) => {
+      const artisRenk = row.artis >= 0 ? 'var(--danger)' : 'var(--success)';
+      const planlananGecmesiRenk = parseFloat(row.planlananGecmesiYuzde) > 100 ? 'var(--danger)' : 'var(--success)';
+      const tip = 'gider';
+      const kategori = row.kategori;
+      const hasAlt = hasAltKategoriler(tip, kategori);
+      const altKategoriler = altKategorilerData[tip] && altKategorilerData[tip][kategori] 
+        ? [...altKategorilerData[tip][kategori]].sort((a, b) => (a.isim || '').localeCompare(b.isim || '', 'tr'))
+        : [];
+      
+      // Alt kategoriler HTML'i
+      const altKategorilerHTML = altKategoriler.map(alt => `
+        <tr class="alt-kategori-row" style="background:var(--surface); border-left:4px solid var(--brand); display:none">
+          <td style="padding:12px 12px 12px 40px; font-weight:400; color:var(--text); font-size:13px; vertical-align:top">
+            <div style="display:flex; align-items:flex-start; gap:8px">
+              <span style="color:var(--brand); flex-shrink:0; margin-top:2px">➔</span>
+              <div style="flex:1; min-width:0">
+                <div style="font-weight:500; margin-bottom:4px">${alt.isim}</div>
+                ${alt.aciklama ? `<div style="color:var(--muted); font-size:11px; line-height:1.4">${alt.aciklama}</div>` : ''}
+              </div>
+            </div>
+          </td>
+          <td style="padding:12px; text-align:right; color:var(--muted); font-size:13px">-</td>
+          <td style="padding:12px; text-align:right; color:var(--text); font-size:13px; font-weight:600">${fmt(alt.tutar)}</td>
+          <td style="padding:12px; text-align:right; color:var(--muted); font-size:13px">-</td>
+          <td style="padding:12px; text-align:right; color:var(--muted); font-size:13px">-</td>
+          <td style="padding:12px; text-align:right; color:var(--muted); font-size:13px">-</td>
+          <td style="padding:12px; text-align:right; color:var(--muted); font-size:13px">-</td>
+        </tr>
+      `).join('');
+
+      return `
+        <tr class="kategori-row" data-tip="${tip}" data-kategori="${kategori}" style="border-bottom:1px solid var(--stroke); ${idx % 2 === 0 ? 'background:var(--pill)' : ''}; cursor:pointer" ${row.aciklama ? `title="${row.aciklama}"` : ''}>
+          <td style="padding:12px; font-weight:500; color:var(--text); position:relative">
+            ${hasAlt ? '<span style="position:absolute; left:0; top:50%; transform:translateY(-50%); font-size:12px; color:var(--brand); margin-right:8px">▶</span>' : ''}
+            <span style="margin-left:${hasAlt ? '20px' : '0'}">${row.kategori}</span>
+            ${hasAlt ? `<span style="color:var(--muted); font-size:11px; margin-left:8px">(${altKategoriler.length} alt kategori)</span>` : ''}
+          </td>
+          <td style="padding:12px; text-align:right; color:var(--text)">${fmt(row.gerceklesen2024)}</td>
+          <td style="padding:12px; text-align:right; color:var(--text)">${fmt(row.gerceklesen2025)}</td>
+          <td style="padding:12px; text-align:right; color:${artisRenk}; font-weight:600">
+            ${row.artis >= 0 ? '+' : ''}${fmt(row.artis)}
+          </td>
+          <td style="padding:12px; text-align:right; color:${artisRenk}; font-weight:600">
+            ${row.artisYuzde}%
+          </td>
+          <td style="padding:12px; text-align:right; color:var(--text)">${fmt(row.planlanan2025)}</td>
+          <td style="padding:12px; text-align:right; color:${planlananGecmesiRenk}; font-weight:600">${row.planlananGecmesiYuzde}%</td>
+        </tr>
+        ${altKategorilerHTML}
+      `;
+    }).join('');
+
+    // Toplam satırı ekle
+    const toplamGerceklesen2024 = tabloSatirlari.reduce((sum, r) => sum + r.gerceklesen2024, 0);
+    const toplamGerceklesen2025 = tabloSatirlari.reduce((sum, r) => sum + r.gerceklesen2025, 0);
+    const toplamArtis = toplamGerceklesen2025 - toplamGerceklesen2024;
+    const toplamArtisYuzde = toplamGerceklesen2024 > 0 ? ((toplamArtis / toplamGerceklesen2024) * 100).toFixed(1) : '0';
+    const toplamPlanlanan2025 = tabloSatirlari.reduce((sum, r) => sum + r.planlanan2025, 0);
+    const toplamPlanlananGecmesiYuzde = toplamPlanlanan2025 > 0 ? ((toplamGerceklesen2025 / toplamPlanlanan2025) * 100).toFixed(1) : '0';
+
+    tbody.innerHTML += `
+      <tr style="background:var(--card); border-top:2px solid var(--stroke); font-weight:700">
+        <td style="padding:12px; color:var(--text)">TOPLAM</td>
+        <td style="padding:12px; text-align:right; color:var(--text)">${fmt(toplamGerceklesen2024)}</td>
+        <td style="padding:12px; text-align:right; color:var(--text)">${fmt(toplamGerceklesen2025)}</td>
+        <td style="padding:12px; text-align:right; color:${toplamArtis >= 0 ? 'var(--danger)' : 'var(--success)'}; font-weight:700">
+          ${toplamArtis >= 0 ? '+' : ''}${fmt(toplamArtis)}
+        </td>
+        <td style="padding:12px; text-align:right; color:${toplamArtis >= 0 ? 'var(--danger)' : 'var(--success)'}; font-weight:700">
+          ${toplamArtisYuzde}%
+        </td>
+        <td style="padding:12px; text-align:right; color:var(--text)">${fmt(toplamPlanlanan2025)}</td>
+        <td style="padding:12px; text-align:right; color:${parseFloat(toplamPlanlananGecmesiYuzde) > 100 ? 'var(--danger)' : 'var(--success)'}">${toplamPlanlananGecmesiYuzde}%</td>
+      </tr>
+    `;
+    
+    // Sıralama event listener'larını ekle
+    attachSortListeners('giderAnalizTablosu', 'gider');
+    
+    // Tablo satırlarına event listener'lar ekle
+    attachKategoriRowListeners('gider');
+  }
+
+  // Gelir kalemleri analiz tablosunu güncelle
+  function updateGelirAnalizTablosu(ay = null, kategoriFiltre = null){
+    const tbody = document.getElementById('gelirAnalizTablosuBody');
+    const table = document.getElementById('gelirAnalizTablosu');
+    
+    // Tüm gelir kategorilerini topla
+    const gelirKategorileri = new Set();
+    
+    // 2024 ve 2025 gerçekleşen verilerinden gelir kategorilerini topla
+    [2024, 2025].forEach(yil => {
+      if(gerceklesenData[yil]){
+        Object.keys(gerceklesenData[yil]).forEach(a => {
+          if(ay && +a !== ay) return;
+          if(gerceklesenData[yil][a].gelir){
+            Object.keys(gerceklesenData[yil][a].gelir).forEach(kat => {
+              if(!kategoriFiltre || kat === kategoriFiltre) gelirKategorileri.add(kat);
+            });
+          }
+        });
+      }
+    });
+    
+    // 2025 planlama verilerinden gelir kategorilerini topla
+    if(planlamaData[2025] && planlamaData[2025].gelir){
+      Object.keys(planlamaData[2025].gelir).forEach(kat => {
+        if(!kategoriFiltre || kat === kategoriFiltre) gelirKategorileri.add(kat);
+      });
+    }
+
+    if(gelirKategorileri.size === 0){
+      tbody.innerHTML = '<tr><td colspan="7" style="padding:40px; text-align:center; color:var(--muted)">Gelir verisi bulunamadı</td></tr>';
+      return;
+    }
+
+    // Her kategori için verileri hesapla
+    const tabloSatirlari = Array.from(gelirKategorileri).map(kat => {
+      // 2024 gerçekleşen
+      let gerceklesen2024 = 0;
+      if(gerceklesenData[2024]){
+        Object.keys(gerceklesenData[2024]).forEach(a => {
+          if(ay && +a !== ay) return;
+          if(gerceklesenData[2024][a].gelir && gerceklesenData[2024][a].gelir[kat]){
+            gerceklesen2024 += gerceklesenData[2024][a].gelir[kat];
+          }
+        });
+      }
+
+      // 2025 gerçekleşen
+      let gerceklesen2025 = 0;
+      if(gerceklesenData[2025]){
+        Object.keys(gerceklesenData[2025]).forEach(a => {
+          if(ay && +a !== ay) return;
+          if(gerceklesenData[2025][a].gelir && gerceklesenData[2025][a].gelir[kat]){
+            gerceklesen2025 += gerceklesenData[2025][a].gelir[kat];
+          }
+        });
+      }
+
+      // 2025 planlanan
+      let planlanan2025 = 0;
+      if(planlamaData[2025] && planlamaData[2025].gelir && planlamaData[2025].gelir[kat]){
+        planlanan2025 = planlamaData[2025].gelir[kat];
+      }
+
+      // 2024'ten 2025'e artış
+      const artis = gerceklesen2025 - gerceklesen2024;
+      const artisYuzde = gerceklesen2024 > 0 ? ((artis / gerceklesen2024) * 100).toFixed(1) : (gerceklesen2025 > 0 ? '100' : '0');
+
+      // Planlanan geçmesi yüzde
+      const planlananGecmesiYuzde = planlanan2025 > 0 ? ((gerceklesen2025 / planlanan2025) * 100).toFixed(1) : (gerceklesen2025 > 0 ? '∞' : '0');
+
+      // Açıklama tooltip için
+      const aciklama = kategoriAciklamalari[kat] || '';
+
+      return {
+        kategori: kat,
+        gerceklesen2024,
+        gerceklesen2025,
+        artis,
+        artisYuzde,
+        planlanan2025,
+        planlananGecmesiYuzde,
+        aciklama
+      };
+    });
+    
+    // Sıralama uygula
+    tabloSatirlari.sort((a, b) => {
+      const col = gelirSortState.column;
+      const dir = gelirSortState.direction === 'asc' ? 1 : -1;
+      
+      let aVal, bVal;
+      if(col === 'kategori'){
+        aVal = a.kategori.toLowerCase();
+        bVal = b.kategori.toLowerCase();
+        return dir * (aVal > bVal ? 1 : aVal < bVal ? -1 : 0);
+      } else if(col === 'artis'){
+        aVal = a.artis;
+        bVal = b.artis;
+      } else if(col === 'artisYuzde'){
+        aVal = parseFloat(a.artisYuzde);
+        bVal = parseFloat(b.artisYuzde);
+      } else if(col === 'planlananGecmesi'){
+        aVal = parseFloat(a.planlananGecmesiYuzde);
+        bVal = parseFloat(b.planlananGecmesiYuzde);
+      } else {
+        aVal = a[col] || 0;
+        bVal = b[col] || 0;
+      }
+      
+      return dir * (aVal - bVal);
+    });
+    
+    // Sıralama ikonlarını güncelle
+    if(table){
+      const headers = table.querySelectorAll('thead .sortable');
+      headers.forEach(h => {
+        h.classList.remove('sort-asc', 'sort-desc');
+        if(h.dataset.sort === gelirSortState.column){
+          h.classList.add(`sort-${gelirSortState.direction}`);
+        }
+      });
+    }
+
+    // Alt kategorileri kontrol et
+    const hasAltKategoriler = (tip, kategori) => {
+      return altKategorilerData[tip] && altKategorilerData[tip][kategori] && altKategorilerData[tip][kategori].length > 0;
+    };
+
+    // Tabloyu oluştur
+    tbody.innerHTML = tabloSatirlari.map((row, idx) => {
+      const artisRenk = row.artis >= 0 ? 'var(--success)' : 'var(--danger)';
+      const planlananGecmesiRenk = parseFloat(row.planlananGecmesiYuzde) > 100 ? 'var(--success)' : 'var(--danger)';
+      const tip = 'gelir';
+      const kategori = row.kategori;
+      const hasAlt = hasAltKategoriler(tip, kategori);
+      const altKategoriler = altKategorilerData[tip] && altKategorilerData[tip][kategori] 
+        ? [...altKategorilerData[tip][kategori]].sort((a, b) => (a.isim || '').localeCompare(b.isim || '', 'tr'))
+        : [];
+      
+      // Alt kategoriler HTML'i
+      const altKategorilerHTML = altKategoriler.map(alt => `
+        <tr class="alt-kategori-row" style="background:var(--surface); border-left:4px solid var(--brand); display:none">
+          <td style="padding:12px 12px 12px 40px; font-weight:400; color:var(--text); font-size:13px; vertical-align:top">
+            <div style="display:flex; align-items:flex-start; gap:8px">
+              <span style="color:var(--brand); flex-shrink:0; margin-top:2px">➔</span>
+              <div style="flex:1; min-width:0">
+                <div style="font-weight:500; margin-bottom:4px">${alt.isim}</div>
+                ${alt.aciklama ? `<div style="color:var(--muted); font-size:11px; line-height:1.4">${alt.aciklama}</div>` : ''}
+              </div>
+            </div>
+          </td>
+          <td style="padding:12px; text-align:right; color:var(--muted); font-size:13px">-</td>
+          <td style="padding:12px; text-align:right; color:var(--text); font-size:13px; font-weight:600">${fmt(alt.tutar)}</td>
+          <td style="padding:12px; text-align:right; color:var(--muted); font-size:13px">-</td>
+          <td style="padding:12px; text-align:right; color:var(--muted); font-size:13px">-</td>
+          <td style="padding:12px; text-align:right; color:var(--muted); font-size:13px">-</td>
+          <td style="padding:12px; text-align:right; color:var(--muted); font-size:13px">-</td>
+        </tr>
+      `).join('');
+
+      return `
+        <tr class="kategori-row" data-tip="${tip}" data-kategori="${kategori}" style="border-bottom:1px solid var(--stroke); ${idx % 2 === 0 ? 'background:var(--pill)' : ''}; cursor:pointer" ${row.aciklama ? `title="${row.aciklama}"` : ''}>
+          <td style="padding:12px; font-weight:500; color:var(--text); position:relative">
+            ${hasAlt ? '<span style="position:absolute; left:0; top:50%; transform:translateY(-50%); font-size:12px; color:var(--brand); margin-right:8px">▶</span>' : ''}
+            <span style="margin-left:${hasAlt ? '20px' : '0'}">${row.kategori}</span>
+            ${hasAlt ? `<span style="color:var(--muted); font-size:11px; margin-left:8px">(${altKategoriler.length} alt kategori)</span>` : ''}
+          </td>
+          <td style="padding:12px; text-align:right; color:var(--text)">${fmt(row.gerceklesen2024)}</td>
+          <td style="padding:12px; text-align:right; color:var(--text)">${fmt(row.gerceklesen2025)}</td>
+          <td style="padding:12px; text-align:right; color:${artisRenk}; font-weight:600">
+            ${row.artis >= 0 ? '+' : ''}${fmt(row.artis)}
+          </td>
+          <td style="padding:12px; text-align:right; color:${artisRenk}; font-weight:600">
+            ${row.artisYuzde}%
+          </td>
+          <td style="padding:12px; text-align:right; color:var(--text)">${fmt(row.planlanan2025)}</td>
+          <td style="padding:12px; text-align:right; color:${planlananGecmesiRenk}; font-weight:600">${row.planlananGecmesiYuzde}%</td>
+        </tr>
+        ${altKategorilerHTML}
+      `;
+    }).join('');
+
+    // Toplam satırı ekle
+    const toplamGerceklesen2024 = tabloSatirlari.reduce((sum, r) => sum + r.gerceklesen2024, 0);
+    const toplamGerceklesen2025 = tabloSatirlari.reduce((sum, r) => sum + r.gerceklesen2025, 0);
+    const toplamArtis = toplamGerceklesen2025 - toplamGerceklesen2024;
+    const toplamArtisYuzde = toplamGerceklesen2024 > 0 ? ((toplamArtis / toplamGerceklesen2024) * 100).toFixed(1) : '0';
+    const toplamPlanlanan2025 = tabloSatirlari.reduce((sum, r) => sum + r.planlanan2025, 0);
+    const toplamPlanlananGecmesiYuzde = toplamPlanlanan2025 > 0 ? ((toplamGerceklesen2025 / toplamPlanlanan2025) * 100).toFixed(1) : '0';
+
+    tbody.innerHTML += `
+      <tr style="background:var(--card); border-top:2px solid var(--stroke); font-weight:700">
+        <td style="padding:12px; color:var(--text)">TOPLAM</td>
+        <td style="padding:12px; text-align:right; color:var(--text)">${fmt(toplamGerceklesen2024)}</td>
+        <td style="padding:12px; text-align:right; color:var(--text)">${fmt(toplamGerceklesen2025)}</td>
+        <td style="padding:12px; text-align:right; color:${toplamArtis >= 0 ? 'var(--success)' : 'var(--danger)'}">
+          <div style="font-weight:600; font-size:14px; margin-bottom:4px">${toplamArtis >= 0 ? '+' : ''}${fmt(toplamArtis)}</div>
+          <div style="font-size:13px; font-weight:500; opacity:0.8">${toplamArtisYuzde}%</div>
+        </td>
+        <td style="padding:12px; text-align:right; color:var(--text)">${fmt(toplamPlanlanan2025)}</td>
+        <td style="padding:12px; text-align:right; color:${parseFloat(toplamPlanlananGecmesiYuzde) > 100 ? 'var(--success)' : 'var(--danger)'}">${toplamPlanlananGecmesiYuzde}%</td>
+      </tr>
+    `;
+    
+    // Sıralama event listener'larını ekle
+    attachSortListeners('gelirAnalizTablosu', 'gelir');
+    
+    // Tablo satırlarına event listener'lar ekle
+    attachKategoriRowListeners('gelir');
+  }
+
+  // Sıralama event listener'larını ekle
+  function attachSortListeners(tableId, type){
+    const table = document.getElementById(tableId);
+    if(!table) return;
+    
+    const headers = table.querySelectorAll('thead .sortable');
+    headers.forEach(header => {
+      // Mevcut listener'ları temizle
+      const newHeader = header.cloneNode(true);
+      header.parentNode.replaceChild(newHeader, header);
+      
+      newHeader.addEventListener('click', () => {
+        const column = newHeader.dataset.sort;
+        const sortState = type === 'gider' ? giderSortState : gelirSortState;
+        
+        // Aynı sütuna tıklanırsa yönü değiştir
+        if(sortState.column === column){
+          sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+          sortState.column = column;
+          sortState.direction = 'asc';
+        }
+        
+        // Sıralama ikonlarını güncelle
+        headers.forEach(h => {
+          h.classList.remove('sort-asc', 'sort-desc');
+          if(h.dataset.sort === sortState.column){
+            h.classList.add(`sort-${sortState.direction}`);
+          }
+        });
+        
+        // Tabloyu yeniden oluştur (filtreler kaldırıldı, null geçiyoruz)
+        const ay = null;
+        const kategori = null;
+        
+        if(type === 'gider'){
+          updateGiderAnalizTablosu(ay, kategori);
+        } else {
+          updateGelirAnalizTablosu(ay, kategori);
+        }
+      });
+    });
+  }
+
+  // Detaylı Analiz: Kategori bazında karşılaştırma (tablo formatında)
+  function updateDetayliAnaliz(yil, ay, kategori){
+    // 2024 gerçekleşen toplam
+    let gelir2024 = 0, gider2024 = 0;
+    if(gerceklesenData[2024]){
+      Object.keys(gerceklesenData[2024]).forEach(a=>{
+        if(ay && +a !== ay) return;
+        if(gerceklesenData[2024][a].gelir){
+          Object.values(gerceklesenData[2024][a].gelir).forEach(v=> gelir2024 += v);
+        }
+        if(gerceklesenData[2024][a].gider){
+          Object.values(gerceklesenData[2024][a].gider).forEach(v=> gider2024 += v);
+        }
+      });
+    }
+
+    // 2025 gerçekleşen toplam
+    let gelir2025 = 0, gider2025 = 0;
+    if(gerceklesenData[2025]){
+      Object.keys(gerceklesenData[2025]).forEach(a=>{
+        if(ay && +a !== ay) return;
+        if(gerceklesenData[2025][a].gelir){
+          Object.values(gerceklesenData[2025][a].gelir).forEach(v=> gelir2025 += v);
+        }
+        if(gerceklesenData[2025][a].gider){
+          Object.values(gerceklesenData[2025][a].gider).forEach(v=> gider2025 += v);
+        }
+      });
+    }
+
+    // KPI'lar
+    document.getElementById('kpi2024Gelir').textContent = fmt(gelir2024);
+    document.getElementById('kpi2024Gider').textContent = fmt(gider2024);
+    document.getElementById('kpi2025Gelir').textContent = fmt(gelir2025);
+    document.getElementById('kpi2025Gider').textContent = fmt(gider2025);
+
+    // Gider ve gelir kalemleri tablolarını oluştur (filtrelenmiş)
+    updateGiderAnalizTablosu(ay, kategori);
+    updateGelirAnalizTablosu(ay, kategori);
+  }
+
+  // Gauge Chart (Donut chart ile simüle edilmiş)
+  function updateGaugeChart(value){
+    const ctx = document.getElementById('gaugeChart');
+    if(chartInstances.gauge) chartInstances.gauge.destroy();
+    
+    const maxValue = 150;
+    const normalizedValue = Math.min(value, maxValue);
+    const remaining = maxValue - normalizedValue;
+    const color = value > 100 ? '#ef4444' : value > 80 ? '#f59e0b' : '#22c55e';
+    
+    chartInstances.gauge = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        datasets: [{
+          data: [normalizedValue, remaining],
+          backgroundColor: [color, '#e2e8f0'],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '75%',
+        plugins: {
+          legend: { display: false },
+          tooltip: { enabled: false }
+        }
+      },
+      plugins: [{
+        id: 'gaugeText',
+        beforeDraw: (chart) => {
+          const ctx = chart.ctx;
+          const centerX = chart.chartArea.left + (chart.chartArea.right - chart.chartArea.left) / 2;
+          const centerY = chart.chartArea.top + (chart.chartArea.bottom - chart.chartArea.top) / 2;
+          ctx.save();
+          ctx.font = 'bold 16px Segoe UI';
+          ctx.fillStyle = '#1e293b';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(`%${Math.round(value)}`, centerX, centerY);
+          ctx.restore();
+        }
+      }]
+    });
+  }
+
+  // Genel Analiz - Bar Chart
+  function updateGenelBarChart(gelir2024, gider2024, gelir2025, gider2025, planGelir2025, planGider2025){
+    const ctx = document.getElementById('barChart');
+    if(chartInstances.bar) chartInstances.bar.destroy();
+
+    chartInstances.bar = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['2024 Gerçekleşen', '2025 Gerçekleşen', '2025 Planlanan'],
+        datasets: [{
+          label: 'Gelir',
+          data: [gelir2024, gelir2025, planGelir2025],
+          backgroundColor: 'rgba(34, 197, 94, 0.6)',
+          borderColor: 'rgba(34, 197, 94, 1)',
+          borderWidth: 1
+        }, {
+          label: 'Gider',
+          data: [gider2024, gider2025, planGider2025],
+          backgroundColor: 'rgba(239, 68, 68, 0.6)',
+          borderColor: 'rgba(239, 68, 68, 1)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: true, position: 'top' },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const kat = context.label;
+                const aciklama = kategoriAciklamalari[kat] || '';
+                let text = context.dataset.label + ': ' + fmt(context.parsed.y);
+                if(aciklama){
+                  text += '\n\n' + aciklama;
+                }
+                return text;
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: function(value) {
+                return '₺' + (value/1000).toFixed(0) + 'K';
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // Detaylı Analiz - Bar Chart
+  function updateDetayliBarChart(kategoriler){
+    const ctx = document.getElementById('barChart');
+    if(chartInstances.bar) chartInstances.bar.destroy();
+
+    const gerceklesen2024 = kategoriler.map(kat=>{
+      let toplam = 0;
+      if(gerceklesenData[2024]){
+        Object.keys(gerceklesenData[2024]).forEach(a=>{
+          if(gerceklesenData[2024][a].gelir && gerceklesenData[2024][a].gelir[kat]) toplam += gerceklesenData[2024][a].gelir[kat];
+          if(gerceklesenData[2024][a].gider && gerceklesenData[2024][a].gider[kat]) toplam += gerceklesenData[2024][a].gider[kat];
+        });
+      }
+      return toplam;
+    });
+
+    const gerceklesen2025 = kategoriler.map(kat=>{
+      let toplam = 0;
+      if(gerceklesenData[2025]){
+        Object.keys(gerceklesenData[2025]).forEach(a=>{
+          if(gerceklesenData[2025][a].gelir && gerceklesenData[2025][a].gelir[kat]) toplam += gerceklesenData[2025][a].gelir[kat];
+          if(gerceklesenData[2025][a].gider && gerceklesenData[2025][a].gider[kat]) toplam += gerceklesenData[2025][a].gider[kat];
+        });
+      }
+      return toplam;
+    });
+
+    const planlanan2025 = kategoriler.map(kat=>{
+      let toplam = 0;
+      if(planlamaData[2025]){
+        if(planlamaData[2025].gelir && planlamaData[2025].gelir[kat]) toplam += planlamaData[2025].gelir[kat];
+        if(planlamaData[2025].gider && planlamaData[2025].gider[kat]) toplam += planlamaData[2025].gider[kat];
+      }
+      return toplam;
+    });
+
+    chartInstances.bar = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: kategoriler,
+        datasets: [{
+          label: '2024 Gerçekleşen',
+          data: gerceklesen2024,
+          backgroundColor: 'rgba(239, 68, 68, 0.6)',
+          borderColor: 'rgba(239, 68, 68, 1)',
+          borderWidth: 1
+        }, {
+          label: '2025 Gerçekleşen',
+          data: gerceklesen2025,
+          backgroundColor: 'rgba(34, 197, 94, 0.6)',
+          borderColor: 'rgba(34, 197, 94, 1)',
+          borderWidth: 1
+        }, {
+          label: '2025 Planlanan',
+          data: planlanan2025,
+          backgroundColor: 'rgba(59, 130, 246, 0.6)',
+          borderColor: 'rgba(59, 130, 246, 1)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: true, position: 'top' },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const kat = context.label;
+                const aciklama = kategoriAciklamalari[kat] || '';
+                let text = context.dataset.label + ': ' + fmt(context.parsed.y);
+                if(aciklama){
+                  text += '\n\n' + aciklama;
+                }
+                return text;
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: function(value) {
+                return '₺' + (value/1000).toFixed(0) + 'K';
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // Genel Analiz - Line Chart
+  function updateGenelLineChart(){
+    const ctx = document.getElementById('lineChart');
+    if(chartInstances.line) chartInstances.line.destroy();
+
+    const aylar = monthsTR;
+    const data2024 = aylar.map((_, ayIdx)=>{
+      const ay = ayIdx + 1;
+      let toplam = 0;
+      if(gerceklesenData[2024] && gerceklesenData[2024][ay]){
+        if(gerceklesenData[2024][ay].gelir) Object.values(gerceklesenData[2024][ay].gelir).forEach(v=> toplam += v);
+        if(gerceklesenData[2024][ay].gider) Object.values(gerceklesenData[2024][ay].gider).forEach(v=> toplam += v);
+      }
+      return toplam;
+    });
+
+    const data2025 = aylar.map((_, ayIdx)=>{
+      const ay = ayIdx + 1;
+      let toplam = 0;
+      if(gerceklesenData[2025] && gerceklesenData[2025][ay]){
+        if(gerceklesenData[2025][ay].gelir) Object.values(gerceklesenData[2025][ay].gelir).forEach(v=> toplam += v);
+        if(gerceklesenData[2025][ay].gider) Object.values(gerceklesenData[2025][ay].gider).forEach(v=> toplam += v);
+      }
+      return toplam;
+    });
+
+    chartInstances.line = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: aylar,
+        datasets: [{
+          label: '2024 Gerçekleşen',
+          data: data2024,
+          borderColor: '#ef4444',
+          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+          tension: 0.4,
+          fill: true
+        }, {
+          label: '2025 Gerçekleşen',
+          data: data2025,
+          borderColor: '#22c55e',
+          backgroundColor: 'rgba(34, 197, 94, 0.1)',
+          tension: 0.4,
+          fill: true
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: true, position: 'top' },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const kat = context.label;
+                const aciklama = kategoriAciklamalari[kat] || '';
+                let text = context.dataset.label + ': ' + fmt(context.parsed.y);
+                if(aciklama){
+                  text += '\n\n' + aciklama;
+                }
+                return text;
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: function(value) {
+                return '₺' + (value/1000).toFixed(0) + 'K';
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // Detaylı Analiz - Line Chart
+  function updateDetayliLineChart(kategoriler){
+    const ctx = document.getElementById('lineChart');
+    if(chartInstances.line) chartInstances.line.destroy();
+
+    const aylar = monthsTR;
+    const datasets = kategoriler.map((kat, idx)=>{
+      const data2024 = aylar.map((_, ayIdx)=>{
+        const ay = ayIdx + 1;
+        let toplam = 0;
+        if(gerceklesenData[2024] && gerceklesenData[2024][ay]){
+          if(gerceklesenData[2024][ay].gelir && gerceklesenData[2024][ay].gelir[kat]) toplam += gerceklesenData[2024][ay].gelir[kat];
+          if(gerceklesenData[2024][ay].gider && gerceklesenData[2024][ay].gider[kat]) toplam += gerceklesenData[2024][ay].gider[kat];
+        }
+        return toplam;
+      });
+
+      const data2025 = aylar.map((_, ayIdx)=>{
+        const ay = ayIdx + 1;
+        let toplam = 0;
+        if(gerceklesenData[2025] && gerceklesenData[2025][ay]){
+          if(gerceklesenData[2025][ay].gelir && gerceklesenData[2025][ay].gelir[kat]) toplam += gerceklesenData[2025][ay].gelir[kat];
+          if(gerceklesenData[2025][ay].gider && gerceklesenData[2025][ay].gider[kat]) toplam += gerceklesenData[2025][ay].gider[kat];
+        }
+        return toplam;
+      });
+
+      const colors = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899'];
+      return {
+        label: `${kat} (2024)`,
+        data: data2024,
+        borderColor: colors[idx % colors.length],
+        backgroundColor: colors[idx % colors.length] + '22',
+        tension: 0.4,
+        fill: false
+      };
+    });
+
+    chartInstances.line = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: aylar,
+        datasets: datasets
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: true, position: 'top' },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const kat = context.label;
+                const aciklama = kategoriAciklamalari[kat] || '';
+                let text = context.dataset.label + ': ' + fmt(context.parsed.y);
+                if(aciklama){
+                  text += '\n\n' + aciklama;
+                }
+                return text;
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: function(value) {
+                return '₺' + (value/1000).toFixed(0) + 'K';
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // Genel/Detaylı Analiz - Donut Charts
+  function updateGenelDonutCharts(gelir2025, gider2025){
+    updateDonutCharts(gelir2025, gider2025, null);
+  }
+
+  function updateDetayliDonutCharts(gelir2025, gider2025){
+    updateDonutCharts(gelir2025, gider2025, null);
+  }
+
+  function updateDonutCharts(gelir2025, gider2025, kategoriler){
+    // Gelir
+    const gelirMap = {};
+    if(gerceklesenData[2025]){
+      Object.keys(gerceklesenData[2025]).forEach(a=>{
+        if(gerceklesenData[2025][a].gelir){
+          Object.keys(gerceklesenData[2025][a].gelir).forEach(kat=>{
+            if(!kategoriler || kategoriler.includes(kat)){
+              gelirMap[kat] = (gelirMap[kat] || 0) + gerceklesenData[2025][a].gelir[kat];
+            }
+          });
+        }
+      });
+    }
+
+    const ctxGelir = document.getElementById('donutGelir');
+    if(chartInstances.donutGelir) chartInstances.donutGelir.destroy();
+    if(Object.keys(gelirMap).length > 0){
+      chartInstances.donutGelir = new Chart(ctxGelir, {
+        type: 'doughnut',
+        data: {
+          labels: Object.keys(gelirMap),
+          datasets: [{
+            data: Object.values(gelirMap),
+            backgroundColor: [
+              'rgba(59, 130, 246, 0.8)', 'rgba(34, 197, 94, 0.8)', 'rgba(245, 158, 11, 0.8)',
+              'rgba(239, 68, 68, 0.8)', 'rgba(168, 85, 247, 0.8)', 'rgba(236, 72, 153, 0.8)'
+            ]
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: true, position: 'right' },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const kat = context.label;
+                  const aciklama = kategoriAciklamalari[kat] || '';
+                  let text = context.label + ': ' + fmt(context.parsed);
+                  if(aciklama){
+                    text += '\n\n' + aciklama;
+                  }
+                  return text;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Gider
+    const giderMap = {};
+    if(gerceklesenData[2025]){
+      Object.keys(gerceklesenData[2025]).forEach(a=>{
+        if(gerceklesenData[2025][a].gider){
+          Object.keys(gerceklesenData[2025][a].gider).forEach(kat=>{
+            if(!kategoriler || kategoriler.includes(kat)){
+              giderMap[kat] = (giderMap[kat] || 0) + gerceklesenData[2025][a].gider[kat];
+            }
+          });
+        }
+      });
+    }
+
+    const ctxGider = document.getElementById('donutGider');
+    if(chartInstances.donutGider) chartInstances.donutGider.destroy();
+    if(Object.keys(giderMap).length > 0){
+      chartInstances.donutGider = new Chart(ctxGider, {
+        type: 'doughnut',
+        data: {
+          labels: Object.keys(giderMap),
+          datasets: [{
+            data: Object.values(giderMap),
+            backgroundColor: [
+              'rgba(239, 68, 68, 0.8)', 'rgba(245, 158, 11, 0.8)', 'rgba(59, 130, 246, 0.8)',
+              'rgba(168, 85, 247, 0.8)', 'rgba(236, 72, 153, 0.8)', 'rgba(34, 197, 94, 0.8)'
+            ]
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: true, position: 'right' },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const kat = context.label;
+                  const aciklama = kategoriAciklamalari[kat] || '';
+                  let text = context.label + ': ' + fmt(context.parsed);
+                  if(aciklama){
+                    text += '\n\n' + aciklama;
+                  }
+                  return text;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+  }
+
+  // Genel Analiz - Sapma Chart
+  function updateGenelSapmaChart(planGelir2025, planGider2025, gelir2025, gider2025){
+    const ctx = document.getElementById('sapmaChart');
+    if(chartInstances.sapma) chartInstances.sapma.destroy();
+
+    const sapmaGelir = gelir2025 - planGelir2025;
+    const sapmaGider = gider2025 - planGider2025;
+
+    chartInstances.sapma = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Gelir Sapması', 'Gider Sapması'],
+        datasets: [{
+          label: 'Sapma (Gerçekleşen - Planlanan)',
+          data: [sapmaGelir, sapmaGider],
+          backgroundColor: [sapmaGelir>=0 ? 'rgba(34, 197, 94, 0.6)' : 'rgba(239, 68, 68, 0.6)', 
+                           sapmaGider>=0 ? 'rgba(239, 68, 68, 0.6)' : 'rgba(34, 197, 94, 0.6)'],
+          borderColor: [sapmaGelir>=0 ? 'rgba(34, 197, 94, 1)' : 'rgba(239, 68, 68, 1)',
+                        sapmaGider>=0 ? 'rgba(239, 68, 68, 1)' : 'rgba(34, 197, 94, 1)'],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const val = context.parsed.y;
+                return 'Sapma: ' + fmt(val) + (val>=0 ? ' (Fazla)' : ' (Eksik)');
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: false,
+            ticks: {
+              callback: function(value) {
+                return '₺' + (value/1000).toFixed(0) + 'K';
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // Detaylı Analiz - Sapma Chart
+  function updateDetayliSapmaChart(kategoriler){
+    const ctx = document.getElementById('sapmaChart');
+    if(chartInstances.sapma) chartInstances.sapma.destroy();
+
+    const sapmalar = kategoriler.map(kat=>{
+      let gerceklesen = 0, planlanan = 0;
+      
+      // 2025 gerçekleşen
+      if(gerceklesenData[2025]){
+        Object.keys(gerceklesenData[2025]).forEach(a=>{
+          if(gerceklesenData[2025][a].gelir && gerceklesenData[2025][a].gelir[kat]) gerceklesen += gerceklesenData[2025][a].gelir[kat];
+          if(gerceklesenData[2025][a].gider && gerceklesenData[2025][a].gider[kat]) gerceklesen += gerceklesenData[2025][a].gider[kat];
+        });
+      }
+      
+      // 2025 planlanan
+      if(planlamaData[2025]){
+        if(planlamaData[2025].gelir && planlamaData[2025].gelir[kat]) planlanan += planlamaData[2025].gelir[kat];
+        if(planlamaData[2025].gider && planlamaData[2025].gider[kat]) planlanan += planlamaData[2025].gider[kat];
+      }
+      
+      return gerceklesen - planlanan;
+    });
+
+    chartInstances.sapma = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: kategoriler,
+        datasets: [{
+          label: 'Sapma (2025 Gerçekleşen - 2025 Planlanan)',
+          data: sapmalar,
+          backgroundColor: sapmalar.map(s=>s>=0 ? 'rgba(239, 68, 68, 0.6)' : 'rgba(34, 197, 94, 0.6)'),
+          borderColor: sapmalar.map(s=>s>=0 ? 'rgba(239, 68, 68, 1)' : 'rgba(34, 197, 94, 1)'),
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const val = context.parsed.y;
+                const kat = kategoriler[context.dataIndex];
+                const aciklama = kategoriAciklamalari[kat] || '';
+                let text = kat + ': ' + fmt(val) + (val>=0 ? ' (Aşılmış)' : ' (Altında)');
+                if(aciklama){
+                  text += '\n\n' + aciklama;
+                }
+                return text;
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: false,
+            ticks: {
+              callback: function(value) {
+                return '₺' + (value/1000).toFixed(0) + 'K';
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // Para formatı parse - çoklu format desteği
+  function parseMoney(str){
+    if(!str) return 0;
+    let cleaned = String(str).trim();
+    
+    // ₺, TL, boşluk karakterlerini temizle
+    cleaned = cleaned.replace(/[₺TL\s]/gi, '');
+    
+    // Türk formatı: 1.234,56 veya 1.234,56₺
+    if(cleaned.includes(',') && cleaned.includes('.')){
+      // Nokta binlik, virgül ondalık ayırıcı
+      cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+    }
+    // İngiliz formatı: 1,234.56 veya 1,234.56
+    else if(cleaned.includes(',') && !cleaned.includes('.')){
+      // Sadece virgül var - binlik ayırıcı olabilir
+      const parts = cleaned.split(',');
+      if(parts.length > 1 && parts[parts.length - 1].length <= 2){
+        // Son kısım 2 karakter veya daha az ise ondalık kısım
+        cleaned = cleaned.replace(/,/g, '');
+      } else {
+        // Binlik ayırıcı olarak kullanılmış
+        cleaned = cleaned.replace(/,/g, '');
+      }
+    }
+    // Sadece nokta var
+    else if(cleaned.includes('.') && !cleaned.includes(',')){
+      // Nokta ondalık ayırıcı olabilir
+      const parts = cleaned.split('.');
+      if(parts.length > 1 && parts[parts.length - 1].length <= 2){
+        // Son kısım 2 karakter veya daha az ise ondalık kısım
+        // Olduğu gibi bırak
+      } else {
+        // Binlik ayırıcı olarak kullanılmış
+        cleaned = cleaned.replace(/\./g, '');
+      }
+    }
+    // Sadece sayılar
+    else {
+      // Hiçbir şey yapma, direkt parse et
+    }
+    
+    const result = parseFloat(cleaned) || 0;
+    return result;
+  }
+
+  // Validasyon fonksiyonları
+  function validateRow(row, uploadType, rowIndex){
+    const errors = [];
+    const warnings = [];
+    
+    // Row'dan tüm olası key'leri dene
+    const getValue = (keys) => {
+      for(const key of keys){
+        if(row[key] !== undefined && row[key] !== null && row[key] !== ''){
+          return row[key];
+        }
+      }
+      return null;
+    };
+    
+    if(uploadType === 'planlama'){
+      const yilRaw = getValue(['yil', 'Yıl', 'YIL', 'year', 'Year', 'YEAR', 0, '0']) || '';
+      const yil = parseInt(yilRaw) || 0;
+      
+      const tipRaw = (getValue(['tip', 'Tip', 'TIP', 'type', 'Type', 'TYPE', 'gidergelir', 'Gider/Gelir', 1, '1']) || '').toString().toLowerCase();
+      const kategoriRaw = getValue(['kategori', 'Kategori', 'KATEGORI', 'category', 'Category', 'CATEGORY', 2, '2']) || '';
+      const kategori = kategoriRaw.toString().trim();
+      
+      const planlananRaw = getValue(['planlanan', 'Planlanan', 'PLANLANAN', 'planned', 'Planlanan (₺)', 3, '3']) || '';
+      // Boş string veya null ise sıfır olarak kabul et
+      const planlanan = (planlananRaw === null || planlananRaw === undefined || planlananRaw === '') 
+        ? 0 
+        : parseMoney(planlananRaw);
+      
+      if(!yil || yil < 2020 || yil > 2030) errors.push('Yıl geçersiz (2020-2030 arası olmalı)');
+      if(!tipRaw || (!tipRaw.includes('gelir') && !tipRaw.includes('gider'))) errors.push('Tip geçersiz (gider veya gelir olmalı)');
+      if(!kategori || kategori.length < 2) errors.push('Kategori boş veya çok kısa');
+      // Sıfır tutar geçerli bir değerdir (o kategoride işlem olmamış olabilir)
+      // Sadece boş, null, undefined veya sayı olmayan değerler hata
+      if(planlananRaw === null || planlananRaw === undefined) {
+        errors.push('Planlanan tutar boş');
+      } else if(planlananRaw === '' || (String(planlananRaw).trim() === '')) {
+        // Boş string ise sıfır olarak kabul et (geçerli)
+        // Hata ekleme
+      } else if(isNaN(planlanan)) {
+        errors.push('Planlanan tutar sayı değil');
+      } else if(planlanan < 0) {
+        errors.push('Planlanan tutar negatif olamaz');
+      }
+      // planlanan === 0 ise geçerli, hata ekleme
+      
+      return {
+        valid: errors.length === 0, 
+        errors, 
+        warnings, 
+        data: {
+          yil: yil || 2025, 
+          tip: tipRaw.includes('gelir') ? 'gelir' : 'gider', 
+          kategori: kategori || 'Diğer', 
+          planlanan: isNaN(planlanan) ? 0 : planlanan
+        }
+      };
+    } else {
+      const yilRaw = getValue(['yil', 'Yıl', 'YIL', 'year', 'Year', 'YEAR', 0, '0']) || '';
+      const yil = parseInt(yilRaw) || 0;
+      
+      const ayRaw = getValue(['ay', 'Ay', 'AY', 'month', 'Month', 'MONTH', 1, '1']) || '';
+      let ay = parseInt(ayRaw);
+      if(isNaN(ay) || ay < 1 || ay > 12){
+        // Ay adından sayıya çevir
+        const ayStr = ayRaw.toString().toLowerCase().trim();
+        const ayIndex = monthsTR.findIndex(m => m.toLowerCase() === ayStr);
+        ay = ayIndex >= 0 ? ayIndex + 1 : 0;
+      }
+      
+      const tipRaw = (getValue(['tip', 'Tip', 'TIP', 'type', 'Type', 'TYPE', 'gidergelir', 'Gider/Gelir', 2, '2']) || '').toString().toLowerCase();
+      const kategoriRaw = getValue(['kategori', 'Kategori', 'KATEGORI', 'category', 'Category', 'CATEGORY', 3, '3']) || '';
+      const kategori = kategoriRaw.toString().trim();
+      
+      // Gerçekleşen tutar - tüm olası key'leri dene
+      let gerceklesenRaw = getValue([
+        'gerceklesen', 'Gerçekleşen', 'GERCEKLESEN', 
+        'realized', 'Realized', 'REALIZED',
+        'tutar', 'Tutar', 'TUTAR',
+        'Gerçekleşen (₺)', 'gerçekleşen (₺)',
+        4, '4', '5' // Index 4 veya 5 (bazı CSV'lerde farklı olabilir)
+      ]);
+      
+      // Eğer bulunamadıysa, tüm değerleri kontrol et (son sütun tutar olabilir)
+      if(!gerceklesenRaw || gerceklesenRaw === ''){
+        const values = Object.values(row);
+        // Son sütunu dene
+        if(values.length > 4){
+          gerceklesenRaw = values[values.length - 1];
+        }
+        // Veya 5. sütunu dene
+        if((!gerceklesenRaw || gerceklesenRaw === '') && values.length > 4){
+          gerceklesenRaw = values[4];
+        }
+      }
+      
+      // Boş string veya null ise sıfır olarak kabul et
+      const gerceklesen = (gerceklesenRaw === null || gerceklesenRaw === undefined || gerceklesenRaw === '') 
+        ? 0 
+        : parseMoney(gerceklesenRaw);
+      
+      // Debug için
+      if(rowIndex === 0){
+        console.log('Gerçekleşen Raw:', gerceklesenRaw, 'Parsed:', gerceklesen);
+        console.log('Row keys:', Object.keys(row));
+        console.log('Row values:', Object.values(row));
+        console.log('Row object:', row);
+      }
+      
+      if(!yil || yil < 2020 || yil > 2030) errors.push('Yıl geçersiz');
+      if(!ay || ay < 1 || ay > 12) errors.push('Ay geçersiz (1-12 veya ay adı olmalı)');
+      if(!tipRaw || (!tipRaw.includes('gelir') && !tipRaw.includes('gider'))) errors.push('Tip geçersiz');
+      if(!kategori || kategori.length < 2) errors.push('Kategori boş veya çok kısa');
+      // Sıfır tutar geçerli bir değerdir (o ay o kategoride işlem olmamış olabilir)
+      // Sadece boş, null, undefined veya sayı olmayan değerler hata
+      if(gerceklesenRaw === null || gerceklesenRaw === undefined) {
+        errors.push('Gerçekleşen tutar boş');
+      } else if(gerceklesenRaw === '' || (String(gerceklesenRaw).trim() === '')) {
+        // Boş string ise sıfır olarak kabul et (geçerli)
+        // Hata ekleme
+      } else if(isNaN(gerceklesen)) {
+        errors.push('Gerçekleşen tutar sayı değil');
+      } else if(gerceklesen < 0) {
+        errors.push('Gerçekleşen tutar negatif olamaz');
+      }
+      // gerceklesen === 0 ise geçerli, hata ekleme
+      
+      return {
+        valid: errors.length === 0, 
+        errors, 
+        warnings, 
+        data: {
+          yil: yil || 2024, 
+          ay: ay || 1, 
+          tip: tipRaw.includes('gelir') ? 'gelir' : 'gider', 
+          kategori: kategori || 'Diğer', 
+          gerceklesen: isNaN(gerceklesen) ? 0 : gerceklesen
+        }
+      };
+    }
+  }
+
+  // CSV Önizleme
+  let previewData = [];
+  async function previewCSV(){
+    const file = document.getElementById('fileInput').files[0];
+    const uploadType = document.getElementById('uploadType').value;
+    
+    if(!file){
+      toast('Lütfen bir dosya seçin');
+      return;
+    }
+
+    try{
+      // CSV'yi parse et - hem header'lı hem header'sız destekle
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          // Header olup olmadığını kontrol et
+          const firstRow = results.data[0];
+          const hasHeader = firstRow && Object.keys(firstRow).some(key => 
+            isNaN(parseInt(key)) && (key.toLowerCase().includes('yil') || key.toLowerCase().includes('year'))
+          );
+          
+          // Eğer header yoksa, tekrar parse et (header olmadan)
+          if(!hasHeader && results.data.length > 0){
+            Papa.parse(file, {
+              header: false,
+              skipEmptyLines: true,
+              complete: (resultsNoHeader) => {
+                const rows = resultsNoHeader.data;
+                processCSVRows(rows, false);
+              },
+              error: (error) => {
+                console.error('CSV parse hatası:', error);
+                toast('CSV dosyası okunamadı: ' + error.message);
+              }
+            });
+            return;
+          }
+          
+          const rows = results.data;
+          processCSVRows(rows, hasHeader);
+        },
+        error: (error) => {
+          console.error('CSV parse hatası:', error);
+          toast('CSV dosyası okunamadı: ' + error.message);
+        }
+      });
+    }catch(e){
+      console.error('Önizleme hatası:', e);
+      toast('Dosya okunurken hata oluştu: ' + e.message);
+    }
+  }
+
+  // CSV satırlarını işle
+  function processCSVRows(rows, hasHeader){
+    const uploadType = document.getElementById('uploadType').value;
+    
+    if(rows.length === 0){
+      toast('CSV dosyası boş veya geçersiz');
+      return;
+    }
+
+    // İlk satırı logla (debug için)
+    if(rows.length > 0){
+      console.log('CSV Header var mı:', hasHeader);
+      console.log('CSV ilk satır örneği:', rows[0]);
+      console.log('CSV sütun isimleri/indeksleri:', Object.keys(rows[0]));
+      console.log('CSV ilk satır değerleri:', Object.values(rows[0]));
+    }
+
+    // Her satırı validate et
+    previewData = rows.map((row, idx) => {
+      // Row'u normalize et - hem key hem index ile erişim
+      const normalizedRow = {};
+      const keys = Object.keys(row);
+      const values = Object.values(row);
+      
+      // Header yoksa, direkt index kullan
+      if(!hasHeader){
+        // Index bazlı eşleştirme
+        if(uploadType === 'planlama'){
+          normalizedRow.yil = values[0];
+          normalizedRow.tip = values[1];
+          normalizedRow.kategori = values[2];
+          normalizedRow.planlanan = values[3];
+          normalizedRow[0] = values[0];
+          normalizedRow[1] = values[1];
+          normalizedRow[2] = values[2];
+          normalizedRow[3] = values[3];
+        } else {
+          normalizedRow.yil = values[0];
+          normalizedRow.ay = values[1];
+          normalizedRow.tip = values[2];
+          normalizedRow.kategori = values[3];
+          normalizedRow.gerceklesen = values[4];
+          normalizedRow[0] = values[0];
+          normalizedRow[1] = values[1];
+          normalizedRow[2] = values[2];
+          normalizedRow[3] = values[3];
+          normalizedRow[4] = values[4];
+        }
+      } else {
+        // Header varsa, key bazlı eşleştirme
+        keys.forEach(key => {
+          const normalizedKey = key.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+          
+          // Yıl eşleştirmeleri
+          if(normalizedKey.includes('yil') || normalizedKey.includes('year') || key === '0' || key === 0){
+            normalizedRow.yil = row[key];
+            normalizedRow[0] = row[key];
+          }
+          // Ay eşleştirmeleri
+          if(normalizedKey.includes('ay') || normalizedKey.includes('month') || key === '1' || key === 1){
+            normalizedRow.ay = row[key];
+            normalizedRow[1] = row[key];
+          }
+          // Tip eşleştirmeleri
+          if(normalizedKey.includes('tip') || normalizedKey.includes('type') || normalizedKey.includes('gider') || normalizedKey.includes('gelir') || key === '2' || key === 2){
+            normalizedRow.tip = row[key];
+            normalizedRow[2] = row[key];
+          }
+          // Kategori eşleştirmeleri
+          if(normalizedKey.includes('kategori') || normalizedKey.includes('category') || key === '3' || key === 3){
+            normalizedRow.kategori = row[key];
+            normalizedRow[3] = row[key];
+          }
+          // Planlanan eşleştirmeleri
+          if(normalizedKey.includes('planlanan') || normalizedKey.includes('planned') || key === '4' || key === 4){
+            normalizedRow.planlanan = row[key];
+            normalizedRow[4] = row[key];
+          }
+          // Gerçekleşen eşleştirmeleri
+          if(normalizedKey.includes('gerceklesen') || normalizedKey.includes('realized') || normalizedKey.includes('tutar') || key === '4' || key === 4 || key === '5' || key === 5){
+            normalizedRow.gerceklesen = row[key];
+            normalizedRow[4] = row[key];
+            normalizedRow[5] = row[key];
+          }
+        });
+      }
+      
+      // Orijinal row'u da ekle (fallback için)
+      Object.assign(normalizedRow, row);
+      
+      const validation = validateRow(normalizedRow, uploadType, idx);
+      return {
+        rowIndex: idx + 1,
+        original: row,
+        ...validation
+      };
+    });
+
+    // Önizleme tablosunu göster
+    showPreviewTable(uploadType);
+    
+    // Adım 2'ye geç
+    document.getElementById('uploadStep1').style.display = 'none';
+    document.getElementById('uploadStep2').style.display = 'block';
+  }
+
+
+  // Önizleme tablosunu göster
+  function showPreviewTable(uploadType){
+    const thead = document.getElementById('previewTableHead');
+    const tbody = document.getElementById('previewTableBody');
+    const stats = document.getElementById('previewStats');
+    const errorSummary = document.getElementById('errorSummary');
+    const errorList = document.getElementById('errorList');
+
+    // Header
+    if(uploadType === 'planlama'){
+      thead.innerHTML = '<tr><th>Satır</th><th>Yıl</th><th>Tip</th><th>Kategori</th><th>Planlanan (₺)</th><th>Durum</th></tr>';
+    } else {
+      thead.innerHTML = '<tr><th>Satır</th><th>Yıl</th><th>Ay</th><th>Tip</th><th>Kategori</th><th>Gerçekleşen (₺)</th><th>Durum</th></tr>';
+    }
+
+    // Body
+    tbody.innerHTML = '';
+    let validCount = 0;
+    let errorCount = 0;
+    const errorRows = [];
+
+    previewData.forEach((item, idx) => {
+      const tr = document.createElement('tr');
+      tr.className = item.valid ? 'row-ok' : 'row-error';
+      tr.dataset.rowIndex = idx;
+      
+      if(uploadType === 'planlama'){
+        tr.innerHTML = `
+          <td>${item.rowIndex}</td>
+          <td><span class="cell-editable" data-field="yil" data-row="${idx}">${item.data.yil || '-'}</span></td>
+          <td><span class="cell-editable" data-field="tip" data-row="${idx}">${item.data.tip || '-'}</span></td>
+          <td><span class="cell-editable" data-field="kategori" data-row="${idx}">${item.data.kategori || '-'}</span></td>
+          <td><span class="cell-editable" data-field="planlanan" data-row="${idx}">${item.data.planlanan ? fmt(item.data.planlanan) : '-'}</span></td>
+          <td>
+            ${item.valid ? '<span class="cell-ok">✓ Geçerli</span>' : '<span class="cell-error">✗ Hatalı</span>'}
+            ${item.errors.length > 0 ? '<div class="cell-error">' + item.errors.join(', ') + '</div>' : ''}
+          </td>
+        `;
+      } else {
+        tr.innerHTML = `
+          <td>${item.rowIndex}</td>
+          <td><span class="cell-editable" data-field="yil" data-row="${idx}">${item.data.yil || '-'}</span></td>
+          <td><span class="cell-editable" data-field="ay" data-row="${idx}">${item.data.ay ? monthsTR[item.data.ay-1] : '-'}</span></td>
+          <td><span class="cell-editable" data-field="tip" data-row="${idx}">${item.data.tip || '-'}</span></td>
+          <td><span class="cell-editable" data-field="kategori" data-row="${idx}">${item.data.kategori || '-'}</span></td>
+          <td><span class="cell-editable" data-field="gerceklesen" data-row="${idx}">${item.data.gerceklesen ? fmt(item.data.gerceklesen) : '-'}</span></td>
+          <td>
+            ${item.valid ? '<span class="cell-ok">✓ Geçerli</span>' : '<span class="cell-error">✗ Hatalı</span>'}
+            ${item.errors.length > 0 ? '<div class="cell-error">' + item.errors.join(', ') + '</div>' : ''}
+          </td>
+        `;
+      }
+
+      tbody.appendChild(tr);
+      
+      if(item.valid) validCount++;
+      else {
+        errorCount++;
+        errorRows.push({row: item.rowIndex, errors: item.errors});
+      }
+    });
+
+    // İstatistikler
+    stats.textContent = `Toplam: ${previewData.length} satır | Geçerli: ${validCount} | Hatalı: ${errorCount}`;
+
+    // Hata özeti
+    if(errorCount > 0){
+      errorSummary.style.display = 'block';
+      errorList.innerHTML = errorRows.slice(0, 10).map(e => 
+        `Satır ${e.row}: ${e.errors.join(', ')}`
+      ).join('<br>');
+      if(errorRows.length > 10){
+        errorList.innerHTML += `<br><em>... ve ${errorRows.length - 10} satır daha</em>`;
+      }
+    } else {
+      errorSummary.style.display = 'none';
+    }
+
+    // Düzenlenebilir hücreler için event listener
+    tbody.querySelectorAll('.cell-editable').forEach(cell => {
+      cell.addEventListener('click', function(){
+        startEditing(this);
+      });
+    });
+  }
+
+  // Hücre düzenleme
+  function startEditing(cell){
+    const rowIndex = parseInt(cell.dataset.row);
+    const field = cell.dataset.field;
+    const currentValue = cell.textContent.trim();
+    
+    cell.classList.add('editing');
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'cell-input';
+    input.value = currentValue;
+    cell.innerHTML = '';
+    cell.appendChild(input);
+    input.focus();
+    input.select();
+
+    const finishEditing = () => {
+      const newValue = input.value.trim();
+      cell.classList.remove('editing');
+      cell.textContent = newValue;
+      
+      // Veriyi güncelle
+      if(previewData[rowIndex]){
+        if(field === 'yil') previewData[rowIndex].data.yil = parseInt(newValue) || previewData[rowIndex].data.yil;
+        else if(field === 'ay') {
+          const ayNum = parseInt(newValue) || (monthsTR.findIndex(m => m.toLowerCase() === newValue.toLowerCase()) + 1);
+          previewData[rowIndex].data.ay = ayNum;
+          cell.textContent = ayNum ? monthsTR[ayNum-1] : newValue;
+        }
+        else if(field === 'tip') {
+          const tip = newValue.toLowerCase().includes('gelir') ? 'gelir' : 'gider';
+          previewData[rowIndex].data.tip = tip;
+          cell.textContent = tip;
+        }
+        else if(field === 'kategori') previewData[rowIndex].data.kategori = newValue;
+        else if(field === 'planlanan') {
+          const val = parseMoney(newValue);
+          previewData[rowIndex].data.planlanan = val;
+          cell.textContent = val > 0 ? fmt(val) : newValue;
+        }
+        else if(field === 'gerceklesen') {
+          const val = parseMoney(newValue);
+          previewData[rowIndex].data.gerceklesen = val;
+          cell.textContent = val > 0 ? fmt(val) : newValue;
+        }
+
+        // Yeniden validate et
+        const uploadType = document.getElementById('uploadType').value;
+        // Geçici bir row objesi oluştur (validateRow'un beklediği format)
+        const tempRow = {};
+        if(uploadType === 'planlama'){
+          tempRow.yil = previewData[rowIndex].data.yil;
+          tempRow.tip = previewData[rowIndex].data.tip;
+          tempRow.kategori = previewData[rowIndex].data.kategori;
+          tempRow.planlanan = previewData[rowIndex].data.planlanan;
+        } else {
+          tempRow.yil = previewData[rowIndex].data.yil;
+          tempRow.ay = previewData[rowIndex].data.ay;
+          tempRow.tip = previewData[rowIndex].data.tip;
+          tempRow.kategori = previewData[rowIndex].data.kategori;
+          tempRow.gerceklesen = previewData[rowIndex].data.gerceklesen;
+        }
+        const validation = validateRow(tempRow, uploadType, rowIndex);
+        previewData[rowIndex].valid = validation.valid;
+        previewData[rowIndex].errors = validation.errors;
+        // Data'yı güncelle
+        if(validation.data) previewData[rowIndex].data = validation.data;
+        
+        // Satır rengini güncelle
+        const tr = cell.closest('tr');
+        tr.className = validation.valid ? 'row-ok' : 'row-error';
+        
+        // Durum hücresini güncelle
+        const statusCell = tr.querySelector('td:last-child');
+        statusCell.innerHTML = validation.valid 
+          ? '<span class="cell-ok">✓ Geçerli</span>' 
+          : '<span class="cell-error">✗ Hatalı</span>' + 
+            (validation.errors.length > 0 ? '<div class="cell-error">' + validation.errors.join(', ') + '</div>' : '');
+        
+        // İstatistikleri güncelle
+        updatePreviewStats();
+      }
+    };
+
+    input.addEventListener('blur', finishEditing);
+    input.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter') finishEditing();
+      if(e.key === 'Escape') {
+        cell.classList.remove('editing');
+        cell.textContent = currentValue;
+      }
+    });
+  }
+
+  // İstatistikleri güncelle
+  function updatePreviewStats(){
+    const validCount = previewData.filter(d => d.valid).length;
+    const errorCount = previewData.length - validCount;
+    document.getElementById('previewStats').textContent = 
+      `Toplam: ${previewData.length} satır | Geçerli: ${validCount} | Hatalı: ${errorCount}`;
+  }
+
+  // Geri dön
+  function backToStep1(){
+    document.getElementById('uploadStep1').style.display = 'block';
+    document.getElementById('uploadStep2').style.display = 'none';
+    previewData = [];
+  }
+
+  // CSV Yükleme (Önizleme sonrası)
+  async function uploadCSV(){
+    if(!previewData || previewData.length === 0){
+      toast('Önce CSV dosyasını önizleyin');
+      return;
+    }
+
+    // Sadece geçerli satırları yükle
+    const validRows = previewData.filter(d => d.valid);
+    
+    if(validRows.length === 0){
+      toast('Yüklenecek geçerli satır yok. Lütfen hataları düzeltin.');
+      return;
+    }
+
+    const uploadType = document.getElementById('uploadType').value;
+    const progressDiv = document.getElementById('uploadProgress');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    progressDiv.style.display = 'block';
+    progressBar.style.width = '0%';
+    progressText.textContent = '0 / 0';
+
+    try{
+      let batch = db.batch();
+      let processed = 0;
+      let saved = 0;
+      const collection = uploadType === 'planlama' ? 'muhasebe_planlama' : 'muhasebe_gerceklesen';
+      const chunkSize = 400; // Firestore batch limiti
+
+      for(let i=0; i<validRows.length; i++){
+        const item = validRows[i];
+        const data = item.data;
+        
+        try{
+          const docRef = db.collection(collection).doc();
+          if(uploadType === 'planlama'){
+            batch.set(docRef, {
+              yil: data.yil,
+              tip: data.tip,
+              kategori: data.kategori,
+              planlanan: data.planlanan,
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          } else {
+            batch.set(docRef, {
+              yil: data.yil,
+              ay: data.ay,
+              tip: data.tip,
+              kategori: data.kategori,
+              gerceklesen: data.gerceklesen,
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          }
+          saved++;
+        }catch(e){
+          console.warn(`Satır ${item.rowIndex} atlandı:`, e);
+        }
+
+        processed++;
+        const progress = Math.round((processed/validRows.length)*100);
+        progressBar.style.width = progress + '%';
+        progressText.textContent = `${processed} / ${validRows.length} (${saved} kaydedildi)`;
+
+        // Her chunkSize kayıtta bir batch commit
+        if(saved > 0 && saved % chunkSize === 0){
+          await batch.commit();
+          batch = db.batch();
+        }
+      }
+
+      // Kalan kayıtları commit et
+      if(saved % chunkSize !== 0){
+        await batch.commit();
+      }
+
+      toast(`${saved} kayıt başarıyla yüklendi (${previewData.length - validRows.length} hatalı satır atlandı)`);
+      closeModal('uploadModal');
+      progressDiv.style.display = 'none';
+      
+      // Verileri yeniden yükle
+      await loadData();
+      
+    }catch(e){
+      console.error('Yükleme hatası:', e);
+      toast('Dosya yüklenirken hata oluştu: ' + e.message);
+      progressDiv.style.display = 'none';
+    }
+  }
+
+  // Upload type değiştiğinde format hint'i güncelle
+  document.getElementById('uploadType').addEventListener('change', (e)=>{
+    const hint = document.getElementById('uploadFormatHint');
+    if(e.target.value === 'planlama'){
+      hint.innerHTML = '<strong>Bütçe Planlama Formatı:</strong><br>Yıl, Tip (gider/gelir), Kategori, Planlanan (₺)<br><br>Örnek: 2025, gider, Personel Gideri, 50000';
+    } else {
+      hint.innerHTML = '<strong>Bütçe Gerçekleşen Formatı:</strong><br>Yıl, Ay, Tip (gider/gelir), Kategori, Gerçekleşen<br><br><strong>CSV Sütun İsimleri:</strong><br>Yıl, Ay, Tip, Kategori, Gerçekleşen<br>veya<br>yıl, ay, tip, kategori, gerçekleşen<br><br><strong>Gerçekleşen Tutar Formatları (kabul edilen):</strong><br>• 52000<br>• 52.000<br>• 52,000<br>• 52.000,50<br>• 52,000.50<br>• 52000.5<br>• ₺52000<br>• 52.000₺<br><br><strong>Örnek Satır:</strong><br>2025, 1, gider, Personel Gideri, 52000';
+    }
+  });
+  // İlk yüklemede hint'i ayarla
+  document.getElementById('uploadType').dispatchEvent(new Event('change'));
+
+  // Kategorileri dinamik yükle
+  async function updateKategoriler(){
+    const kategoriler = new Set();
+    
+    // Planlama verilerinden
+    Object.keys(planlamaData).forEach(yil=>{
+      Object.keys(planlamaData[yil]).forEach(tip=>{
+        Object.keys(planlamaData[yil][tip]).forEach(kat=> kategoriler.add(kat));
+      });
+    });
+    
+    // Gerçekleşen verilerinden
+    Object.keys(gerceklesenData).forEach(yil=>{
+      Object.keys(gerceklesenData[yil]).forEach(ay=>{
+        Object.keys(gerceklesenData[yil][ay]).forEach(tip=>{
+          Object.keys(gerceklesenData[yil][ay][tip]).forEach(kat=> kategoriler.add(kat));
+        });
+      });
+    });
+
+    // kategoriSec elementi kaldırıldı, bu kısım artık gerekli değil
+    // const sel = document.getElementById('kategoriSec');
+    // if(sel){
+    //   sel.innerHTML = '<option value="tumu">Tümü</option>';
+    //   Array.from(kategoriler).sort().forEach(kat=>{
+    //     const opt = document.createElement('option');
+    //     opt.value = kat;
+    //     opt.textContent = kat;
+    //     sel.appendChild(opt);
+    //   });
+    // }
+  }
+
+  // Event listeners (filtreler kaldırıldı, event listener'lar da kaldırıldı)
+
+  // Sunum modu - bütceplanlama.html sayfasına yönlendir
+  document.getElementById('btnPresentation').addEventListener('click', ()=>{
+    window.location.href = 'bütceplanlama.html';
+  });
+
+  // Kategori açıklamaları panelini güncelle
+  function updateKategoriAciklamalarPanel(){
+    const panel = document.getElementById('kategoriAciklamalarPanel');
+    const list = document.getElementById('kategoriAciklamalarList');
+    
+    if(Object.keys(kategoriAciklamalari).length === 0){
+      panel.style.display = 'none';
+      return;
+    }
+
+    // Sunum modunda göster
+    if(document.body.classList.contains('presentation-mode')){
+      panel.style.display = 'block';
+      list.innerHTML = Object.entries(kategoriAciklamalari)
+        .filter(([kat, aciklama]) => aciklama && aciklama.trim())
+        .map(([kat, aciklama]) => `
+          <div style="padding:12px; background:var(--pill); border:1px solid var(--stroke); border-radius:8px">
+            <div style="font-weight:700; color:var(--text); margin-bottom:6px; font-size:14px">${kat}</div>
+            <div style="font-size:13px; color:var(--muted); line-height:1.5">${aciklama}</div>
+          </div>
+        `).join('');
+    } else {
+      panel.style.display = 'none';
+    }
+  }
+
+  // Upload modal
+  document.getElementById('btnUpload').addEventListener('click', ()=>{
+    document.getElementById('uploadModal').style.display='flex';
+    document.getElementById('fileInput').value = '';
+    document.getElementById('uploadProgress').style.display = 'none';
+    document.getElementById('uploadStep1').style.display = 'block';
+    document.getElementById('uploadStep2').style.display = 'none';
+    previewData = [];
+  });
+  document.getElementById('btnPreviewCSV').addEventListener('click', previewCSV);
+  document.getElementById('btnUploadFile').addEventListener('click', uploadCSV);
+  document.getElementById('btnUploadFile2').addEventListener('click', uploadCSV);
+
+  /* ===== MANUEL VERİ GİRİŞİ ===== */
+  let kategoriList = [];
+  let planlamaRows = [];
+  let gerceklesenEntryData = {}; // {yil: {ay: {tip: {kategori: tutar}}}}
+  let editTableSortState = { column: null, direction: 'asc' };
+  let editTableRows = []; // Sıralama için saklanacak veriler
+
+  // Veri girişi modal aç
+  // Veri Düzenleme Modal
+  document.getElementById('btnDataEdit').addEventListener('click', async ()=>{
+    document.getElementById('dataEditModal').style.display = 'flex';
+    
+    // Kategorileri yükle
+    await loadKategorilerForEntry();
+    updateEditKategoriDropdown();
+  });
+  
+  // Ay ve kategori seçimi sadece gerçekleşen için görünür (bir kez ekle)
+  document.getElementById('editDataType').onchange = function(e){
+    const isGerceklesen = e.target.value === 'gerceklesen';
+    document.getElementById('editMonthContainer').style.display = isGerceklesen ? 'block' : 'none';
+    document.getElementById('editMonthHeader').style.display = isGerceklesen ? 'table-cell' : 'none';
+    document.getElementById('editKategoriContainer').style.display = isGerceklesen ? 'block' : 'none';
+  };
+  
+  // Tip değiştiğinde kategori dropdown'ını güncelle (bir kez ekle)
+  document.getElementById('editTip').onchange = function(){
+    updateEditKategoriDropdown();
+  };
+  
+  // Kategori dropdown'ını güncelle
+  function updateEditKategoriDropdown(){
+    const tipSelect = document.getElementById('editTip');
+    const kategoriSelect = document.getElementById('editKategori');
+    const selectedTip = tipSelect.value;
+    
+    // Mevcut seçimi sakla
+    const currentValue = kategoriSelect.value;
+    
+    // Kategorileri filtrele ve ekle
+    kategoriSelect.innerHTML = '<option value="tumu">Tüm Kategoriler</option>';
+    
+    if(selectedTip === 'tumu'){
+      // Tüm kategoriler
+      allKategoriler.forEach(kat => {
+        kategoriSelect.innerHTML += `<option value="${kat.ad}">${kat.ad}</option>`;
+      });
+    } else {
+      // Seçili tipe göre filtrele
+      allKategoriler.filter(kat => kat.tip === selectedTip).forEach(kat => {
+        kategoriSelect.innerHTML += `<option value="${kat.ad}">${kat.ad}</option>`;
+      });
+    }
+    
+    // Önceki seçimi geri yükle (eğer hala mevcut ise)
+    if(currentValue && Array.from(kategoriSelect.options).some(opt => opt.value === currentValue)){
+      kategoriSelect.value = currentValue;
+    }
+  }
+
+  // Veri düzenleme - Verileri yükle
+  document.getElementById('btnLoadEditData').addEventListener('click', async ()=>{
+    const dataType = document.getElementById('editDataType').value;
+    const year = +document.getElementById('editYear').value;
+    const month = document.getElementById('editMonth')?.value === 'tumu' ? null : +document.getElementById('editMonth')?.value;
+    const tip = document.getElementById('editTip').value === 'tumu' ? null : document.getElementById('editTip').value;
+    const kategori = document.getElementById('editKategori')?.value === 'tumu' ? null : document.getElementById('editKategori')?.value;
+    
+    const tbody = document.getElementById('editDataTableBody');
+    const table = document.getElementById('editDataTable');
+    const btnSave = document.getElementById('btnSaveEditData');
+    
+      const colCount = dataType === 'gerceklesen' ? 7 : 6;
+      tbody.innerHTML = `<tr><td colspan="${colCount}" style="padding:40px; text-align:center; color:var(--muted)">Yükleniyor...</td></tr>`;
+    
+    try{
+      let query = db.collection(dataType === 'gerceklesen' ? 'muhasebe_gerceklesen' : 'muhasebe_planlama');
+      
+      if(dataType === 'gerceklesen'){
+        query = query.where('yil', '==', year);
+        if(month) query = query.where('ay', '==', month);
+      } else {
+        query = query.where('yil', '==', year);
+      }
+      
+      const snap = await query.get();
+      const rows = [];
+      
+      snap.forEach(doc => {
+        const d = doc.data();
+        if(tip && d.tip !== tip) return;
+        if(kategori && d.kategori !== kategori) return;
+        rows.push({
+          id: doc.id,
+          yil: d.yil || year,
+          ay: d.ay || null,
+          tip: d.tip || 'gider',
+          kategori: d.kategori || '',
+          deger: dataType === 'gerceklesen' ? (d.gerceklesen || 0) : (d.planlanan || 0)
+        });
+      });
+      
+      if(rows.length === 0){
+        const colCount = dataType === 'gerceklesen' ? 7 : 6;
+        tbody.innerHTML = `<tr><td colspan="${colCount}" style="padding:40px; text-align:center; color:var(--muted)">Veri bulunamadı</td></tr>`;
+        table.style.display = 'none';
+        btnSave.style.display = 'none';
+        editTableRows = [];
+        return;
+      }
+      
+      // Verileri sakla ve sırala
+      editTableRows = rows;
+      sortEditTable();
+      
+      table.style.display = 'table';
+      btnSave.style.display = 'block';
+      
+      const monthHeader = document.getElementById('editMonthHeader');
+      if(dataType === 'gerceklesen'){
+        monthHeader.style.display = 'table-cell';
+      } else {
+        monthHeader.style.display = 'none';
+      }
+      
+      renderEditTable();
+      
+      // Sıralama listener'larını ekle
+      attachEditTableSortListeners();
+      
+    }catch(e){
+      console.error('Veri yükleme hatası:', e);
+      toast('Veriler yüklenirken hata oluştu: ' + e.message);
+      const colCount = document.getElementById('editDataType').value === 'gerceklesen' ? 7 : 6;
+      tbody.innerHTML = `<tr><td colspan="${colCount}" style="padding:40px; text-align:center; color:var(--danger)">Hata: ${e.message}</td></tr>`;
+    }
+  });
+  
+  // Veri düzenleme tablosunu sırala
+  function sortEditTable(){
+    if(!editTableSortState.column || editTableRows.length === 0) return;
+    
+    const column = editTableSortState.column;
+    const direction = editTableSortState.direction;
+    
+    editTableRows.sort((a, b) => {
+      let aVal = a[column];
+      let bVal = b[column];
+      
+      // Sayısal sütunlar
+      if(column === 'yil' || column === 'ay' || column === 'deger'){
+        aVal = Number(aVal) || 0;
+        bVal = Number(bVal) || 0;
+        return direction === 'asc' ? aVal - bVal : bVal - aVal;
+      }
+      
+      // Metin sütunlar
+      aVal = String(aVal || '').toLowerCase();
+      bVal = String(bVal || '').toLowerCase();
+      
+      if(direction === 'asc'){
+        return aVal.localeCompare(bVal, 'tr');
+      } else {
+        return bVal.localeCompare(aVal, 'tr');
+      }
+    });
+  }
+  
+  // Veri düzenleme tablosunu render et
+  function renderEditTable(){
+    const tbody = document.getElementById('editDataTableBody');
+    const dataType = document.getElementById('editDataType').value;
+    
+    tbody.innerHTML = editTableRows.map((row, idx) => {
+        const monthCell = dataType === 'gerceklesen' ? `
+          <td style="padding:12px">
+            <select data-id="${row.id}" data-field="ay" style="width:100%; padding:8px; border:1px solid var(--stroke); border-radius:6px; background:var(--card); color:var(--text)">
+              ${monthsTR.map((m, i) => `<option value="${i+1}" ${row.ay === i+1 ? 'selected' : ''}>${m}</option>`).join('')}
+            </select>
+          </td>` : '';
+        return `
+          <tr style="border-bottom:1px solid var(--stroke); ${idx % 2 === 0 ? 'background:var(--pill)' : ''}">
+            <td style="padding:12px">
+              <input type="number" data-id="${row.id}" data-field="yil" value="${row.yil}" min="2020" max="2030"
+                style="width:100%; padding:8px; border:1px solid var(--stroke); border-radius:6px; background:var(--card); color:var(--text); text-align:center">
+            </td>
+            ${monthCell}
+            <td style="padding:12px">
+              <select data-id="${row.id}" data-field="tip" style="width:100%; padding:8px; border:1px solid var(--stroke); border-radius:6px; background:var(--card); color:var(--text)">
+                <option value="gelir" ${row.tip === 'gelir' ? 'selected' : ''}>Gelir</option>
+                <option value="gider" ${row.tip === 'gider' ? 'selected' : ''}>Gider</option>
+              </select>
+            </td>
+            <td style="padding:12px">
+              <input type="text" data-id="${row.id}" data-field="kategori" value="${row.kategori}" 
+                style="width:100%; padding:8px; border:1px solid var(--stroke); border-radius:6px; background:var(--card); color:var(--text)">
+            </td>
+            <td style="padding:12px">
+              <input type="number" step="0.01" data-id="${row.id}" data-field="deger" value="${row.deger}" 
+                style="width:100%; padding:8px; border:1px solid var(--stroke); border-radius:6px; background:var(--card); color:var(--text); text-align:right">
+            </td>
+            <td style="padding:12px; text-align:center">
+              <button onclick="deleteEditRow('${row.id}', '${dataType}')" style="padding:6px 12px; background:var(--danger); color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:12px">✕ Sil</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+  }
+  
+  // Veri düzenleme tablosu sıralama listener'ları
+  function attachEditTableSortListeners(){
+    const table = document.getElementById('editDataTable');
+    if(!table) return;
+    
+    const headers = table.querySelectorAll('thead .sortable');
+    headers.forEach(header => {
+      // Mevcut listener'ları temizle
+      const newHeader = header.cloneNode(true);
+      header.parentNode.replaceChild(newHeader, header);
+      
+      newHeader.addEventListener('click', () => {
+        const column = newHeader.dataset.sort;
+        
+        // Aynı sütuna tıklanırsa yönü değiştir
+        if(editTableSortState.column === column){
+          editTableSortState.direction = editTableSortState.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+          editTableSortState.column = column;
+          editTableSortState.direction = 'asc';
+        }
+        
+        // Sıralama ikonlarını güncelle
+        headers.forEach(h => {
+          h.classList.remove('sort-asc', 'sort-desc');
+          if(h.dataset.sort === editTableSortState.column){
+            h.classList.add(`sort-${editTableSortState.direction}`);
+          }
+        });
+        
+        // Tabloyu sırala ve yeniden render et
+        sortEditTable();
+        renderEditTable();
+      });
+    });
+  }
+
+  // Veri düzenleme - Kaydet
+  document.getElementById('btnSaveEditData').addEventListener('click', async ()=>{
+    const dataType = document.getElementById('editDataType').value;
+    const rows = document.querySelectorAll('#editDataTableBody tr');
+    const btnSave = document.getElementById('btnSaveEditData');
+    
+    btnSave.disabled = true;
+    btnSave.textContent = '💾 Kaydediliyor...';
+    
+    try{
+      const batch = db.batch();
+      let updated = 0;
+      
+      rows.forEach(row => {
+        const docId = row.querySelector('[data-id]')?.dataset.id;
+        if(!docId) return;
+        
+        const yilInput = row.querySelector('[data-field="yil"]');
+        const aySelect = row.querySelector('[data-field="ay"]');
+        const tipSelect = row.querySelector('[data-field="tip"]');
+        const kategoriInput = row.querySelector('[data-field="kategori"]');
+        const degerInput = row.querySelector('[data-field="deger"]');
+        
+        if(!yilInput || !tipSelect || !kategoriInput || !degerInput) return;
+        
+        const yil = parseInt(yilInput.value) || 2025;
+        const ay = aySelect ? parseInt(aySelect.value) : null;
+        const tip = tipSelect.value || 'gider';
+        const kategori = kategoriInput.value.trim() || 'Diğer';
+        const deger = parseFloat(degerInput.value) || 0;
+        
+        if(!kategori || kategori.length < 2){
+          toast(`Satır ${updated + 1}: Kategori boş olamaz`);
+          return;
+        }
+        
+        const docRef = db.collection(dataType === 'gerceklesen' ? 'muhasebe_gerceklesen' : 'muhasebe_planlama').doc(docId);
+        
+        if(dataType === 'gerceklesen'){
+          batch.update(docRef, { 
+            yil: yil,
+            ay: ay || 1,
+            tip: tip,
+            kategori: kategori,
+            gerceklesen: deger
+          });
+        } else {
+          batch.update(docRef, { 
+            yil: yil,
+            tip: tip,
+            kategori: kategori,
+            planlanan: deger
+          });
+        }
+        updated++;
+      });
+      
+      if(updated > 0){
+        await batch.commit();
+        toast(`${updated} kayıt başarıyla güncellendi`);
+        closeModal('dataEditModal');
+        await loadData();
+      } else {
+        toast('Güncellenecek veri bulunamadı');
+      }
+    }catch(e){
+      console.error('Kaydetme hatası:', e);
+      toast('Kaydetme sırasında hata oluştu: ' + e.message);
+    }finally{
+      btnSave.disabled = false;
+      btnSave.textContent = '💾 Değişiklikleri Kaydet';
+    }
+  });
+
+  // Veri düzenleme - Satır sil
+  window.deleteEditRow = async function(docId, dataType){
+    if(!confirm('Bu kaydı silmek istediğinize emin misiniz?')) return;
+    
+    try{
+      await db.collection(dataType === 'gerceklesen' ? 'muhasebe_gerceklesen' : 'muhasebe_planlama').doc(docId).delete();
+      toast('Kayıt başarıyla silindi');
+      
+      // editTableRows'dan sil
+      editTableRows = editTableRows.filter(row => row.id !== docId);
+      
+      // Tabloyu yeniden render et
+      sortEditTable();
+      renderEditTable();
+      
+      await loadData();
+    }catch(e){
+      console.error('Silme hatası:', e);
+      toast('Silme sırasında hata oluştu: ' + e.message);
+    }
+  };
+
+  document.getElementById('btnDataEntry').addEventListener('click', ()=>{
+    document.getElementById('dataEntryModal').style.display = 'flex';
+    document.getElementById('entryModeSelect').style.display = 'block';
+    document.getElementById('entryKategori').style.display = 'none';
+    document.getElementById('entryPlanlama').style.display = 'none';
+    document.getElementById('entryGerceklesen').style.display = 'none';
+    document.getElementById('entryPreview').style.display = 'none';
+    kategoriList = [];
+    planlamaRows = [];
+    gerceklesenEntryData = {};
+  });
+
+  // Mod seçimi
+  document.getElementById('btnStartEntry').addEventListener('click', ()=>{
+    const mode = document.getElementById('entryMode').value;
+    document.getElementById('entryModeSelect').style.display = 'none';
+    
+    if(mode === 'kategori'){
+      document.getElementById('entryKategori').style.display = 'block';
+      initKategoriEntry();
+    } else if(mode === 'planlama'){
+      document.getElementById('entryPlanlama').style.display = 'block';
+      initPlanlamaEntry();
+    } else {
+      document.getElementById('entryGerceklesen').style.display = 'block';
+      initGerceklesenEntry();
+    }
+  });
+
+  function backToModeSelect(){
+    document.getElementById('entryModeSelect').style.display = 'block';
+    document.getElementById('entryKategori').style.display = 'none';
+    document.getElementById('entryPlanlama').style.display = 'none';
+    document.getElementById('entryGerceklesen').style.display = 'none';
+    document.getElementById('entryPreview').style.display = 'none';
+  }
+
+  function closePreview(){
+    document.getElementById('entryPreview').style.display = 'none';
+  }
+
+  // 1. KATEGORİ EKLEME
+  function initKategoriEntry(){
+    kategoriList = [];
+    updateKategoriList();
+  }
+
+  document.getElementById('btnAddKategori').addEventListener('click', ()=>{
+    const tip = document.getElementById('kategoriTip').value;
+    const ad = document.getElementById('newKategoriAd').value.trim();
+    const aciklama = document.getElementById('newKategoriAciklama').value.trim();
+    
+    if(!ad || ad.length < 2){
+      toast('Kategori adı en az 2 karakter olmalı');
+      return;
+    }
+
+    if(kategoriList.find(k => k.ad === ad && k.tip === tip)){
+      toast('Bu kategori zaten eklenmiş');
+      return;
+    }
+
+    kategoriList.push({tip, ad, aciklama: aciklama || ''});
+    document.getElementById('newKategoriAd').value = '';
+    document.getElementById('newKategoriAciklama').value = '';
+    updateKategoriList();
+  });
+
+  function updateKategoriList(){
+    const container = document.getElementById('kategoriList');
+    if(kategoriList.length === 0){
+      container.innerHTML = '<div class="muted" style="width:100%; text-align:center; padding:20px">Henüz kategori eklenmedi</div>';
+      return;
+    }
+
+    container.innerHTML = kategoriList.map((k, idx) => `
+      <div style="display:flex; flex-direction:column; gap:4px; padding:10px 12px; background:var(--card); border:1px solid var(--stroke); border-radius:8px; width:100%">
+        <div style="display:flex; align-items:center; gap:8px">
+          <span style="font-weight:600">${k.ad}</span>
+          <span class="muted" style="font-size:11px">(${k.tip})</span>
+          <button onclick="removeKategori(${idx})" style="margin-left:auto; padding:4px 8px; background:var(--danger); color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:11px">✕</button>
+        </div>
+        ${k.aciklama ? `<div class="muted" style="font-size:12px; margin-top:4px; font-style:italic">${k.aciklama}</div>` : ''}
+      </div>
+    `).join('');
+  }
+
+  window.removeKategori = function(idx){
+    kategoriList.splice(idx, 1);
+    updateKategoriList();
+  };
+
+  document.getElementById('btnSaveKategoriler').addEventListener('click', async ()=>{
+    if(kategoriList.length === 0){
+      toast('Kaydedilecek kategori yok');
+      return;
+    }
+
+    try{
+      const batch = db.batch();
+      kategoriList.forEach(k => {
+        const docRef = db.collection('muhasebe_kategoriler').doc();
+        batch.set(docRef, {
+          ad: k.ad,
+          tip: k.tip,
+          aciklama: k.aciklama || '',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+      await batch.commit();
+      toast(`${kategoriList.length} kategori başarıyla kaydedildi`);
+      closeModal('dataEntryModal');
+      await loadData();
+    }catch(e){
+      console.error(e);
+      toast('Kategoriler kaydedilirken hata oluştu');
+    }
+  });
+
+  // 2. PLANLANAN VERİ GİRİŞİ
+  async function initPlanlamaEntry(){
+    planlamaRows = [];
+    const yilSelect = document.getElementById('planlamaYil');
+    yilSelect.innerHTML = '';
+    for(let y = 2020; y <= 2030; y++){
+      const opt = document.createElement('option');
+      opt.value = y;
+      opt.textContent = y;
+      yilSelect.appendChild(opt);
+    }
+    yilSelect.value = new Date().getFullYear();
+    
+    // Kategorileri yükle
+    await loadKategorilerForEntry();
+    addPlanlamaRow();
+  }
+
+  function addPlanlamaRow(){
+    const row = {
+      id: Date.now() + Math.random(),
+      tip: 'gider',
+      kategori: '',
+      planlanan: 0
+    };
+    planlamaRows.push(row);
+    renderPlanlamaRows();
+  }
+
+  function removePlanlamaRow(id){
+    planlamaRows = planlamaRows.filter(r => r.id !== id);
+    renderPlanlamaRows();
+  }
+
+  function renderPlanlamaRows(){
+    const container = document.getElementById('planlamaRows');
+    if(planlamaRows.length === 0){
+      container.innerHTML = '<div class="muted" style="text-align:center; padding:20px">Henüz satır eklenmedi</div>';
+      return;
+    }
+
+    container.innerHTML = planlamaRows.map((row, idx) => {
+      // Bu satırın tipine göre kategorileri filtrele
+      const filteredKats = allKategoriler.filter(k => k.tip === row.tip);
+      const kategoriOptions = filteredKats.map(k => 
+        `<option value="${k.ad}" ${row.kategori === k.ad ? 'selected' : ''}>${k.ad}</option>`
+      ).join('');
+      
+      return `
+      <div style="display:grid; grid-template-columns:2fr 3fr 2fr auto; gap:8px; align-items:end; padding:10px; background:var(--pill); border-radius:8px">
+        <div>
+          <label style="font-size:11px; color:var(--muted)">Tip</label>
+          <select class="planlama-field" data-id="${row.id}" data-field="tip" style="width:100%; padding:8px; border:1px solid var(--stroke); border-radius:8px; background:var(--card); color:var(--text)">
+            <option value="gelir" ${row.tip==='gelir'?'selected':''}>Gelir</option>
+            <option value="gider" ${row.tip==='gider'?'selected':''}>Gider</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px; color:var(--muted)">Kategori</label>
+          <select class="planlama-field" data-id="${row.id}" data-field="kategori" style="width:100%; padding:8px; border:1px solid var(--stroke); border-radius:8px; background:var(--card); color:var(--text)">
+            <option value="">Seçin...</option>
+            ${kategoriOptions}
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px; color:var(--muted)">Planlanan (₺)</label>
+          <input type="number" class="planlama-field" data-id="${row.id}" data-field="planlanan" value="${row.planlanan || ''}" placeholder="0" min="0" step="0.01" style="width:100%; padding:8px; border:1px solid var(--stroke); border-radius:8px; background:var(--card); color:var(--text)">
+        </div>
+        <button onclick="removePlanlamaRow(${row.id})" style="padding:8px 12px; background:var(--danger); color:#fff; border:none; border-radius:8px; cursor:pointer; white-space:nowrap">✕</button>
+      </div>
+    `;
+    }).join('');
+
+    // Event listeners
+    container.querySelectorAll('.planlama-field').forEach(field => {
+      field.addEventListener('change', function(){
+        const id = parseFloat(this.dataset.id);
+        const fieldName = this.dataset.field;
+        const row = planlamaRows.find(r => r.id === id);
+        if(row){
+          if(fieldName === 'planlanan'){
+            row[fieldName] = parseFloat(this.value) || 0;
+          } else if(fieldName === 'tip'){
+            row[fieldName] = this.value;
+            // Tip değiştiğinde kategori dropdown'ını güncelle
+            const kategoriSelect = container.querySelector(`select[data-id="${id}"][data-field="kategori"]`);
+            if(kategoriSelect){
+              const filteredKats = allKategoriler.filter(k => k.tip === this.value);
+              kategoriSelect.innerHTML = '<option value="">Seçin...</option>' + 
+                filteredKats.map(k => `<option value="${k.ad}">${k.ad}</option>`).join('');
+              row.kategori = ''; // Kategoriyi sıfırla
+            }
+          } else {
+            row[fieldName] = this.value;
+          }
+        }
+      });
+      field.addEventListener('input', function(){
+        const id = parseFloat(this.dataset.id);
+        const fieldName = this.dataset.field;
+        const row = planlamaRows.find(r => r.id === id);
+        if(row){
+          if(fieldName === 'planlanan'){
+            row[fieldName] = parseFloat(this.value) || 0;
+          } else {
+            row[fieldName] = this.value;
+          }
+        }
+      });
+    });
+  }
+
+  document.getElementById('btnAddPlanlamaRow').addEventListener('click', addPlanlamaRow);
+  window.removePlanlamaRow = removePlanlamaRow;
+
+  document.getElementById('btnPreviewPlanlama').addEventListener('click', ()=>{
+    const yil = +document.getElementById('planlamaYil').value;
+    showPreviewPlanlama(yil);
+  });
+
+  function showPreviewPlanlama(yil){
+    const thead = document.getElementById('previewTableHeadRow');
+    const tbody = document.getElementById('entryPreviewTableBody');
+    const preview = document.getElementById('entryPreview');
+    
+    thead.innerHTML = '<th>Tip</th><th>Kategori</th><th>Planlanan (₺)</th>';
+    tbody.innerHTML = '';
+    
+    planlamaRows.forEach(row => {
+      if(row.kategori && row.planlanan > 0){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${row.tip}</td>
+          <td>${row.kategori}</td>
+          <td>${fmt(row.planlanan)}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+    });
+    
+    preview.style.display = 'block';
+    preview.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+  }
+
+  document.getElementById('btnSavePlanlama').addEventListener('click', async ()=>{
+    const yil = +document.getElementById('planlamaYil').value;
+    const validRows = planlamaRows.filter(r => r.kategori && r.planlanan > 0);
+    
+    if(validRows.length === 0){
+      toast('Kaydedilecek geçerli satır yok');
+      return;
+    }
+
+    try{
+      const batch = db.batch();
+      validRows.forEach(row => {
+        const docRef = db.collection('muhasebe_planlama').doc();
+        batch.set(docRef, {
+          yil: yil,
+          tip: row.tip,
+          kategori: row.kategori,
+          planlanan: row.planlanan,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+      await batch.commit();
+      toast(`${validRows.length} planlanan veri kaydedildi`);
+      closeModal('dataEntryModal');
+      await loadData();
+    }catch(e){
+      console.error(e);
+      toast('Veriler kaydedilirken hata oluştu');
+    }
+  });
+
+  // 3. GERÇEKLEŞEN VERİ GİRİŞİ
+  let currentAy = 1;
+  let currentYil = new Date().getFullYear();
+  let currentTip = 'gider';
+  let allKategoriler = [];
+
+  async function initGerceklesenEntry(){
+    gerceklesenEntryData = {};
+    currentAy = 1;
+    currentYil = new Date().getFullYear();
+    currentTip = 'gider';
+    
+    // Yıl select
+    const yilSelect = document.getElementById('gerceklesenYil');
+    yilSelect.innerHTML = '';
+    for(let y = 2020; y <= 2030; y++){
+      const opt = document.createElement('option');
+      opt.value = y;
+      opt.textContent = y;
+      yilSelect.appendChild(opt);
+    }
+    yilSelect.value = currentYil;
+
+    // Ay select
+    const aySelect = document.getElementById('gerceklesenAy');
+    aySelect.innerHTML = '';
+    monthsTR.forEach((m, i) => {
+      const opt = document.createElement('option');
+      opt.value = i + 1;
+      opt.textContent = m;
+      aySelect.appendChild(opt);
+    });
+    aySelect.value = currentAy;
+
+    // Kategorileri yükle
+    await loadKategorilerForEntry();
+    
+    yilSelect.onchange = ()=>{ 
+      currentYil = +yilSelect.value; 
+      loadGerceklesenForm(); 
+    };
+    aySelect.onchange = ()=>{ 
+      currentAy = +aySelect.value; 
+      loadGerceklesenForm(); 
+    };
+    const tipSelect = document.getElementById('gerceklesenTip');
+    tipSelect.onchange = ()=>{ 
+      currentTip = tipSelect.value; 
+      loadGerceklesenForm(); 
+    };
+    
+    const nextBtn = document.getElementById('btnNextAy');
+    if(nextBtn){
+      nextBtn.onclick = ()=>{
+        if(currentAy < 12){
+          currentAy++;
+          document.getElementById('gerceklesenAy').value = currentAy;
+          loadGerceklesenForm();
+        } else {
+          toast('Son ay zaten seçili');
+        }
+      };
+    }
+
+    loadGerceklesenForm();
+  }
+
+  async function loadKategorilerForEntry(){
+    try{
+      const snap = await db.collection('muhasebe_kategoriler').get();
+      allKategoriler = [];
+      snap.forEach(doc => {
+        const d = doc.data();
+        allKategoriler.push({
+          ad: d.ad || doc.id, 
+          tip: d.tip || 'gider',
+          aciklama: d.aciklama || ''
+        });
+      });
+    }catch(e){
+      console.warn('Kategoriler yüklenemedi');
+      allKategoriler = [];
+    }
+  }
+
+  // Kategori açıklamalarını sakla (dashboard için)
+  let kategoriAciklamalari = {}; // {kategoriAd: aciklama}
+
+  async function loadKategoriAciklamalari(){
+    try{
+      const snap = await db.collection('muhasebe_kategoriler').get();
+      kategoriAciklamalari = {};
+      snap.forEach(doc => {
+        const d = doc.data();
+        const ad = d.ad || doc.id;
+        if(d.aciklama) kategoriAciklamalari[ad] = d.aciklama;
+      });
+    }catch(e){
+      console.warn('Kategori açıklamaları yüklenemedi');
+    }
+  }
+
+  function loadGerceklesenForm(){
+    const container = document.getElementById('gerceklesenKategoriler');
+    const ayBilgi = document.getElementById('gerceklesenAyBilgi');
+    const toplamEl = document.getElementById('gerceklesenToplam');
+    const nextBtn = document.getElementById('btnNextAy');
+
+    ayBilgi.textContent = `${monthsTR[currentAy - 1]} ${currentYil} - ${currentTip === 'gelir' ? 'Gelir' : 'Gider'}`;
+    
+    // Seçili tipe göre kategorileri filtrele
+    const filteredKats = allKategoriler.filter(k => k.tip === currentTip);
+    
+    if(filteredKats.length === 0){
+      container.innerHTML = '<div class="muted" style="text-align:center; padding:20px">Bu tip için kategori bulunamadı. Önce kategori ekleyin.</div>';
+      toplamEl.textContent = 'Toplam: ₺0';
+      nextBtn.style.display = 'none';
+      return;
+    }
+
+    container.innerHTML = filteredKats.map(kat => {
+      const key = `${currentYil}_${currentAy}_${currentTip}_${kat.ad}`;
+      const currentValue = gerceklesenEntryData[currentYil]?.[currentAy]?.[currentTip]?.[kat.ad] || 0;
+      
+      return `
+        <div style="display:grid; grid-template-columns:2fr 1fr; gap:8px; align-items:center; padding:10px; background:var(--pill); border-radius:8px">
+          <div>
+            <label style="font-weight:600; color:var(--text)">${kat.ad}</label>
+          </div>
+          <div>
+            <input type="number" data-key="${key}" data-kategori="${kat.ad}" value="${currentValue || ''}" placeholder="0" min="0" step="0.01" 
+              style="width:100%; padding:8px; border:1px solid var(--stroke); border-radius:8px; background:var(--card); color:var(--text)"
+              onchange="updateGerceklesenValue('${key}', '${kat.ad}', this.value)">
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    updateGerceklesenToplam();
+    nextBtn.style.display = currentAy < 12 ? 'inline-block' : 'none';
+  }
+
+  window.updateGerceklesenValue = function(key, kategori, value){
+    const val = parseFloat(value) || 0;
+    if(!gerceklesenEntryData[currentYil]) gerceklesenEntryData[currentYil] = {};
+    if(!gerceklesenEntryData[currentYil][currentAy]) gerceklesenEntryData[currentYil][currentAy] = {};
+    if(!gerceklesenEntryData[currentYil][currentAy][currentTip]) gerceklesenEntryData[currentYil][currentAy][currentTip] = {};
+    gerceklesenEntryData[currentYil][currentAy][currentTip][kategori] = val;
+    updateGerceklesenToplam();
+  };
+
+  function updateGerceklesenToplam(){
+    const toplamEl = document.getElementById('gerceklesenToplam');
+    let toplam = 0;
+    if(gerceklesenEntryData[currentYil]?.[currentAy]?.[currentTip]){
+      Object.values(gerceklesenEntryData[currentYil][currentAy][currentTip]).forEach(v => toplam += v);
+    }
+    toplamEl.textContent = `Toplam: ${fmt(toplam)}`;
+  }
+
+  document.getElementById('btnPreviewGerceklesen').addEventListener('click', ()=>{
+    showPreviewGerceklesen();
+  });
+
+  function showPreviewGerceklesen(){
+    const thead = document.getElementById('previewTableHeadRow');
+    const tbody = document.getElementById('entryPreviewTableBody');
+    const preview = document.getElementById('entryPreview');
+    
+    thead.innerHTML = '<th>Yıl</th><th>Ay</th><th>Tip</th><th>Kategori</th><th>Gerçekleşen (₺)</th>';
+    tbody.innerHTML = '';
+    
+    let count = 0;
+    Object.keys(gerceklesenEntryData).forEach(yil => {
+      Object.keys(gerceklesenEntryData[yil]).forEach(ay => {
+        Object.keys(gerceklesenEntryData[yil][ay]).forEach(tip => {
+          Object.keys(gerceklesenEntryData[yil][ay][tip]).forEach(kat => {
+            const val = gerceklesenEntryData[yil][ay][tip][kat];
+            if(val > 0){
+              const tr = document.createElement('tr');
+              tr.innerHTML = `
+                <td>${yil}</td>
+                <td>${monthsTR[+ay - 1]}</td>
+                <td>${tip}</td>
+                <td>${kat}</td>
+                <td>${fmt(val)}</td>
+              `;
+              tbody.appendChild(tr);
+              count++;
+            }
+          });
+        });
+      });
+    });
+    
+    if(count === 0){
+      tbody.innerHTML = '<tr><td colspan="5" class="muted" style="text-align:center; padding:20px">Henüz veri girilmedi</td></tr>';
+    }
+    
+    preview.style.display = 'block';
+    preview.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+  }
+
+  document.getElementById('btnSaveGerceklesen').addEventListener('click', async ()=>{
+    let totalCount = 0;
+    Object.keys(gerceklesenEntryData).forEach(yil => {
+      Object.keys(gerceklesenEntryData[yil]).forEach(ay => {
+        Object.keys(gerceklesenEntryData[yil][ay]).forEach(tip => {
+          Object.keys(gerceklesenEntryData[yil][ay][tip]).forEach(kat => {
+            if(gerceklesenEntryData[yil][ay][tip][kat] > 0) totalCount++;
+          });
+        });
+      });
+    });
+
+    if(totalCount === 0){
+      toast('Kaydedilecek veri yok');
+      return;
+    }
+
+    try{
+      let batch = db.batch();
+      let saved = 0;
+      const chunkSize = 400;
+
+      Object.keys(gerceklesenEntryData).forEach(yil => {
+        Object.keys(gerceklesenEntryData[yil]).forEach(ay => {
+          Object.keys(gerceklesenEntryData[yil][ay]).forEach(tip => {
+            Object.keys(gerceklesenEntryData[yil][ay][tip]).forEach(kat => {
+              const val = gerceklesenEntryData[yil][ay][tip][kat];
+              if(val > 0){
+                const docRef = db.collection('muhasebe_gerceklesen').doc();
+                batch.set(docRef, {
+                  yil: +yil,
+                  ay: +ay,
+                  tip: tip,
+                  kategori: kat,
+                  gerceklesen: val,
+                  createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                saved++;
+
+                if(saved % chunkSize === 0){
+                  batch.commit();
+                  batch = db.batch();
+                }
+              }
+            });
+          });
+        });
+      });
+
+      if(saved % chunkSize !== 0){
+        await batch.commit();
+      }
+
+      toast(`${saved} gerçekleşen veri kaydedildi`);
+      closeModal('dataEntryModal');
+      await loadData();
+    }catch(e){
+      console.error(e);
+      toast('Veriler kaydedilirken hata oluştu');
+    }
+  });
+  
+  // Upload type değiştiğinde format hint'i güncelle
+  document.getElementById('uploadType').addEventListener('change', (e)=>{
+    const hint = document.getElementById('uploadFormatHint');
+    if(e.target.value === 'planlama'){
+      hint.innerHTML = '<strong>Bütçe Planlama Formatı:</strong><br>Yıl, Tip (gider/gelir), Kategori, Planlanan (₺)<br><br>Örnek: 2025, gider, Personel Gideri, 50000';
+    } else {
+      hint.innerHTML = '<strong>Bütçe Gerçekleşen Formatı:</strong><br>Yıl, Ay, Tip (gider/gelir), Kategori, Gerçekleşen<br><br><strong>CSV Sütun İsimleri:</strong><br>Yıl, Ay, Tip, Kategori, Gerçekleşen<br>veya<br>yıl, ay, tip, kategori, gerçekleşen<br><br><strong>Gerçekleşen Tutar Formatları (kabul edilen):</strong><br>• 52000<br>• 52.000<br>• 52,000<br>• 52.000,50<br>• 52,000.50<br>• 52000.5<br>• ₺52000<br>• 52.000₺<br><br><strong>Örnek Satır:</strong><br>2025, 1, gider, Personel Gideri, 52000';
+    }
+  });
+  // İlk yüklemede hint'i ayarla
+  document.getElementById('uploadType').dispatchEvent(new Event('change'));
+
+  // Auth + yetki
+  try{ firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL); }catch(e){}
+  // Yazdırma sayfasını aç
+  window.openPrintPage = function(){
+    window.open('analizyazdir.html', '_blank');
+  };
+
+  auth.onAuthStateChanged(async (user)=>{
+    if(!user){ setTimeout(()=>{ if(!auth.currentUser) location.replace('index.html'); },150); return; }
+    try{
+      const uSnap=await db.collection('kullanicilar').doc(user.uid).get();
+      const data=uSnap.exists?uSnap.data():{};
+      document.getElementById('profName').textContent = data.adSoyad ? (data.adSoyad.split(' ')[0]) : 'Profil';
+      const rawPerms=Array.isArray(data.yetkiler)? data.yetkiler : [];
+      CURRENT_ALLOW=new Set(rawPerms.filter(s=>!String(s).trim().startsWith('-') && !String(s).trim().startsWith('!')).map(norm));
+      CURRENT_DENY =new Set(rawPerms.filter(s=> String(s).trim().startsWith('-') || String(s).trim().startsWith('!')).map(s=>norm(String(s).replace(/^[-!]\s*/,''))));
+      const panels=await fetchPanels(CURRENT_ALLOW, CURRENT_DENY);
+      renderNav(panels);
+      await loadData();
+    }catch(e){ console.error(e); toast('Veriler yüklenirken hata.'); }
+  });
+
+  /* ===== ALT KATEGORİ YÖNETİMİ ===== */
+  
+  // Alt kategorileri Firebase'den yükle
+  async function loadAltKategoriler(){
+    try{
+      const snap = await db.collection('muhasebe_alt_kategoriler').get();
+      altKategorilerData = {};
+      snap.forEach(doc => {
+        const d = doc.data();
+        const tip = (d.tip || 'gider').toLowerCase();
+        const kategori = d.kategori || '';
+        if(!altKategorilerData[tip]) altKategorilerData[tip] = {};
+        if(!altKategorilerData[tip][kategori]) altKategorilerData[tip][kategori] = [];
+        altKategorilerData[tip][kategori].push({
+          id: doc.id,
+          isim: d.isim || '',
+          aciklama: d.aciklama || '',
+          tutar: +(d.tutar || 0)
+        });
+      });
+    }catch(e){
+      console.error('Alt kategoriler yüklenirken hata:', e);
+    }
+  }
+
+  // Tablo satırlarına event listener'lar ekle
+  function attachKategoriRowListeners(tip){
+    const tableId = tip === 'gider' ? 'giderAnalizTablosu' : 'gelirAnalizTablosu';
+    const tbody = document.querySelector(`#${tableId} tbody`);
+    if(!tbody) return;
+
+    // Event delegation kullan - tbody'ye bir kez listener ekle
+    // Mevcut listener varsa kaldır (once kullanarak tekrar eklenmesini önle)
+    const handlerId = `contextmenu_${tip}`;
+    if(tbody[handlerId]) return; // Zaten eklenmiş
+    
+    // Sağ tıklama: Context menu göster (event delegation kullan)
+    tbody.addEventListener('contextmenu', function(e) {
+      const row = e.target.closest('.kategori-row');
+      if(!row) {
+        // Alt kategori satırına sağ tıklanırsa, üst kategori satırını bul
+        const altRow = e.target.closest('.alt-kategori-row');
+        if(altRow){
+          let prevRow = altRow.previousElementSibling;
+          while(prevRow && !prevRow.classList.contains('kategori-row')){
+            prevRow = prevRow.previousElementSibling;
+          }
+          if(prevRow){
+            e.preventDefault();
+            e.stopPropagation();
+            showContextMenu(e, prevRow);
+          }
+        }
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      showContextMenu(e, row);
+    });
+
+    tbody[handlerId] = true;
+    
+    // Çift tıklama: Alt kategorileri göster/gizle
+    tbody.addEventListener('dblclick', function(e) {
+      const row = e.target.closest('.kategori-row');
+      if(!row) return;
+      e.stopPropagation();
+      
+      const kategori = row.dataset.kategori;
+      const rowTip = row.dataset.tip;
+      
+      // Alt kategori satırlarını bul
+      let nextRow = row.nextElementSibling;
+      const altRows = [];
+      while(nextRow && nextRow.classList.contains('alt-kategori-row')){
+        altRows.push(nextRow);
+        nextRow = nextRow.nextElementSibling;
+      }
+
+      // Alt kategorileri göster/gizle
+      if(altRows.length > 0){
+        const isVisible = altRows[0].style.display !== 'none';
+        altRows.forEach(altRow => {
+          altRow.style.display = isVisible ? 'none' : 'table-row';
+        });
+        // Ok ikonunu güncelle
+        const icon = row.querySelector('span[style*="position:absolute"]');
+        if(icon){
+          icon.textContent = isVisible ? '▶' : '▼';
+        }
+      } else {
+        // Alt kategori yoksa, yükle ve göster
+        loadAndShowAltKategoriler(rowTip, kategori, row);
+      }
+    });
+
+  }
+  
+  // Context menu dışına tıklayınca kapat (global listener)
+  if(!window.contextMenuListenerAdded){
+    document.addEventListener('click', (e) => {
+      if(!e.target.closest('.context-menu')){
+        hideContextMenu();
+      }
+    });
+    document.addEventListener('contextmenu', (e) => {
+      if(!e.target.closest('.kategori-row') && !e.target.closest('.alt-kategori-row')){
+        hideContextMenu();
+      }
+    });
+    window.contextMenuListenerAdded = true;
+  }
+
+  // Context menu göster
+  let currentContextRow = null;
+  function showContextMenu(e, row){
+    const menu = document.getElementById('contextMenu');
+    const tip = row.dataset.tip;
+    const kategori = row.dataset.kategori;
+    currentContextRow = {tip, kategori, row};
+    
+    // Menüyü önce gizle, sonra pozisyonla (reflow için)
+    menu.style.display = 'none';
+    menu.style.visibility = 'hidden';
+    menu.style.display = 'block';
+    
+    // Pozisyonu hesapla - clientX/clientY kullan (viewport'a göre)
+    let x = e.clientX;
+    let y = e.clientY;
+    
+    // Eğer mouse pozisyonu yoksa, satırın pozisyonunu kullan
+    if(!x && !y){
+      const rect = row.getBoundingClientRect();
+      x = rect.left + (rect.width / 2);
+      y = rect.top + (rect.height / 2);
+    }
+    
+    // İlk pozisyonu ayarla
+    menu.style.left = x + 'px';
+    menu.style.top = y + 'px';
+    menu.style.visibility = 'visible';
+    
+    // Menü ekran dışına taşmasın - reflow sonrası düzelt
+    requestAnimationFrame(() => {
+      const rect = menu.getBoundingClientRect();
+      const windowWidth = window.innerWidth;
+      const windowHeight = window.innerHeight;
+      const scrollX = window.scrollX || window.pageXOffset || 0;
+      const scrollY = window.scrollY || window.pageYOffset || 0;
+      
+      let newX = x;
+      let newY = y;
+      
+      // Sağa taşarsa
+      if(rect.right > windowWidth){
+        newX = windowWidth - rect.width - 10;
+      }
+      // Sola taşarsa
+      if(rect.left < 0){
+        newX = 10;
+      }
+      // Alta taşarsa
+      if(rect.bottom > windowHeight){
+        newY = windowHeight - rect.height - 10;
+      }
+      // Üste taşarsa
+      if(rect.top < 0){
+        newY = 10;
+      }
+      
+      menu.style.left = newX + 'px';
+      menu.style.top = newY + 'px';
+    });
+  }
+
+  function hideContextMenu(){
+    document.getElementById('contextMenu').style.display = 'none';
+    currentContextRow = null;
+  }
+
+  // Context menu item'larına tıklama
+  document.querySelectorAll('.context-menu-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      if(!currentContextRow) return;
+      const action = item.dataset.action;
+      const {tip, kategori} = currentContextRow;
+      
+      hideContextMenu();
+      
+      switch(action){
+        case 'alt-kategori-ekle':
+          openAltKategoriModal(tip, kategori);
+          break;
+        case 'alt-kategori-duzenle':
+          openAltKategoriModal(tip, kategori);
+          break;
+        case 'kategori-duzenle':
+          toast('Kategori düzenleme özelliği yakında eklenecek');
+          break;
+        case 'gerceklesen-duzenle':
+          toast('Gerçekleşen veri düzenleme özelliği yakında eklenecek');
+          break;
+        case 'planlanan-duzenle':
+          toast('Planlanan düzenleme özelliği yakında eklenecek');
+          break;
+      }
+    });
+  });
+
+  // Alt kategorileri yükle ve göster
+  function loadAndShowAltKategoriler(tip, kategori, row){
+    const altKategoriler = altKategorilerData[tip] && altKategorilerData[tip][kategori] ? altKategorilerData[tip][kategori] : [];
+    
+    if(altKategoriler.length === 0){
+      toast('Bu kategori için alt kategori bulunamadı');
+      return;
+    }
+
+    // Alt kategori satırlarını oluştur
+    const tbody = row.closest('tbody');
+    let nextRow = row.nextElementSibling;
+    
+    // Mevcut alt kategori satırlarını kontrol et
+    const existingAltRows = [];
+    while(nextRow && nextRow.classList.contains('alt-kategori-row')){
+      existingAltRows.push(nextRow);
+      nextRow = nextRow.nextElementSibling;
+    }
+
+    // Eğer zaten varsa, göster
+    if(existingAltRows.length > 0){
+      existingAltRows.forEach(altRow => {
+        altRow.style.display = 'table-row';
+      });
+      const icon = row.querySelector('span[style*="position:absolute"]');
+      if(icon) icon.textContent = '▼';
+      return;
+    }
+
+    // Yeni alt kategori satırlarını ekle
+    altKategoriler.forEach(alt => {
+      const tr = document.createElement('tr');
+      tr.className = 'alt-kategori-row';
+      tr.style.cssText = 'background:var(--surface); border-left:4px solid var(--brand); display:table-row';
+      tr.innerHTML = `
+        <td style="padding:12px 12px 12px 40px; font-weight:400; color:var(--text); font-size:13px; vertical-align:top">
+          <div style="display:flex; align-items:flex-start; gap:8px">
+            <span style="color:var(--brand); flex-shrink:0; margin-top:2px">➔</span>
+            <div style="flex:1; min-width:0">
+              <div style="font-weight:500; margin-bottom:4px">${alt.isim}</div>
+              ${alt.aciklama ? `<div style="color:var(--muted); font-size:11px; line-height:1.4">${alt.aciklama}</div>` : ''}
+            </div>
+          </div>
+        </td>
+        <td style="padding:12px; text-align:right; color:var(--muted); font-size:13px">-</td>
+        <td style="padding:12px; text-align:right; color:var(--text); font-size:13px; font-weight:600">${fmt(alt.tutar)}</td>
+        <td style="padding:12px; text-align:right; color:var(--muted); font-size:13px">-</td>
+        <td style="padding:12px; text-align:right; color:var(--muted); font-size:13px">-</td>
+        <td style="padding:12px; text-align:right; color:var(--muted); font-size:13px">-</td>
+        <td style="padding:12px; text-align:right; color:var(--muted); font-size:13px">-</td>
+      `;
+      row.parentNode.insertBefore(tr, nextRow);
+    });
+
+    // Ok ikonunu güncelle
+    const icon = row.querySelector('span[style*="position:absolute"]');
+    if(icon) icon.textContent = '▼';
+  }
+
+  // Alt kategori modal'ını aç
+  let currentModalTip = '';
+  let currentModalKategori = '';
+
+  function openAltKategoriModal(tip, kategori){
+    currentModalTip = tip;
+    currentModalKategori = kategori;
+
+    // 2025 gerçekleşen tutarı hesapla
+    let gerceklesen2025 = 0;
+    if(gerceklesenData[2025]){
+      Object.keys(gerceklesenData[2025]).forEach(ay => {
+        if(gerceklesenData[2025][ay][tip] && gerceklesenData[2025][ay][tip][kategori]){
+          gerceklesen2025 += gerceklesenData[2025][ay][tip][kategori];
+        }
+      });
+    }
+
+    // Modal bilgilerini doldur
+    document.getElementById('altKategoriModalTip').textContent = tip === 'gider' ? 'Gider' : 'Gelir';
+    document.getElementById('altKategoriModalKategori').textContent = kategori;
+    document.getElementById('altKategoriModalGerceklesen').textContent = fmt(gerceklesen2025);
+
+    // Alt kategorileri yükle
+    updateAltKategorilerList();
+
+    // Formu temizle
+    document.getElementById('altKategoriIsim').value = '';
+    document.getElementById('altKategoriAciklama').value = '';
+    document.getElementById('altKategoriTutar').value = '';
+    editingAltKategoriIdx = -1;
+    
+    // Buton metnini sıfırla
+    const btn = document.getElementById('btnAltKategoriEkle');
+    btn.textContent = '+ Ekle';
+    // Mevcut event listener'ları temizle ve yeni ekle
+    const newBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(newBtn, btn);
+    document.getElementById('btnAltKategoriEkle').addEventListener('click', addAltKategori);
+
+    // Modal'ı göster
+    document.getElementById('altKategoriModal').style.display = 'flex';
+  }
+
+  // Alt kategoriler listesini güncelle
+  function updateAltKategorilerList(){
+    const list = document.getElementById('altKategorilerList');
+    const tip = currentModalTip;
+    const kategori = currentModalKategori;
+    const altKategoriler = altKategorilerData[tip] && altKategorilerData[tip][kategori] ? altKategorilerData[tip][kategori] : [];
+
+    if(altKategoriler.length === 0){
+      list.innerHTML = '<div style="padding:20px; text-align:center; color:var(--muted); background:var(--pill); border-radius:8px">Henüz alt kategori eklenmedi</div>';
+    } else {
+      list.innerHTML = altKategoriler.map((alt, idx) => `
+        <div style="padding:12px; background:var(--card); border:1px solid var(--stroke); border-radius:8px; display:flex; justify-content:space-between; align-items:center">
+          <div style="flex:1">
+            <div style="font-weight:600; color:var(--text); margin-bottom:4px">${alt.isim}</div>
+            ${alt.aciklama ? `<div style="font-size:12px; color:var(--muted); margin-bottom:4px">${alt.aciklama}</div>` : ''}
+            <div style="font-size:14px; font-weight:700; color:var(--brand)">${fmt(alt.tutar)}</div>
+          </div>
+          <div style="display:flex; gap:8px">
+            <button class="btn-ghost" onclick="editAltKategori('${alt.id}', ${idx})" style="padding:6px 12px; font-size:12px">✏️ Düzenle</button>
+            <button class="btn-ghost" onclick="deleteAltKategori('${alt.id}', ${idx})" style="padding:6px 12px; font-size:12px; color:var(--danger)">🗑️ Sil</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Toplam ve kalan tutarı güncelle
+    updateAltKategoriTotals();
+  }
+
+  // Toplam ve kalan tutarı güncelle
+  function updateAltKategoriTotals(){
+    const tip = currentModalTip;
+    const kategori = currentModalKategori;
+    const altKategoriler = altKategorilerData[tip] && altKategorilerData[tip][kategori] ? altKategorilerData[tip][kategori] : [];
+    
+    // 2025 gerçekleşen tutarı hesapla
+    let gerceklesen2025 = 0;
+    if(gerceklesenData[2025]){
+      Object.keys(gerceklesenData[2025]).forEach(ay => {
+        if(gerceklesenData[2025][ay][tip] && gerceklesenData[2025][ay][tip][kategori]){
+          gerceklesen2025 += gerceklesenData[2025][ay][tip][kategori];
+        }
+      });
+    }
+
+    const toplamTutar = altKategoriler.reduce((sum, alt) => sum + alt.tutar, 0);
+    const kalanTutar = gerceklesen2025 - toplamTutar;
+
+    document.getElementById('altKategoriToplamTutar').textContent = fmt(toplamTutar);
+    document.getElementById('altKategoriKalanTutar').textContent = fmt(kalanTutar);
+  }
+
+  // Alt kategori ekle
+  function addAltKategori(){
+    const isim = document.getElementById('altKategoriIsim').value.trim();
+    const aciklama = document.getElementById('altKategoriAciklama').value.trim();
+    const tutar = parseFloat(document.getElementById('altKategoriTutar').value) || 0;
+
+    if(!isim){
+      toast('Lütfen alt kategori ismi girin');
+      return;
+    }
+
+    if(tutar <= 0){
+      toast('Lütfen geçerli bir tutar girin');
+      return;
+    }
+
+    const tip = currentModalTip;
+    const kategori = currentModalKategori;
+
+    if(!altKategorilerData[tip]) altKategorilerData[tip] = {};
+    if(!altKategorilerData[tip][kategori]) altKategorilerData[tip][kategori] = [];
+
+    altKategorilerData[tip][kategori].push({
+      id: 'temp_' + Date.now(),
+      isim: isim,
+      aciklama: aciklama,
+      tutar: tutar
+    });
+
+    // Formu temizle
+    document.getElementById('altKategoriIsim').value = '';
+    document.getElementById('altKategoriAciklama').value = '';
+    document.getElementById('altKategoriTutar').value = '';
+
+    updateAltKategorilerList();
+    toast('Alt kategori eklendi');
+  }
+
+  document.getElementById('btnAltKategoriEkle').addEventListener('click', addAltKategori);
+  
+  // Enter tuşu ile ekleme
+  ['altKategoriIsim', 'altKategoriAciklama', 'altKategoriTutar'].forEach(id => {
+    document.getElementById(id).addEventListener('keypress', (e) => {
+      if(e.key === 'Enter' && editingAltKategoriIdx === -1){
+        addAltKategori();
+      }
+    });
+  });
+
+  // Alt kategori düzenle
+  let editingAltKategoriIdx = -1;
+  window.editAltKategori = function(id, idx){
+    const tip = currentModalTip;
+    const kategori = currentModalKategori;
+    const alt = altKategorilerData[tip][kategori][idx];
+
+    document.getElementById('altKategoriIsim').value = alt.isim;
+    document.getElementById('altKategoriAciklama').value = alt.aciklama;
+    document.getElementById('altKategoriTutar').value = alt.tutar;
+    editingAltKategoriIdx = idx;
+
+    // Buton metnini güncelle
+    const btn = document.getElementById('btnAltKategoriEkle');
+    btn.textContent = '💾 Güncelle';
+    btn.onclick = () => {
+      const isim = document.getElementById('altKategoriIsim').value.trim();
+      const aciklama = document.getElementById('altKategoriAciklama').value.trim();
+      const tutar = parseFloat(document.getElementById('altKategoriTutar').value) || 0;
+
+      if(!isim){
+        toast('Lütfen alt kategori ismi girin');
+        return;
+      }
+
+      if(tutar <= 0){
+        toast('Lütfen geçerli bir tutar girin');
+        return;
+      }
+
+      altKategorilerData[currentModalTip][currentModalKategori][editingAltKategoriIdx].isim = isim;
+      altKategorilerData[currentModalTip][currentModalKategori][editingAltKategoriIdx].aciklama = aciklama;
+      altKategorilerData[currentModalTip][currentModalKategori][editingAltKategoriIdx].tutar = tutar;
+
+      // Formu temizle
+      document.getElementById('altKategoriIsim').value = '';
+      document.getElementById('altKategoriAciklama').value = '';
+      document.getElementById('altKategoriTutar').value = '';
+      editingAltKategoriIdx = -1;
+      btn.textContent = '+ Ekle';
+      btn.onclick = null;
+
+      updateAltKategorilerList();
+      toast('Alt kategori güncellendi');
+    };
+  };
+
+  // Alt kategori sil
+  window.deleteAltKategori = function(id, idx, silent = false){
+    const tip = currentModalTip;
+    const kategori = currentModalKategori;
+    
+    if(altKategorilerData[tip] && altKategorilerData[tip][kategori]){
+      altKategorilerData[tip][kategori].splice(idx, 1);
+      if(altKategorilerData[tip][kategori].length === 0){
+        delete altKategorilerData[tip][kategori];
+      }
+    }
+
+    updateAltKategorilerList();
+    if(!silent) toast('Alt kategori silindi');
+  };
+
+  // Alt kategorileri kaydet
+  document.getElementById('btnAltKategoriKaydet').addEventListener('click', async () => {
+    try{
+      const tip = currentModalTip;
+      const kategori = currentModalKategori;
+      const altKategoriler = altKategorilerData[tip] && altKategorilerData[tip][kategori] ? altKategorilerData[tip][kategori] : [];
+
+      // Önce mevcut alt kategorileri sil
+      const existingSnap = await db.collection('muhasebe_alt_kategoriler')
+        .where('tip', '==', tip)
+        .where('kategori', '==', kategori)
+        .get();
+      
+      const batch = db.batch();
+      existingSnap.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+
+      // Yeni alt kategorileri ekle
+      altKategoriler.forEach(alt => {
+        const docRef = db.collection('muhasebe_alt_kategoriler').doc();
+        batch.set(docRef, {
+          tip: tip,
+          kategori: kategori,
+          isim: alt.isim,
+          aciklama: alt.aciklama,
+          tutar: alt.tutar,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+
+      await batch.commit();
+      await loadAltKategoriler();
+      updateDashboard();
+      closeModal('altKategoriModal');
+      toast('Alt kategoriler kaydedildi');
+    }catch(e){
+      console.error('Alt kategoriler kaydedilirken hata:', e);
+      toast('Alt kategoriler kaydedilemedi');
+    }
+  });
+</script>
+</body>
+</html>
