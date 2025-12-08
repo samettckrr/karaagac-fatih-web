@@ -97,6 +97,7 @@
     tbody td{border-bottom:1px solid var(--border);padding:12px;font-size:14px}
     tbody tr:hover{background:#f8f9fa}
     .right{text-align:right}
+    tbody td:last-child{min-width:200px;max-width:300px;line-height:1.4}
     
     .card-list{display:none;gap:10px;margin-top:12px}
     .mini-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px}
@@ -240,6 +241,7 @@
               <th>Mahal</th>
               <th>Personel</th>
               <th>Not</th>
+              <th>Durum</th>
             </tr>
           </thead>
           <tbody id="tbody"></tbody>
@@ -247,7 +249,7 @@
             <tr>
               <td colspan="3" class="right"><strong>TOPLAM</strong></td>
               <td class="right" id="sumTutar"><strong>₺0</strong></td>
-              <td colspan="4"></td>
+              <td colspan="5"></td>
               <td class="right" id="sumMusafir"><strong>0</strong></td>
             </tr>
           </tfoot>
@@ -338,6 +340,9 @@
     const qs = s => document.querySelector(s);
     
     let kayitlar = [];
+    let teberruKayitlari = [];
+    let taahhutKayitlari = [];
+    let duzenlemeTalepleri = [];
     let currentUser = null;
     let currentUserUid = null;
 
@@ -467,6 +472,8 @@
       loadKayitlar();
     });
 
+    let silinenKayitlar = [];
+
     // Kayıtları yükle (realtime listener)
     function loadKayitlar() {
       const yil = qs('#filtreYil').value;
@@ -478,9 +485,106 @@
         .orderBy('tarih', 'desc')
         .onSnapshot((snap) => {
           kayitlar = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          render();
+          loadSilinenKayitlar(); // Silinen kayıtları da yükle
+          loadTeberruKayitlari(); // Teberru kayıtlarını yükle
+          loadTaahhutKayitlari(); // Taahhüt kayıtlarını yükle
+          loadDuzenlemeTalepleri(); // Düzenleme taleplerini yükle
         }, (err) => {
           console.error('Kayıtlar dinlenemedi:', err);
+        });
+    }
+
+    // Teberru kayıtlarını yükle
+    function loadTeberruKayitlari() {
+      const yil = qs('#filtreYil').value;
+      if(!yil) {
+        teberruKayitlari = [];
+        render();
+        return;
+      }
+      
+      const yilNum = parseInt(yil);
+      db.collection('teberru_kayitlari')
+        .where('yil', '==', yilNum)
+        .onSnapshot((snap) => {
+          teberruKayitlari = snap.docs.map(d => ({ id: d.id, ...d.data(), kayitTipi: 'teberru' }));
+          // Client-side sıralama
+          teberruKayitlari.sort((a, b) => {
+            const aDate = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (a.createdAt?.seconds || 0) * 1000;
+            const bDate = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (b.createdAt?.seconds || 0) * 1000;
+            return bDate - aDate;
+          });
+          render();
+        }, (err) => {
+          console.error('Teberru kayıtları dinlenemedi:', err);
+          teberruKayitlari = [];
+          render();
+        });
+    }
+
+    // Taahhüt kayıtlarını yükle
+    function loadTaahhutKayitlari() {
+      const yil = qs('#filtreYil').value;
+      if(!yil) {
+        taahhutKayitlari = [];
+        render();
+        return;
+      }
+      
+      const yilNum = parseInt(yil);
+      db.collection('taahhut_kayitlari')
+        .where('yil', '==', yilNum)
+        .onSnapshot((snap) => {
+          taahhutKayitlari = snap.docs.map(d => ({ id: d.id, ...d.data(), kayitTipi: 'taahhut' }));
+          // Client-side sıralama
+          taahhutKayitlari.sort((a, b) => {
+            const aDate = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (a.createdAt?.seconds || 0) * 1000;
+            const bDate = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (b.createdAt?.seconds || 0) * 1000;
+            return bDate - aDate;
+          });
+          render();
+        }, (err) => {
+          console.error('Taahhüt kayıtları dinlenemedi:', err);
+          taahhutKayitlari = [];
+          render();
+        });
+    }
+
+    // Silinen kayıtları yükle
+    async function loadSilinenKayitlar() {
+      const yil = qs('#filtreYil').value;
+      if(!yil) return;
+      
+      try {
+        const yilRef = db.collection('ramazan_serif').doc(String(yil));
+        const snap = await yilRef.collection('silinen_kayitlar').orderBy('silinmeTarihi', 'desc').get();
+        silinenKayitlar = snap.docs.map(d => ({ id: d.id, ...d.data(), silindi: true }));
+        render();
+      } catch(e) {
+        console.error('Silinen kayıtlar yüklenemedi:', e);
+        silinenKayitlar = [];
+        render();
+      }
+    }
+
+    // Düzenleme taleplerini yükle
+    function loadDuzenlemeTalepleri() {
+      const yil = qs('#filtreYil').value;
+      if(!yil) {
+        duzenlemeTalepleri = [];
+        return;
+      }
+      
+      const yilRef = db.collection('ramazan_serif').doc(String(yil));
+      yilRef.collection('duzenleme_talepleri')
+        .orderBy('createdAt', 'desc')
+        .onSnapshot((snap) => {
+          duzenlemeTalepleri = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          render();
+        }, (err) => {
+          console.error('Düzenleme talepleri dinlenemedi:', err);
+          duzenlemeTalepleri = [];
+          render();
         });
     }
 
@@ -492,14 +596,22 @@
       const mod = qs('#filtreMod').value;
       const useCards = qs('#cardList').style.display === 'grid';
 
-      let filtered = [...kayitlar];
+      // Aktif ve silinen kayıtları birleştir + Teberru ve Taahhüt
+      let allKayitlar = [...kayitlar, ...silinenKayitlar, ...teberruKayitlari, ...taahhutKayitlari];
+      let filtered = [...allKayitlar];
 
       // Yıl filtresi (zaten yıl bazlı yükleniyor ama yine de kontrol)
       filtered = filtered.filter(k => k.yil === yil);
 
-      // Tip filtresi
+      // Tip filtresi (iftar/sahur için, teberru/taahhut için ayrı kontrol)
       if (tip) {
-        filtered = filtered.filter(k => k.tip === tip);
+        if(tip === 'teberru') {
+          filtered = filtered.filter(k => k.kayitTipi === 'teberru');
+        } else if(tip === 'taahhut') {
+          filtered = filtered.filter(k => k.kayitTipi === 'taahhut');
+        } else {
+          filtered = filtered.filter(k => k.tip === tip && !k.kayitTipi);
+        }
       }
 
       // Kullanıcı bazlı filtre
@@ -511,23 +623,31 @@
       if (ara) {
         filtered = filtered.filter(k =>
           (k.sahip || '').toLowerCase().includes(ara) ||
-          (k.personel || '').toLowerCase().includes(ara)
+          (k.bagisci || '').toLowerCase().includes(ara) ||
+          (k.personel || '').toLowerCase().includes(ara) ||
+          (k.personelAdi || '').toLowerCase().includes(ara)
         );
       }
 
-      // KPI güncelle
-      const iftarSayisi = filtered.filter(k => k.tip === 'iftar').length;
-      const sahurSayisi = filtered.filter(k => k.tip === 'sahur').length;
-      const toplamTutar = filtered.reduce((sum, k) => sum + (Number(k.tutar) || 0), 0);
-      const toplamMusafir = filtered.reduce((sum, k) => sum + (Number(k.musafirAdedi) || 0), 0);
-      const istirakSayisi = filtered.filter(k => k.istirak).length;
+      // KPI güncelle (sadece aktif kayıtlar - iftar-sahur, teberru, taahhüt dahil)
+      const aktifKayitlar = filtered.filter(k => !k.silindi);
+      const iftarSayisi = aktifKayitlar.filter(k => k.tip === 'iftar' && !k.kayitTipi).length;
+      const sahurSayisi = aktifKayitlar.filter(k => k.tip === 'sahur' && !k.kayitTipi).length;
+      const toplamTutar = aktifKayitlar.reduce((sum, k) => {
+        if(k.kayitTipi === 'teberru' || k.kayitTipi === 'taahhut') {
+          return sum + (Number(k.miktar) || 0);
+        }
+        return sum + (Number(k.tutar) || 0);
+      }, 0);
+      const toplamMusafir = aktifKayitlar.filter(k => !k.kayitTipi).reduce((sum, k) => sum + (Number(k.musafirAdedi) || 0), 0);
+      const istirakSayisi = aktifKayitlar.filter(k => k.istirak && !k.kayitTipi).length;
 
       qs('#kpiIftar').textContent = iftarSayisi;
       qs('#kpiSahur').textContent = sahurSayisi;
       qs('#kpiTutar').textContent = '₺' + toplamTutar.toLocaleString('tr-TR', { minimumFractionDigits: 2 });
       qs('#kpiMusafir').textContent = toplamMusafir;
       qs('#kpiIstirak').textContent = istirakSayisi;
-      qs('#kpiToplam').textContent = filtered.length;
+      qs('#kpiToplam').textContent = aktifKayitlar.length;
 
       // Tablo/Kart render
       if (!useCards) {
@@ -535,7 +655,7 @@
         tbody.innerHTML = '';
 
         if (filtered.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">Kayıt bulunamadı</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:20px">Kayıt bulunamadı</td></tr>';
           qs('#sumTutar').textContent = '₺0';
           qs('#sumMusafir').textContent = '0';
           return;
@@ -543,38 +663,234 @@
 
         filtered.forEach(k => {
           const tr = document.createElement('tr');
-          // Firestore Timestamp kontrolü
-          let tarihStr = '';
-          if(k.tarih) {
-            if(k.tarih.toDate) {
-              tarihStr = k.tarih.toDate().toISOString().slice(0, 10);
-            } else if(k.tarih instanceof Date) {
-              tarihStr = k.tarih.toISOString().slice(0, 10);
-            } else if(typeof k.tarih === 'string') {
-              tarihStr = k.tarih.slice(0, 10);
-            } else if(k.tarih.seconds) {
-              // Timestamp objesi (seconds property var)
-              tarihStr = new Date(k.tarih.seconds * 1000).toISOString().slice(0, 10);
+          
+          // Teberru veya Taahhüt kaydı mı kontrol et
+          if(k.kayitTipi === 'teberru' || k.kayitTipi === 'taahhut') {
+            // Teberru/Taahhüt kayıtları için özel render
+            let tarihStr = '';
+            if(k.createdAt) {
+              if(k.createdAt.toDate) {
+                tarihStr = k.createdAt.toDate().toISOString().slice(0, 10);
+              } else if(k.createdAt.seconds) {
+                tarihStr = new Date(k.createdAt.seconds * 1000).toISOString().slice(0, 10);
+              }
             }
-          }
-          const tarih = tarihStr ? new Date(tarihStr) : new Date();
+            const tarih = tarihStr ? new Date(tarihStr) : new Date();
+            const odemeLabels = {
+              'nakit': '💵 Nakit',
+              'banka': '🏦 Banka',
+              'pos': '💳 POS',
+              'sanal': '📱 Sanal'
+            };
 
-          tr.innerHTML = `
-            <td>${tarih.getDate()}.${tarih.getMonth() + 1}.${tarih.getFullYear()}</td>
-            <td><span class="chip-badge ${k.tip}">${k.tip === 'iftar' ? '🌙 İftar' : '🌟 Sahur'}</span></td>
-            <td><strong>${k.sahip || '-'}</strong></td>
-            <td class="right"><strong>₺${Number(k.tutar || 0).toLocaleString('tr-TR',{minimumFractionDigits:2})}</strong></td>
-            <td>${k.istirak ? '✓ Evet' : '✗ Hayır'}</td>
-            <td>${k.musafirAdedi || 0}</td>
-            <td>${k.mahal || '-'}</td>
-            <td>${k.personelAdi || k.personel || '-'}</td>
-            <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${k.not || ''}">${k.not || '-'}</td>
-          `;
-          tbody.appendChild(tr);
+            // Durum kontrolü - Zenginleştirilmiş
+            let durumHtml = '';
+            let durumParts = [];
+            
+            durumParts.push(`<span style="color:var(--good); font-weight:600;">✓ Aktif</span>`);
+            
+            // Düzenleme talebi kontrolü
+            const talep = duzenlemeTalepleri.find(t => t.kayitId === k.id && (t.kayitTipi === 'teberru' || t.kayitTipi === 'taahhut'));
+            if(talep) {
+              const talepTarih = talep.createdAt ? (talep.createdAt.toDate ? talep.createdAt.toDate() : new Date(talep.createdAt.seconds * 1000)) : null;
+              const talepTarihStr = talepTarih ? talepTarih.toLocaleDateString('tr-TR') + ' ' + talepTarih.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'}) : '';
+              
+              let talepIcon = '📋';
+              let talepRenk = '#17a2b8';
+              let talepText = 'Düzenleme Talebi';
+              
+              if(talep.talepTipi === 'duzenle') {
+                talepIcon = '✏️';
+                talepText = 'Düzenleme Talebi';
+              }
+              
+              if(talep.durum === 'onaylandi') {
+                talepRenk = '#28a745';
+                talepText = '✅ ' + talepText.replace('Talebi', 'Onaylandı');
+              } else if(talep.durum === 'reddedildi') {
+                talepRenk = '#dc3545';
+                talepText = '❌ ' + talepText.replace('Talebi', 'Reddedildi');
+              }
+              
+              durumParts.push(`<div style="margin-top:4px; padding:4px 6px; background:${talepRenk}15; border-left:3px solid ${talepRenk}; border-radius:4px; font-size:10px; color:${talepRenk}; font-weight:600;">${talepIcon} ${talepText}</div>`);
+              if(talepTarihStr) {
+                durumParts.push(`<small style="color:var(--muted); font-size:8px; display:block; margin-top:2px;">${talepTarihStr}</small>`);
+              }
+              if(talep.aciklama) {
+                durumParts.push(`<small style="color:var(--muted); font-size:8px; display:block; margin-top:2px; font-style:italic; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${talep.aciklama}">"${talep.aciklama}"</small>`);
+              }
+            }
+            
+            // Güncelleme kontrolü
+            if(k.updatedAt && k.createdAt) {
+              const createdTime = k.createdAt.toDate ? k.createdAt.toDate().getTime() : (k.createdAt.seconds || 0) * 1000;
+              const updatedTime = k.updatedAt.toDate ? k.updatedAt.toDate().getTime() : (k.updatedAt.seconds || 0) * 1000;
+              if(updatedTime > createdTime) {
+                const updateDate = k.updatedAt.toDate ? k.updatedAt.toDate() : new Date(updatedTime);
+                const updateDateStr = updateDate.toLocaleDateString('tr-TR') + ' ' + updateDate.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
+                durumParts.push(`<div style="margin-top:4px; padding:4px 6px; background:#fff3cd20; border-left:3px solid var(--warn); border-radius:4px; font-size:10px; color:var(--warn); font-weight:600;">⚠️ Değiştirildi</div>`);
+                durumParts.push(`<small style="color:var(--muted); font-size:8px; display:block; margin-top:2px;">${updateDateStr}</small>`);
+              }
+            }
+            
+            // Oluşturulma tarihi
+            if(k.createdAt) {
+              const createdDate = k.createdAt.toDate ? k.createdAt.toDate() : new Date(k.createdAt.seconds * 1000);
+              const createdDateStr = createdDate.toLocaleDateString('tr-TR') + ' ' + createdDate.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
+              durumParts.push(`<small style="color:var(--muted); font-size:8px; display:block; margin-top:4px; border-top:1px solid var(--border); padding-top:4px;">Oluşturulma: ${createdDateStr}</small>`);
+            }
+            
+            durumHtml = durumParts.join('');
+            
+            tr.innerHTML = `
+              <td>${tarih.getDate()}.${tarih.getMonth() + 1}.${tarih.getFullYear()}</td>
+              <td><span class="chip-badge" style="background:${k.kayitTipi === 'teberru' ? '#27ae60' : '#3498db'}; color:white; padding:4px 8px; border-radius:4px; font-size:11px;">${k.kayitTipi === 'teberru' ? '💰 Teberru' : '📋 Taahhüt'}</span></td>
+              <td><strong>${k.bagisci || '-'}</strong></td>
+              <td class="right"><strong>₺${Number(k.miktar || 0).toLocaleString('tr-TR',{minimumFractionDigits:2})}</strong></td>
+              <td>-</td>
+              <td>-</td>
+              <td>${k.kayitTipi === 'teberru' ? (odemeLabels[k.odemeYontemi] || k.odemeYontemi || '-') : '-'}</td>
+              <td>${k.personelAdi || k.personel || '-'}</td>
+              <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${k.aciklama || ''}">${k.aciklama || '-'}</td>
+              <td>${durumHtml}</td>
+            `;
+            tbody.appendChild(tr);
+          } else {
+            // İftar-Sahur kayıtları için mevcut render
+            // Firestore Timestamp kontrolü
+            let tarihStr = '';
+            if(k.tarih) {
+              if(k.tarih.toDate) {
+                tarihStr = k.tarih.toDate().toISOString().slice(0, 10);
+              } else if(k.tarih instanceof Date) {
+                tarihStr = k.tarih.toISOString().slice(0, 10);
+              } else if(typeof k.tarih === 'string') {
+                tarihStr = k.tarih.slice(0, 10);
+              } else if(k.tarih.seconds) {
+                // Timestamp objesi (seconds property var)
+                tarihStr = new Date(k.tarih.seconds * 1000).toISOString().slice(0, 10);
+              }
+            }
+            const tarih = tarihStr ? new Date(tarihStr) : new Date();
+
+            // Durum kontrolü - Zenginleştirilmiş
+            let durumHtml = '';
+            let durumParts = [];
+            
+            if(k.silindi) {
+              let silTarihStr = '';
+              if(k.silinmeTarihi) {
+                const silTarih = k.silinmeTarihi.toDate ? k.silinmeTarihi.toDate() : new Date(k.silinmeTarihi.seconds * 1000);
+                silTarihStr = silTarih.toLocaleDateString('tr-TR') + ' ' + silTarih.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
+              }
+              durumParts.push(`<span style="color:var(--bad); font-weight:700; font-size:13px;">❌ Silindi</span>`);
+              durumParts.push(`<small style="color:var(--muted); font-size:10px; display:block; margin-top:2px;">Silen: ${k.silenPersonelAdi || 'Bilinmiyor'}</small>`);
+              if(silTarihStr) {
+                durumParts.push(`<small style="color:var(--muted); font-size:9px; display:block;">${silTarihStr}</small>`);
+              }
+              if(k.silmeAciklama) {
+                durumParts.push(`<small style="color:var(--muted); font-size:9px; display:block; margin-top:2px; font-style:italic;">"${k.silmeAciklama}"</small>`);
+              }
+            } else {
+              // Aktif kayıt - detaylı durum bilgisi
+              durumParts.push(`<span style="color:var(--good); font-weight:600;">✓ Aktif</span>`);
+              
+              // Düzenleme talebi kontrolü
+              const talep = duzenlemeTalepleri.find(t => t.kayitId === k.id && t.kayitTipi === 'iftar-sahur');
+              if(talep) {
+                const talepTarih = talep.createdAt ? (talep.createdAt.toDate ? talep.createdAt.toDate() : new Date(talep.createdAt.seconds * 1000)) : null;
+                const talepTarihStr = talepTarih ? talepTarih.toLocaleDateString('tr-TR') + ' ' + talepTarih.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'}) : '';
+                
+                let talepIcon = '📋';
+                let talepRenk = '#17a2b8';
+                let talepText = 'Düzenleme Talebi';
+                
+                if(talep.talepTipi === 'yer_degistir') {
+                  talepIcon = '🔄';
+                  talepText = 'Yer Değiştirme Talebi';
+                  if(talep.yeniTarih && talep.eskiTarih) {
+                    const eskiTarih = new Date(talep.eskiTarih);
+                    const yeniTarih = new Date(talep.yeniTarih);
+                    talepText += `<br><small style="font-size:9px;">${eskiTarih.getDate()}.${eskiTarih.getMonth()+1} → ${yeniTarih.getDate()}.${yeniTarih.getMonth()+1}</small>`;
+                  }
+                } else if(talep.talepTipi === 'duzenle') {
+                  talepIcon = '✏️';
+                  talepText = 'Düzenleme Talebi';
+                }
+                
+                if(talep.durum === 'onaylandi') {
+                  talepRenk = '#28a745';
+                  talepText = '✅ ' + talepText.replace('Talebi', 'Onaylandı');
+                } else if(talep.durum === 'reddedildi') {
+                  talepRenk = '#dc3545';
+                  talepText = '❌ ' + talepText.replace('Talebi', 'Reddedildi');
+                }
+                
+                durumParts.push(`<div style="margin-top:4px; padding:4px 6px; background:${talepRenk}15; border-left:3px solid ${talepRenk}; border-radius:4px; font-size:10px; color:${talepRenk}; font-weight:600;">${talepIcon} ${talepText}</div>`);
+                if(talepTarihStr) {
+                  durumParts.push(`<small style="color:var(--muted); font-size:8px; display:block; margin-top:2px;">${talepTarihStr}</small>`);
+                }
+                if(talep.aciklama) {
+                  durumParts.push(`<small style="color:var(--muted); font-size:8px; display:block; margin-top:2px; font-style:italic; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${talep.aciklama}">"${talep.aciklama}"</small>`);
+                }
+              }
+              
+              // Güncelleme kontrolü
+              if(k.updatedAt && k.createdAt) {
+                const createdTime = k.createdAt.toDate ? k.createdAt.toDate().getTime() : (k.createdAt.seconds || 0) * 1000;
+                const updatedTime = k.updatedAt.toDate ? k.updatedAt.toDate().getTime() : (k.updatedAt.seconds || 0) * 1000;
+                if(updatedTime > createdTime) {
+                  const updateDate = k.updatedAt.toDate ? k.updatedAt.toDate() : new Date(updatedTime);
+                  const updateDateStr = updateDate.toLocaleDateString('tr-TR') + ' ' + updateDate.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
+                  durumParts.push(`<div style="margin-top:4px; padding:4px 6px; background:#fff3cd20; border-left:3px solid var(--warn); border-radius:4px; font-size:10px; color:var(--warn); font-weight:600;">⚠️ Değiştirildi</div>`);
+                  durumParts.push(`<small style="color:var(--muted); font-size:8px; display:block; margin-top:2px;">${updateDateStr}</small>`);
+                  
+                  // Hangi alanların değiştiğini kontrol et (eğer varsa)
+                  if(k.degisiklikGecmisi && Array.isArray(k.degisiklikGecmisi) && k.degisiklikGecmisi.length > 0) {
+                    const sonDegisiklik = k.degisiklikGecmisi[k.degisiklikGecmisi.length - 1];
+                    if(sonDegisiklik.degisenAlanlar && sonDegisiklik.degisenAlanlar.length > 0) {
+                      durumParts.push(`<small style="color:var(--muted); font-size:8px; display:block; margin-top:2px;">Değişen: ${sonDegisiklik.degisenAlanlar.join(', ')}</small>`);
+                    }
+                  }
+                }
+              }
+              
+              // Oluşturulma tarihi
+              if(k.createdAt) {
+                const createdDate = k.createdAt.toDate ? k.createdAt.toDate() : new Date(k.createdAt.seconds * 1000);
+                const createdDateStr = createdDate.toLocaleDateString('tr-TR') + ' ' + createdDate.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
+                durumParts.push(`<small style="color:var(--muted); font-size:8px; display:block; margin-top:4px; border-top:1px solid var(--border); padding-top:4px;">Oluşturulma: ${createdDateStr}</small>`);
+              }
+            }
+            
+            durumHtml = durumParts.join('');
+            
+            tr.innerHTML = `
+              <td>${tarih.getDate()}.${tarih.getMonth() + 1}.${tarih.getFullYear()}</td>
+              <td><span class="chip-badge ${k.tip}">${k.tip === 'iftar' ? '🌙 İftar' : '🌟 Sahur'}</span></td>
+              <td><strong>${k.sahip || '-'}</strong></td>
+              <td class="right"><strong>₺${Number(k.tutar || 0).toLocaleString('tr-TR',{minimumFractionDigits:2})}</strong></td>
+              <td>${k.istirak ? '✓ Evet' : '✗ Hayır'}</td>
+              <td>${k.musafirAdedi || 0}</td>
+              <td>${k.mahal || '-'}</td>
+              <td>${k.personelAdi || k.personel || '-'}</td>
+              <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${k.not || ''}">${k.not || '-'}</td>
+              <td>${durumHtml}</td>
+            `;
+            tbody.appendChild(tr);
+          }
         });
 
-        qs('#sumTutar').innerHTML = '<strong>₺' + toplamTutar.toLocaleString('tr-TR',{minimumFractionDigits:2}) + '</strong>';
-        qs('#sumMusafir').innerHTML = '<strong>' + toplamMusafir + '</strong>';
+        // Toplam hesaplama (sadece aktif kayıtlar - iftar-sahur, teberru, taahhüt dahil)
+        const aktifToplamTutar = filtered.filter(k => !k.silindi).reduce((sum, k) => {
+          if(k.kayitTipi === 'teberru' || k.kayitTipi === 'taahhut') {
+            return sum + (Number(k.miktar) || 0);
+          }
+          return sum + (Number(k.tutar) || 0);
+        }, 0);
+        const aktifToplamMusafir = filtered.filter(k => !k.silindi && !k.kayitTipi).reduce((sum, k) => sum + (Number(k.musafirAdedi) || 0), 0);
+        qs('#sumTutar').innerHTML = '<strong>₺' + aktifToplamTutar.toLocaleString('tr-TR',{minimumFractionDigits:2}) + '</strong>';
+        qs('#sumMusafir').innerHTML = '<strong>' + aktifToplamMusafir + '</strong>';
       } else {
         // Kart görünümü
         const list = qs('#cardList');
@@ -635,6 +951,82 @@
               <span>Not</span>
               <span style="font-size:11px; color:var(--muted);">${k.not}</span>
             </div>` : ''}
+            <div class="mini-line" style="flex-direction:column; align-items:flex-start; gap:4px;">
+              <span style="font-weight:600; margin-bottom:4px;">Durum</span>
+              <div style="width:100%;">
+                ${(() => {
+                  if(k.silindi) {
+                    let silTarihStr = '';
+                    if(k.silinmeTarihi) {
+                      const silTarih = k.silinmeTarihi.toDate ? k.silinmeTarihi.toDate() : new Date(k.silinmeTarihi.seconds * 1000);
+                      silTarihStr = silTarih.toLocaleDateString('tr-TR') + ' ' + silTarih.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
+                    }
+                    let html = `<span style="color:var(--bad); font-weight:700; font-size:12px;">❌ Silindi</span>`;
+                    html += `<small style="color:var(--muted); font-size:9px; display:block; margin-top:2px;">Silen: ${k.silenPersonelAdi || 'Bilinmiyor'}</small>`;
+                    if(silTarihStr) {
+                      html += `<small style="color:var(--muted); font-size:8px; display:block; margin-top:2px;">${silTarihStr}</small>`;
+                    }
+                    if(k.silmeAciklama) {
+                      html += `<small style="color:var(--muted); font-size:8px; display:block; margin-top:2px; font-style:italic;">"${k.silmeAciklama}"</small>`;
+                    }
+                    return html;
+                  } else {
+                    let html = `<span style="color:var(--good); font-weight:600; font-size:12px;">✓ Aktif</span>`;
+                    
+                    // Düzenleme talebi kontrolü
+                    const talep = duzenlemeTalepleri.find(t => t.kayitId === k.id && t.kayitTipi === 'iftar-sahur');
+                    if(talep) {
+                      const talepTarih = talep.createdAt ? (talep.createdAt.toDate ? talep.createdAt.toDate() : new Date(talep.createdAt.seconds * 1000)) : null;
+                      const talepTarihStr = talepTarih ? talepTarih.toLocaleDateString('tr-TR') + ' ' + talepTarih.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'}) : '';
+                      
+                      let talepIcon = '📋';
+                      let talepRenk = '#17a2b8';
+                      let talepText = 'Düzenleme Talebi';
+                      
+                      if(talep.talepTipi === 'yer_degistir') {
+                        talepIcon = '🔄';
+                        talepText = 'Yer Değiştirme';
+                        if(talep.yeniTarih && talep.eskiTarih) {
+                          const eskiTarih = new Date(talep.eskiTarih);
+                          const yeniTarih = new Date(talep.yeniTarih);
+                          talepText += ` (${eskiTarih.getDate()}.${eskiTarih.getMonth()+1} → ${yeniTarih.getDate()}.${yeniTarih.getMonth()+1})`;
+                        }
+                      } else if(talep.talepTipi === 'duzenle') {
+                        talepIcon = '✏️';
+                        talepText = 'Düzenleme';
+                      }
+                      
+                      if(talep.durum === 'onaylandi') {
+                        talepRenk = '#28a745';
+                        talepText = '✅ ' + talepText + ' Onaylandı';
+                      } else if(talep.durum === 'reddedildi') {
+                        talepRenk = '#dc3545';
+                        talepText = '❌ ' + talepText + ' Reddedildi';
+                      }
+                      
+                      html += `<div style="margin-top:4px; padding:3px 5px; background:${talepRenk}15; border-left:2px solid ${talepRenk}; border-radius:3px; font-size:9px; color:${talepRenk}; font-weight:600;">${talepIcon} ${talepText}</div>`;
+                      if(talepTarihStr) {
+                        html += `<small style="color:var(--muted); font-size:8px; display:block; margin-top:2px;">${talepTarihStr}</small>`;
+                      }
+                    }
+                    
+                    // Güncelleme kontrolü
+                    if(k.updatedAt && k.createdAt) {
+                      const createdTime = k.createdAt.toDate ? k.createdAt.toDate().getTime() : (k.createdAt.seconds || 0) * 1000;
+                      const updatedTime = k.updatedAt.toDate ? k.updatedAt.toDate().getTime() : (k.updatedAt.seconds || 0) * 1000;
+                      if(updatedTime > createdTime) {
+                        const updateDate = k.updatedAt.toDate ? k.updatedAt.toDate() : new Date(updatedTime);
+                        const updateDateStr = updateDate.toLocaleDateString('tr-TR') + ' ' + updateDate.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
+                        html += `<div style="margin-top:4px; padding:3px 5px; background:#fff3cd20; border-left:2px solid var(--warn); border-radius:3px; font-size:9px; color:var(--warn); font-weight:600;">⚠️ Değiştirildi</div>`;
+                        html += `<small style="color:var(--muted); font-size:8px; display:block; margin-top:2px;">${updateDateStr}</small>`;
+                      }
+                    }
+                    
+                    return html;
+                  }
+                })()}
+              </div>
+            </div>
           `;
           list.appendChild(div);
         });
@@ -1135,9 +1527,6 @@
       
       // Bağışçı detayları
       renderBagisciDetaylari(personel, bagiscilar, personelAdi);
-      
-      // Bağışçı isim listesi ve kategorileri
-      renderBagisciIsimListesi(personel, bagiscilar, personelAdi, bagisciAnaliz);
       
       // Bağışçı isim listesi ve kategorileri
       renderBagisciIsimListesi(personel, bagiscilar, personelAdi, bagisciAnaliz);
