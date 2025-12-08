@@ -382,6 +382,29 @@
       return res;
     }
 
+    function normalizeUrl(u){
+      if(!u || u === '#') return '#';
+      // HTTP/HTTPS URL'leri olduğu gibi bırak
+      if(/^https?:\/\//i.test(u)) return u;
+      if(u.startsWith('//')) return u;
+      // Zaten relative path'ler (../ veya ./ ile başlayan) olduğu gibi bırak
+      if(u.startsWith('../') || u.startsWith('./')) return u;
+      
+      // Mevcut dosyanın konumuna göre relative hale getir
+      const currentPath = location.pathname;
+      const currentDir = currentPath.substring(0, currentPath.lastIndexOf('/'));
+      // Mevcut dizin seviyesini hesapla (kaç seviye yukarı çıkmalıyız)
+      const currentDepth = currentDir.split('/').filter(x => x).length;
+      
+      // Root'a dönmek için ../ sayısı
+      const upLevels = currentDepth > 0 ? '../'.repeat(currentDepth) : '';
+      
+      // Path'i temizle: / ile başlıyorsa kaldır, yoksa olduğu gibi kullan
+      const targetPath = u.startsWith('/') ? u.substring(1) : u;
+      
+      return upLevels + targetPath;
+    }
+    
     function renderNav(filtered){
       const ul=document.getElementById('navMain'), drawer=document.getElementById('drawer');
       ul.innerHTML=''; drawer.innerHTML='';
@@ -395,7 +418,7 @@
         li.innerHTML=`<div class="nav-btn">${p.title} <span class="caret">▾</span></div>`;
         const dd=document.createElement('div'); dd.className='dropdown';
         p.pages.forEach(pg=>{
-          const a=document.createElement('a'); a.href=pg.path; a.textContent=pg.title;
+          const a=document.createElement('a'); a.href=normalizeUrl(pg.path); a.textContent=pg.title;
           a.dataset.key=pg.key; a.dataset.panelTitle=p.title; dd.appendChild(a);
         });
         li.appendChild(dd);
@@ -411,7 +434,7 @@
       filtered.forEach(p=>{
         const h=document.createElement('div'); h.className='panel-title'; h.textContent=p.title; drawer.appendChild(h);
         p.pages.forEach(pg=>{
-          const a=document.createElement('a'); a.href=pg.path; a.textContent=pg.title;
+          const a=document.createElement('a'); a.href=normalizeUrl(pg.path); a.textContent=pg.title;
           a.dataset.key=pg.key; a.dataset.panelTitle=p.title; drawer.appendChild(a);
         });
       });

@@ -758,7 +758,31 @@
       window.open('/personel/rapor-yazdir.html', '_blank');
     }
 
-    /* ===== Menü Manifest: Linkleri kökten çöz ===== */
+    /* ===== Menü Manifest: Linkleri doğal yoldan yönlendir ===== */
+    // Path normalizasyonu - mevcut sayfanın konumuna göre relative path oluştur
+    function normalizeUrl(u){
+      if(!u || u === '#') return '#';
+      // HTTP/HTTPS URL'leri olduğu gibi bırak
+      if(/^https?:\/\//i.test(u)) return u;
+      if(u.startsWith('//')) return u;
+      // Zaten relative path'ler (../ veya ./ ile başlayan) olduğu gibi bırak
+      if(u.startsWith('../') || u.startsWith('./')) return u;
+      
+      // Mevcut dosyanın konumuna göre relative hale getir
+      const currentPath = location.pathname;
+      const currentDir = currentPath.substring(0, currentPath.lastIndexOf('/'));
+      // Mevcut dizin seviyesini hesapla (kaç seviye yukarı çıkmalıyız)
+      const currentDepth = currentDir.split('/').filter(x => x).length;
+      
+      // Root'a dönmek için ../ sayısı
+      const upLevels = currentDepth > 0 ? '../'.repeat(currentDepth) : '';
+      
+      // Path'i temizle: / ile başlıyorsa kaldır, yoksa olduğu gibi kullan
+      const targetPath = u.startsWith('/') ? u.substring(1) : u;
+      
+      return upLevels + targetPath;
+    }
+    
     async function fetchPanels() {
       const res = [];
       try {
@@ -768,8 +792,7 @@
           const panelTitle = d.title || id;
           let pages = Array.isArray(d.pages) ? d.pages : [];
           pages = pages.map(pg => {
-            let url = String(pg.path || pg.url || '#');
-            if (!url.startsWith('/')) url = '/' + url.replace(/^\/+/, '');
+            const url = normalizeUrl(pg.path || pg.url || '#');
             return {
               baslik: pg.title || pg.key || 'Sayfa',
               url, key: pg.key || pg.title || '', sira: typeof pg.order === 'number' ? pg.order : 9999
@@ -795,7 +818,7 @@
         const dd = document.createElement('div'); dd.className = 'dropdown';
         (p.pages || []).forEach(pg => {
           const a = document.createElement('a');
-          a.href = pg.url; a.textContent = pg.baslik;
+          a.href = normalizeUrl(pg.url || pg.path || '#'); a.textContent = pg.baslik;
           dd.appendChild(a);
         });
         li.appendChild(dd);
@@ -813,7 +836,7 @@
         const h = document.createElement('div'); h.className = 'panel-title'; h.textContent = p.baslik; drawer.appendChild(h);
         (p.pages || []).forEach(pg => {
           const a = document.createElement('a');
-          a.href = pg.url; a.textContent = pg.baslik;
+          a.href = normalizeUrl(pg.url || pg.path || '#'); a.textContent = pg.baslik;
           drawer.appendChild(a);
         });
       });

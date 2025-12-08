@@ -695,7 +695,11 @@
     <!-- Alt Kategori Ekleme Formu -->
     <div style="padding:16px; border:2px dashed var(--stroke); border-radius:10px; margin-bottom:16px; background:var(--surface)">
       <h4 style="margin:0 0 12px; font-size:14px; color:var(--muted)">➕ Alt Kategori Ekle</h4>
-      <div style="display:grid; grid-template-columns:2fr 2fr 1fr auto; gap:10px; align-items:end">
+      <div style="display:grid; grid-template-columns:1fr 2fr 2fr 1fr auto; gap:10px; align-items:end">
+        <div>
+          <label style="display:block; font-size:12px; color:var(--muted); font-weight:600; margin-bottom:4px">Sıra No</label>
+          <input type="number" id="altKategoriSiraNo" placeholder="1" step="1" min="1" style="width:100%; padding:10px 12px; border:1px solid var(--stroke); border-radius:8px; background:var(--card); color:var(--text)">
+        </div>
         <div>
           <label style="display:block; font-size:12px; color:var(--muted); font-weight:600; margin-bottom:4px">İsim</label>
           <input type="text" id="altKategoriIsim" placeholder="Örn: Su Faturası" style="width:100%; padding:10px 12px; border:1px solid var(--stroke); border-radius:8px; background:var(--card); color:var(--text)">
@@ -774,6 +778,31 @@
 
   // Menü ve yetki sistemi (mevcut sistemden)
   let CURRENT_ALLOW=new Set(), CURRENT_DENY=new Set();
+  
+  // Path normalizasyonu - mevcut sayfanın konumuna göre relative path oluştur
+  function normalizeUrl(u){
+    if(!u || u === '#') return '#';
+    // HTTP/HTTPS URL'leri olduğu gibi bırak
+    if(/^https?:\/\//i.test(u)) return u;
+    if(u.startsWith('//')) return u;
+    // Zaten relative path'ler (../ veya ./ ile başlayan) olduğu gibi bırak
+    if(u.startsWith('../') || u.startsWith('./')) return u;
+    
+    // Mevcut dosyanın konumuna göre relative hale getir
+    const currentPath = location.pathname;
+    const currentDir = currentPath.substring(0, currentPath.lastIndexOf('/'));
+    // Mevcut dizin seviyesini hesapla (kaç seviye yukarı çıkmalıyız)
+    const currentDepth = currentDir.split('/').filter(x => x).length;
+    
+    // Root'a dönmek için ../ sayısı
+    const upLevels = currentDepth > 0 ? '../'.repeat(currentDepth) : '';
+    
+    // Path'i temizle: / ile başlıyorsa kaldır, yoksa olduğu gibi kullan
+    const targetPath = u.startsWith('/') ? u.substring(1) : u;
+    
+    return upLevels + targetPath;
+  }
+  
   async function fetchPanels(allowSet, denySet){
     const res=[];
     try{
@@ -786,7 +815,7 @@
           const keyNorm=norm(pg.key||pg.title||'');
           const pageGrant=allowSet.has(keyNorm), denied=denySet.has(keyNorm);
           return !denied && (panelGrant || pageGrant);
-        }).map(pg=>({ baslik: pg.title||pg.key||'Sayfa', url: pg.path||'#', key: pg.key||pg.title||'', sira: typeof pg.order==='number'? pg.order:9999 }))
+        }).map(pg=>({ baslik: pg.title||pg.key||'Sayfa', url: normalizeUrl(pg.path||'#'), key: pg.key||pg.title||'', sira: typeof pg.order==='number'? pg.order:9999 }))
           .sort((a,b)=>a.sira-b.sira);
         if(pages.length) res.push({ id, baslik:panelTitle, sira: typeof d.order==='number'? d.order:9999, pages });
       });
@@ -808,7 +837,7 @@
       const dd=document.createElement('div'); dd.className='dropdown';
       (p.pages||[]).forEach(pg=>{
         const a=document.createElement('a');
-        const url = pg.url || pg.path || '#';
+        const url = normalizeUrl(pg.url || pg.path || '#');
         a.href = url;
         a.textContent = pg.baslik;
         a.dataset.key=pg.key||pg.baslik; a.dataset.panel=p.id; a.dataset.panelTitle=p.baslik;
@@ -826,7 +855,7 @@
       const h=document.createElement('div'); h.className='panel-title'; h.textContent=p.baslik; drawer.appendChild(h);
       (p.pages||[]).forEach(pg=>{
         const a=document.createElement('a');
-        const url = pg.url || pg.path || '#';
+        const url = normalizeUrl(pg.url || pg.path || '#');
         a.href = url;
         a.textContent = pg.baslik;
         a.dataset.key=pg.key||pg.baslik; a.dataset.panel=p.id; a.dataset.panelTitle=p.baslik;
@@ -1115,7 +1144,12 @@
       const kategori = row.kategori;
       const hasAlt = hasAltKategoriler(tip, kategori);
       const altKategoriler = altKategorilerData[tip] && altKategorilerData[tip][kategori] 
-        ? [...altKategorilerData[tip][kategori]].sort((a, b) => (a.isim || '').localeCompare(b.isim || '', 'tr'))
+        ? [...altKategorilerData[tip][kategori]].sort((a, b) => {
+            const siraA = (a.siraNo || 999);
+            const siraB = (b.siraNo || 999);
+            if(siraA !== siraB) return siraA - siraB;
+            return (a.isim || '').localeCompare(b.isim || '', 'tr');
+          })
         : [];
       
       // Alt kategoriler HTML'i
@@ -1329,7 +1363,12 @@
       const kategori = row.kategori;
       const hasAlt = hasAltKategoriler(tip, kategori);
       const altKategoriler = altKategorilerData[tip] && altKategorilerData[tip][kategori] 
-        ? [...altKategorilerData[tip][kategori]].sort((a, b) => (a.isim || '').localeCompare(b.isim || '', 'tr'))
+        ? [...altKategorilerData[tip][kategori]].sort((a, b) => {
+            const siraA = (a.siraNo || 999);
+            const siraB = (b.siraNo || 999);
+            if(siraA !== siraB) return siraA - siraB;
+            return (a.isim || '').localeCompare(b.isim || '', 'tr');
+          })
         : [];
       
       // Alt kategoriler HTML'i
@@ -3753,7 +3792,8 @@
           id: doc.id,
           isim: d.isim || '',
           aciklama: d.aciklama || '',
-          tutar: +(d.tutar || 0)
+          tutar: +(d.tutar || 0),
+          siraNo: +(d.siraNo || 999)
         });
       });
     }catch(e){
@@ -3947,7 +3987,15 @@
 
   // Alt kategorileri yükle ve göster
   function loadAndShowAltKategoriler(tip, kategori, row){
-    const altKategoriler = altKategorilerData[tip] && altKategorilerData[tip][kategori] ? altKategorilerData[tip][kategori] : [];
+    let altKategoriler = altKategorilerData[tip] && altKategorilerData[tip][kategori] ? [...altKategorilerData[tip][kategori]] : [];
+    
+    // Sıra no'ya göre sırala
+    altKategoriler.sort((a, b) => {
+      const siraA = (a.siraNo || 999);
+      const siraB = (b.siraNo || 999);
+      if(siraA !== siraB) return siraA - siraB;
+      return (a.isim || '').localeCompare(b.isim || '', 'tr');
+    });
     
     if(altKategoriler.length === 0){
       toast('Bu kategori için alt kategori bulunamadı');
@@ -4032,6 +4080,7 @@
     updateAltKategorilerList();
 
     // Formu temizle
+    document.getElementById('altKategoriSiraNo').value = '';
     document.getElementById('altKategoriIsim').value = '';
     document.getElementById('altKategoriAciklama').value = '';
     document.getElementById('altKategoriTutar').value = '';
@@ -4044,6 +4093,7 @@
     const newBtn = btn.cloneNode(true);
     btn.parentNode.replaceChild(newBtn, btn);
     document.getElementById('btnAltKategoriEkle').addEventListener('click', addAltKategori);
+    editingAltKategoriIdx = -1; // Düzenleme modunu sıfırla
 
     // Modal'ı göster
     document.getElementById('altKategoriModal').style.display = 'flex';
@@ -4054,24 +4104,39 @@
     const list = document.getElementById('altKategorilerList');
     const tip = currentModalTip;
     const kategori = currentModalKategori;
-    const altKategoriler = altKategorilerData[tip] && altKategorilerData[tip][kategori] ? altKategorilerData[tip][kategori] : [];
+    let altKategoriler = altKategorilerData[tip] && altKategorilerData[tip][kategori] ? [...altKategorilerData[tip][kategori]] : [];
+
+    // Sıra no'ya göre sırala
+    altKategoriler.sort((a, b) => {
+      const siraA = (a.siraNo || 999);
+      const siraB = (b.siraNo || 999);
+      if(siraA !== siraB) return siraA - siraB;
+      return (a.isim || '').localeCompare(b.isim || '', 'tr');
+    });
 
     if(altKategoriler.length === 0){
       list.innerHTML = '<div style="padding:20px; text-align:center; color:var(--muted); background:var(--pill); border-radius:8px">Henüz alt kategori eklenmedi</div>';
     } else {
-      list.innerHTML = altKategoriler.map((alt, idx) => `
+      list.innerHTML = altKategoriler.map((alt, idx) => {
+        // Orijinal index'i bul (sıralanmamış listede)
+        const originalIdx = altKategorilerData[tip][kategori].findIndex(a => a.id === alt.id);
+        return `
         <div style="padding:12px; background:var(--card); border:1px solid var(--stroke); border-radius:8px; display:flex; justify-content:space-between; align-items:center">
           <div style="flex:1">
-            <div style="font-weight:600; color:var(--text); margin-bottom:4px">${alt.isim}</div>
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px">
+              <span style="font-size:11px; color:var(--muted); font-weight:600; background:var(--pill); padding:2px 6px; border-radius:4px">Sıra: ${alt.siraNo || '-'}</span>
+              <div style="font-weight:600; color:var(--text)">${alt.isim}</div>
+            </div>
             ${alt.aciklama ? `<div style="font-size:12px; color:var(--muted); margin-bottom:4px">${alt.aciklama}</div>` : ''}
             <div style="font-size:14px; font-weight:700; color:var(--brand)">${fmt(alt.tutar)}</div>
           </div>
           <div style="display:flex; gap:8px">
-            <button class="btn-ghost" onclick="editAltKategori('${alt.id}', ${idx})" style="padding:6px 12px; font-size:12px">✏️ Düzenle</button>
-            <button class="btn-ghost" onclick="deleteAltKategori('${alt.id}', ${idx})" style="padding:6px 12px; font-size:12px; color:var(--danger)">🗑️ Sil</button>
+            <button class="btn-ghost" onclick="editAltKategori('${alt.id}', ${originalIdx})" style="padding:6px 12px; font-size:12px">✏️ Düzenle</button>
+            <button class="btn-ghost" onclick="deleteAltKategori('${alt.id}', ${originalIdx})" style="padding:6px 12px; font-size:12px; color:var(--danger)">🗑️ Sil</button>
           </div>
         </div>
-      `).join('');
+      `;
+      }).join('');
     }
 
     // Toplam ve kalan tutarı güncelle
@@ -4101,8 +4166,9 @@
     document.getElementById('altKategoriKalanTutar').textContent = fmt(kalanTutar);
   }
 
-  // Alt kategori ekle
+  // Alt kategori ekle veya güncelle
   function addAltKategori(){
+    const siraNo = parseInt(document.getElementById('altKategoriSiraNo').value) || 1;
     const isim = document.getElementById('altKategoriIsim').value.trim();
     const aciklama = document.getElementById('altKategoriAciklama').value.trim();
     const tutar = parseFloat(document.getElementById('altKategoriTutar').value) || 0;
@@ -4117,9 +4183,41 @@
       return;
     }
 
+    if(siraNo < 1){
+      toast('Sıra no 1 veya daha büyük olmalı');
+      return;
+    }
+
     const tip = currentModalTip;
     const kategori = currentModalKategori;
 
+    // Düzenleme modunda mı kontrol et
+    if(editingAltKategoriIdx >= 0){
+      // Güncelleme
+      if(altKategorilerData[tip] && altKategorilerData[tip][kategori] && altKategorilerData[tip][kategori][editingAltKategoriIdx]){
+        altKategorilerData[tip][kategori][editingAltKategoriIdx].siraNo = siraNo;
+        altKategorilerData[tip][kategori][editingAltKategoriIdx].isim = isim;
+        altKategorilerData[tip][kategori][editingAltKategoriIdx].aciklama = aciklama;
+        altKategorilerData[tip][kategori][editingAltKategoriIdx].tutar = tutar;
+        
+        // Formu temizle
+        document.getElementById('altKategoriSiraNo').value = '';
+        document.getElementById('altKategoriIsim').value = '';
+        document.getElementById('altKategoriAciklama').value = '';
+        document.getElementById('altKategoriTutar').value = '';
+        editingAltKategoriIdx = -1;
+        
+        // Buton metnini sıfırla
+        const btn = document.getElementById('btnAltKategoriEkle');
+        btn.textContent = '+ Ekle';
+        
+        updateAltKategorilerList();
+        toast('Alt kategori güncellendi');
+        return;
+      }
+    }
+
+    // Yeni ekleme
     if(!altKategorilerData[tip]) altKategorilerData[tip] = {};
     if(!altKategorilerData[tip][kategori]) altKategorilerData[tip][kategori] = [];
 
@@ -4127,10 +4225,12 @@
       id: 'temp_' + Date.now(),
       isim: isim,
       aciklama: aciklama,
-      tutar: tutar
+      tutar: tutar,
+      siraNo: siraNo
     });
 
     // Formu temizle
+    document.getElementById('altKategoriSiraNo').value = '';
     document.getElementById('altKategoriIsim').value = '';
     document.getElementById('altKategoriAciklama').value = '';
     document.getElementById('altKategoriTutar').value = '';
@@ -4142,7 +4242,7 @@
   document.getElementById('btnAltKategoriEkle').addEventListener('click', addAltKategori);
   
   // Enter tuşu ile ekleme
-  ['altKategoriIsim', 'altKategoriAciklama', 'altKategoriTutar'].forEach(id => {
+  ['altKategoriSiraNo', 'altKategoriIsim', 'altKategoriAciklama', 'altKategoriTutar'].forEach(id => {
     document.getElementById(id).addEventListener('keypress', (e) => {
       if(e.key === 'Enter' && editingAltKategoriIdx === -1){
         addAltKategori();
@@ -4155,8 +4255,16 @@
   window.editAltKategori = function(id, idx){
     const tip = currentModalTip;
     const kategori = currentModalKategori;
+    
+    // idx zaten orijinal listeden geliyor (updateAltKategorilerList'ten)
+    if(!altKategorilerData[tip] || !altKategorilerData[tip][kategori] || !altKategorilerData[tip][kategori][idx]){
+      toast('Alt kategori bulunamadı');
+      return;
+    }
+    
     const alt = altKategorilerData[tip][kategori][idx];
 
+    document.getElementById('altKategoriSiraNo').value = alt.siraNo || '';
     document.getElementById('altKategoriIsim').value = alt.isim;
     document.getElementById('altKategoriAciklama').value = alt.aciklama;
     document.getElementById('altKategoriTutar').value = alt.tutar;
@@ -4165,36 +4273,6 @@
     // Buton metnini güncelle
     const btn = document.getElementById('btnAltKategoriEkle');
     btn.textContent = '💾 Güncelle';
-    btn.onclick = () => {
-      const isim = document.getElementById('altKategoriIsim').value.trim();
-      const aciklama = document.getElementById('altKategoriAciklama').value.trim();
-      const tutar = parseFloat(document.getElementById('altKategoriTutar').value) || 0;
-
-      if(!isim){
-        toast('Lütfen alt kategori ismi girin');
-        return;
-      }
-
-      if(tutar <= 0){
-        toast('Lütfen geçerli bir tutar girin');
-        return;
-      }
-
-      altKategorilerData[currentModalTip][currentModalKategori][editingAltKategoriIdx].isim = isim;
-      altKategorilerData[currentModalTip][currentModalKategori][editingAltKategoriIdx].aciklama = aciklama;
-      altKategorilerData[currentModalTip][currentModalKategori][editingAltKategoriIdx].tutar = tutar;
-
-      // Formu temizle
-      document.getElementById('altKategoriIsim').value = '';
-      document.getElementById('altKategoriAciklama').value = '';
-      document.getElementById('altKategoriTutar').value = '';
-      editingAltKategoriIdx = -1;
-      btn.textContent = '+ Ekle';
-      btn.onclick = null;
-
-      updateAltKategorilerList();
-      toast('Alt kategori güncellendi');
-    };
   };
 
   // Alt kategori sil
@@ -4240,6 +4318,7 @@
           isim: alt.isim,
           aciklama: alt.aciklama,
           tutar: alt.tutar,
+          siraNo: alt.siraNo || 999,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
       });

@@ -446,7 +446,28 @@
     const norm=(s)=>String(s||'').trim().toLowerCase();
     let CURRENT_ALLOW=new Set(), CURRENT_DENY=new Set();
 
-    function normalizePath(p){ if(!p) return '#'; const s=String(p).trim(); if(/^https?:\/\//i.test(s)) return s; if(s.startsWith('/')) return s; return '/' + s.replace(/^(\.\/)+/,'').replace(/^(\.\.\/)+/,''); }
+    function normalizePath(p){
+      if(!p || p === '#') return '#';
+      // HTTP/HTTPS URL'leri olduğu gibi bırak
+      if(/^https?:\/\//i.test(p)) return p;
+      if(p.startsWith('//')) return p;
+      // Zaten relative path'ler (../ veya ./ ile başlayan) olduğu gibi bırak
+      if(p.startsWith('../') || p.startsWith('./')) return p;
+      
+      // Mevcut dosyanın konumuna göre relative hale getir
+      const currentPath = location.pathname;
+      const currentDir = currentPath.substring(0, currentPath.lastIndexOf('/'));
+      // Mevcut dizin seviyesini hesapla (kaç seviye yukarı çıkmalıyız)
+      const currentDepth = currentDir.split('/').filter(x => x).length;
+      
+      // Root'a dönmek için ../ sayısı
+      const upLevels = currentDepth > 0 ? '../'.repeat(currentDepth) : '';
+      
+      // Path'i temizle: / ile başlıyorsa kaldır, yoksa olduğu gibi kullan
+      const targetPath = p.startsWith('/') ? p.substring(1) : p;
+      
+      return upLevels + targetPath;
+    }
 
     async function fetchPanels(allowSet, denySet){
       const res=[];

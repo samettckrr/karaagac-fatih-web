@@ -434,27 +434,30 @@ async function fetchPanels(allowSet, denySet){
         return !denied && (panelGrant || pageGrant);
       }).map(pg=>{
         // Path normalizasyonu - doğal yoldan yönlendirme
-        let url = pg.path || '#';
-        if(url !== '#' && !url.startsWith('http') && !url.startsWith('//')){
-          // Eğer path zaten relative ise (../ veya ./ ile başlıyorsa) olduğu gibi kullan
-          if(!url.startsWith('../') && !url.startsWith('./')){
-            const inAdmin = location.pathname.includes('/admin/');
-            // Admin paneli altındaki sayfalar için özel kontrol
-            if(id === 'Admin' || norm(id) === 'admin'){
-              // Admin paneli sayfaları - admin klasöründe
-              if(url.startsWith('admin/')){
-                // admin/kullanici-ekle.html -> kullanici-ekle.html (aynı klasörde)
-                url = url.replace(/^admin\//, '');
-              } else {
-                // kullanici-ekle.html -> kullanici-ekle.html (aynı klasörde)
-                url = url.replace(/^\/+/, '');
-              }
-            } else {
-              // Diğer paneller - admin klasöründen çıkış yap
-              url = '../' + url.replace(/^\/+/, '').replace(/^admin\//, '');
-            }
-          }
+        function normalizeUrl(u){
+          if(!u || u === '#') return '#';
+          // HTTP/HTTPS URL'leri olduğu gibi bırak
+          if(/^https?:\/\//i.test(u)) return u;
+          if(u.startsWith('//')) return u;
+          // Zaten relative path'ler (../ veya ./ ile başlayan) olduğu gibi bırak
+          if(u.startsWith('../') || u.startsWith('./')) return u;
+          
+          // Mevcut dosyanın konumuna göre relative hale getir
+          const currentPath = location.pathname;
+          const currentDir = currentPath.substring(0, currentPath.lastIndexOf('/'));
+          // Mevcut dizin seviyesini hesapla (kaç seviye yukarı çıkmalıyız)
+          const currentDepth = currentDir.split('/').filter(x => x).length;
+          
+          // Root'a dönmek için ../ sayısı
+          const upLevels = currentDepth > 0 ? '../'.repeat(currentDepth) : '';
+          
+          // Path'i temizle: / ile başlıyorsa kaldır, admin/ ile başlıyorsa da kaldır
+          let targetPath = u.startsWith('/') ? u.substring(1) : u;
+          targetPath = targetPath.replace(/^admin\//, '');
+          
+          return upLevels + targetPath;
         }
+        const url = normalizeUrl(pg.path || '#');
         return {
           title: pg.title || pg.key || 'Sayfa',
           url: url,

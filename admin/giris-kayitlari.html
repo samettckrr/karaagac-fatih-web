@@ -384,13 +384,26 @@
     
     function resolveHref(path, panelId){
       if(!path || path === '#') return '#';
-      if(path.startsWith('http') || path.startsWith('//')) return path;
+      // HTTP/HTTPS URL'leri olduğu gibi bırak
+      if(/^https?:\/\//i.test(path)) return path;
+      if(path.startsWith('//')) return path;
+      // Zaten relative path'ler (../ veya ./ ile başlayan) olduğu gibi bırak
       if(path.startsWith('../') || path.startsWith('./')) return path;
-      if(panelId === 'Admin' || norm(panelId) === 'admin'){
-        if(path.startsWith('admin/')) return path.replace(/^admin\//, '');
-        return path.replace(/^\/+/, '');
-      }
-      return '../' + path.replace(/^\/+/, '').replace(/^admin\//, '');
+      
+      // Mevcut dosyanın konumuna göre relative hale getir
+      const currentPath = location.pathname;
+      const currentDir = currentPath.substring(0, currentPath.lastIndexOf('/'));
+      // Mevcut dizin seviyesini hesapla (kaç seviye yukarı çıkmalıyız)
+      const currentDepth = currentDir.split('/').filter(x => x).length;
+      
+      // Root'a dönmek için ../ sayısı
+      const upLevels = currentDepth > 0 ? '../'.repeat(currentDepth) : '';
+      
+      // Path'i temizle: / ile başlıyorsa kaldır, admin/ ile başlıyorsa da kaldır
+      let targetPath = path.startsWith('/') ? path.substring(1) : path;
+      targetPath = targetPath.replace(/^admin\//, '');
+      
+      return upLevels + targetPath;
     }
     
     async function fetchPanels(allowSet, denySet){

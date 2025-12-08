@@ -762,7 +762,28 @@ function toNum(v){
   } 
   return 0; 
 }
-function normalizeUrl(u){ if(!u) return '#'; if(/^https?:\/\//i.test(u)) return u; if(u.startsWith('/')) return u; return '/'+u.replace(/^\.?\//,''); }
+function normalizeUrl(u){
+  if(!u || u === '#') return '#';
+  // HTTP/HTTPS URL'leri olduğu gibi bırak
+  if(/^https?:\/\//i.test(u)) return u;
+  if(u.startsWith('//')) return u;
+  // Zaten relative path'ler (../ veya ./ ile başlayan) olduğu gibi bırak
+  if(u.startsWith('../') || u.startsWith('./')) return u;
+  
+  // Mevcut dosyanın konumuna göre relative hale getir
+  const currentPath = location.pathname;
+  const currentDir = currentPath.substring(0, currentPath.lastIndexOf('/'));
+  // Mevcut dizin seviyesini hesapla (kaç seviye yukarı çıkmalıyız)
+  const currentDepth = currentDir.split('/').filter(x => x).length;
+  
+  // Root'a dönmek için ../ sayısı
+  const upLevels = currentDepth > 0 ? '../'.repeat(currentDepth) : '';
+  
+  // Path'i temizle: / ile başlıyorsa kaldır, yoksa olduğu gibi kullan
+  const targetPath = u.startsWith('/') ? u.substring(1) : u;
+  
+  return upLevels + targetPath;
+}
 const MONTHS_TR=["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
 function formatMonthLabel(val){
   if(!val) return '';
@@ -785,7 +806,7 @@ async function fetchPanels(allowSet, denySet){
         const keyNorm=norm(pg.key||pg.title||'');
         const pageGrant=allowSet.has(keyNorm), denied=denySet.has(keyNorm);
         return !denied && (panelGrant || pageGrant);
-      }).map(pg=>({ baslik: pg.title||pg.key||'Sayfa', url: pg.path||'#', key: pg.key||pg.title||'', sira: typeof pg.order==='number'? pg.order:9999 }))
+      }).map(pg=>({ baslik: pg.title||pg.key||'Sayfa', url: normalizeUrl(pg.path||'#'), key: pg.key||pg.title||'', sira: typeof pg.order==='number'? pg.order:9999 }))
         .sort((a,b)=>a.sira-b.sira);
       if(pages.length) res.push({ id, baslik:panelTitle, sira: typeof d.order==='number'? d.order:9999, pages });
     });

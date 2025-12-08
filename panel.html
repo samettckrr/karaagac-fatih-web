@@ -486,6 +486,30 @@
     let CURRENT_DENY  = new Set();  // -hariciler
 
     /* ====== Menü manifesti (değişmedi) ====== */
+    // Path normalizasyonu - mevcut sayfanın konumuna göre relative path oluştur
+    function normalizeUrl(u){
+      if(!u || u === '#') return '#';
+      // HTTP/HTTPS URL'leri olduğu gibi bırak
+      if(/^https?:\/\//i.test(u)) return u;
+      if(u.startsWith('//')) return u;
+      // Zaten relative path'ler (../ veya ./ ile başlayan) olduğu gibi bırak
+      if(u.startsWith('../') || u.startsWith('./')) return u;
+      
+      // Mevcut dosyanın konumuna göre relative hale getir
+      const currentPath = location.pathname;
+      const currentDir = currentPath.substring(0, currentPath.lastIndexOf('/'));
+      // Mevcut dizin seviyesini hesapla (kaç seviye yukarı çıkmalıyız)
+      const currentDepth = currentDir.split('/').filter(x => x).length;
+      
+      // Root'a dönmek için ../ sayısı
+      const upLevels = currentDepth > 0 ? '../'.repeat(currentDepth) : '';
+      
+      // Path'i temizle: / ile başlıyorsa kaldır, yoksa olduğu gibi kullan
+      const targetPath = u.startsWith('/') ? u.substring(1) : u;
+      
+      return upLevels + targetPath;
+    }
+    
     async function fetchPanels(allowSet, denySet){
       const res=[];
       try{
@@ -500,7 +524,7 @@
             const pageGrant = allowSet.has(keyNorm);
             const denied    = denySet.has(keyNorm);
             return !denied && (panelGrant || pageGrant);
-          }).map(pg=>({ baslik: pg.title || pg.key || 'Sayfa', url: pg.path || '#', key: pg.key || pg.title || '', sira: typeof pg.order==='number'? pg.order : 9999 })).sort((a,b)=>a.sira-b.sira);
+          }).map(pg=>({ baslik: pg.title || pg.key || 'Sayfa', url: normalizeUrl(pg.path || '#'), key: pg.key || pg.title || '', sira: typeof pg.order==='number'? pg.order : 9999 })).sort((a,b)=>a.sira-b.sira);
           if (pages.length===0) return;
           res.push({ id, baslik:panelTitle, sira: typeof d.order==='number'? d.order : 9999, pages });
         });
@@ -522,7 +546,7 @@
         const dd=document.createElement('div'); dd.className='dropdown';
         (p.pages||[]).forEach(pg=>{
           const a=document.createElement('a');
-          a.href=pg.url; a.textContent=pg.baslik;
+          a.href=normalizeUrl(pg.url || pg.path || '#'); a.textContent=pg.baslik;
           a.dataset.key=pg.key||pg.baslik; a.dataset.panel=p.id; a.dataset.panelTitle=p.baslik;
           dd.appendChild(a);
         });
@@ -541,7 +565,7 @@
         const h=document.createElement('div'); h.className='panel-title'; h.textContent=p.baslik; drawer.appendChild(h);
         (p.pages||[]).forEach(pg=>{
           const a=document.createElement('a');
-          a.href=pg.url; a.textContent=pg.baslik;
+          a.href=normalizeUrl(pg.url || pg.path || '#'); a.textContent=pg.baslik;
           a.dataset.key=pg.key||pg.baslik; a.dataset.panel=p.id; a.dataset.panelTitle=p.baslik;
           drawer.appendChild(a);
         });

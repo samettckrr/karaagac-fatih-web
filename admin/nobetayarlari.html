@@ -945,30 +945,27 @@
     let CURRENT_ALLOW = new Set(), CURRENT_DENY = new Set();
     const PANEL_ICON = { 'Admin':'🎛️','Talebe':'📘','Personel':'👤','Muhasebe':'💰','Kermes':'🏪','Nehari':'🕌','Sistem Ayarları':'⚙️' };
     function resolveHref(path, panelId){
-      if(!path) return '#';
+      if(!path || path === '#') return '#';
+      // HTTP/HTTPS URL'leri olduğu gibi bırak
       if(/^https?:\/\//i.test(path)) return path;
-      if(path.startsWith('./') || path.startsWith('../')) return path;
-      const inAdmin = location.pathname.includes('/admin/');
+      if(path.startsWith('//')) return path;
+      // Zaten relative path'ler (../ veya ./ ile başlayan) olduğu gibi bırak
+      if(path.startsWith('../') || path.startsWith('./')) return path;
       
-      // Admin paneli altındaki sayfalar için özel kontrol
-      if(panelId === 'Admin' || norm(panelId) === 'admin'){
-        // Admin paneli sayfaları - admin klasöründe
-        if(path.startsWith('admin/')){
-          // admin/kullanici-ekle.html -> kullanici-ekle.html (aynı klasörde)
-          return path.replace(/^admin\//, '');
-        } else {
-          // kullanici-ekle.html -> kullanici-ekle.html (aynı klasörde)
-          return path.replace(/^\/+/, '');
-        }
-      }
+      // Mevcut dosyanın konumuna göre relative hale getir
+      const currentPath = location.pathname;
+      const currentDir = currentPath.substring(0, currentPath.lastIndexOf('/'));
+      // Mevcut dizin seviyesini hesapla (kaç seviye yukarı çıkmalıyız)
+      const currentDepth = currentDir.split('/').filter(x => x).length;
       
-      // Diğer paneller için
-      if(inAdmin){
-        if(path.startsWith('admin/')) return '../' + path.replace(/^admin\//,'');
-        return '../' + path.replace(/^\/+/, ''); // köke göre verilenleri bir seviye yukarı taşı
-      }else{
-        return path.startsWith('/') ? path : ('./' + path);
-      }
+      // Root'a dönmek için ../ sayısı
+      const upLevels = currentDepth > 0 ? '../'.repeat(currentDepth) : '';
+      
+      // Path'i temizle: / ile başlıyorsa kaldır, admin/ ile başlıyorsa da kaldır
+      let targetPath = path.startsWith('/') ? path.substring(1) : path;
+      targetPath = targetPath.replace(/^admin\//, '');
+      
+      return upLevels + targetPath;
     }
     async function fetchPanels(allowSet, denySet){
       const res=[]; try{
