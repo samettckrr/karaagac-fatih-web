@@ -237,7 +237,9 @@
               <th class="right">Tutar (₺)</th>
               <th>İştirak</th>
               <th>Müsafir</th>
+              <th>Mahal</th>
               <th>Personel</th>
+              <th>Not</th>
             </tr>
           </thead>
           <tbody id="tbody"></tbody>
@@ -245,7 +247,7 @@
             <tr>
               <td colspan="3" class="right"><strong>TOPLAM</strong></td>
               <td class="right" id="sumTutar"><strong>₺0</strong></td>
-              <td colspan="2"></td>
+              <td colspan="4"></td>
               <td class="right" id="sumMusafir"><strong>0</strong></td>
             </tr>
           </tfoot>
@@ -541,8 +543,21 @@
 
         filtered.forEach(k => {
           const tr = document.createElement('tr');
-          const tarihStr = k.tarih instanceof Date ? k.tarih.toISOString().slice(0, 10) : k.tarih;
-          const tarih = new Date(tarihStr);
+          // Firestore Timestamp kontrolü
+          let tarihStr = '';
+          if(k.tarih) {
+            if(k.tarih.toDate) {
+              tarihStr = k.tarih.toDate().toISOString().slice(0, 10);
+            } else if(k.tarih instanceof Date) {
+              tarihStr = k.tarih.toISOString().slice(0, 10);
+            } else if(typeof k.tarih === 'string') {
+              tarihStr = k.tarih.slice(0, 10);
+            } else if(k.tarih.seconds) {
+              // Timestamp objesi (seconds property var)
+              tarihStr = new Date(k.tarih.seconds * 1000).toISOString().slice(0, 10);
+            }
+          }
+          const tarih = tarihStr ? new Date(tarihStr) : new Date();
 
           tr.innerHTML = `
             <td>${tarih.getDate()}.${tarih.getMonth() + 1}.${tarih.getFullYear()}</td>
@@ -551,7 +566,9 @@
             <td class="right"><strong>₺${Number(k.tutar || 0).toLocaleString('tr-TR',{minimumFractionDigits:2})}</strong></td>
             <td>${k.istirak ? '✓ Evet' : '✗ Hayır'}</td>
             <td>${k.musafirAdedi || 0}</td>
-            <td>${k.personel || '-'}</td>
+            <td>${k.mahal || '-'}</td>
+            <td>${k.personelAdi || k.personel || '-'}</td>
+            <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${k.not || ''}">${k.not || '-'}</td>
           `;
           tbody.appendChild(tr);
         });
@@ -569,8 +586,20 @@
         }
 
         filtered.forEach(k => {
-          const tarihStr = k.tarih instanceof Date ? k.tarih.toISOString().slice(0, 10) : k.tarih;
-          const tarih = new Date(tarihStr);
+          // Firestore Timestamp kontrolü
+          let tarihStr = '';
+          if(k.tarih) {
+            if(k.tarih.toDate) {
+              tarihStr = k.tarih.toDate().toISOString().slice(0, 10);
+            } else if(k.tarih instanceof Date) {
+              tarihStr = k.tarih.toISOString().slice(0, 10);
+            } else if(typeof k.tarih === 'string') {
+              tarihStr = k.tarih.slice(0, 10);
+            } else if(k.tarih.seconds) {
+              tarihStr = new Date(k.tarih.seconds * 1000).toISOString().slice(0, 10);
+            }
+          }
+          const tarih = tarihStr ? new Date(tarihStr) : new Date();
           const div = document.createElement('div');
           div.className = 'mini-card';
           div.innerHTML = `
@@ -594,10 +623,18 @@
               <span>Müsafir</span>
               <span>${k.musafirAdedi || 0}</span>
             </div>
+            ${k.mahal ? `<div class="mini-line">
+              <span>Mahal</span>
+              <span>${k.mahal}</span>
+            </div>` : ''}
             <div class="mini-line">
               <span>Personel</span>
-              <span>${k.personel || '-'}</span>
+              <span>${k.personelAdi || k.personel || '-'}</span>
             </div>
+            ${k.not ? `<div class="mini-line">
+              <span>Not</span>
+              <span style="font-size:11px; color:var(--muted);">${k.not}</span>
+            </div>` : ''}
           `;
           list.appendChild(div);
         });

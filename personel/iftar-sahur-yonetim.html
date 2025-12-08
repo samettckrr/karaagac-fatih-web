@@ -240,7 +240,9 @@
                 <th>Tutar (₺)</th>
                 <th>İştirak</th>
                 <th>Müsafir</th>
+                <th>Mahal</th>
                 <th>Personel</th>
+                <th>Not</th>
                 <th style="width:120px">İşlemler</th>
               </tr>
             </thead>
@@ -1675,7 +1677,19 @@
 
       kapasiteAyarlariList.forEach(k => {
         const tr = document.createElement('tr');
-        const tarih = new Date(k.tarih);
+        // Firestore Timestamp kontrolü
+        let tarih = new Date();
+        if(k.tarih) {
+          if(k.tarih.toDate) {
+            tarih = k.tarih.toDate();
+          } else if(k.tarih instanceof Date) {
+            tarih = k.tarih;
+          } else if(typeof k.tarih === 'string') {
+            tarih = new Date(k.tarih);
+          } else if(k.tarih.seconds) {
+            tarih = new Date(k.tarih.seconds * 1000);
+          }
+        }
         
         tr.innerHTML = `
           <td>${tarih.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Istanbul' })}</td>
@@ -1761,7 +1775,19 @@
       if (id) {
         const k = kapasiteAyarlariList.find(k => k.id === id);
         if (k) {
-          const tarih = new Date(k.tarih);
+          // Firestore Timestamp kontrolü
+          let tarih = new Date();
+          if(k.tarih) {
+            if(k.tarih.toDate) {
+              tarih = k.tarih.toDate();
+            } else if(k.tarih instanceof Date) {
+              tarih = k.tarih;
+            } else if(typeof k.tarih === 'string') {
+              tarih = new Date(k.tarih);
+            } else if(k.tarih.seconds) {
+              tarih = new Date(k.tarih.seconds * 1000);
+            }
+          }
           qs('#kapasiteTarih').value = tarih.toISOString().slice(0, 10);
           qs('#kapasiteIftar').value = k.iftarMax !== null && k.iftarMax !== undefined ? k.iftarMax : '';
           qs('#kapasiteSahur').value = k.sahurMax !== null && k.sahurMax !== undefined ? k.sahurMax : '';
@@ -1970,14 +1996,27 @@
       }
       
       if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">Kayıt bulunamadı</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:20px">Kayıt bulunamadı</td></tr>';
         return;
       }
       
       filtered.forEach(k => {
         const tr = document.createElement('tr');
-        const tarihStr = k.tarih instanceof Date ? k.tarih.toISOString().slice(0, 10) : k.tarih;
-        const tarih = new Date(tarihStr);
+        // Firestore Timestamp kontrolü
+        let tarihStr = '';
+        if(k.tarih) {
+          if(k.tarih.toDate) {
+            tarihStr = k.tarih.toDate().toISOString().slice(0, 10);
+          } else if(k.tarih instanceof Date) {
+            tarihStr = k.tarih.toISOString().slice(0, 10);
+          } else if(typeof k.tarih === 'string') {
+            tarihStr = k.tarih.slice(0, 10);
+          } else if(k.tarih.seconds) {
+            // Timestamp objesi (seconds property var)
+            tarihStr = new Date(k.tarih.seconds * 1000).toISOString().slice(0, 10);
+          }
+        }
+        const tarih = tarihStr ? new Date(tarihStr) : new Date();
         
         tr.innerHTML = `
           <td>${tarih.getDate()}.${tarih.getMonth() + 1}.${tarih.getFullYear()}</td>
@@ -1986,7 +2025,9 @@
           <td class="right"><strong>₺${Number(k.tutar || 0).toLocaleString('tr-TR',{minimumFractionDigits:2})}</strong></td>
           <td>${k.istirak ? '✓ Evet' : '✗ Hayır'}</td>
           <td>${k.musafirAdedi || 0}</td>
-          <td>${k.personel || '-'}</td>
+          <td>${k.mahal || '-'}</td>
+          <td>${k.personelAdi || k.personel || '-'}</td>
+          <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${k.not || ''}">${k.not || '-'}</td>
           <td>
             <button onclick="editKayit('${k.id}')" style="padding:4px 8px;font-size:12px">Düzenle</button>
             <button onclick="deleteKayit('${k.id}')" class="danger" style="padding:4px 8px;font-size:12px">Sil</button>
@@ -2003,7 +2044,19 @@
       if (id) {
         const k = kayitlar.find(k => k.id === id);
         if (k) {
-          const tarihStr = k.tarih instanceof Date ? k.tarih.toISOString().slice(0, 10) : k.tarih;
+          // Firestore Timestamp kontrolü
+          let tarihStr = '';
+          if(k.tarih) {
+            if(k.tarih.toDate) {
+              tarihStr = k.tarih.toDate().toISOString().slice(0, 10);
+            } else if(k.tarih instanceof Date) {
+              tarihStr = k.tarih.toISOString().slice(0, 10);
+            } else if(typeof k.tarih === 'string') {
+              tarihStr = k.tarih.slice(0, 10);
+            } else if(k.tarih.seconds) {
+              tarihStr = new Date(k.tarih.seconds * 1000).toISOString().slice(0, 10);
+            }
+          }
           qs('#editTarih').value = tarihStr;
           qs('#editTip').value = k.tip;
           qs('#editSahip').value = k.sahip || '';
