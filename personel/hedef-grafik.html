@@ -1028,7 +1028,7 @@
     }
 
     let veriTablosu=[];
-    let unsubHedef=null, unsubTemin=null, unsubTeb=null, unsubTah=null, unsubKurban=null, unsubIftar=null, unsubSahur=null, unsubTaahhut=null;
+    let unsubHedef=null, unsubTemin=null, unsubTeb=null, unsubTah=null, unsubKurban=null, unsubIftar=null, unsubSahur=null, unsubTaahhut=null, unsubTeberruRamazan=null, unsubTaahhutRamazan=null, unsubRamazanHedef=null;
     let cacheTeminHedef={}, cacheTeberru={}, cacheTahsilat={}, sonHedefMap={};
     let iftarMap={}, sahurMap={}, taahhutMap={};
     let maxUpdateTs=0;
@@ -1145,8 +1145,9 @@
           const bar=Math.max(0, Math.min(100, p.oran));
           fill.style.width=bar+'%';
           if (p.oran>=100) fill.classList.add('ok');
-          let fullMsg=`%${p.oran}`, shortMsg=`%${p.oran}`;
-          if (p.oran===100){ fullMsg='Hedefinize ulaştınız'; shortMsg='Hedefinize ulaştınız'; }
+          const oranStr = Number(p.oran).toFixed(2).replace('.', ',');
+          let fullMsg=`%${oranStr}`, shortMsg=`%${oranStr}`;
+          if (p.oran>=100 && p.oran<100.01){ fullMsg='Hedefinize ulaştınız'; shortMsg='Hedefinize ulaştınız'; }
           if (p.oran>100){ fullMsg='Hedefinizi geçtiniz'; shortMsg='Hedefinizi geçtiniz'; }
           lab.textContent=shortMsg; lab.title=fullMsg;
           prog.appendChild(fill); prog.appendChild(lab); tdOran.appendChild(prog);
@@ -1170,8 +1171,9 @@
           const bar=Math.max(0, Math.min(100, p.oran));
           fill.style.width=bar+'%';
           if (p.oran>=100) fill.classList.add('ok');
-          let fullMsg=`%${p.oran}`, shortMsg=`%${p.oran}`;
-          if (p.oran===100){ fullMsg='Hedefinize ulaştınız'; shortMsg='Hedefinize ulaştınız'; }
+          const oranStr = Number(p.oran).toFixed(2).replace('.', ',');
+          let fullMsg=`%${oranStr}`, shortMsg=`%${oranStr}`;
+          if (p.oran>=100 && p.oran<100.01){ fullMsg='Hedefinize ulaştınız'; shortMsg='Hedefinize ulaştınız'; }
           if (p.oran>100){ fullMsg='Hedefinizi geçtiniz'; shortMsg='Hedefinizi geçtiniz'; }
           lab.textContent=shortMsg; lab.title=fullMsg;
           prog.appendChild(fill); prog.appendChild(lab); tdOran.appendChild(prog);
@@ -1234,11 +1236,12 @@
         const sumBb       = veriTablosu.reduce((s,x)=>s + (x.kurbanBb  || 0), 0);
         const sumKurban   = sumKk + sumBb;
 
-        const oran = sumHedef>0 ? Math.round((sumToplamTemin/sumHedef)*100) : 0;
+        const oran = sumHedef>0 ? (sumToplamTemin/sumHedef)*100 : 0;
+        const oranStr = Number(oran).toFixed(2).replace('.', ',');
 
         toplamHedefEl.textContent    = `₺${fmtPara(sumHedef)}`;
         toplamTeminEl.textContent    = `₺${fmtPara(sumToplamTemin)}`;
-        toplamOranEl.textContent     = `%${oran}`;
+        toplamOranEl.textContent     = `%${oranStr}`;
         oranBar.style.width          = Math.max(0, Math.min(100, oran)) + '%';
 
         const ttd = document.getElementById('toplamTeminDisplay');
@@ -1271,13 +1274,14 @@
         const sumBb       = veriTablosu.reduce((s,x)=>s + (x.kurbanBb  || 0), 0);
         const sumKurban   = sumKk + sumBb;
 
-        const oran = sumHedef>0 ? Math.round((sumTeminHF/sumHedef)*100) : 0;
+        const oran = sumHedef>0 ? (sumTeminHF/sumHedef)*100 : 0;
+        const oranStr = Number(oran).toFixed(2).replace('.', ',');
 
         toplamTeberruEl.textContent  = `₺${fmtPara(sumTeberru)}`;
         toplamTahsilatEl.textContent = `₺${fmtPara(sumTahsilat)}`;
         toplamHedefEl.textContent    = `₺${fmtPara(sumHedef)}`;
         toplamTeminEl.textContent    = `₺${fmtPara(sumTeminHF)}`;
-        toplamOranEl.textContent     = `%${oran}`;
+        toplamOranEl.textContent     = `%${oranStr}`;
         oranBar.style.width          = Math.max(0, Math.min(100, oran)) + '%';
 
         const ttd = document.getElementById('toplamTeminDisplay');
@@ -1322,10 +1326,10 @@
         let oran;
         if(ekranModu === 'Ramazan-ı Şerif'){
           const toplamTemin = iftar + sahur + taahhut + teberru;
-          oran = hedef>0? Math.round((toplamTemin/hedef)*100) : 0;
+          oran = hedef>0? (toplamTemin/hedef)*100 : 0;
           tabloDizi.push({personel, hedef, iftar, sahur, taahhut, teberru, kurbanKk, kurbanBb, oran, toplamTemin});
         } else {
-          oran = hedef>0? Math.round((teminHedef/hedef)*100) : 0;
+          oran = hedef>0? (teminHedef/hedef)*100 : 0;
           tabloDizi.push({personel, teberru, tahsilat, kurbanKk, kurbanBb, hedef, teminHedef, oran});
         }
       });
@@ -1346,8 +1350,8 @@
     }
 
     function detachAll(){
-      [unsubHedef,unsubTemin,unsubTeb,unsubTah,unsubKurban,unsubIftar,unsubSahur,unsubTaahhut].forEach(fn=>{ try{ if(typeof fn==='function') fn(); }catch{} });
-      unsubHedef=unsubTemin=unsubTeb=unsubTah=unsubKurban=unsubIftar=unsubSahur=unsubTaahhut=null;
+      [unsubHedef,unsubTemin,unsubTeb,unsubTah,unsubKurban,unsubIftar,unsubSahur,unsubTaahhut,unsubTeberruRamazan,unsubTaahhutRamazan,unsubRamazanHedef].forEach(fn=>{ try{ if(typeof fn==='function') fn(); }catch{} });
+      unsubHedef=unsubTemin=unsubTeb=unsubTah=unsubKurban=unsubIftar=unsubSahur=unsubTaahhut=unsubTeberruRamazan=unsubTaahhutRamazan=unsubRamazanHedef=null;
       maxUpdateTs=0;
     }
 
@@ -1420,7 +1424,12 @@
       }
 
       // TE B E R R U (yeni mantık: tarih üzerinden, kategoriye göre)
-      unsubTeb = db.collection('veriler').where('tur','==','teberru').onSnapshot(async (snap)=>{
+      // Ramazan kategorisi seçildiğinde ve Ramazan-ı Şerif modunda teberru_kayitlari koleksiyonundan okunacak
+      // Ama sadece Ramazan kategorisi seçildiğinde, yoksa normal teberru verilerini de göster
+      const isRamazanKategoriForTeb = ekranModu === 'Ramazan-ı Şerif' && yil && (kategori.includes('Ramazan') || kategori.includes('ramazan'));
+      
+      if(!isRamazanKategoriForTeb){
+        unsubTeb = db.collection('veriler').where('tur','==','teberru').onSnapshot(async (snap)=>{
         const base = {};
         snap.forEach(doc=>{
           const d=doc.data()||{};
@@ -1490,6 +1499,11 @@
         cacheTeberru={...teberruMap};
         derleVeYansit(hedefMap, teminMap, teberruMap, tahsilatMap, kurbanKkMap, kurbanBbMap);
       });
+      } else {
+        // Ramazan kategorisi seçildiğinde teberru verileri teberru_kayitlari koleksiyonundan yüklenecek
+        // Burada unsubTeb null olarak bırakılır
+        unsubTeb = null;
+      }
 
       // T A H S I L A T
       unsubTah = db.collection('tahsilatlar').onSnapshot((snap)=>{
@@ -1543,80 +1557,202 @@
 
       // RAMAZAN-I ŞERIF MODU: İFTAR, SAHUR, TAAHHÜT
       if(ekranModu === 'Ramazan-ı Şerif'){
-        // İFTAR
-        unsubIftar = db.collection('veriler').where('tur','==','iftar').onSnapshot((snap)=>{
-          Object.keys(iftarMap).forEach(k=>delete iftarMap[k]);
-          snap.forEach(doc=>{
-            const d=doc.data()||{};
-            const when = getWhen(d);
-            if(d.ay !== undefined && d.yil !== undefined){
-              if(yil && d.yil !== yil) return;
-              if(ay && d.ay !== ay) return;
-              if(start && end && when && (when < start || when >= end)) return;
-            } else {
-              if (start && end){
-                if (!when || when < start || when >= end) return;
-              } else if (yil){
-                if (!when || when.getFullYear() !== yil) return;
+        // Kategori kontrolü: "Ramazan-ı Şerif" içeren kategoriler için iftar-sahur-form.html verilerini kullan
+        const isRamazanKategoriRamazan = kategori.includes('Ramazan') || kategori.includes('ramazan');
+        
+        if(isRamazanKategoriRamazan && yil){
+          // iftar-sahur-form.html verilerini kullan
+          const ramazanYil = String(yil);
+          
+          // İFTAR-SAHUR kayıtları (ramazan_serif/{YIL}/kayitlar)
+          unsubIftar = db.collection('ramazan_serif').doc(ramazanYil).collection('kayitlar')
+            .onSnapshot((snap)=>{
+              Object.keys(iftarMap).forEach(k=>delete iftarMap[k]);
+              Object.keys(sahurMap).forEach(k=>delete sahurMap[k]);
+              
+              snap.forEach(doc=>{
+                const d=doc.data()||{};
+                // Silinen kayıtları atla (silindi alanı true olanları)
+                if(d.silindi === true) return;
+                
+                // Yıl kontrolü
+                if(d.yil && Number(d.yil) !== yil) return;
+                
+                const personelAdi = d.personelAdi || d.personel || '-';
+                const p = canonName(personelAdi);
+                const tutar = toNum(d.tutar || 0);
+                
+                if(d.tip === 'iftar'){
+                  iftarMap[p] = (iftarMap[p] || 0) + tutar;
+                } else if(d.tip === 'sahur'){
+                  sahurMap[p] = (sahurMap[p] || 0) + tutar;
+                }
+                
+                const ts = d.createdAt?.toMillis?.() ? d.createdAt.toMillis() : (d.createdAt || 0);
+                if(ts > maxUpdateTs) maxUpdateTs = ts;
+              });
+              
+              // Teberru ve Taahhüt için ayrı çağrılar yapılacak
+              derleVeYansit(hedefMap, teminMap, teberruMap, tahsilatMap, kurbanKkMap, kurbanBbMap);
+            });
+          
+          // TEBERRU kayıtları (teberru_kayitlari)
+          unsubTeberruRamazan = db.collection('teberru_kayitlari')
+            .where('yil', '==', yil).onSnapshot((snap)=>{
+              Object.keys(teberruMap).forEach(k=>delete teberruMap[k]);
+              
+              console.log('[Teberru] Yüklenen kayıt sayısı:', snap.size, 'Yıl:', yil);
+              
+              snap.forEach(doc=>{
+                const d=doc.data()||{};
+                // Yıl kontrolü (ekstra güvenlik)
+                if(d.yil && Number(d.yil) !== yil) return;
+                
+                const personelAdi = d.personelAdi || d.personel || '-';
+                const p = canonName(personelAdi);
+                const miktar = toNum(d.miktar || 0);
+                
+                console.log('[Teberru] Kayıt:', {personelAdi, normalized: p, miktar, yil: d.yil});
+                
+                // Teberru'yu teberruMap'e ekle
+                teberruMap[p] = (teberruMap[p] || 0) + miktar;
+                
+                const ts = d.createdAt?.toMillis?.() ? d.createdAt.toMillis() : (d.createdAt || 0);
+                if(ts > maxUpdateTs) maxUpdateTs = ts;
+              });
+              
+              console.log('[Teberru] teberruMap:', teberruMap);
+              
+              derleVeYansit(hedefMap, teminMap, teberruMap, tahsilatMap, kurbanKkMap, kurbanBbMap);
+            }, err=>{
+              console.error('[Teberru] Hata:', err);
+            });
+          
+          // TAAHHÜT kayıtları (taahhut_kayitlari)
+          unsubTaahhutRamazan = db.collection('taahhut_kayitlari')
+            .where('yil', '==', yil).onSnapshot((snap)=>{
+              Object.keys(taahhutMap).forEach(k=>delete taahhutMap[k]);
+              
+              snap.forEach(doc=>{
+                const d=doc.data()||{};
+                // Yıl kontrolü (ekstra güvenlik)
+                if(d.yil && Number(d.yil) !== yil) return;
+                
+                const personelAdi = d.personelAdi || d.personel || '-';
+                const p = canonName(personelAdi);
+                const miktar = toNum(d.miktar || 0);
+                
+                taahhutMap[p] = (taahhutMap[p] || 0) + miktar;
+                
+                const ts = d.createdAt?.toMillis?.() ? d.createdAt.toMillis() : (d.createdAt || 0);
+                if(ts > maxUpdateTs) maxUpdateTs = ts;
+              });
+              
+              derleVeYansit(hedefMap, teminMap, teberruMap, tahsilatMap, kurbanKkMap, kurbanBbMap);
+            });
+          
+          // Hedef verileri (ramazan_serif/{YIL}/personel_hedefleri)
+          // Hedef zaten yukarıda yükleniyor ama Ramazan kategorisi için özel hedef koleksiyonunu da kontrol et
+          // Snapshot listener kullanarak gerçek zamanlı güncellemeleri yakala
+          unsubRamazanHedef = db.collection('ramazan_serif').doc(ramazanYil).collection('personel_hedefleri')
+            .onSnapshot((snap)=>{
+              snap.forEach(doc=>{
+                const d=doc.data()||{};
+                const personelAdi = d.personelAdi || d.personel || '-';
+                const p = canonName(personelAdi);
+                const hedefTutar = toNum(d.hedef || d.tutar || 0);
+                
+                // Eğer hedefMap'te yoksa ekle, varsa üzerine yaz (Ramazan hedefi öncelikli)
+                if(hedefTutar > 0){
+                  hedefMap[p] = hedefTutar;
+                }
+                
+                const ts = d.updatedAt?.toMillis?.() ? d.updatedAt.toMillis() : (d.createdAt?.toMillis?.() ? d.createdAt.toMillis() : 0);
+                if(ts > maxUpdateTs) maxUpdateTs = ts;
+              });
+              
+              sonHedefMap = {...hedefMap};
+              derleVeYansit(hedefMap, teminMap, teberruMap, tahsilatMap, kurbanKkMap, kurbanBbMap);
+            }, err=>{
+              console.warn('Ramazan personel hedefleri yüklenemedi:', err);
+            });
+        } else {
+          // Eski sistem: veriler koleksiyonundan oku
+          // İFTAR
+          unsubIftar = db.collection('veriler').where('tur','==','iftar').onSnapshot((snap)=>{
+            Object.keys(iftarMap).forEach(k=>delete iftarMap[k]);
+            snap.forEach(doc=>{
+              const d=doc.data()||{};
+              const when = getWhen(d);
+              if(d.ay !== undefined && d.yil !== undefined){
+                if(yil && d.yil !== yil) return;
+                if(ay && d.ay !== ay) return;
+                if(start && end && when && (when < start || when >= end)) return;
+              } else {
+                if (start && end){
+                  if (!when || when < start || when >= end) return;
+                } else if (yil){
+                  if (!when || when.getFullYear() !== yil) return;
+                }
               }
-            }
-            const p=canonName(d.personel||'-');
-            iftarMap[p]=(iftarMap[p]||0)+toNum(d.miktar);
-            const ts=d.createdAt?.toMillis?.()? d.createdAt.toMillis(): (d.createdAt||0);
-            if(ts>maxUpdateTs) maxUpdateTs=ts;
+              const p=canonName(d.personel||'-');
+              iftarMap[p]=(iftarMap[p]||0)+toNum(d.miktar);
+              const ts=d.createdAt?.toMillis?.()? d.createdAt.toMillis(): (d.createdAt||0);
+              if(ts>maxUpdateTs) maxUpdateTs=ts;
+            });
+            derleVeYansit(hedefMap, teminMap, teberruMap, tahsilatMap, kurbanKkMap, kurbanBbMap);
           });
-          derleVeYansit(hedefMap, teminMap, teberruMap, tahsilatMap, kurbanKkMap, kurbanBbMap);
-        });
 
-        // SAHUR
-        unsubSahur = db.collection('veriler').where('tur','==','sahur').onSnapshot((snap)=>{
-          Object.keys(sahurMap).forEach(k=>delete sahurMap[k]);
-          snap.forEach(doc=>{
-            const d=doc.data()||{};
-            const when = getWhen(d);
-            if(d.ay !== undefined && d.yil !== undefined){
-              if(yil && d.yil !== yil) return;
-              if(ay && d.ay !== ay) return;
-              if(start && end && when && (when < start || when >= end)) return;
-            } else {
-              if (start && end){
-                if (!when || when < start || when >= end) return;
-              } else if (yil){
-                if (!when || when.getFullYear() !== yil) return;
+          // SAHUR
+          unsubSahur = db.collection('veriler').where('tur','==','sahur').onSnapshot((snap)=>{
+            Object.keys(sahurMap).forEach(k=>delete sahurMap[k]);
+            snap.forEach(doc=>{
+              const d=doc.data()||{};
+              const when = getWhen(d);
+              if(d.ay !== undefined && d.yil !== undefined){
+                if(yil && d.yil !== yil) return;
+                if(ay && d.ay !== ay) return;
+                if(start && end && when && (when < start || when >= end)) return;
+              } else {
+                if (start && end){
+                  if (!when || when < start || when >= end) return;
+                } else if (yil){
+                  if (!when || when.getFullYear() !== yil) return;
+                }
               }
-            }
-            const p=canonName(d.personel||'-');
-            sahurMap[p]=(sahurMap[p]||0)+toNum(d.miktar);
-            const ts=d.createdAt?.toMillis?.()? d.createdAt.toMillis(): (d.createdAt||0);
-            if(ts>maxUpdateTs) maxUpdateTs=ts;
+              const p=canonName(d.personel||'-');
+              sahurMap[p]=(sahurMap[p]||0)+toNum(d.miktar);
+              const ts=d.createdAt?.toMillis?.()? d.createdAt.toMillis(): (d.createdAt||0);
+              if(ts>maxUpdateTs) maxUpdateTs=ts;
+            });
+            derleVeYansit(hedefMap, teminMap, teberruMap, tahsilatMap, kurbanKkMap, kurbanBbMap);
           });
-          derleVeYansit(hedefMap, teminMap, teberruMap, tahsilatMap, kurbanKkMap, kurbanBbMap);
-        });
 
-        // TAAHHÜT
-        unsubTaahhut = db.collection('veriler').where('tur','==','taahhut').onSnapshot((snap)=>{
-          Object.keys(taahhutMap).forEach(k=>delete taahhutMap[k]);
-          snap.forEach(doc=>{
-            const d=doc.data()||{};
-            const when = getWhen(d);
-            if(d.ay !== undefined && d.yil !== undefined){
-              if(yil && d.yil !== yil) return;
-              if(ay && d.ay !== ay) return;
-              if(start && end && when && (when < start || when >= end)) return;
-            } else {
-              if (start && end){
-                if (!when || when < start || when >= end) return;
-              } else if (yil){
-                if (!when || when.getFullYear() !== yil) return;
+          // TAAHHÜT
+          unsubTaahhut = db.collection('veriler').where('tur','==','taahhut').onSnapshot((snap)=>{
+            Object.keys(taahhutMap).forEach(k=>delete taahhutMap[k]);
+            snap.forEach(doc=>{
+              const d=doc.data()||{};
+              const when = getWhen(d);
+              if(d.ay !== undefined && d.yil !== undefined){
+                if(yil && d.yil !== yil) return;
+                if(ay && d.ay !== ay) return;
+                if(start && end && when && (when < start || when >= end)) return;
+              } else {
+                if (start && end){
+                  if (!when || when < start || when >= end) return;
+                } else if (yil){
+                  if (!when || when.getFullYear() !== yil) return;
+                }
               }
-            }
-            const p=canonName(d.personel||'-');
-            taahhutMap[p]=(taahhutMap[p]||0)+toNum(d.miktar);
-            const ts=d.createdAt?.toMillis?.()? d.createdAt.toMillis(): (d.createdAt||0);
-            if(ts>maxUpdateTs) maxUpdateTs=ts;
+              const p=canonName(d.personel||'-');
+              taahhutMap[p]=(taahhutMap[p]||0)+toNum(d.miktar);
+              const ts=d.createdAt?.toMillis?.()? d.createdAt.toMillis(): (d.createdAt||0);
+              if(ts>maxUpdateTs) maxUpdateTs=ts;
+            });
+            derleVeYansit(hedefMap, teminMap, teberruMap, tahsilatMap, kurbanKkMap, kurbanBbMap);
           });
-          derleVeYansit(hedefMap, teminMap, teberruMap, tahsilatMap, kurbanKkMap, kurbanBbMap);
-        });
+        }
       } else {
         // Hedef modunda iftar, sahur, taahhüt verilerini temizle
         Object.keys(iftarMap).forEach(k=>delete iftarMap[k]);
@@ -1666,6 +1802,9 @@
           if(x.tur==='teberru'){ turEt='etiket-teberru'; turAd='Teberru'; }
           else if(x.tur==='tahsilat'){ turEt='etiket-tahsilat'; turAd='Tahsilat'; }
           else if(x.tur==='kurban'){ turEt='etiket-kurban'; turAd = x.kurbanTipi ? ('Kurban - '+x.kurbanTipi) : 'Kurban'; }
+          else if(x.tur==='iftar'){ turEt='etiket-teberru'; turAd='İftar'; }
+          else if(x.tur==='sahur'){ turEt='etiket-teberru'; turAd='Sahur'; }
+          else if(x.tur==='taahhut'){ turEt='etiket-hedef'; turAd='Taahhüt'; }
 
           tbody.innerHTML += `<tr>
             <td>${x.tStr}</td>
@@ -1705,57 +1844,145 @@
       m_hareketTabloBody.innerHTML='<tr><td colspan="5">Yükleniyor...</td></tr>';
 
       const hedef=toNum(sonHedefMap[personel]||0);
-      let hedefTeminTop=0, teberruTop=0, tahsilatTop=0;
+      let hedefTeminTop=0, teberruTop=0, tahsilatTop=0, iftarTop=0, sahurTop=0, taahhutTop=0;
       const satirlar=[];
 
       try{
-        // Hedef temini
-        let hSnap;
-        if(kategori==='Tümü'){
-          hSnap = await db.collection('veriler').get();
-        }else if(kategori==='Kitap Kampanyası'){
-          hSnap = await db.collection('veriler').where('kategori','==','Kitap Kampanyası').get();
-        }else{
-          hSnap = await db.collection('veriler').where('tur','==','hedef').where('kategori','==',kategori).get();
-        }
-        hSnap.forEach(doc=>{
-          const d=doc.data()||{}; const p=canonName(d.personel||'-'); if(p!==personel) return;
-          hedefTeminTop += toNum(d.miktar);
-          const t=getWhen(d), tStr=t? t.toLocaleString('tr-TR'):'-';
-          satirlar.push({t, tStr, ad:(d.adSoyad||d.veren||'-'), miktar:toNum(d.miktar), tur:'hedef', aciklama:(d.aciklama||d.nereyeGeldi||'-'), miktarTip:'₺'});
-        });
-
-        // Teberru (yeni tarihli)
-        const s = await db.collection('veriler').where('tur','==','teberru').get();
-        s.forEach(doc=>{
-          const d=doc.data()||{}; const p=canonName(d.personel||'-'); if(p!==personel) return;
+        // Ramazan-ı Şerif modunda ve Ramazan kategorisi seçildiğinde özel işlem
+        const isRamazanModal = ekranModu === 'Ramazan-ı Şerif' && yil && (kategori.includes('Ramazan') || kategori.includes('ramazan'));
+        
+        if(isRamazanModal){
+          // Ramazan verilerini yükle
+          const ramazanYil = String(yil);
           
-          // Ay/yıl bazlı filtreleme (muhasebe-form'dan gelen veriler için)
-          if(d.ay !== undefined && d.yil !== undefined){
-            if(yil && d.yil !== yil) return;
-            if(ay && d.ay !== ay) return;
-            if(start && end){
-              const when = getWhen(d);
-              if(!when || when < start || when >= end) return;
+          // İFTAR-SAHUR kayıtları
+          const iftarSahurSnap = await db.collection('ramazan_serif').doc(ramazanYil).collection('kayitlar').get();
+          
+          iftarSahurSnap.forEach(doc=>{
+            const d=doc.data()||{};
+            // Silinen kayıtları atla (silindi alanı true olanları)
+            if(d.silindi === true) return;
+            if(d.yil && Number(d.yil) !== yil) return;
+            
+            const personelAdi = d.personelAdi || d.personel || '-';
+            const p = canonName(personelAdi);
+            if(p !== personel) return;
+            
+            const tutar = toNum(d.tutar || 0);
+            const t = d.tarih?.toDate ? d.tarih.toDate() : (d.createdAt?.toDate ? d.createdAt.toDate() : new Date());
+            const tStr = t ? t.toLocaleString('tr-TR') : '-';
+            
+            if(d.tip === 'iftar'){
+              iftarTop += tutar;
+              satirlar.push({t, tStr, ad:(d.sahip||d.adSoyad||d.veren||'-'), miktar:tutar, tur:'iftar', aciklama:(d.not||d.aciklama||'-'), miktarTip:'₺'});
+            } else if(d.tip === 'sahur'){
+              sahurTop += tutar;
+              satirlar.push({t, tStr, ad:(d.sahip||d.adSoyad||d.veren||'-'), miktar:tutar, tur:'sahur', aciklama:(d.not||d.aciklama||'-'), miktarTip:'₺'});
             }
-          } else {
-            // Eski format: tarih alanından kontrol
-            const when=getWhen(d);
-            if (start && end){
-              if (!when || when < start || when >= end) return;
-            } else if (yil){
-              if (!when || when.getFullYear() !== yil) return;
+          });
+          
+          // TEBERRU kayıtları
+          const teberruSnap = await db.collection('teberru_kayitlari')
+            .where('yil', '==', yil).get();
+          
+          teberruSnap.forEach(doc=>{
+            const d=doc.data()||{};
+            if(d.yil && Number(d.yil) !== yil) return;
+            
+            const personelAdi = d.personelAdi || d.personel || '-';
+            const p = canonName(personelAdi);
+            if(p !== personel) return;
+            
+            const miktar = toNum(d.miktar || 0);
+            teberruTop += miktar;
+            const t = d.tarih?.toDate ? d.tarih.toDate() : (d.createdAt?.toDate ? d.createdAt.toDate() : new Date());
+            const tStr = t ? t.toLocaleString('tr-TR') : '-';
+            satirlar.push({t, tStr, ad:(d.bagisci||d.adSoyad||d.veren||'-'), miktar, tur:'teberru', aciklama:(d.aciklama||'-'), miktarTip:'₺'});
+          });
+          
+          // TAAHHÜT kayıtları
+          const taahhutSnap = await db.collection('taahhut_kayitlari')
+            .where('yil', '==', yil).get();
+          
+          taahhutSnap.forEach(doc=>{
+            const d=doc.data()||{};
+            if(d.yil && Number(d.yil) !== yil) return;
+            
+            const personelAdi = d.personelAdi || d.personel || '-';
+            const p = canonName(personelAdi);
+            if(p !== personel) return;
+            
+            const miktar = toNum(d.miktar || 0);
+            taahhutTop += miktar;
+            const t = d.tarih?.toDate ? d.tarih.toDate() : (d.createdAt?.toDate ? d.createdAt.toDate() : new Date());
+            const tStr = t ? t.toLocaleString('tr-TR') : '-';
+            satirlar.push({t, tStr, ad:(d.bagisci||d.adSoyad||d.veren||'-'), miktar, tur:'taahhut', aciklama:(d.aciklama||'-'), miktarTip:'₺'});
+          });
+          
+          // Ramazan hedefleri
+          const ramazanHedefSnap = await db.collection('ramazan_serif').doc(ramazanYil).collection('personel_hedefleri').get();
+          ramazanHedefSnap.forEach(doc=>{
+            const d=doc.data()||{};
+            const personelAdi = d.personelAdi || d.personel || '-';
+            const p = canonName(personelAdi);
+            if(p !== personel) return;
+            
+            const hedefTutar = toNum(d.hedef || d.tutar || 0);
+            if(hedefTutar > 0){
+              hedefTeminTop += hedefTutar;
             }
+          });
+        } else {
+          // Normal mod: Hedef temini
+          let hSnap;
+          if(kategori==='Tümü'){
+            hSnap = await db.collection('veriler').get();
+          }else if(kategori==='Kitap Kampanyası'){
+            hSnap = await db.collection('veriler').where('kategori','==','Kitap Kampanyası').get();
+          }else{
+            hSnap = await db.collection('veriler').where('tur','==','hedef').where('kategori','==',kategori).get();
           }
-          
-          // Kategori filtresi teberru'lar için geçerli değil (teberru genel bir kavramdır)
-          
-          teberruTop += toNum(d.miktar);
-          const t = d.ay !== undefined && d.yil !== undefined ? 
-            new Date(d.yil, d.ay - 1, 1) : getWhen(d);
-          const tStr = t ? t.toLocaleString('tr-TR') : '-';
-          satirlar.push({t, tStr, ad:(d.adSoyad||d.veren||'-'), miktar:toNum(d.miktar), tur:'teberru', aciklama:(d.aciklama||d.nereyeGeldi||'-'), miktarTip:'₺'});
-        });
+          hSnap.forEach(doc=>{
+            const d=doc.data()||{}; const p=canonName(d.personel||'-'); if(p!==personel) return;
+            hedefTeminTop += toNum(d.miktar);
+            const t=getWhen(d), tStr=t? t.toLocaleString('tr-TR'):'-';
+            satirlar.push({t, tStr, ad:(d.adSoyad||d.veren||'-'), miktar:toNum(d.miktar), tur:'hedef', aciklama:(d.aciklama||d.nereyeGeldi||'-'), miktarTip:'₺'});
+          });
+        }
+
+        // Teberru (yeni tarihli) - Sadece Ramazan modunda değilse yükle
+        if(!isRamazanModal){
+          const s = await db.collection('veriler').where('tur','==','teberru').get();
+          s.forEach(doc=>{
+            const d=doc.data()||{}; const p=canonName(d.personel||'-'); if(p!==personel) return;
+            
+            // Ay/yıl bazlı filtreleme (muhasebe-form'dan gelen veriler için)
+            if(d.ay !== undefined && d.yil !== undefined){
+              if(yil && d.yil !== yil) return;
+              if(ay && d.ay !== ay) return;
+              if(start && end){
+                const when = getWhen(d);
+                if(!when || when < start || when >= end) return;
+              }
+            } else {
+              // Eski format: tarih alanından kontrol
+              const when=getWhen(d);
+              if (start && end){
+                if (!when || when < start || when >= end) return;
+              } else if (yil){
+                if (!when || when.getFullYear() !== yil) return;
+              }
+            }
+            
+            // Kategori filtresi teberru'lar için geçerli değil (teberru genel bir kavramdır)
+            
+            teberruTop += toNum(d.miktar);
+            const t = d.ay !== undefined && d.yil !== undefined ? 
+              new Date(d.yil, d.ay - 1, 1) : getWhen(d);
+            const tStr = t ? t.toLocaleString('tr-TR') : '-';
+            satirlar.push({t, tStr, ad:(d.adSoyad||d.veren||'-'), miktar:toNum(d.miktar), tur:'teberru', aciklama:(d.aciklama||d.nereyeGeldi||'-'), miktarTip:'₺'});
+          });
+        }
 
         // Kurban (iki şemeyi de oku)
         const sk = await db.collection('veriler').get();
@@ -1802,12 +2029,20 @@
         });
 
         const fmtPara = (n) => Math.round(n || 0).toLocaleString("tr-TR", {minimumFractionDigits: 0, maximumFractionDigits: 0});
-        const oran=hedef>0? Math.round((hedefTeminTop/hedef)*100) : 0;
+        let oran;
+        if(isRamazanModal){
+          const toplamTemin = iftarTop + sahurTop + taahhutTop + teberruTop;
+          oran = hedef>0? (toplamTemin/hedef)*100 : 0;
+          m_hedefTeminTop.textContent='₺'+fmtPara(toplamTemin);
+        } else {
+          oran = hedef>0? (hedefTeminTop/hedef)*100 : 0;
+          m_hedefTeminTop.textContent='₺'+fmtPara(hedefTeminTop);
+        }
+        const oranStr = Number(oran).toFixed(2).replace('.', ',');
         m_hedefTop.textContent='₺'+fmtPara(hedef);
-        m_hedefTeminTop.textContent='₺'+fmtPara(hedefTeminTop);
         m_teberruTop.textContent='₺'+fmtPara(teberruTop);
         m_tahsilatTop.textContent='₺'+fmtPara(tahsilatTop);
-        m_oranTop.textContent='%'+oran;
+        m_oranTop.textContent='%'+oranStr;
 
         __modalRows = satirlar;
         __modalSort = { key:'t', dir:'desc' };
@@ -1817,7 +2052,7 @@
         console.error('[detay modal] hata:',err);
         m_hareketTabloBody.innerHTML=`<tr><td colspan="5">Kayıtlar yüklenemedi.</td></tr>`;
         const fmtPara = (n) => Math.round(n || 0).toLocaleString("tr-TR", {minimumFractionDigits: 0, maximumFractionDigits: 0});
-        m_hedefTeminTop.textContent='₺0'; m_teberruTop.textContent='₺0'; m_tahsilatTop.textContent='₺0'; m_oranTop.textContent='%0';
+        m_hedefTeminTop.textContent='₺0'; m_teberruTop.textContent='₺0'; m_tahsilatTop.textContent='₺0'; m_oranTop.textContent='%0,00';
       }
     }
     window._acDetayModal=acDetayModal;

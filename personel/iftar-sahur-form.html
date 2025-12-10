@@ -319,16 +319,53 @@
         <div class="chip-group" style="margin-bottom:15px;">
           <div class="chip selected" onclick="selectEditRequestType('duzenle', this)">✏️ Düzenle</div>
           <div class="chip" onclick="selectEditRequestType('yer_degistir', this)">🔄 Yer Değiştir</div>
+          <div class="chip" onclick="selectEditRequestType('mahal_degistir', this)">🏛️ Mahal Değiştir</div>
+          <div class="chip" onclick="selectEditRequestType('musafir_degistir', this)">👥 Müsafir Adedi Değiştir</div>
           <div class="chip" onclick="selectEditRequestType('sil', this)">🗑️ Sil</div>
         </div>
         <input type="hidden" id="editRequestType" value="duzenle">
 
-        <!-- Yer Değiştir için tarih seçimi -->
+        <!-- Yer Değiştir için tarih ve mahal seçimi -->
         <div id="editRequestDateSelect" style="display:none; margin-bottom:15px;">
           <label class="form-label">Yeni Tarih Seçiniz</label>
           <input type="date" id="editRequestNewDate" class="full-input" style="margin-bottom:10px;">
+          
+          <label class="form-label" style="margin-top:10px;">Yeni Mahal Seçiniz (Opsiyonel)</label>
+          <div class="chip-group" id="editRequestMahalChips" style="flex-wrap:wrap; margin-bottom:10px;">
+            <div class="chip">Yükleniyor...</div>
+          </div>
+          <input type="hidden" id="editRequestNewMahal">
+          
           <div id="editRequestMahalWarning" style="display:none; padding:10px; background:#fff3cd; border-left:3px solid #ffc107; border-radius:6px; margin-top:10px; font-size:13px;">
             <strong>⚠️ Uyarı:</strong> <span id="editRequestMahalWarningText"></span>
+          </div>
+        </div>
+
+        <!-- Mahal Değiştir için mahal seçimi -->
+        <div id="editRequestMahalSelect" style="display:none; margin-bottom:15px;">
+          <label class="form-label">Yeni Mahal Seçiniz</label>
+          <div class="chip-group" id="editRequestMahalOnlyChips" style="flex-wrap:wrap; margin-bottom:10px;">
+            <div class="chip">Yükleniyor...</div>
+          </div>
+          <input type="hidden" id="editRequestNewMahalOnly">
+          
+          <div id="editRequestMahalOnlyWarning" style="display:none; padding:10px; background:#fff3cd; border-left:3px solid #ffc107; border-radius:6px; margin-top:10px; font-size:13px;">
+            <strong>⚠️ Uyarı:</strong> <span id="editRequestMahalOnlyWarningText"></span>
+          </div>
+        </div>
+
+        <!-- Müsafir Adedi Değiştir için input -->
+        <div id="editRequestMusafirSelect" style="display:none; margin-bottom:15px;">
+          <label class="form-label">Yeni Müsafir Adedi</label>
+          <div class="stepper">
+            <button type="button" class="step-btn" onclick="stepEditMusafir(-1)">-</button>
+            <span class="step-val" id="editRequestMusafirVal">0</span>
+            <button type="button" class="step-btn" onclick="stepEditMusafir(1)">+</button>
+          </div>
+          <input type="hidden" id="editRequestNewMusafir" value="0">
+          
+          <div id="editRequestMusafirWarning" style="display:none; padding:10px; background:#fff3cd; border-left:3px solid #ffc107; border-radius:6px; margin-top:10px; font-size:13px;">
+            <strong>⚠️ Uyarı:</strong> <span id="editRequestMusafirWarningText"></span>
           </div>
         </div>
 
@@ -1702,7 +1739,11 @@
             ${dayRecs.map((k, idx) => {
               const tipLabel = k.tip === 'iftar' ? '🌙 İftar' : '🌟 Sahur';
               const mahalName = k.mahalId ? (mahaller.find(m => m.id === k.mahalId)?.adi || '') : '';
-              const personelName = k.personelAdi || k.personel || 'Bilinmiyor';
+              // Eğer not'ta "Muhasebe" varsa, kaydeden olarak "Muhasebe" göster
+              let personelName = k.personelAdi || k.personel || 'Bilinmiyor';
+              if (k.not && k.not.includes('Muhasebe')) {
+                personelName = 'Muhasebe';
+              }
               return `
                 <div style="background:#f8f9fa; padding:12px; border-radius:8px; border-left:3px solid ${k.tip === 'iftar' ? 'var(--accent)' : '#3498db'};">
                   <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:8px;">
@@ -1991,12 +2032,59 @@
         return;
       }
       try {
-        // Tüm teberru kayıtlarını getir (yıl filtresi client-side yapılacak)
-        const snap = await db.collection('teberru_kayitlari')
-          .where('personelUid', '==', currentUser.uid)
-          .get();
+        const allDocs = new Map();
         
-        let allTeberru = snap.docs.map(d => ({ id: d.id, ...d.data(), tip: 'teberru' }));
+        // Önce personelUid ile filtrele
+        try {
+          const snap1 = await db.collection('teberru_kayitlari')
+            .where('personelUid', '==', currentUser.uid)
+            .get();
+          snap1.docs.forEach(doc => {
+            allDocs.set(doc.id, doc);
+          });
+        } catch(e) {
+          console.log('personelUid ile teberru sorgusu başarısız:', e);
+        }
+        
+        // kaydedenPersonelUid ile de filtrele
+        try {
+          const snap1b = await db.collection('teberru_kayitlari')
+            .where('kaydedenPersonelUid', '==', currentUser.uid)
+            .get();
+          snap1b.docs.forEach(doc => {
+            allDocs.set(doc.id, doc);
+          });
+        } catch(e) {
+          console.log('kaydedenPersonelUid ile teberru sorgusu başarısız:', e);
+        }
+        
+        // Personel adına göre de filtrele (muhasebe kayıtları için) - index gerekebilir
+        if(currentPersonelAdi) {
+          try {
+            const snap2 = await db.collection('teberru_kayitlari')
+              .where('personel', '==', currentPersonelAdi)
+              .get();
+            snap2.docs.forEach(doc => {
+              allDocs.set(doc.id, doc);
+            });
+          } catch(e) {
+            console.log('personel adı ile teberru sorgusu başarısız (index gerekebilir):', e);
+          }
+          
+          // kaydedenPersonel ile de dene
+          try {
+            const snap3 = await db.collection('teberru_kayitlari')
+              .where('kaydedenPersonel', '==', currentPersonelAdi)
+              .get();
+            snap3.docs.forEach(doc => {
+              allDocs.set(doc.id, doc);
+            });
+          } catch(e) {
+            console.log('kaydedenPersonel ile teberru sorgusu başarısız (index gerekebilir):', e);
+          }
+        }
+        
+        let allTeberru = Array.from(allDocs.values()).map(d => ({ id: d.id, ...d.data(), tip: 'teberru' }));
         
         // CURRENT_YIL varsa filtrele
         if(CURRENT_YIL) {
@@ -2006,6 +2094,19 @@
             return tYil === yilNum;
           });
         }
+        
+        // Personel kontrolü (ekstra güvenlik için)
+        allTeberru = allTeberru.filter(t => {
+          // personelUid eşleşiyorsa göster
+          if(t.personelUid === currentUser.uid || t.kaydedenPersonelUid === currentUser.uid) {
+            return true;
+          }
+          // personel adı eşleşiyorsa göster
+          if(currentPersonelAdi && (t.personel === currentPersonelAdi || t.kaydedenPersonel === currentPersonelAdi)) {
+            return true;
+          }
+          return false;
+        });
         
         teberruKayitlari = allTeberru;
         // Tarihe göre sırala (client-side)
@@ -2026,12 +2127,59 @@
         return;
       }
       try {
-        // Tüm taahhüt kayıtlarını getir (yıl filtresi client-side yapılacak)
-        const snap = await db.collection('taahhut_kayitlari')
-          .where('personelUid', '==', currentUser.uid)
-          .get();
+        const allDocs = new Map();
         
-        let allTaahhut = snap.docs.map(d => ({ id: d.id, ...d.data(), tip: 'taahhut' }));
+        // Önce personelUid ile filtrele
+        try {
+          const snap1 = await db.collection('taahhut_kayitlari')
+            .where('personelUid', '==', currentUser.uid)
+            .get();
+          snap1.docs.forEach(doc => {
+            allDocs.set(doc.id, doc);
+          });
+        } catch(e) {
+          console.log('personelUid ile taahhüt sorgusu başarısız:', e);
+        }
+        
+        // kaydedenPersonelUid ile de filtrele
+        try {
+          const snap1b = await db.collection('taahhut_kayitlari')
+            .where('kaydedenPersonelUid', '==', currentUser.uid)
+            .get();
+          snap1b.docs.forEach(doc => {
+            allDocs.set(doc.id, doc);
+          });
+        } catch(e) {
+          console.log('kaydedenPersonelUid ile taahhüt sorgusu başarısız:', e);
+        }
+        
+        // Personel adına göre de filtrele (muhasebe kayıtları için) - index gerekebilir
+        if(currentPersonelAdi) {
+          try {
+            const snap2 = await db.collection('taahhut_kayitlari')
+              .where('personel', '==', currentPersonelAdi)
+              .get();
+            snap2.docs.forEach(doc => {
+              allDocs.set(doc.id, doc);
+            });
+          } catch(e) {
+            console.log('personel adı ile taahhüt sorgusu başarısız (index gerekebilir):', e);
+          }
+          
+          // kaydedenPersonel ile de dene
+          try {
+            const snap3 = await db.collection('taahhut_kayitlari')
+              .where('kaydedenPersonel', '==', currentPersonelAdi)
+              .get();
+            snap3.docs.forEach(doc => {
+              allDocs.set(doc.id, doc);
+            });
+          } catch(e) {
+            console.log('kaydedenPersonel ile taahhüt sorgusu başarısız (index gerekebilir):', e);
+          }
+        }
+        
+        let allTaahhut = Array.from(allDocs.values()).map(d => ({ id: d.id, ...d.data(), tip: 'taahhut' }));
         
         // CURRENT_YIL varsa filtrele
         if(CURRENT_YIL) {
@@ -2041,6 +2189,19 @@
             return tYil === yilNum;
           });
         }
+        
+        // Personel kontrolü (ekstra güvenlik için)
+        allTaahhut = allTaahhut.filter(t => {
+          // personelUid eşleşiyorsa göster
+          if(t.personelUid === currentUser.uid || t.kaydedenPersonelUid === currentUser.uid) {
+            return true;
+          }
+          // personel adı eşleşiyorsa göster
+          if(currentPersonelAdi && (t.personel === currentPersonelAdi || t.kaydedenPersonel === currentPersonelAdi)) {
+            return true;
+          }
+          return false;
+        });
         
         taahhutKayitlari = allTaahhut;
         // Tarihe göre sırala (client-side)
@@ -2087,8 +2248,41 @@
       await Promise.all([loadTeberruKayitlari(), loadTaahhutKayitlari(), loadDuzenlemeTalepleri()]);
 
       const myKayitlar = kayitlar
-        .filter(k => k.personelUid === currentUser.uid && !k.silindi) // Silinen kayıtları gösterme (silinen_kayitlar koleksiyonuna taşınanlar)
+        .filter(k => {
+          // Silinen kayıtları gösterme
+          if(k.silindi) return false;
+          
+          // personelUid eşleşiyorsa göster
+          if(k.personelUid === currentUser.uid) return true;
+          
+          // personel adı eşleşiyorsa göster (muhasebe kayıtları için)
+          if(currentPersonelAdi && (k.personel === currentPersonelAdi || k.personelAdi === currentPersonelAdi)) {
+            return true;
+          }
+          
+          return false;
+        })
         .map(k => ({ ...k, kayitTipi: 'iftar-sahur' }));
+
+      // Tarih parse fonksiyonu
+      const parseDate = (record) => {
+        // İftar-sahur kayıtları için tarih alanı
+        if(record.tarih) {
+          if(record.tarih.toDate) return record.tarih.toDate();
+          if(record.tarih.seconds) return new Date(record.tarih.seconds * 1000);
+          if(typeof record.tarih === 'string') return new Date(record.tarih);
+          if(record.tarih instanceof Date) return record.tarih;
+        }
+        // Teberru ve taahhüt kayıtları için createdAt
+        if(record.createdAt) {
+          if(record.createdAt.toDate) return record.createdAt.toDate();
+          if(record.createdAt.seconds) return new Date(record.createdAt.seconds * 1000);
+          if(typeof record.createdAt === 'string') return new Date(record.createdAt);
+          if(record.createdAt instanceof Date) return record.createdAt;
+        }
+        // Fallback: çok eski bir tarih
+        return new Date(0);
+      };
 
       // Tüm kayıtları birleştir ve sırala: İftar -> Sahur -> Taahhüt -> Teberru
       const allRecords = [
@@ -2117,9 +2311,9 @@
         }
         
         // Aynı tipse tarihe göre (eskiden yeniye)
-        const aDate = a.tarih?.toDate ? a.tarih.toDate() : (a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.tarih || a.createdAt));
-        const bDate = b.tarih?.toDate ? b.tarih.toDate() : (b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.tarih || b.createdAt));
-        return aDate - bDate;
+        const aDate = parseDate(a);
+        const bDate = parseDate(b);
+        return aDate.getTime() - bDate.getTime();
       });
 
       // KPI hesaplama
@@ -2197,6 +2391,10 @@
               <div style="font-size:13px; color:#856404; line-height:1.5;">${k.not}</div>
             </div>` : ''}
             
+            <div style="background:#e8f4f8; padding:8px; border-radius:6px; margin-bottom:10px;">
+              <div style="font-size:11px; color:#17a2b8; font-weight:600;">👤 Kaydeden: ${(k.not && k.not.includes('Muhasebe')) ? 'Muhasebe' : (k.personelAdi || k.personel || 'Bilinmiyor')}</div>
+            </div>
+            
             ${updateInfo}
             ${duzenlemeTalepleri.some(t => t.kayitId === k.id && t.kayitTipi === 'iftar-sahur') ? 
               '<div style="background:#d1ecf1; padding:8px; border-radius:6px; border-left:3px solid #17a2b8; margin-top:8px;"><div style="font-size:11px; color:#17a2b8; font-weight:600;">📋 Düzenleme talep edildi</div></div>' : ''}
@@ -2265,6 +2463,10 @@
                 <div style="font-size:11px; color:#856404; margin-bottom:4px; font-weight:600;">📝 Açıklama</div>
                 <div style="font-size:13px; color:#856404; line-height:1.5;">${k.aciklama}</div>
               </div>` : ''}
+              
+              <div style="background:#e8f4f8; padding:8px; border-radius:6px; margin-bottom:10px;">
+                <div style="font-size:11px; color:#17a2b8; font-weight:600;">👤 Kaydeden: ${(k.aciklama && k.aciklama.includes('Muhasebe')) || (k.not && k.not.includes('Muhasebe')) ? 'Muhasebe' : (k.personelAdi || k.personel || k.kaydedenPersonel || 'Bilinmiyor')}</div>
+              </div>
               
               ${updateInfo}
               ${duzenlemeTalepleri.some(t => t.kayitId === k.id && t.kayitTipi === 'taahhut') ? 
@@ -2346,6 +2548,10 @@
                 <div style="font-size:13px; color:#856404; line-height:1.5;">${k.aciklama}</div>
               </div>` : ''}
               
+              <div style="background:#e8f4f8; padding:8px; border-radius:6px; margin-bottom:10px;">
+                <div style="font-size:11px; color:#17a2b8; font-weight:600;">👤 Kaydeden: ${(k.aciklama && k.aciklama.includes('Muhasebe')) || (k.not && k.not.includes('Muhasebe')) ? 'Muhasebe' : (k.personelAdi || k.personel || k.kaydedenPersonel || 'Bilinmiyor')}</div>
+              </div>
+              
               ${updateInfo}
               ${duzenlemeTalepleri.some(t => t.kayitId === k.id && t.kayitTipi === 'teberru') ? 
                 '<div style="background:#d1ecf1; padding:8px; border-radius:6px; border-left:3px solid #17a2b8; margin-top:8px;"><div style="font-size:11px; color:#17a2b8; font-weight:600;">📋 Düzenleme talep edildi</div></div>' : ''}
@@ -2360,6 +2566,25 @@
     }
 
     // Düzenleme talep fonksiyonları
+    // Kayıt tipine göre düzenleme seçeneklerini göster/gizle
+    function toggleEditRequestOptions(kayitTipi) {
+      const chips = qs('#editRequestModal').querySelectorAll('.chip');
+      chips.forEach(chip => {
+        const text = chip.textContent;
+        if(kayitTipi === 'iftar-sahur') {
+          // İftar-sahur için tüm seçenekler görünür
+          chip.style.display = 'flex';
+        } else if(kayitTipi === 'teberru' || kayitTipi === 'taahhut') {
+          // Teberru ve taahhüt için sadece "Düzenle" görünür
+          if(text.includes('Düzenle')) {
+            chip.style.display = 'flex';
+          } else {
+            chip.style.display = 'none';
+          }
+        }
+      });
+    }
+
     function editMyRecord(recordId) {
       const kayit = kayitlar.find(k => k.id === recordId);
       if(!kayit || kayit.personelUid !== currentUser.uid) {
@@ -2382,12 +2607,23 @@
       qs('#editRequestType').value = 'duzenle';
       qs('#editRequestAciklama').value = '';
       qs('#editRequestNewDate').value = '';
+      qs('#editRequestNewMahal').value = '';
+      qs('#editRequestNewMahalOnly').value = '';
+      qs('#editRequestNewMusafir').value = '0';
+      qs('#editRequestMusafirVal').innerText = '0';
       qs('#editRequestDateSelect').style.display = 'none';
+      qs('#editRequestMahalSelect').style.display = 'none';
+      qs('#editRequestMusafirSelect').style.display = 'none';
       qs('#editRequestMahalWarning').style.display = 'none';
+      qs('#editRequestMahalOnlyWarning').style.display = 'none';
+      qs('#editRequestMusafirWarning').style.display = 'none';
       
       // Chip seçimlerini sıfırla
       qs('#editRequestModal').querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
       qs('#editRequestModal').querySelector('.chip').classList.add('selected');
+      
+      // Seçenekleri göster/gizle
+      toggleEditRequestOptions('iftar-sahur');
       
       qs('#editRequestModal').classList.add('open');
     }
@@ -2395,33 +2631,163 @@
     function closeEditRequestModal() {
       qs('#editRequestModal').classList.remove('open');
       qs('#editRequestForm').reset();
+      qs('#editRequestDateSelect').style.display = 'none';
+      qs('#editRequestMahalSelect').style.display = 'none';
+      qs('#editRequestMusafirSelect').style.display = 'none';
+      qs('#editRequestMahalWarning').style.display = 'none';
+      qs('#editRequestMahalOnlyWarning').style.display = 'none';
+      qs('#editRequestMusafirWarning').style.display = 'none';
+      qs('#editRequestNewMahal').value = '';
+      qs('#editRequestNewMahalOnly').value = '';
+      qs('#editRequestNewMusafir').value = '0';
+      qs('#editRequestMusafirVal').innerText = '0';
     }
 
     function selectEditRequestType(type, element) {
+      // Teberru ve taahhüt için sadece "duzenle" seçeneği geçerli
+      const kayitTipi = qs('#editRequestKayitTipi').value;
+      if((kayitTipi === 'teberru' || kayitTipi === 'taahhut') && type !== 'duzenle') {
+        showAlert('Teberru ve taahhüt kayıtları için sadece düzenleme talebi gönderilebilir', 'error');
+        return;
+      }
+      
       qs('#editRequestType').value = type;
       qs('#editRequestModal').querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
       element.classList.add('selected');
       
+      const recordId = qs('#editRequestRecordId').value;
+      const kayit = kayitlar.find(k => k.id === recordId);
+      
       if(type === 'yer_degistir') {
         qs('#editRequestDateSelect').style.display = 'block';
+        qs('#editRequestMahalSelect').style.display = 'none';
         // Mevcut tarihi varsayılan olarak ayarla
-        const recordId = qs('#editRequestRecordId').value;
-        const kayit = kayitlar.find(k => k.id === recordId);
         if(kayit) {
           const kDate = kayit.tarih.toDate ? kayit.tarih.toDate() : new Date(kayit.tarih);
           qs('#editRequestNewDate').value = kDate.toISOString().slice(0,10);
         }
+        renderEditRequestMahaller('editRequestMahalChips', 'editRequestNewMahal', kayit);
         checkNewDateMahal();
+      } else if(type === 'mahal_degistir') {
+        qs('#editRequestDateSelect').style.display = 'none';
+        qs('#editRequestMahalSelect').style.display = 'block';
+        qs('#editRequestMusafirSelect').style.display = 'none';
+        qs('#editRequestMahalWarning').style.display = 'none';
+        renderEditRequestMahaller('editRequestMahalOnlyChips', 'editRequestNewMahalOnly', kayit);
+        checkNewMahalOnly();
+      } else if(type === 'musafir_degistir') {
+        qs('#editRequestDateSelect').style.display = 'none';
+        qs('#editRequestMahalSelect').style.display = 'none';
+        qs('#editRequestMusafirSelect').style.display = 'block';
+        qs('#editRequestMahalWarning').style.display = 'none';
+        qs('#editRequestMahalOnlyWarning').style.display = 'none';
+        qs('#editRequestMusafirWarning').style.display = 'none';
+        // Mevcut müsafir adedini ayarla
+        if(kayit) {
+          const mevcutMusafir = kayit.musafirAdedi || 0;
+          qs('#editRequestNewMusafir').value = mevcutMusafir;
+          qs('#editRequestMusafirVal').innerText = mevcutMusafir;
+        }
+        checkNewMusafir();
       } else {
         qs('#editRequestDateSelect').style.display = 'none';
+        qs('#editRequestMahalSelect').style.display = 'none';
+        qs('#editRequestMusafirSelect').style.display = 'none';
         qs('#editRequestMahalWarning').style.display = 'none';
+        qs('#editRequestMahalOnlyWarning').style.display = 'none';
+        qs('#editRequestMusafirWarning').style.display = 'none';
+      }
+    }
+
+    // Mahal render fonksiyonu (düzenleme için)
+    function renderEditRequestMahaller(containerId, inputId, kayit) {
+      const container = qs(`#${containerId}`);
+      if(!container || !kayit) return;
+      
+      const musafirAdedi = kayit.musafirAdedi || 0;
+      // Tarih: Yer değiştir modunda yeni tarih, mahal değiştir modunda mevcut tarih
+      let tarihStr = '';
+      if(containerId === 'editRequestMahalChips') {
+        // Yer değiştir modu - yeni tarih varsa onu kullan, yoksa mevcut tarih
+        const newDateInput = qs('#editRequestNewDate');
+        tarihStr = newDateInput?.value || (kayit.tarih.toDate ? kayit.tarih.toDate().toISOString().slice(0,10) : kayit.tarih);
+      } else {
+        // Mahal değiştir modu - mevcut tarih
+        tarihStr = kayit.tarih.toDate ? kayit.tarih.toDate().toISOString().slice(0,10) : kayit.tarih;
+      }
+      const tip = kayit.tip;
+      const istirak = kayit.istirak === true;
+      
+      container.innerHTML = '';
+      
+      if(mahaller.length === 0) {
+        container.innerHTML = '<div class="chip" style="opacity:0.5;">Mahal bulunamadı</div>';
+        return;
+      }
+      
+      mahaller.forEach(m => {
+        const minMusafir = m.minMusafir || 1;
+        const maxMusafir = m.maxMusafir || 9999;
+        const uyumlu = musafirAdedi >= minMusafir && musafirAdedi <= maxMusafir;
+        
+        // Mevcut mahali seçili göster
+        const isCurrentMahal = m.id === kayit.mahalId;
+        
+        // Mahal kontrolü
+        let mahalDolu = false;
+        if(uyumlu && istirak && tarihStr) {
+          const mahalCheck = checkMahalAvailability(tarihStr, tip, m.id, kayit.id);
+          mahalDolu = !mahalCheck.allowed;
+        }
+        
+        const chip = document.createElement('div');
+        chip.className = `chip ${uyumlu && !mahalDolu ? '' : 'disabled'} ${isCurrentMahal ? 'selected' : ''}`;
+        chip.style.opacity = (uyumlu && !mahalDolu) ? '1' : '0.5';
+        chip.style.cursor = (uyumlu && !mahalDolu) ? 'pointer' : 'not-allowed';
+        
+        if(mahalDolu) {
+          chip.style.background = '#ffebee';
+          chip.style.borderColor = '#f44336';
+          chip.title = `${tip === 'iftar' ? 'İftar' : 'Sahur'} için ${tarihStr} tarihinde bu mahal zaten dolu!`;
+        } else if(!uyumlu) {
+          chip.title = `Bu mahal için müsafir sayısı ${minMusafir}-${maxMusafir} arasında olmalıdır`;
+        } else if(isCurrentMahal) {
+          chip.title = 'Mevcut mahal';
+        }
+        
+        if(uyumlu && !mahalDolu && !isCurrentMahal) {
+          chip.onclick = () => {
+            container.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+            chip.classList.add('selected');
+            qs(`#${inputId}`).value = m.id;
+            if(containerId === 'editRequestMahalChips') {
+              checkNewDateMahal();
+            } else {
+              checkNewMahalOnly();
+            }
+          };
+        }
+        
+        chip.innerHTML = `
+          ${m.adi}
+          ${isCurrentMahal ? '<span style="font-size:10px; margin-left:5px; color:var(--primary);">(Mevcut)</span>' : ''}
+          ${!uyumlu ? `<span style="font-size:10px; margin-left:5px; color:#999;">(${minMusafir}-${maxMusafir})</span>` : ''}
+          ${mahalDolu ? `<span style="font-size:10px; margin-left:5px; color:#f44336;">(Dolu)</span>` : ''}
+        `;
+        
+        container.appendChild(chip);
+      });
+      
+      // Mevcut mahali seçili olarak ayarla
+      if(kayit.mahalId) {
+        qs(`#${inputId}`).value = kayit.mahalId;
       }
     }
 
     function checkNewDateMahal() {
       const recordId = qs('#editRequestRecordId').value;
       const kayit = kayitlar.find(k => k.id === recordId);
-      if(!kayit || !kayit.mahalId || kayit.istirak !== true) {
+      if(!kayit || kayit.istirak !== true) {
         qs('#editRequestMahalWarning').style.display = 'none';
         return;
       }
@@ -2432,22 +2798,138 @@
         return;
       }
 
-      const mahalCheck = checkMahalAvailability(newDateStr, kayit.tip, kayit.mahalId, recordId);
-      if(!mahalCheck.allowed) {
-        qs('#editRequestMahalWarningText').textContent = mahalCheck.message + ' İsterseniz mahal değişikliği yapıp bu tarihe geçebilirsiniz.';
-        qs('#editRequestMahalWarning').style.display = 'block';
+      const newMahalId = qs('#editRequestNewMahal').value || kayit.mahalId;
+      
+      // Eğer mahal değişmemişse, mevcut mahali kontrol et
+      if(newMahalId === kayit.mahalId) {
+        const mahalCheck = checkMahalAvailability(newDateStr, kayit.tip, kayit.mahalId, recordId);
+        if(!mahalCheck.allowed) {
+          qs('#editRequestMahalWarningText').textContent = mahalCheck.message + ' İsterseniz mahal değişikliği yapıp bu tarihe geçebilirsiniz.';
+          qs('#editRequestMahalWarning').style.display = 'block';
+        } else {
+          qs('#editRequestMahalWarning').style.display = 'none';
+        }
       } else {
-        qs('#editRequestMahalWarning').style.display = 'none';
+        // Yeni mahal seçilmişse kontrol et
+        const mahalCheck = checkMahalAvailability(newDateStr, kayit.tip, newMahalId, recordId);
+        if(!mahalCheck.allowed) {
+          qs('#editRequestMahalWarningText').textContent = mahalCheck.message;
+          qs('#editRequestMahalWarning').style.display = 'block';
+        } else {
+          qs('#editRequestMahalWarning').style.display = 'none';
+        }
       }
     }
 
-    qs('#editRequestNewDate').addEventListener('change', checkNewDateMahal);
+    function checkNewMahalOnly() {
+      const recordId = qs('#editRequestRecordId').value;
+      const kayit = kayitlar.find(k => k.id === recordId);
+      if(!kayit || kayit.istirak !== true) {
+        // İştirak etmeyecekse uyarı gösterme
+        qs('#editRequestMahalOnlyWarning').style.display = 'none';
+        return;
+      }
+
+      const newMahalId = qs('#editRequestNewMahalOnly').value;
+      if(!newMahalId) {
+        // Mahal seçilmemişse uyarı gösterme
+        qs('#editRequestMahalOnlyWarning').style.display = 'none';
+        return;
+      }
+
+      // Eğer mahal değişmemişse uyarı gösterme
+      if(newMahalId === kayit.mahalId) {
+        qs('#editRequestMahalOnlyWarning').style.display = 'none';
+        return;
+      }
+
+      // Mahal kontrolü (hem ekleme hem değiştirme için)
+      const tarihStr = kayit.tarih.toDate ? kayit.tarih.toDate().toISOString().slice(0,10) : kayit.tarih;
+      const mahalCheck = checkMahalAvailability(tarihStr, kayit.tip, newMahalId, recordId);
+      if(!mahalCheck.allowed) {
+        qs('#editRequestMahalOnlyWarningText').textContent = mahalCheck.message;
+        qs('#editRequestMahalOnlyWarning').style.display = 'block';
+      } else {
+        qs('#editRequestMahalOnlyWarning').style.display = 'none';
+      }
+    }
+
+    qs('#editRequestNewDate').addEventListener('change', () => {
+      const recordId = qs('#editRequestRecordId').value;
+      const kayit = kayitlar.find(k => k.id === recordId);
+      if(kayit) {
+        renderEditRequestMahaller('editRequestMahalChips', 'editRequestNewMahal', kayit);
+      }
+      checkNewDateMahal();
+    });
 
     function stepEditGuest(n) {
       let v = parseInt(qs('#editGuest').value) + n;
       if(v < 0) v = 0;
       qs('#editGuest').value = v;
       qs('#editGuestVal').innerText = v;
+    }
+
+    function stepEditMusafir(n) {
+      let v = parseInt(qs('#editRequestNewMusafir').value) + n;
+      if(v < 0) v = 0;
+      qs('#editRequestNewMusafir').value = v;
+      qs('#editRequestMusafirVal').innerText = v;
+      checkNewMusafir();
+    }
+
+    function checkNewMusafir() {
+      const recordId = qs('#editRequestRecordId').value;
+      const kayit = kayitlar.find(k => k.id === recordId);
+      if(!kayit) {
+        qs('#editRequestMusafirWarning').style.display = 'none';
+        return;
+      }
+
+      const newMusafirAdedi = parseInt(qs('#editRequestNewMusafir').value) || 0;
+      const eskiMusafirAdedi = kayit.musafirAdedi || 0;
+      const eskiIstirak = kayit.istirak === true;
+      const yeniIstirak = newMusafirAdedi > 0;
+      const istirakDegisti = eskiIstirak !== yeniIstirak;
+
+      if(newMusafirAdedi === eskiMusafirAdedi && !istirakDegisti) {
+        qs('#editRequestMusafirWarning').style.display = 'none';
+        return;
+      }
+
+      let warningText = '';
+      let hasWarning = false;
+
+      // İştirak durumu değişikliği uyarısı
+      if(istirakDegisti) {
+        if(yeniIstirak) {
+          warningText = `ℹ️ Müsafir adedi ${newMusafirAdedi} yapıldığı için kayıt otomatik olarak "İştirak edecek" olarak değiştirilecek.`;
+        } else {
+          warningText = `ℹ️ Müsafir adedi 0 yapıldığı için kayıt otomatik olarak "İştirak etmeyecek" olarak değiştirilecek ve mahal kaldırılacak.`;
+        }
+        hasWarning = true;
+      }
+
+      // Mahal uyumluluğu kontrolü (sadece iştirak edecekse)
+      if(yeniIstirak && kayit.mahalId) {
+        const mahal = mahaller.find(m => m.id === kayit.mahalId);
+        if(mahal) {
+          const minMusafir = mahal.minMusafir || 1;
+          const maxMusafir = mahal.maxMusafir || 9999;
+          if(newMusafirAdedi < minMusafir || newMusafirAdedi > maxMusafir) {
+            const mahalWarning = `⚠️ Seçilen mahal (${mahal.adi}) için müsafir sayısı ${minMusafir}-${maxMusafir} arasında olmalıdır. Mahal uyumsuz olduğu için kaldırılacak.`;
+            warningText = warningText ? warningText + ' ' + mahalWarning : mahalWarning;
+            hasWarning = true;
+          }
+        }
+      }
+
+      if(hasWarning) {
+        qs('#editRequestMusafirWarningText').innerHTML = warningText;
+        qs('#editRequestMusafirWarning').style.display = 'block';
+      } else {
+        qs('#editRequestMusafirWarning').style.display = 'none';
+      }
     }
 
     qs('#editRequestForm').addEventListener('submit', async (e) => {
@@ -2509,6 +2991,12 @@
               return;
             }
 
+            const newMahalId = qs('#editRequestNewMahal').value || kayit.mahalId;
+            const eskiTarih = kayit.tarih.toDate ? kayit.tarih.toDate() : new Date(kayit.tarih);
+            const eskiTarihStr = eskiTarih.toISOString().slice(0,10);
+            const tarihDegisti = eskiTarihStr !== newDateStr;
+            const mahalDegisti = kayit.mahalId && newMahalId && kayit.mahalId !== newMahalId;
+
             // Kapasite kontrolü
             const kapasiteCheck = checkKapasite(newDateStr, kayit.tip);
             if(!kapasiteCheck.allowed) {
@@ -2522,7 +3010,9 @@
                 personelAdi: currentPersonelAdi || 'Bilinmiyor',
                 durum: 'beklemede',
                 yeniTarih: newDateStr,
-                eskiTarih: kayit.tarih.toDate ? kayit.tarih.toDate().toISOString().slice(0,10) : kayit.tarih,
+                eskiTarih: eskiTarihStr,
+                yeniMahalId: newMahalId,
+                eskiMahalId: kayit.mahalId,
                 tip: kayit.tip,
                 mahalId: kayit.mahalId,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -2536,9 +3026,8 @@
             }
 
             // Mahal kontrolü (yer değiştir için)
-            let mahalUygun = true;
-            if(kayit.mahalId && kayit.istirak === true) {
-              const mahalCheck = checkMahalAvailability(newDateStr, kayit.tip, kayit.mahalId, recordId);
+            if(newMahalId && kayit.istirak === true) {
+              const mahalCheck = checkMahalAvailability(newDateStr, kayit.tip, newMahalId, recordId);
               if(!mahalCheck.allowed) {
                 // Mahal doluysa sadece talep olarak kaydet
                 const talepData = {
@@ -2550,7 +3039,9 @@
                   personelAdi: currentPersonelAdi || 'Bilinmiyor',
                   durum: 'beklemede',
                   yeniTarih: newDateStr,
-                  eskiTarih: kayit.tarih.toDate ? kayit.tarih.toDate().toISOString().slice(0,10) : kayit.tarih,
+                  eskiTarih: eskiTarihStr,
+                  yeniMahalId: newMahalId,
+                  eskiMahalId: kayit.mahalId,
                   tip: kayit.tip,
                   mahalId: kayit.mahalId,
                   createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -2565,13 +3056,11 @@
             }
 
             // Şartlar uygunsa otomatik yer değiştir
-            const eskiTarih = kayit.tarih.toDate ? kayit.tarih.toDate() : new Date(kayit.tarih);
-            const eskiTarihStr = eskiTarih.toISOString().slice(0,10);
             const yeniTarihParts = newDateStr.split('-');
             const yeniTarih = new Date(yeniTarihParts[0], yeniTarihParts[1]-1, yeniTarihParts[2], 12, 0, 0);
             
-            // Not alanına geçmiş tarihleri ekle
-            let tarihGecmisi = kayit.not || '';
+            // Not alanına geçmiş tarih ve mahal bilgilerini ekle
+            let notGecmisi = kayit.not || '';
             const formatTarih = (date) => {
               const d = new Date(date);
               const gun = String(d.getDate()).padStart(2, '0');
@@ -2580,28 +3069,288 @@
               return `${gun}.${ay}.${yil}`;
             };
             
-            if(tarihGecmisi && tarihGecmisi.includes('tarihine geçti')) {
-              // Zaten geçmiş var, ekle
-              const tarihListesi = tarihGecmisi.match(/\d{2}\.\d{2}\.\d{4}/g) || [];
-              const yeniTarihStr = formatTarih(yeniTarih);
-              tarihGecmisi = tarihListesi.join(' > ') + ' > ' + yeniTarihStr + ' tarihine geçti';
-            } else {
-              // İlk geçiş
+            const getMahalAdi = (mahalId) => {
+              if(!mahalId) return '';
+              const mahal = mahaller.find(m => m.id === mahalId);
+              return mahal ? mahal.adi : `Mahal ${mahalId}`;
+            };
+            
+            let gecmisNotlari = [];
+            
+            // Tarih geçmişi
+            if(tarihDegisti) {
               const eskiTarihStr = formatTarih(eskiTarih);
               const yeniTarihStr = formatTarih(yeniTarih);
-              tarihGecmisi = (tarihGecmisi ? tarihGecmisi + ' | ' : '') + 
-                eskiTarihStr + ' > ' + yeniTarihStr + ' tarihine geçti';
+              if(notGecmisi && notGecmisi.includes('tarihine geçti')) {
+                const tarihListesi = notGecmisi.match(/\d{2}\.\d{2}\.\d{4}/g) || [];
+                gecmisNotlari.push(tarihListesi.join(' > ') + ' > ' + yeniTarihStr + ' tarihine geçti');
+              } else {
+                gecmisNotlari.push(eskiTarihStr + ' > ' + yeniTarihStr + ' tarihine geçti');
+              }
+            }
+            
+            // Mahal geçmişi
+            if(mahalDegisti) {
+              const eskiMahalAdi = getMahalAdi(kayit.mahalId);
+              const yeniMahalAdi = getMahalAdi(newMahalId);
+              if(notGecmisi && notGecmisi.includes('mahale alındı')) {
+                const mahalListesi = notGecmisi.match(/Mahal \d+|[\w\s]+ mahale alındı/g) || [];
+                gecmisNotlari.push(mahalListesi.join(' > ') + ' > ' + yeniMahalAdi + ' mahale alındı');
+              } else {
+                gecmisNotlari.push(eskiMahalAdi + ' > ' + yeniMahalAdi + ' mahale alındı');
+              }
+            }
+            
+            if(gecmisNotlari.length > 0) {
+              notGecmisi = (notGecmisi ? notGecmisi + ' | ' : '') + gecmisNotlari.join(' | ');
+            }
+
+            // Not alanı karakter limiti kontrolü (2000 karakter)
+            const MAX_NOT_LENGTH = 2000;
+            if(notGecmisi.length > MAX_NOT_LENGTH) {
+              // En eski notları temizle, sadece son 1500 karakteri tut
+              notGecmisi = '... (eski notlar temizlendi) | ' + notGecmisi.slice(-1500);
+            }
+
+            // Güncelleme verisi
+            const updateData = {
+              not: notGecmisi,
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            
+            if(tarihDegisti) {
+              updateData.tarih = firebase.firestore.Timestamp.fromDate(yeniTarih);
+            }
+            
+            if(mahalDegisti && newMahalId) {
+              updateData.mahalId = newMahalId;
+            }
+
+            // Kaydı güncelle
+            await db.collection('ramazan_serif').doc(String(CURRENT_YIL)).collection('kayitlar').doc(recordId).update(updateData);
+
+            closeEditRequestModal();
+            showAlert('Yer değiştirme işlemi başarıyla tamamlandı!', 'success');
+            loadMyRecords();
+            return;
+          }
+
+          if(talepTipi === 'mahal_degistir') {
+            const newMahalId = qs('#editRequestNewMahalOnly').value;
+            if(!newMahalId) {
+              showAlert('Lütfen bir mahal seçiniz', 'error');
+              btn.disabled = false;
+              btn.innerText = 'Kaydet ve Kapat';
+              return;
+            }
+
+            // Eğer mahal değişmemişse uyarı ver
+            if(newMahalId === kayit.mahalId) {
+              showAlert('Lütfen farklı bir mahal seçiniz', 'error');
+              btn.disabled = false;
+              btn.innerText = 'Kaydet ve Kapat';
+              return;
+            }
+
+            // İştirak kontrolü: Sadece iştirak edecek kayıtlar için mahal seçimi yapılabilir
+            if(kayit.istirak !== true) {
+              showAlert('İştirak etmeyecek kayıtlar için mahal seçimi yapılamaz. Önce müsafir adedini artırarak iştirak durumunu değiştiriniz.', 'error');
+              btn.disabled = false;
+              btn.innerText = 'Kaydet ve Kapat';
+              return;
+            }
+
+            const tarihStr = kayit.tarih.toDate ? kayit.tarih.toDate().toISOString().slice(0,10) : kayit.tarih;
+            
+            // Mahal kontrolü
+            const mahalCheck = checkMahalAvailability(tarihStr, kayit.tip, newMahalId, recordId);
+            if(!mahalCheck.allowed) {
+              // Mahal doluysa sadece talep olarak kaydet
+              const talepData = {
+                kayitId: recordId,
+                kayitTipi: kayitTipi,
+                talepTipi: talepTipi,
+                aciklama: aciklama,
+                personelUid: currentUser.uid,
+                personelAdi: currentPersonelAdi || 'Bilinmiyor',
+                durum: 'beklemede',
+                yeniMahalId: newMahalId,
+                eskiMahalId: kayit.mahalId,
+                tip: kayit.tip,
+                mahalId: kayit.mahalId,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                yil: CURRENT_YIL
+              };
+              await db.collection('ramazan_serif').doc(String(CURRENT_YIL)).collection('duzenleme_talepleri').add(talepData);
+              closeEditRequestModal();
+              showAlert('Mahal dolu olduğu için talep olarak kaydedildi. Onay bekleniyor.', 'info');
+              loadMyRecords();
+              return;
+            }
+
+            // Şartlar uygunsa otomatik mahal değiştir veya ekle
+            let notGecmisi = kayit.not || '';
+            const getMahalAdi = (mahalId) => {
+              if(!mahalId) return '';
+              const mahal = mahaller.find(m => m.id === mahalId);
+              return mahal ? mahal.adi : `Mahal ${mahalId}`;
+            };
+            
+            const eskiMahalAdi = getMahalAdi(kayit.mahalId);
+            const yeniMahalAdi = getMahalAdi(newMahalId);
+            const mahalEkleme = !kayit.mahalId; // İlk mahal ekleme mi?
+            
+            if(mahalEkleme) {
+              // İlk mahal ekleme
+              notGecmisi = (notGecmisi ? notGecmisi + ' | ' : '') + 
+                yeniMahalAdi + ' mahale eklendi';
+            } else if(notGecmisi && notGecmisi.includes('mahale alındı')) {
+              // Zaten mahal geçmişi var, ekle
+              const mahalListesi = notGecmisi.match(/[\w\s]+ mahale alındı/g) || [];
+              notGecmisi = mahalListesi.join(' > ') + ' > ' + yeniMahalAdi + ' mahale alındı';
+            } else {
+              // Mahal değişikliği
+              notGecmisi = (notGecmisi ? notGecmisi + ' | ' : '') + 
+                eskiMahalAdi + ' > ' + yeniMahalAdi + ' mahale alındı';
+            }
+
+            // Not alanı karakter limiti kontrolü (2000 karakter)
+            const MAX_NOT_LENGTH = 2000;
+            if(notGecmisi.length > MAX_NOT_LENGTH) {
+              // En eski notları temizle, sadece son 1500 karakteri tut
+              notGecmisi = '... (eski notlar temizlendi) | ' + notGecmisi.slice(-1500);
             }
 
             // Kaydı güncelle
             await db.collection('ramazan_serif').doc(String(CURRENT_YIL)).collection('kayitlar').doc(recordId).update({
-              tarih: firebase.firestore.Timestamp.fromDate(yeniTarih),
-              not: tarihGecmisi,
+              mahalId: newMahalId,
+              not: notGecmisi,
               updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
 
             closeEditRequestModal();
-            showAlert('Yer değiştirme işlemi başarıyla tamamlandı!', 'success');
+            const successMessage = mahalEkleme ? 'Mahal başarıyla eklendi!' : 'Mahal değiştirme işlemi başarıyla tamamlandı!';
+            showAlert(successMessage, 'success');
+            loadMyRecords();
+            return;
+          }
+
+          if(talepTipi === 'musafir_degistir') {
+            const newMusafirAdedi = parseInt(qs('#editRequestNewMusafir').value) || 0;
+            const eskiMusafirAdedi = kayit.musafirAdedi || 0;
+            
+            if(newMusafirAdedi === eskiMusafirAdedi) {
+              showAlert('Müsafir adedi değişmemiş', 'error');
+              btn.disabled = false;
+              btn.innerText = 'Kaydet ve Kapat';
+              return;
+            }
+
+            // Müsafir adedi 0 ise iştirak etmeyecek olacak, mahal kontrolüne gerek yok
+            const yeniIstirakDurum = newMusafirAdedi > 0;
+            
+            // Mahal uyumluluğu kontrolü (sadece iştirak edecekse ve mahal varsa)
+            if(yeniIstirakDurum && kayit.mahalId && kayit.istirak === true) {
+              const mahal = mahaller.find(m => m.id === kayit.mahalId);
+              if(mahal) {
+                const minMusafir = mahal.minMusafir || 1;
+                const maxMusafir = mahal.maxMusafir || 9999;
+                if(newMusafirAdedi < minMusafir || newMusafirAdedi > maxMusafir) {
+                  // Mahal uygun değilse talep olarak kaydet
+                  const talepData = {
+                    kayitId: recordId,
+                    kayitTipi: kayitTipi,
+                    talepTipi: talepTipi,
+                    aciklama: aciklama,
+                    personelUid: currentUser.uid,
+                    personelAdi: currentPersonelAdi || 'Bilinmiyor',
+                    durum: 'beklemede',
+                    yeniMusafirAdedi: newMusafirAdedi,
+                    eskiMusafirAdedi: eskiMusafirAdedi,
+                    mahalId: kayit.mahalId,
+                    tip: kayit.tip,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    yil: CURRENT_YIL
+                  };
+                  await db.collection('ramazan_serif').doc(String(CURRENT_YIL)).collection('duzenleme_talepleri').add(talepData);
+                  closeEditRequestModal();
+                  showAlert(`Seçilen mahal için müsafir sayısı ${minMusafir}-${maxMusafir} arasında olmalıdır. Talep olarak kaydedildi. Onay bekleniyor.`, 'info');
+                  loadMyRecords();
+                  return;
+                }
+              }
+            }
+
+            // Şartlar uygunsa otomatik müsafir adedi değiştir
+            let notGecmisi = kayit.not || '';
+            const eskiIstirak = kayit.istirak === true;
+            const yeniIstirak = newMusafirAdedi > 0;
+            const istirakDegisti = eskiIstirak !== yeniIstirak;
+            
+            // İştirak durumu değişikliği kontrolü
+            if(istirakDegisti) {
+              if(yeniIstirak) {
+                // İştirak etmeyecek → İştirak edecek
+                notGecmisi = (notGecmisi ? notGecmisi + ' | ' : '') + 
+                  'İştirak etmeyecek > İştirak edecek olarak değiştirildi';
+              } else {
+                // İştirak edecek → İştirak etmeyecek
+                notGecmisi = (notGecmisi ? notGecmisi + ' | ' : '') + 
+                  'İştirak edecek > İştirak etmeyecek olarak değiştirildi';
+              }
+            }
+            
+            // Müsafir adedi değişikliği notu
+            if(notGecmisi && notGecmisi.includes('müsafir adedi değiştirildi')) {
+              // Zaten müsafir geçmişi var, ekle
+              const musafirListesi = notGecmisi.match(/\d+ müsafir/g) || [];
+              notGecmisi = (istirakDegisti ? notGecmisi + ' | ' : notGecmisi) + 
+                musafirListesi.join(' > ') + ' > ' + newMusafirAdedi + ' müsafir adedi değiştirildi';
+            } else if(!istirakDegisti) {
+              // İlk müsafir değişikliği (iştirak durumu değişmediyse)
+              notGecmisi = (notGecmisi ? notGecmisi + ' | ' : '') + 
+                eskiMusafirAdedi + ' > ' + newMusafirAdedi + ' müsafir adedi değiştirildi';
+            }
+
+            // Not alanı karakter limiti kontrolü (2000 karakter)
+            const MAX_NOT_LENGTH = 2000;
+            if(notGecmisi.length > MAX_NOT_LENGTH) {
+              // En eski notları temizle, sadece son 1500 karakteri tut
+              notGecmisi = '... (eski notlar temizlendi) | ' + notGecmisi.slice(-1500);
+            }
+
+            // Güncelleme verisi
+            const updateData = {
+              musafirAdedi: newMusafirAdedi,
+              istirak: yeniIstirak,
+              not: notGecmisi,
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            // Eğer iştirak etmeyecek olarak değiştiyse mahal'i kaldır
+            if(!yeniIstirak && kayit.mahalId) {
+              updateData.mahalId = null;
+            } else if(yeniIstirak && kayit.mahalId) {
+              // İştirak edecek ve mahal varsa, mahal uyumluluğunu kontrol et
+              const mahal = mahaller.find(m => m.id === kayit.mahalId);
+              if(mahal) {
+                const minMusafir = mahal.minMusafir || 1;
+                const maxMusafir = mahal.maxMusafir || 9999;
+                if(newMusafirAdedi < minMusafir || newMusafirAdedi > maxMusafir) {
+                  // Mahal uygun değilse mahal'i kaldır
+                  updateData.mahalId = null;
+                  notGecmisi = (notGecmisi ? notGecmisi + ' | ' : '') + 
+                    `Mahal uyumsuz olduğu için mahal kaldırıldı (${mahal.adi} için ${minMusafir}-${maxMusafir} müsafir gerekli)`;
+                  updateData.not = notGecmisi;
+                }
+              }
+            }
+
+            // Kaydı güncelle
+            await db.collection('ramazan_serif').doc(String(CURRENT_YIL)).collection('kayitlar').doc(recordId).update(updateData);
+
+            closeEditRequestModal();
+            showAlert('Müsafir adedi değiştirme işlemi başarıyla tamamlandı!', 'success');
             loadMyRecords();
             return;
           }
@@ -2689,6 +3438,7 @@
     window.closeInfoModal = closeInfoModal;
     window.showInfoModalFromPopup = showInfoModalFromPopup;
     window.closeInfoPopup = closeInfoPopup;
+    window.stepEditMusafir = stepEditMusafir;
     
     // Teberru fonksiyonları
     function openTeberruModal() {
@@ -2780,6 +3530,23 @@
       const editId = qs('#teberruForm').getAttribute('data-edit-id');
 
       try {
+        // Personel adını güvenli bir şekilde al
+        let personelAdi = currentPersonelAdi;
+        if(!personelAdi || personelAdi === 'Bilinmiyor') {
+          // Eğer currentPersonelAdi yüklenmemişse, kullanıcı bilgilerinden al
+          if(currentUser) {
+            try {
+              const uSnap = await db.collection('kullanicilar').doc(currentUser.uid).get();
+              const uData = uSnap.exists ? uSnap.data() : {};
+              personelAdi = uData.adSoyad || currentUser.displayName || currentUser.email || 'Bilinmiyor';
+            } catch(e) {
+              personelAdi = currentUser.displayName || currentUser.email || 'Bilinmiyor';
+            }
+          } else {
+            personelAdi = 'Bilinmiyor';
+          }
+        }
+
         const yilNum = CURRENT_YIL ? (typeof CURRENT_YIL === 'number' ? CURRENT_YIL : parseInt(CURRENT_YIL)) : new Date().getFullYear();
         const data = {
           bagisci: bagisci,
@@ -2787,7 +3554,7 @@
           odemeYontemi: odeme,
           aciklama: aciklama || '',
           personelUid: currentUser.uid,
-          personelAdi: currentPersonelAdi || 'Bilinmiyor',
+          personelAdi: personelAdi,
           yil: yilNum
         };
 
@@ -2884,13 +3651,30 @@
       const editId = qs('#taahhutForm').getAttribute('data-edit-id');
 
       try {
+        // Personel adını güvenli bir şekilde al
+        let personelAdi = currentPersonelAdi;
+        if(!personelAdi || personelAdi === 'Bilinmiyor') {
+          // Eğer currentPersonelAdi yüklenmemişse, kullanıcı bilgilerinden al
+          if(currentUser) {
+            try {
+              const uSnap = await db.collection('kullanicilar').doc(currentUser.uid).get();
+              const uData = uSnap.exists ? uSnap.data() : {};
+              personelAdi = uData.adSoyad || currentUser.displayName || currentUser.email || 'Bilinmiyor';
+            } catch(e) {
+              personelAdi = currentUser.displayName || currentUser.email || 'Bilinmiyor';
+            }
+          } else {
+            personelAdi = 'Bilinmiyor';
+          }
+        }
+
         const yilNum = CURRENT_YIL ? (typeof CURRENT_YIL === 'number' ? CURRENT_YIL : parseInt(CURRENT_YIL)) : new Date().getFullYear();
         const data = {
           bagisci: bagisci,
           miktar: miktar,
           aciklama: aciklama || '',
           personelUid: currentUser.uid,
-          personelAdi: currentPersonelAdi || 'Bilinmiyor',
+          personelAdi: personelAdi,
           yil: yilNum
         };
 
@@ -2924,23 +3708,53 @@
         return;
       }
 
-      qs('#teberruBagisci').value = kayit.bagisci || '';
-      qs('#teberruMiktar').value = kayit.miktar || 0;
-      qs('#teberruAciklama').value = kayit.aciklama || '';
-      qs('#teberruOdeme').value = kayit.odemeYontemi || '';
+      // Düzenleme talep modalını aç
+      let kDate;
+      if(kayit.createdAt) {
+        if(kayit.createdAt.toDate) {
+          kDate = kayit.createdAt.toDate();
+        } else if(kayit.createdAt.seconds) {
+          kDate = new Date(kayit.createdAt.seconds * 1000);
+        } else {
+          kDate = new Date(kayit.createdAt);
+        }
+      } else {
+        kDate = new Date();
+      }
+
+      qs('#editRequestRecordId').value = recordId;
+      qs('#editRequestKayitTipi').value = 'teberru';
+      qs('#editRequestDateDisplay').innerHTML = `
+        <strong>💰 Teberru</strong><br>
+        ${kDate.toLocaleDateString('tr-TR', {dateStyle:'full'})}<br>
+        <small style="color:#7f8c8d;">${kayit.bagisci || 'Bilinmiyor'} - ${(kayit.miktar || 0).toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} ₺</small>
+      `;
+      qs('#editRequestType').value = 'duzenle';
+      qs('#editRequestAciklama').value = '';
+      qs('#editRequestNewDate').value = '';
+      qs('#editRequestNewMahal').value = '';
+      qs('#editRequestNewMahalOnly').value = '';
+      qs('#editRequestNewMusafir').value = '0';
+      qs('#editRequestMusafirVal').innerText = '0';
+      qs('#editRequestDateSelect').style.display = 'none';
+      qs('#editRequestMahalSelect').style.display = 'none';
+      qs('#editRequestMusafirSelect').style.display = 'none';
+      qs('#editRequestMahalWarning').style.display = 'none';
+      qs('#editRequestMahalOnlyWarning').style.display = 'none';
+      qs('#editRequestMusafirWarning').style.display = 'none';
       
-      // Ödeme yöntemi chip'ini seç
-      qs('#teberruModal').querySelectorAll('.chip').forEach(c => {
+      // Chip seçimlerini sıfırla ve sadece "Düzenle" seçeneğini göster
+      qs('#editRequestModal').querySelectorAll('.chip').forEach(c => {
         c.classList.remove('selected');
-        if(c.getAttribute('data-value') === kayit.odemeYontemi) {
+        if(c.textContent.includes('Düzenle')) {
           c.classList.add('selected');
         }
       });
-
-      // Kayıt ID'sini sakla
-      qs('#teberruForm').setAttribute('data-edit-id', recordId);
-      clearTeberruErrors();
-      qs('#teberruModal').classList.add('open');
+      
+      // Seçenekleri göster/gizle (sadece Düzenle görünür)
+      toggleEditRequestOptions('teberru');
+      
+      qs('#editRequestModal').classList.add('open');
     }
 
     async function deleteTeberruRecord(recordId) {
@@ -2969,14 +3783,53 @@
         return;
       }
 
-      qs('#taahhutBagisci').value = kayit.bagisci || '';
-      qs('#taahhutMiktar').value = kayit.miktar || 0;
-      qs('#taahhutAciklama').value = kayit.aciklama || '';
+      // Düzenleme talep modalını aç
+      let kDate;
+      if(kayit.createdAt) {
+        if(kayit.createdAt.toDate) {
+          kDate = kayit.createdAt.toDate();
+        } else if(kayit.createdAt.seconds) {
+          kDate = new Date(kayit.createdAt.seconds * 1000);
+        } else {
+          kDate = new Date(kayit.createdAt);
+        }
+      } else {
+        kDate = new Date();
+      }
 
-      // Kayıt ID'sini sakla
-      qs('#taahhutForm').setAttribute('data-edit-id', recordId);
-      clearTaahhutErrors();
-      qs('#taahhutModal').classList.add('open');
+      qs('#editRequestRecordId').value = recordId;
+      qs('#editRequestKayitTipi').value = 'taahhut';
+      qs('#editRequestDateDisplay').innerHTML = `
+        <strong>📋 Taahhüt</strong><br>
+        ${kDate.toLocaleDateString('tr-TR', {dateStyle:'full'})}<br>
+        <small style="color:#7f8c8d;">${kayit.bagisci || 'Bilinmiyor'} - ${(kayit.miktar || 0).toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} ₺</small>
+      `;
+      qs('#editRequestType').value = 'duzenle';
+      qs('#editRequestAciklama').value = '';
+      qs('#editRequestNewDate').value = '';
+      qs('#editRequestNewMahal').value = '';
+      qs('#editRequestNewMahalOnly').value = '';
+      qs('#editRequestNewMusafir').value = '0';
+      qs('#editRequestMusafirVal').innerText = '0';
+      qs('#editRequestDateSelect').style.display = 'none';
+      qs('#editRequestMahalSelect').style.display = 'none';
+      qs('#editRequestMusafirSelect').style.display = 'none';
+      qs('#editRequestMahalWarning').style.display = 'none';
+      qs('#editRequestMahalOnlyWarning').style.display = 'none';
+      qs('#editRequestMusafirWarning').style.display = 'none';
+      
+      // Chip seçimlerini sıfırla ve sadece "Düzenle" seçeneğini göster
+      qs('#editRequestModal').querySelectorAll('.chip').forEach(c => {
+        c.classList.remove('selected');
+        if(c.textContent.includes('Düzenle')) {
+          c.classList.add('selected');
+        }
+      });
+      
+      // Seçenekleri göster/gizle (sadece Düzenle görünür)
+      toggleEditRequestOptions('taahhut');
+      
+      qs('#editRequestModal').classList.add('open');
     }
 
     async function deleteTaahhutRecord(recordId) {

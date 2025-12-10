@@ -226,6 +226,11 @@
             <option value="">Tüm Tipler</option>
             <option value="iftar">İftar</option>
             <option value="sahur">Sahur</option>
+            <option value="teberru">Teberru</option>
+            <option value="taahhut">Taahhüt</option>
+          </select>
+          <select id="filtreTarih" style="display:none;">
+            <option value="">Tüm Tarihler</option>
           </select>
           <input type="text" id="araInput" placeholder="Sahip, Personel ara..." style="flex:1;min-width:200px" />
           <button onclick="filterKayitlar()">Filtrele</button>
@@ -811,9 +816,15 @@
       <h3 id="editTitle">Yeni Kayıt</h3>
       <form id="formEdit" class="form-grid">
         <input type="hidden" id="editId" />
-        <div class="form-group">
+        <div class="form-group" id="editGroupTarih">
           <label>Tarih *</label>
           <input type="date" id="editTarih" required />
+        </div>
+        <div class="form-group" id="editGroupTarihSelect" style="display:none;">
+          <label>Tarih *</label>
+          <select id="editTarihSelect" required>
+            <option value="">Tarih Seçiniz</option>
+          </select>
         </div>
         <div class="form-group">
           <label>Tip *</label>
@@ -821,33 +832,68 @@
             <option value="">Seçiniz</option>
             <option value="iftar">İftar</option>
             <option value="sahur">Sahur</option>
+            <option value="teberru">Teberru</option>
+            <option value="taahhut">Taahhüt</option>
           </select>
         </div>
         <div class="form-group">
+          <label>Personel</label>
+          <select id="editPersonel">
+            <option value="">Personel Seçiniz</option>
+          </select>
+        </div>
+        
+        <!-- İftar/Sahur Alanları -->
+        <div class="form-group" id="editGroupSahip" style="display:none;">
           <label>Sahip *</label>
-          <input type="text" id="editSahip" required />
+          <input type="text" id="editSahip" />
         </div>
-        <div class="form-group">
+        <div class="form-group" id="editGroupTutar" style="display:none;">
           <label>Tutar (₺) *</label>
-          <input type="number" id="editTutar" min="0" step="0.01" required />
+          <input type="number" id="editTutar" min="0" step="0.01" />
         </div>
-        <div class="form-group">
+        <div class="form-group" id="editGroupIstirak" style="display:none;">
           <label>İştirak</label>
           <select id="editIstirak">
             <option value="true">Evet</option>
             <option value="false">Hayır</option>
           </select>
         </div>
-        <div class="form-group">
+        <div class="form-group" id="editGroupMusafir" style="display:none;">
           <label>Müsafir Adedi *</label>
-          <input type="number" id="editMusafir" min="0" required />
+          <input type="number" id="editMusafir" min="0" />
         </div>
-        <div class="form-group">
+        <div class="form-group" id="editGroupMahal" style="display:none;">
           <label>Mahal</label>
           <select id="editMahal">
             <option value="">Mahal Seçiniz</option>
           </select>
         </div>
+        
+        <!-- Teberru/Taahhüt Alanları -->
+        <div class="form-group" id="editGroupBagisci" style="display:none;">
+          <label>Bağışçı Adı *</label>
+          <input type="text" id="editBagisci" />
+        </div>
+        <div class="form-group" id="editGroupMiktar" style="display:none;">
+          <label>Para Miktarı (₺) *</label>
+          <input type="number" id="editMiktar" min="0" step="0.01" />
+        </div>
+        <div class="form-group" id="editGroupOdeme" style="display:none;">
+          <label>Ödeme Yöntemi *</label>
+          <select id="editOdeme">
+            <option value="">Seçiniz</option>
+            <option value="nakit">💵 Nakit</option>
+            <option value="banka">🏦 Banka</option>
+            <option value="pos">💳 POS</option>
+            <option value="sanal">📱 Sanal</option>
+          </select>
+        </div>
+        <div class="form-group" id="editGroupAciklama" style="display:none;">
+          <label>Açıklama</label>
+          <textarea id="editAciklama" rows="3" placeholder="Açıklama (opsiyonel)"></textarea>
+        </div>
+        
         <div class="actions">
           <button type="button" class="secondary" onclick="closeEditModal()">İptal</button>
           <button type="submit" class="good">Kaydet</button>
@@ -1699,6 +1745,9 @@
       // Ramazan yıllarını yükle ve yıl seçeneklerini güncelle
       await loadRamazanYillari();
       
+      // Aktif ramazan ayarını yükle
+      await loadAktifRamazanAyar();
+      
       // İlk yükleme
       await loadKayitlar();
       await loadTutarSecenekleri();
@@ -2329,8 +2378,210 @@
       
       try {
         const yilRef = db.collection('ramazan_serif').doc(String(yil));
+        
+        // İftar-sahur kayıtlarını yükle
         const snap = await yilRef.collection('kayitlar').orderBy('tarih', 'desc').get();
-        kayitlar = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const iftarSahurKayitlar = snap.docs.map(d => ({ 
+          id: d.id, 
+          ...d.data(), 
+          kayitTipi: 'iftar-sahur',
+          kayitKoleksiyon: 'kayitlar'
+        }));
+        
+        // Teberru kayıtlarını yükle
+        let teberruKayitlar = [];
+        try {
+          // Index sorunlarını önlemek için direkt tüm kayıtları yükle ve client-side'da filtrele
+          let teberruSnap = null;
+          try {
+            // Önce orderBy ile deneyelim (index varsa)
+            teberruSnap = await db.collection('teberru_kayitlari')
+              .where('yil', '==', parseInt(yil))
+              .orderBy('createdAt', 'desc')
+              .get();
+          } catch (e) {
+            // Index yoksa tüm kayıtları yükle ve client-side'da filtrele
+            console.log('Teberru index hatası, tüm kayıtlar yükleniyor ve client-side\'da filtreleniyor:', e.message);
+            try {
+              // Sadece where ile deneyelim
+              teberruSnap = await db.collection('teberru_kayitlari')
+                .where('yil', '==', parseInt(yil))
+                .get();
+            } catch (e2) {
+              // where de başarısız olursa tüm kayıtları yükle
+              console.log('Teberru where sorgusu da başarısız, tüm kayıtlar yükleniyor:', e2.message);
+              teberruSnap = await db.collection('teberru_kayitlari').get();
+            }
+          }
+          
+          teberruKayitlar = teberruSnap.docs.map(d => {
+            const data = d.data();
+            // Tarih bilgisini düzenle
+            let tarih = data.createdAt;
+            if (tarih && tarih.toDate) {
+              tarih = tarih.toDate();
+            } else if (tarih && tarih.seconds) {
+              tarih = new Date(tarih.seconds * 1000);
+            } else if (!tarih) {
+              // createdAt yoksa tarih alanını kullan
+              tarih = data.tarih;
+              if (tarih && tarih.toDate) {
+                tarih = tarih.toDate();
+              } else if (tarih && tarih.seconds) {
+                tarih = new Date(tarih.seconds * 1000);
+              } else {
+                tarih = new Date();
+              }
+            }
+            
+            // Yıl bilgisini belirle
+            let kayitYil = data.yil;
+            if (!kayitYil && tarih) {
+              kayitYil = tarih.getFullYear();
+            } else if (!kayitYil) {
+              kayitYil = parseInt(yil);
+            }
+            
+            return {
+              id: d.id,
+              ...data,
+              tip: 'teberru',
+              sahip: data.bagisci || '',
+              tutar: data.miktar || 0,
+              tarih: tarih,
+              yil: kayitYil,
+              ay: tarih ? tarih.getMonth() + 1 : new Date().getMonth() + 1,
+              kayitTipi: 'teberru',
+              kayitKoleksiyon: 'teberru_kayitlari',
+              personel: data.personel || data.kaydedenPersonel || '',
+              personelUid: data.personelUid || data.kaydedenPersonelUid || null
+            };
+          });
+          
+          // Yıl filtresini client-side'da uygula (her zaman)
+          const yilNum = parseInt(yil);
+          teberruKayitlar = teberruKayitlar.filter(t => {
+            let tYil = t.yil;
+            if (typeof tYil !== 'number') {
+              tYil = parseInt(tYil) || (t.tarih ? new Date(t.tarih).getFullYear() : yilNum);
+            }
+            return tYil === yilNum;
+          });
+          console.log(`Teberru kayıtları yüklendi: ${teberruKayitlar.length} kayıt (${yilNum} yılı için)`);
+          
+          // Client-side'da sırala (eğer orderBy başarısız olduysa)
+          teberruKayitlar.sort((a, b) => {
+            const aDate = a.tarih?.getTime ? a.tarih.getTime() : (a.tarih ? new Date(a.tarih).getTime() : 0);
+            const bDate = b.tarih?.getTime ? b.tarih.getTime() : (b.tarih ? new Date(b.tarih).getTime() : 0);
+            return bDate - aDate; // En yeni önce
+          });
+        } catch (e) {
+          console.error('Teberru kayıtları yüklenemedi:', e);
+        }
+        
+        // Taahhüt kayıtlarını yükle
+        let taahhutKayitlar = [];
+        try {
+          // Index sorunlarını önlemek için direkt tüm kayıtları yükle ve client-side'da filtrele
+          let taahhutSnap = null;
+          try {
+            // Önce orderBy ile deneyelim (index varsa)
+            taahhutSnap = await db.collection('taahhut_kayitlari')
+              .where('yil', '==', parseInt(yil))
+              .orderBy('createdAt', 'desc')
+              .get();
+          } catch (e) {
+            // Index yoksa tüm kayıtları yükle ve client-side'da filtrele
+            console.log('Taahhüt index hatası, tüm kayıtlar yükleniyor ve client-side\'da filtreleniyor:', e.message);
+            try {
+              // Sadece where ile deneyelim
+              taahhutSnap = await db.collection('taahhut_kayitlari')
+                .where('yil', '==', parseInt(yil))
+                .get();
+            } catch (e2) {
+              // where de başarısız olursa tüm kayıtları yükle
+              console.log('Taahhüt where sorgusu da başarısız, tüm kayıtlar yükleniyor:', e2.message);
+              taahhutSnap = await db.collection('taahhut_kayitlari').get();
+            }
+          }
+          
+          taahhutKayitlar = taahhutSnap.docs.map(d => {
+            const data = d.data();
+            // Tarih bilgisini düzenle
+            let tarih = data.createdAt;
+            if (tarih && tarih.toDate) {
+              tarih = tarih.toDate();
+            } else if (tarih && tarih.seconds) {
+              tarih = new Date(tarih.seconds * 1000);
+            } else if (!tarih) {
+              // createdAt yoksa tarih alanını kullan
+              tarih = data.tarih;
+              if (tarih && tarih.toDate) {
+                tarih = tarih.toDate();
+              } else if (tarih && tarih.seconds) {
+                tarih = new Date(tarih.seconds * 1000);
+              } else {
+                tarih = new Date();
+              }
+            }
+            
+            // Yıl bilgisini belirle
+            let kayitYil = data.yil;
+            if (!kayitYil && tarih) {
+              kayitYil = tarih.getFullYear();
+            } else if (!kayitYil) {
+              kayitYil = parseInt(yil);
+            }
+            
+            return {
+              id: d.id,
+              ...data,
+              tip: 'taahhut',
+              sahip: data.bagisci || '',
+              tutar: data.miktar || 0,
+              tarih: tarih,
+              yil: kayitYil,
+              ay: tarih ? tarih.getMonth() + 1 : new Date().getMonth() + 1,
+              kayitTipi: 'taahhut',
+              kayitKoleksiyon: 'taahhut_kayitlari',
+              personel: data.personel || data.kaydedenPersonel || '',
+              personelUid: data.personelUid || data.kaydedenPersonelUid || null
+            };
+          });
+          
+          // Yıl filtresini client-side'da uygula (her zaman)
+          const yilNum = parseInt(yil);
+          taahhutKayitlar = taahhutKayitlar.filter(t => {
+            let tYil = t.yil;
+            if (typeof tYil !== 'number') {
+              tYil = parseInt(tYil) || (t.tarih ? new Date(t.tarih).getFullYear() : yilNum);
+            }
+            return tYil === yilNum;
+          });
+          console.log(`Taahhüt kayıtları yüklendi: ${taahhutKayitlar.length} kayıt (${yilNum} yılı için)`);
+          
+          // Client-side'da sırala (eğer orderBy başarısız olduysa)
+          taahhutKayitlar.sort((a, b) => {
+            const aDate = a.tarih?.getTime ? a.tarih.getTime() : (a.tarih ? new Date(a.tarih).getTime() : 0);
+            const bDate = b.tarih?.getTime ? b.tarih.getTime() : (b.tarih ? new Date(b.tarih).getTime() : 0);
+            return bDate - aDate; // En yeni önce
+          });
+        } catch (e) {
+          console.error('Taahhüt kayıtları yüklenemedi:', e);
+        }
+        
+        // Tüm kayıtları birleştir
+        kayitlar = [...iftarSahurKayitlar, ...teberruKayitlar, ...taahhutKayitlar];
+        
+        console.log(`Toplam kayıt sayısı: ${kayitlar.length} (İftar-Sahur: ${iftarSahurKayitlar.length}, Teberru: ${teberruKayitlar.length}, Taahhüt: ${taahhutKayitlar.length})`);
+        
+        // Tarihe göre sırala (en yeni önce)
+        kayitlar.sort((a, b) => {
+          const tarihA = a.tarih?.toDate ? a.tarih.toDate() : (a.tarih?.seconds ? new Date(a.tarih.seconds * 1000) : (a.tarih instanceof Date ? a.tarih : new Date(a.tarih || 0)));
+          const tarihB = b.tarih?.toDate ? b.tarih.toDate() : (b.tarih?.seconds ? new Date(b.tarih.seconds * 1000) : (b.tarih instanceof Date ? b.tarih : new Date(b.tarih || 0)));
+          return tarihB - tarihA;
+        });
+        
         renderKayitlar();
       } catch (e) {
         console.error('Kayıtlar yüklenemedi:', e);
@@ -2339,6 +2590,31 @@
       }
     }
 
+    // Filtre tip değiştiğinde tarih seçimini göster/gizle
+    qs('#filtreTip').addEventListener('change', async function() {
+      const tip = this.value;
+      const tarihSelect = qs('#filtreTarih');
+      
+      if (tip) {
+        // Seçilen yıla göre ramazan tarih aralığından seçim
+        tarihSelect.style.display = 'block';
+        
+        // Seçilen yıla göre ramazan ayarını yükle
+        const yil = qs('#filtreYil')?.value || currentYil || new Date().getFullYear();
+        await loadYilRamazanAyar(yil);
+        const tarihler = getRamazanTarihListesi(yilRamazanAyar);
+        tarihSelect.innerHTML = '<option value="">Tüm Tarihler</option>';
+        tarihler.forEach(t => {
+          const option = document.createElement('option');
+          option.value = t.value;
+          option.textContent = t.label;
+          tarihSelect.appendChild(option);
+        });
+      } else {
+        tarihSelect.style.display = 'none';
+      }
+    });
+    
     function filterKayitlar() {
       renderKayitlar();
     }
@@ -2354,6 +2630,31 @@
       
       const tip = qs('#filtreTip').value;
       if (tip) filtered = filtered.filter(k => k.tip === tip);
+      
+      const tarih = qs('#filtreTarih').value;
+      if (tarih) {
+        filtered = filtered.filter(k => {
+          let kTarih = '';
+          if (k.tarih) {
+            if (k.tarih.toDate) {
+              kTarih = k.tarih.toDate().toISOString().slice(0, 10);
+            } else if (k.tarih instanceof Date) {
+              kTarih = k.tarih.toISOString().slice(0, 10);
+            } else if (typeof k.tarih === 'string') {
+              kTarih = k.tarih.slice(0, 10);
+            } else if (k.tarih.seconds) {
+              kTarih = new Date(k.tarih.seconds * 1000).toISOString().slice(0, 10);
+            }
+          } else if (k.createdAt) {
+            if (k.createdAt.toDate) {
+              kTarih = k.createdAt.toDate().toISOString().slice(0, 10);
+            } else if (k.createdAt.seconds) {
+              kTarih = new Date(k.createdAt.seconds * 1000).toISOString().slice(0, 10);
+            }
+          }
+          return kTarih === tarih;
+        });
+      }
       
       const ara = qs('#araInput').value.trim();
       if (ara) {
@@ -2386,31 +2687,48 @@
         }
         const tarih = tarihStr ? new Date(tarihStr) : new Date();
         
+        // Tip etiketi
+        let tipLabel = '';
+        if (k.tip === 'iftar') {
+          tipLabel = '🌙 İftar';
+        } else if (k.tip === 'sahur') {
+          tipLabel = '🌟 Sahur';
+        } else if (k.tip === 'teberru') {
+          tipLabel = '💝 Teberru';
+        } else if (k.tip === 'taahhut') {
+          tipLabel = '📋 Taahhüt';
+        }
+        
+        // Sahip/Bağışçı bilgisi
+        const sahipBilgisi = k.sahip || k.bagisci || '-';
+        // Tutar/Miktar bilgisi
+        const tutarBilgisi = k.tutar || k.miktar || 0;
+        
         tr.innerHTML = `
           <td>${tarih.getDate()}.${tarih.getMonth() + 1}.${tarih.getFullYear()}</td>
-          <td><span class="badge-chip ${k.tip}">${k.tip === 'iftar' ? '🌙 İftar' : '🌟 Sahur'}</span></td>
-          <td><strong>${k.sahip || '-'}</strong></td>
-          <td class="right"><strong>₺${Number(k.tutar || 0).toLocaleString('tr-TR',{minimumFractionDigits:2})}</strong></td>
-          <td>${k.istirak ? '✓ Evet' : '✗ Hayır'}</td>
+          <td><span class="badge-chip ${k.tip}">${tipLabel}</span></td>
+          <td><strong>${sahipBilgisi}</strong></td>
+          <td class="right"><strong>₺${Number(tutarBilgisi).toLocaleString('tr-TR',{minimumFractionDigits:2})}</strong></td>
+          <td>${k.istirak !== undefined ? (k.istirak ? '✓ Evet' : '✗ Hayır') : '-'}</td>
           <td>${k.musafirAdedi || 0}</td>
           <td>${k.mahal || '-'}</td>
-          <td>${k.personelAdi || k.personel || '-'}</td>
-          <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${k.not || ''}">${k.not || '-'}</td>
+          <td>${k.personelAdi || k.personel || k.kaydedenPersonel || '-'}</td>
+          <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${k.not || k.aciklama || ''}">${k.not || k.aciklama || '-'}</td>
           <td>
-            <button onclick="editKayit('${k.id}')" style="padding:4px 8px;font-size:12px">Düzenle</button>
-            <button onclick="deleteKayit('${k.id}')" class="danger" style="padding:4px 8px;font-size:12px">Sil</button>
+            <button onclick="editKayit('${k.id}', '${k.kayitTipi || 'iftar-sahur'}')" style="padding:4px 8px;font-size:12px">Düzenle</button>
+            <button onclick="deleteKayit('${k.id}', '${k.kayitTipi || 'iftar-sahur'}')" class="danger" style="padding:4px 8px;font-size:12px">Sil</button>
           </td>
         `;
         tbody.appendChild(tr);
       });
     }
 
-    async function openEditModal(id = null) {
+    async function openEditModal(id = null, kayitTipi = 'iftar-sahur') {
       qs('#editId').value = id || '';
       qs('#editTitle').textContent = id ? 'Kayıt Düzenle' : 'Yeni Kayıt';
       
-      // Mahalları yükle
-      await loadMahallarForEdit();
+      // Mahalları ve personelleri yükle
+      await Promise.all([loadMahallarForEdit(), loadPersonellerForEdit()]);
       
       if (id) {
         const k = kayitlar.find(k => k.id === id);
@@ -2427,30 +2745,80 @@
             } else if(k.tarih.seconds) {
               tarihStr = new Date(k.tarih.seconds * 1000).toISOString().slice(0, 10);
             }
+          } else if(k.createdAt) {
+            if(k.createdAt.toDate) {
+              tarihStr = k.createdAt.toDate().toISOString().slice(0, 10);
+            } else if(k.createdAt.seconds) {
+              tarihStr = new Date(k.createdAt.seconds * 1000).toISOString().slice(0, 10);
+            }
           }
           qs('#editTarih').value = tarihStr;
           qs('#editTip').value = k.tip;
-          qs('#editSahip').value = k.sahip || '';
-          qs('#editTutar').value = k.tutar || 0;
-          qs('#editIstirak').value = k.istirak ? 'true' : 'false';
-          qs('#editMusafir').value = k.musafirAdedi || 0;
           
-          // Mahal seçimi
-          if (k.mahalId) {
-            qs('#editMahal').value = k.mahalId;
-          } else if (k.mahal) {
-            // Mahal adından ID bul
-            const mahal = mahalList.find(m => m.adi === k.mahal);
-            if (mahal) {
-              qs('#editMahal').value = mahal.id;
+          // İftar/sahur ise tarih select'i de güncelle
+          if (k.tip === 'iftar' || k.tip === 'sahur') {
+            if (qs('#editTarihSelect')) {
+              qs('#editTarihSelect').value = tarihStr;
             }
           }
+          
+          // Tip'e göre alanları doldur
+          if (k.tip === 'iftar' || k.tip === 'sahur') {
+            qs('#editSahip').value = k.sahip || '';
+            qs('#editTutar').value = k.tutar || 0;
+            qs('#editIstirak').value = k.istirak !== undefined ? (k.istirak ? 'true' : 'false') : 'false';
+            qs('#editMusafir').value = k.musafirAdedi || 0;
+            
+            // Mahal seçimi
+            if (k.mahalId) {
+              qs('#editMahal').value = k.mahalId;
+            } else if (k.mahal) {
+              // Mahal adından ID bul
+              const mahal = mahalList.find(m => m.adi === k.mahal);
+              if (mahal) {
+                qs('#editMahal').value = mahal.id;
+              }
+            }
+          } else if (k.tip === 'teberru' || k.tip === 'taahhut') {
+            qs('#editBagisci').value = k.bagisci || k.sahip || '';
+            qs('#editMiktar').value = k.miktar || k.tutar || 0;
+            qs('#editAciklama').value = k.aciklama || k.not || '';
+            if (k.tip === 'teberru') {
+              qs('#editOdeme').value = k.odemeYontemi || k.odeme || '';
+            }
+          }
+          
+          // Personel seçimi
+          if (k.personelUid) {
+            qs('#editPersonel').value = k.personelUid;
+          } else if (k.personel || k.personelAdi || k.kaydedenPersonel) {
+            // Personel adından UID bul
+            const personel = kullanicilarList.find(p => 
+              p.adSoyad === k.personel || p.adSoyad === k.personelAdi || p.adSoyad === k.kaydedenPersonel
+            );
+            if (personel) {
+              qs('#editPersonel').value = personel.id;
+            }
+          }
+          
+          // Kayıt tipini sakla (güncelleme için)
+          qs('#editId').setAttribute('data-kayit-tipi', k.kayitTipi || (k.tip === 'teberru' || k.tip === 'taahhut' ? k.tip : 'iftar-sahur'));
+          qs('#editId').setAttribute('data-kayit-koleksiyon', k.kayitKoleksiyon || 
+            (k.tip === 'teberru' ? 'teberru_kayitlari' : k.tip === 'taahhut' ? 'taahhut_kayitlari' : 'kayitlar'));
         }
       } else {
         qs('#formEdit').reset();
-        qs('#editTarih').value = new Date().toISOString().slice(0, 10);
+        qs('#editTarih').value = '';
+        qs('#editTarihSelect').value = '';
         qs('#editMahal').value = '';
+        qs('#editPersonel').value = '';
+        qs('#editTip').value = '';
+        qs('#editId').removeAttribute('data-kayit-tipi');
+        qs('#editId').removeAttribute('data-kayit-koleksiyon');
       }
+      
+      // Tip'e göre alanları göster/gizle
+      await updateEditFormFields();
       
       qs('#modalEdit').classList.add('show');
       document.body.classList.add('modal-open');
@@ -2484,27 +2852,309 @@
         console.error('Mahaller yüklenemedi:', e);
       }
     }
+    
+    async function loadPersonellerForEdit() {
+      try {
+        // Kullanıcılar listesi yoksa yükle
+        if (!kullanicilarList || kullanicilarList.length === 0) {
+          await loadKullanicilar();
+        }
+        
+        const select = qs('#editPersonel');
+        if (!select) return;
+        
+        // Mevcut seçili değeri sakla
+        const currentValue = select.value;
+        
+        // Select'i temizle ve personelleri ekle
+        select.innerHTML = '<option value="">Personel Seçiniz</option>';
+        kullanicilarList.forEach(p => {
+          const option = document.createElement('option');
+          option.value = p.id;
+          option.textContent = p.adSoyad || p.email || '-';
+          select.appendChild(option);
+        });
+        
+        // Önceki değeri geri yükle
+        if (currentValue) {
+          select.value = currentValue;
+        }
+      } catch (e) {
+        console.error('Personeller yüklenemedi:', e);
+      }
+    }
 
     function closeEditModal() {
       qs('#modalEdit').classList.remove('show');
       document.body.classList.remove('modal-open');
     }
+    
+    // Aktif ramazan ayarını yükle
+    let aktifRamazanAyar = null;
+    async function loadAktifRamazanAyar() {
+      try {
+        const snap = await db.collection('ramazan_serif').doc('ayarlar').collection('yillar')
+          .where('aktif', '==', true)
+          .limit(1)
+          .get();
+        if (!snap.empty) {
+          aktifRamazanAyar = snap.docs[0].data();
+        }
+      } catch (e) {
+        console.error('Aktif ramazan ayarı yüklenemedi:', e);
+      }
+    }
+    
+    // Belirli bir yıl için ramazan ayarını yükle
+    let yilRamazanAyar = null;
+    async function loadYilRamazanAyar(yil) {
+      try {
+        const snap = await db.collection('ramazan_serif').doc('ayarlar').collection('yillar')
+          .where('yil', '==', parseInt(yil))
+          .limit(1)
+          .get();
+        if (!snap.empty) {
+          yilRamazanAyar = snap.docs[0].data();
+        } else {
+          yilRamazanAyar = null;
+        }
+      } catch (e) {
+        console.error(`${yil} yılı ramazan ayarı yüklenemedi:`, e);
+        yilRamazanAyar = null;
+      }
+    }
+    
+    // Ramazan tarih aralığından tarih listesi oluştur (aktif veya belirli yıl)
+    function getRamazanTarihListesi(ramazanAyar = null) {
+      const ayar = ramazanAyar || aktifRamazanAyar || yilRamazanAyar;
+      if (!ayar || !ayar.baslangic || !ayar.bitis) {
+        return [];
+      }
+      const baslangic = new Date(ayar.baslangic);
+      const bitis = new Date(ayar.bitis);
+      const tarihler = [];
+      const currentDate = new Date(baslangic);
+      while (currentDate <= bitis) {
+        tarihler.push({
+          value: currentDate.toISOString().slice(0, 10),
+          label: currentDate.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' })
+        });
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+      return tarihler;
+    }
+    
+    // Tip değiştiğinde alanları göster/gizle
+    async function updateEditFormFields() {
+      const tip = qs('#editTip').value;
+      
+      // Tüm grupları gizle
+      qs('#editGroupSahip').style.display = 'none';
+      qs('#editGroupTutar').style.display = 'none';
+      qs('#editGroupIstirak').style.display = 'none';
+      qs('#editGroupMusafir').style.display = 'none';
+      qs('#editGroupMahal').style.display = 'none';
+      qs('#editGroupBagisci').style.display = 'none';
+      qs('#editGroupMiktar').style.display = 'none';
+      qs('#editGroupOdeme').style.display = 'none';
+      qs('#editGroupAciklama').style.display = 'none';
+      
+      // Tarih alanlarını gizle
+      qs('#editGroupTarih').style.display = 'none';
+      qs('#editGroupTarihSelect').style.display = 'none';
+      qs('#editTarih').removeAttribute('required');
+      qs('#editTarihSelect').removeAttribute('required');
+      
+      // Required attribute'ları kaldır
+      qs('#editSahip').removeAttribute('required');
+      qs('#editTutar').removeAttribute('required');
+      qs('#editMusafir').removeAttribute('required');
+      qs('#editBagisci').removeAttribute('required');
+      qs('#editMiktar').removeAttribute('required');
+      qs('#editOdeme').removeAttribute('required');
+      
+      if (tip === 'iftar' || tip === 'sahur') {
+        // İftar/Sahur alanları - Seçilen yıla göre ramazan tarih aralığından seçim
+        qs('#editGroupTarihSelect').style.display = 'block';
+        qs('#editTarihSelect').setAttribute('required', 'required');
+        
+        // Seçilen yıla göre ramazan ayarını yükle
+        const yil = qs('#filtreYil')?.value || currentYil || new Date().getFullYear();
+        await loadYilRamazanAyar(yil);
+        const tarihler = getRamazanTarihListesi(yilRamazanAyar);
+        const select = qs('#editTarihSelect');
+        select.innerHTML = '<option value="">Tarih Seçiniz</option>';
+        tarihler.forEach(t => {
+          const option = document.createElement('option');
+          option.value = t.value;
+          option.textContent = t.label;
+          select.appendChild(option);
+        });
+        
+        // Tarih select değiştiğinde date input'u da güncelle (sadece bir kez ekle)
+        const existingListener = select.getAttribute('data-listener-added');
+        if (!existingListener) {
+          select.setAttribute('data-listener-added', 'true');
+          select.addEventListener('change', function() {
+            if (this.value) {
+              qs('#editTarih').value = this.value;
+            }
+          });
+        }
+        
+        qs('#editGroupSahip').style.display = 'block';
+        qs('#editGroupTutar').style.display = 'block';
+        qs('#editGroupIstirak').style.display = 'block';
+        qs('#editGroupMusafir').style.display = 'block';
+        qs('#editGroupMahal').style.display = 'block';
+        qs('#editSahip').setAttribute('required', 'required');
+        qs('#editTutar').setAttribute('required', 'required');
+        qs('#editMusafir').setAttribute('required', 'required');
+      } else if (tip === 'teberru' || tip === 'taahhut') {
+        // Teberru/Taahhüt alanları - Seçilen yıla göre ramazan tarih aralığından seçim
+        qs('#editGroupTarihSelect').style.display = 'block';
+        qs('#editTarihSelect').setAttribute('required', 'required');
+        
+        // Seçilen yıla göre ramazan ayarını yükle
+        const yil = qs('#filtreYil')?.value || currentYil || new Date().getFullYear();
+        await loadYilRamazanAyar(yil);
+        const tarihler = getRamazanTarihListesi(yilRamazanAyar);
+        const select = qs('#editTarihSelect');
+        select.innerHTML = '<option value="">Tarih Seçiniz</option>';
+        tarihler.forEach(t => {
+          const option = document.createElement('option');
+          option.value = t.value;
+          option.textContent = t.label;
+          select.appendChild(option);
+        });
+        
+        // Tarih select değiştiğinde date input'u da güncelle (sadece bir kez ekle)
+        const existingListener = select.getAttribute('data-listener-added');
+        if (!existingListener) {
+          select.setAttribute('data-listener-added', 'true');
+          select.addEventListener('change', function() {
+            if (this.value) {
+              qs('#editTarih').value = this.value;
+            }
+          });
+        }
+        
+        // Date input'u da göster ama gizli tut (form submit için gerekli)
+        qs('#editGroupTarih').style.display = 'none';
+        qs('#editTarih').removeAttribute('required');
+        
+        if (tip === 'teberru') {
+          qs('#editGroupBagisci').style.display = 'block';
+          qs('#editGroupMiktar').style.display = 'block';
+          qs('#editGroupOdeme').style.display = 'block';
+          qs('#editGroupAciklama').style.display = 'block';
+          qs('#editBagisci').setAttribute('required', 'required');
+          qs('#editMiktar').setAttribute('required', 'required');
+          qs('#editOdeme').setAttribute('required', 'required');
+        } else if (tip === 'taahhut') {
+          qs('#editGroupBagisci').style.display = 'block';
+          qs('#editGroupMiktar').style.display = 'block';
+          qs('#editGroupAciklama').style.display = 'block';
+          qs('#editBagisci').setAttribute('required', 'required');
+          qs('#editMiktar').setAttribute('required', 'required');
+        }
+      }
+    }
+    
+    // Tip değiştiğinde event listener
+    qs('#editTip').addEventListener('change', updateEditFormFields);
 
     qs('#formEdit').addEventListener('submit', async (e) => {
       e.preventDefault();
       
       const id = qs('#editId').value;
-      const tarih = qs('#editTarih').value;
+      // Tarih seçimi: iftar/sahur için select, teberru/taahhut için date input
+      let tarih = '';
+      if (qs('#editTarihSelect') && qs('#editTarihSelect').style.display !== 'none') {
+        tarih = qs('#editTarihSelect').value || qs('#editTarih').value;
+      } else {
+        tarih = qs('#editTarih').value;
+      }
       const tip = qs('#editTip').value;
-      const sahip = qs('#editSahip').value.trim();
-      const tutar = parseFloat(qs('#editTutar').value) || 0;
-      const istirak = qs('#editIstirak').value === 'true';
-      const musafirAdedi = parseInt(qs('#editMusafir').value) || 0;
-      const mahalId = qs('#editMahal').value || null;
+      const personelUid = qs('#editPersonel').value || null;
+      
+      // Tip'e göre alanları al
+      let sahip = '';
+      let tutar = 0;
+      let istirak = false;
+      let musafirAdedi = 0;
+      let mahalId = null;
+      let bagisci = '';
+      let miktar = 0;
+      let odemeYontemi = '';
+      let aciklama = '';
+      
+      if (tip === 'iftar' || tip === 'sahur') {
+        sahip = qs('#editSahip').value.trim();
+        tutar = parseFloat(qs('#editTutar').value) || 0;
+        istirak = qs('#editIstirak').value === 'true';
+        musafirAdedi = parseInt(qs('#editMusafir').value) || 0;
+        mahalId = qs('#editMahal').value || null;
+        
+        if (!sahip) {
+          showToast('Hata', 'Lütfen sahip adını giriniz', 'error');
+          return;
+        }
+        if (!tutar || tutar <= 0) {
+          showToast('Hata', 'Lütfen geçerli bir tutar giriniz', 'error');
+          return;
+        }
+      } else if (tip === 'teberru') {
+        bagisci = qs('#editBagisci').value.trim();
+        miktar = parseFloat(qs('#editMiktar').value) || 0;
+        odemeYontemi = qs('#editOdeme').value || '';
+        aciklama = qs('#editAciklama').value.trim();
+        
+        if (!bagisci) {
+          showToast('Hata', 'Lütfen bağışçı adını giriniz', 'error');
+          return;
+        }
+        if (!miktar || miktar <= 0) {
+          showToast('Hata', 'Lütfen geçerli bir miktar giriniz', 'error');
+          return;
+        }
+        if (!odemeYontemi) {
+          showToast('Hata', 'Lütfen ödeme yöntemi seçiniz', 'error');
+          return;
+        }
+      } else if (tip === 'taahhut') {
+        bagisci = qs('#editBagisci').value.trim();
+        miktar = parseFloat(qs('#editMiktar').value) || 0;
+        aciklama = qs('#editAciklama').value.trim();
+        
+        if (!bagisci) {
+          showToast('Hata', 'Lütfen bağışçı adını giriniz', 'error');
+          return;
+        }
+        if (!miktar || miktar <= 0) {
+          showToast('Hata', 'Lütfen geçerli bir miktar giriniz', 'error');
+          return;
+        }
+      }
+      
+      // Kayıt tipi ve koleksiyon bilgisini al
+      const kayitTipi = qs('#editId').getAttribute('data-kayit-tipi') || (tip === 'teberru' || tip === 'taahhut' ? tip : 'iftar-sahur');
+      const kayitKoleksiyon = qs('#editId').getAttribute('data-kayit-koleksiyon') || 
+        (tip === 'teberru' ? 'teberru_kayitlari' : tip === 'taahhut' ? 'taahhut_kayitlari' : 'kayitlar');
       
       const date = new Date(tarih);
       const yil = date.getFullYear();
       const ay = date.getMonth() + 1;
+      
+      // Personel bilgisini al
+      let personelAd = null;
+      let personelUidFinal = personelUid;
+      if (personelUid) {
+        const personel = kullanicilarList.find(p => p.id === personelUid);
+        if (personel) {
+          personelAd = personel.adSoyad || personel.email;
+        }
+      }
       
       // Mahal bilgisini al
       let mahalAdi = null;
@@ -2526,59 +3176,154 @@
       }
       
       try {
-        const yilRef = db.collection('ramazan_serif').doc(String(yil));
-        const data = {
-          tarih: tarih,
-          tip: tip,
-          sahip: sahip,
-          tutar: tutar,
-          istirak: istirak,
-          musafirAdedi: musafirAdedi,
-          yil: yil,
-          ay: ay,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
+        // Muhasebe notu
+        const muhasebeNotu = 'Kayıt yapan/güncelleyen: Muhasebe';
         
-        // Mahal bilgisini ekle
-        if (mahalId) {
-          data.mahalId = mahalId;
-        }
-        if (mahalAdi) {
-          data.mahal = mahalAdi;
-        }
-        
-        if (id) {
-          await yilRef.collection('kayitlar').doc(id).update(data);
-        } else {
-          const user = auth.currentUser;
-          let personelAd = 'Bilinmeyen';
-          if (user) {
-            try {
-              const userDoc = await db.collection('kullanicilar').doc(user.uid).get();
-              if (userDoc.exists) {
-                personelAd = userDoc.data().adSoyad || user.email || 'Bilinmeyen';
-              }
-            } catch (e) {}
+        if (kayitTipi === 'teberru' || kayitTipi === 'taahhut') {
+          // Teberru veya Taahhüt kaydı
+          const data = {
+            bagisci: bagisci,
+            miktar: miktar,
+            tarih: tarih,
+            yil: yil,
+            ay: ay,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          };
+          
+          // Teberru için ödeme yöntemi ekle
+          if (tip === 'teberru') {
+            data.odemeYontemi = odemeYontemi;
+            data.odeme = odemeYontemi;
           }
           
-          await yilRef.collection('kayitlar').add({
-            ...data,
-            personel: personelAd,
-            personelUid: user?.uid || null,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
+          // Personel bilgisini ekle
+          if (personelAd) {
+            data.personel = personelAd;
+            data.kaydedenPersonel = personelAd;
+          }
+          if (personelUidFinal) {
+            data.personelUid = personelUidFinal;
+            data.kaydedenPersonelUid = personelUidFinal;
+          }
+          
+          // Not ve açıklama ekle (muhasebe notu + kullanıcı açıklaması)
+          let finalAciklama = '';
+          if (id) {
+            // Güncelleme
+            const existingDoc = await db.collection(kayitKoleksiyon).doc(id).get();
+            if (existingDoc.exists) {
+              const existingData = existingDoc.data();
+              let existingNot = existingData.not || existingData.aciklama || '';
+              // Kullanıcı açıklaması varsa ekle
+              if (aciklama) {
+                finalAciklama = aciklama;
+              } else if (existingNot && !existingNot.includes('Muhasebe')) {
+                // Eğer muhasebe notu yoksa mevcut açıklamayı kullan
+                finalAciklama = existingNot;
+              }
+              // Muhasebe notunu ekle
+              if (!finalAciklama.includes('Muhasebe')) {
+                finalAciklama = finalAciklama ? finalAciklama + ' | ' + muhasebeNotu : muhasebeNotu;
+              } else {
+                // Zaten varsa, güncelleme notunu ekle
+                finalAciklama = finalAciklama.replace(/Kayıt yapan\/güncelleyen: Muhasebe/g, muhasebeNotu);
+              }
+            } else {
+              // Yeni kayıt gibi davran
+              finalAciklama = aciklama ? aciklama + ' | ' + muhasebeNotu : muhasebeNotu;
+            }
+          } else {
+            // Yeni kayıt
+            finalAciklama = aciklama ? aciklama + ' | ' + muhasebeNotu : muhasebeNotu;
+            data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+          }
+          data.not = finalAciklama;
+          data.aciklama = finalAciklama;
+          
+          if (id) {
+            await db.collection(kayitKoleksiyon).doc(id).update(data);
+          } else {
+            const docRef = await db.collection(kayitKoleksiyon).add(data);
+            // Yeni kayıt ID'sini logla (debug için)
+            console.log('Yeni kayıt oluşturuldu:', docRef.id, 'Koleksiyon:', kayitKoleksiyon, 'Yıl:', yil);
+          }
+        } else {
+          // İftar-Sahur kaydı
+          const yilRef = db.collection('ramazan_serif').doc(String(yil));
+          const data = {
+            tarih: tarih,
+            tip: tip,
+            sahip: sahip,
+            tutar: tutar,
+            istirak: istirak,
+            musafirAdedi: musafirAdedi,
+            yil: yil,
+            ay: ay,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          };
+          
+          // Personel bilgisini ekle
+          if (personelAd) {
+            data.personel = personelAd;
+            data.personelAdi = personelAd;
+          }
+          if (personelUidFinal) {
+            data.personelUid = personelUidFinal;
+          }
+          
+          // Mahal bilgisini ekle
+          if (mahalId) {
+            data.mahalId = mahalId;
+          }
+          if (mahalAdi) {
+            data.mahal = mahalAdi;
+          }
+          
+          // Not ekle (muhasebe notu)
+          if (id) {
+            // Güncelleme - mevcut kaydı al
+            const existingDoc = await yilRef.collection('kayitlar').doc(id).get();
+            if (existingDoc.exists) {
+              const existingData = existingDoc.data();
+              let existingNot = existingData.not || '';
+              // Eğer muhasebe notu yoksa ekle, varsa güncelle
+              if (!existingNot.includes('Muhasebe')) {
+                existingNot = existingNot ? existingNot + ' | ' + muhasebeNotu : muhasebeNotu;
+              } else {
+                // Zaten varsa, güncelleme notunu ekle
+                existingNot = existingNot.replace(/Kayıt yapan\/güncelleyen: Muhasebe/g, muhasebeNotu);
+              }
+              data.not = existingNot;
+            } else {
+              data.not = muhasebeNotu;
+            }
+          } else {
+            // Yeni kayıt
+            data.not = muhasebeNotu;
+            data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+          }
+          
+          if (id) {
+            await yilRef.collection('kayitlar').doc(id).update(data);
+          } else {
+            const docRef = await yilRef.collection('kayitlar').add(data);
+            // Yeni kayıt ID'sini logla (debug için)
+            console.log('Yeni iftar-sahur kaydı oluşturuldu:', docRef.id, 'Yıl:', yil);
+          }
         }
         
-        showToast('Başarılı', 'Kayıt başarıyla kaydedildi!', 'success');
+        showToast('Başarılı', 'Kayıt kaydedildi', 'success');
         closeEditModal();
+        // Firestore cache sorununu önlemek için daha uzun gecikme
+        await new Promise(resolve => setTimeout(resolve, 1000));
         await loadKayitlar();
       } catch (e) {
         console.error('Kayıt kaydedilemedi:', e);
-        showToast('Hata', 'Kayıt kaydedilemedi: ' + e.message, 'error');
+        showToast('Hata', 'Kayıt kaydedilemedi', 'error');
       }
     });
 
-    async function deleteKayit(id) {
+    async function deleteKayit(id, kayitTipi = 'iftar-sahur') {
       const confirmed = await showConfirmModal(
         'Kayıt Silme',
         'Bu kaydı silmek istediğinizden emin misiniz?',
@@ -2591,9 +3336,17 @@
       try {
         const k = kayitlar.find(k => k.id === id);
         if (k) {
-          const yilRef = db.collection('ramazan_serif').doc(String(k.yil));
-          await yilRef.collection('kayitlar').doc(id).delete();
-          showToast('Başarılı', 'Kayıt silindi!', 'success');
+          const tip = kayitTipi || k.kayitTipi || 'iftar-sahur';
+          const koleksiyon = k.kayitKoleksiyon || 
+            (tip === 'teberru' ? 'teberru_kayitlari' : tip === 'taahhut' ? 'taahhut_kayitlari' : 'kayitlar');
+          
+          if (tip === 'teberru' || tip === 'taahhut') {
+            await db.collection(koleksiyon).doc(id).delete();
+          } else {
+            const yilRef = db.collection('ramazan_serif').doc(String(k.yil));
+            await yilRef.collection('kayitlar').doc(id).delete();
+          }
+          showToast('Başarılı', 'Kayıt silindi', 'success');
           await loadKayitlar();
         }
       } catch (e) {
@@ -2605,8 +3358,8 @@
     window.editKayit = editKayit;
     window.deleteKayit = deleteKayit;
 
-    function editKayit(id) {
-      openEditModal(id);
+    function editKayit(id, kayitTipi = 'iftar-sahur') {
+      openEditModal(id, kayitTipi);
     }
 
     // Takvim görünümü
@@ -3036,7 +3789,28 @@
       }
     }
 
-    qs('#filtreYil').addEventListener('change', loadKayitlar);
+    // Yıl değiştiğinde hem kayıtları yükle hem de tarih seçimini güncelle
+    qs('#filtreYil').addEventListener('change', async function() {
+      // Tarih seçimini güncelle
+      const tip = qs('#filtreTip')?.value;
+      const tarihSelect = qs('#filtreTarih');
+      
+      if (tip && tarihSelect && tarihSelect.style.display !== 'none') {
+        const yil = this.value || currentYil || new Date().getFullYear();
+        await loadYilRamazanAyar(yil);
+        const tarihler = getRamazanTarihListesi(yilRamazanAyar);
+        tarihSelect.innerHTML = '<option value="">Tüm Tarihler</option>';
+        tarihler.forEach(t => {
+          const option = document.createElement('option');
+          option.value = t.value;
+          option.textContent = t.label;
+          tarihSelect.appendChild(option);
+        });
+      }
+      
+      // Kayıtları yükle
+      await loadKayitlar();
+    });
 
     // ESC tuşu
     document.addEventListener('keydown', (e) => {
