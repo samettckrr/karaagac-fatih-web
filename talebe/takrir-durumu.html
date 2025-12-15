@@ -403,12 +403,22 @@
         </div>
       </div>
 
+      <!-- Talebe -->
+      <div class="grp">
+        <div class="label">Talebe Seç (Talebe Görünümü için)</div>
+        <div class="inline">
+          <select id="selTalebe"><option value="">— Talebe Seç —</option></select>
+          <span class="muted">Talebe seçildiğinde, o talebenin tüm dersleri gösterilir.</span>
+        </div>
+      </div>
+
       <!-- Rapor / İşlem -->
       <div class="grp">
         <div class="label">Rapor / İşlem</div>
         <div class="inline">
           <label><input type="radio" name="mode" value="rapor" checked> Rapor Gör</label>
           <label><input type="radio" name="mode" value="islem"> İşlem Yap</label>
+          <label><input type="radio" name="mode" value="talebe"> Talebe Görünümü</label>
           <button id="btnGit" class="cta" type="button">Göster</button>
           <button id="btnTakvim" class="btn-ghost" type="button">Kitap &amp; Ders Gör</button>
           <span id="goMsg" class="muted"></span>
@@ -905,9 +915,118 @@ async function writeStatusFast({devre, kitap, ders, uid, durum, personel, person
     return out;
   }
 
+  // Bir talebe için bir kitaptaki tüm derslerin durumlarını oku
+  async function readTalebeStatuses({devre, kitap, talebeUid}){
+    if(!devre || !kitap || !talebeUid) return {};
+    const out = {};
+    
+    // Kitaptaki tüm dersleri al
+    const dersler = await listDerslerWithMeta(devre, kitap);
+    const dersKeyMap = {}; // dersKey -> ders adı mapping
+    
+    // Tüm derslerin kayıt tarihlerini topla
+    const tarihler = new Set();
+    dersler.forEach(dersItem => {
+      const ders = dersItem.ad;
+      const dersKey = encodeURIComponent(`${kitap}__${ders}`);
+      dersKeyMap[dersKey] = ders;
+      const dersGun = (dersItem.ilkKayitISO || new Date().toISOString()).slice(0,10);
+      tarihler.add(dersGun);
+    });
+    
+    // Bugün de ekle (işlem günü kayıtları için)
+    tarihler.add(new Date().toISOString().slice(0,10));
+    
+    // Tüm ilgili tarihlerdeki kayıtları topla
+    const allRecords = [];
+    for(const dateStr of tarihler){
+      try{
+        const dateDoc = await db.collection(PATHS.byDate).doc(devre).collection(dateStr).doc(talebeUid).get();
+        if(dateDoc.exists){
+          // dersler alt koleksiyonundan oku
+          const derslerSnap = await dateDoc.ref.collection('dersler').get();
+          derslerSnap.forEach(dersDoc => {
+            const dersKey = dersDoc.id;
+            if(dersKeyMap[dersKey]){
+              const x = dersDoc.data() || {};
+              if(x.kitap === kitap && x.ders){
+                allRecords.push({
+                  ders: x.ders,
+                  dersKey,
+                  durum: x.durum,
+                  islemISO: x.islemISO?.toDate ? x.islemISO.toDate().toISOString() : (x.islemISOStr || null),
+                  personel: x.personel || '—',
+                  dersGun: x.dersGun || dateStr,
+                  dateStr
+                });
+              }
+            }
+          });
+          
+          // kayitlar array'inden de oku (eski format desteği)
+          const data = dateDoc.data() || {};
+          if(Array.isArray(data.kayitlar)){
+            data.kayitlar.forEach(kayit => {
+              if(kayit.kitap === kitap && kayit.ders && dersler.some(d => d.ad === kayit.ders)){
+                allRecords.push({
+                  ders: kayit.ders,
+                  dersKey: encodeURIComponent(`${kitap}__${kayit.ders}`),
+                  durum: kayit.durum,
+                  islemISO: kayit.islemISOStr || null,
+                  personel: kayit.personel || '—',
+                  dersGun: dateStr,
+                  dateStr
+                });
+              }
+            });
+          }
+        }
+      }catch(e){
+        console.warn(`Tarih ${dateStr} için hata:`, e);
+      }
+    }
+    
+    // Her ders için en son kaydı bul
+    dersler.forEach(dersItem => {
+      const ders = dersItem.ad;
+      const dersGun = (dersItem.ilkKayitISO || new Date().toISOString()).slice(0,10);
+      
+      // Bu derse ait kayıtları bul ve en son olanı seç
+      const dersRecords = allRecords
+        .filter(r => r.ders === ders)
+        .sort((a,b) => {
+          // Önce ders gününe göre (en yeni ders günü önce)
+          const dateCompare = (b.dersGun || '').localeCompare(a.dersGun || '');
+          if(dateCompare !== 0) return dateCompare;
+          // Sonra işlem tarihine göre (en yeni işlem önce)
+          return (b.islemISO || '').localeCompare(a.islemISO || '');
+        });
+      
+      if(dersRecords.length > 0){
+        const latest = dersRecords[0];
+        out[ders] = {
+          durum: canonStat(latest.durum),
+          islemISO: latest.islemISO,
+          personel: latest.personel,
+          dersGun: latest.dersGun || dersGun
+        };
+      } else {
+        // Hiç kayıt yok
+        out[ders] = {
+          durum: STAT_NONE,
+          islemISO: null,
+          personel: '—',
+          dersGun: dersGun
+        };
+      }
+    });
+    
+    return out;
+  }
+
   /* UI state */
-  let state={ devre:'6.Devre', kitap:'', ders:'', dersKayitISO:null, mode:'rapor', talebeler:[], durumMap:{} };
-  let modalCtx={ uid:null, ad:'', pre:STAT_NONE };
+  let state={ devre:'6.Devre', kitap:'', ders:'', talebeUid:'', talebeAd:'', dersKayitISO:null, mode:'rapor', talebeler:[], durumMap:{}, talebeDersDurumMap:{} };
+  let modalCtx={ uid:null, ad:'', pre:STAT_NONE, ders:'' };
 
   function clearOutput(){ $('outArea').innerHTML=''; $('outTitle').textContent='—'; $('islemSection').style.display='none'; }
 
@@ -925,6 +1044,15 @@ async function writeStatusFast({devre, kitap, ders, uid, durum, personel, person
       const t=d.ilkKayitISO?` (${d.ilkKayitISO.slice(0,10)})`:''; return `<option value="${d.ad}"${state.ders===d.ad?' selected':''}>${d.ad}${t}</option>`;
     }).join('');
     if(!state.ders) state.ders=dersSel.value||'';
+  }
+  async function refreshTalebe(){
+    const talebeSel=$('selTalebe');
+    const talebeler=await loadTalebeler(state.devre);
+    talebeSel.innerHTML=`<option value="">— Talebe Seç —</option>`+talebeler.map(t=>`<option value="${t.uid}"${state.talebeUid===t.uid?' selected':''}>${t.ad}</option>`).join('');
+    if(state.talebeUid){
+      const selectedTalebe=talebeler.find(t=>t.uid===state.talebeUid);
+      if(selectedTalebe) state.talebeAd=selectedTalebe.ad;
+    }
   }
 
   function buildSummaryHTML(counts, total){
@@ -1058,6 +1186,87 @@ async function writeStatusFast({devre, kitap, ders, uid, durum, personel, person
 
     renderTalebeList();
     $('islemSection').style.display='block';
+  }
+
+  async function showTalebeView(){
+    if (!state.talebeUid || !state.kitap) {
+      $('goMsg').textContent = 'Kitap ve talebe seçiniz.';
+      return;
+    }
+    
+    safeUnsub();
+    $('islemSection').style.display='none';
+    bumpLoading(10);
+    loadingLabel('Dersler yükleniyor…');
+    
+    const dersler = await listDerslerWithMeta(state.devre, state.kitap);
+    bumpLoading(30);
+    loadingLabel('Durumlar okunuyor…');
+    
+    state.talebeDersDurumMap = await readTalebeStatuses({
+      devre: state.devre,
+      kitap: state.kitap,
+      talebeUid: state.talebeUid
+    });
+    
+    bumpLoading(70);
+    loadingLabel('Liste hazırlanıyor…');
+    
+    $('outTitle').textContent = `Talebe Görünümü • ${state.devre} • ${state.kitap} • ${state.talebeAd || '—'}`;
+    
+    // Özet istatistikler
+    const counts = { verdi: 0, 'yarım kaldı': 0, veremedi: 0 };
+    dersler.forEach(d => {
+      const rec = state.talebeDersDurumMap[d.ad] || { durum: STAT_NONE };
+      const st = canonStat(rec.durum || STAT_NONE);
+      if(st === STAT_VERDI) counts.verdi++;
+      else if(st === STAT_YARIM) counts['yarım kaldı']++;
+      else if(st === STAT_VEREMEDI) counts.veremedi++;
+    });
+    
+    const wrap = document.createElement('div');
+    wrap.innerHTML = buildSummaryHTML(counts, dersler.length);
+    
+    // Ders listesi
+    const list = document.createElement('div');
+    list.className = 'sList';
+    list.style.marginTop = '10px';
+    list.innerHTML = `<div class="sHead">Dersler<span class="tiny">Toplam: ${dersler.length}</span></div>`;
+    const body = document.createElement('div');
+    
+    bumpLoading(75);
+    
+    dersler.forEach((dersItem, i) => {
+      const ders = dersItem.ad;
+      const rec = state.talebeDersDurumMap[ders] || { durum: STAT_NONE, islemISO: null, personel: '—', dersGun: dersItem.ilkKayitISO?.slice(0,10) || '—' };
+      const st = canonStat(rec.durum || STAT_NONE);
+      const late = (st === STAT_VERDI && rec.dersGun) ? daysLate(rec.dersGun, rec.islemISO) : 0;
+      const iso10 = toISO10(rec.islemISO);
+      const lateInfo = (late > 0 && iso10) ? `<div class="tiny">! ${iso10} — ${late} gün geç verdi</div>` : '';
+      const personelInfo = rec.personel && rec.personel !== '—' ? `<div class="tiny">👤 ${rec.personel}</div>` : '';
+      const dersGunInfo = rec.dersGun && rec.dersGun !== '—' ? `<div class="tiny">📅 Ders günü: ${rec.dersGun}</div>` : '';
+      
+      const row = document.createElement('div');
+      row.className = 'sRow ' + rowClassByStat(st);
+      row.innerHTML = `<div><div>${ders}${dersItem.ilkKayitISO ? ` <span class="tiny">(${dersItem.ilkKayitISO.slice(0,10)})</span>` : ''}</div>${dersGunInfo}${lateInfo}${personelInfo}</div><div class="statBadge">${st === STAT_NONE ? '—' : st}</div>`;
+      row.style.cursor = 'pointer';
+      row.onclick = () => openTalebeModal({ uid: state.talebeUid, ad: state.talebeAd, ders, stat: st, rec });
+      body.appendChild(row);
+      
+      const p = 75 + ((i + 1) / dersler.length) * 20;
+      bumpLoading(p);
+    });
+    
+    list.appendChild(body);
+    wrap.appendChild(list);
+    $('outArea').replaceChildren(wrap);
+  }
+  
+  function openTalebeModal({ uid, ad, ders, stat, rec }){
+    modalCtx = { uid, ad, pre: stat, ders };
+    $('mHead').textContent = `${ad} • ${ders}`;
+    document.querySelectorAll('input[name="mStat"]').forEach(i => i.checked = (i.value === stat));
+    $('mModal').style.display = 'flex';
   }
 
   function safeUnsub(){
@@ -1244,20 +1453,59 @@ $('mSave').addEventListener('click', async () => {
   const durum = sel.value;
 
   try{
-    const sabitGun = (state.dersKayitISO || new Date().toISOString()).slice(0,10);
+    // Talebe görünümünden mi geldi kontrol et
+    const isTalebeView = modalCtx.ders && state.mode === 'talebe';
+    const ders = isTalebeView ? modalCtx.ders : state.ders;
+    
+    if(!ders){
+      toast('Ders bilgisi bulunamadı');
+      return;
+    }
+
+    // Ders kayıt tarihini bul
+    let dersKayitISO = null;
+    if(isTalebeView && state.talebeDersDurumMap[ders]?.dersGun){
+      dersKayitISO = state.talebeDersDurumMap[ders].dersGun + 'T00:00:00Z';
+    } else {
+      try {
+        const mdoc = await db.collection(PATHS.main).doc(state.devre).collection(state.kitap).doc(ders).get();
+        const m = mdoc.exists ? mdoc.data() : {};
+        dersKayitISO = m.ilkKayitISO || m.created || new Date().toISOString();
+      } catch(_) {
+        dersKayitISO = new Date().toISOString();
+      }
+    }
+    const sabitGun = dersKayitISO ? dersKayitISO.slice(0,10) : new Date().toISOString().slice(0,10);
+    
     const { uid: meUid, name: meName } = await ensureUserCtx();
     const device = getDeviceInfo();
 
     // 1) Optimistic UI: anında yansıt
     const nowISO = new Date().toISOString();
-    state.durumMap[modalCtx.uid] = { durum, islemISO: nowISO, personel: meName };
-    renderTalebeList();
+    
+    if(isTalebeView){
+      // Talebe görünümünde
+      if(!state.talebeDersDurumMap[ders]) state.talebeDersDurumMap[ders] = {};
+      state.talebeDersDurumMap[ders] = {
+        durum,
+        islemISO: nowISO,
+        personel: meName,
+        dersGun: sabitGun
+      };
+      // Liste yeniden render etmek yerine direkt güncelle
+      showTalebeView();
+    } else {
+      // Normal görünümde
+      state.durumMap[modalCtx.uid] = { durum, islemISO: nowISO, personel: meName };
+      renderTalebeList();
+    }
+    
     $('mModal').style.display='none';
     toast('Kaydediliyor…');
 
     // 2) Arka planda tek round-trip batch commit
     await writeStatusFast({
-      devre: state.devre, kitap: state.kitap, ders: state.ders,
+      devre: state.devre, kitap: state.kitap, ders: ders,
       uid: modalCtx.uid, durum,
       personel: meName, personelUid: meUid, device,
       dersGun: sabitGun
@@ -1983,6 +2231,8 @@ document.querySelectorAll('input[name="mode"]').forEach(r=>{
   r.addEventListener('change', ()=>{
     state.mode = r.value;
     if (state.mode === 'rapor') safeUnsub();
+    // Mode değiştiğinde çıktıyı temizle
+    clearOutput();
   });
 });
 
@@ -1990,6 +2240,7 @@ $('selDevre').addEventListener('change', async ()=>{
   safeUnsub();
   state.devre = $('selDevre').value;
   await refreshKitap(true);
+  await refreshTalebe();
   clearOutput();
   // Eğer ayarlar modalı açıksa, listeleri yenile
   if(ayarlarModal.style.display==='flex'){
@@ -2013,22 +2264,47 @@ $('selDers').addEventListener('change', async ()=>{
   state.dersKayitISO=null;
 });
 
+$('selTalebe').addEventListener('change', async ()=>{
+  safeUnsub();
+  const talebeUid = $('selTalebe').value||'';
+  state.talebeUid = talebeUid;
+  if(talebeUid){
+    const talebeler = await loadTalebeler(state.devre);
+    const selectedTalebe = talebeler.find(t=>t.uid===talebeUid);
+    state.talebeAd = selectedTalebe ? selectedTalebe.ad : '—';
+  } else {
+    state.talebeAd = '';
+  }
+});
+
   // Göster
   $('btnGit').addEventListener('click', async ()=>{
     $('goMsg').textContent=''; $('islemSection').style.display='none'; $('outArea').innerHTML='';
     const currentMode=(document.querySelector('input[name="mode"]:checked')?.value)||'rapor';
     state.mode=currentMode;
-    if(!state.kitap){ $('goMsg').textContent='Kitap seçiniz.'; return; }
-    if(!state.ders){ $('goMsg').textContent='Ders seçiniz.'; return; }
-  loadingStart('Veriler getiriliyor…', 88);
-  try{
-    if (state.mode==='rapor') {
-      safeUnsub();          // <— ekle
-      await showRapor();
+    
+    if(state.mode === 'talebe'){
+      // Talebe görünümü
+      if(!state.kitap){ $('goMsg').textContent='Kitap seçiniz.'; return; }
+      if(!state.talebeUid){ $('goMsg').textContent='Talebe seçiniz.'; return; }
+      loadingStart('Veriler getiriliyor…', 88);
+      try{
+        await showTalebeView();
+      } finally { loadingEnd(); }
     } else {
-      await showIslem();
+      // Normal görünüm (rapor/islem)
+      if(!state.kitap){ $('goMsg').textContent='Kitap seçiniz.'; return; }
+      if(!state.ders){ $('goMsg').textContent='Ders seçiniz.'; return; }
+      loadingStart('Veriler getiriliyor…', 88);
+      try{
+        if (state.mode==='rapor') {
+          safeUnsub();
+          await showRapor();
+        } else {
+          await showIslem();
+        }
+      } finally { loadingEnd(); }
     }
-  } finally { loadingEnd(); }
 });
 
   // Ekle butonları
@@ -2081,6 +2357,7 @@ $('btnDersKaydet').addEventListener('click', async ()=>{
       // Başlangıç değerleri
       state.devre = $('selDevre').value;
       await refreshKitap(true);
+      await refreshTalebe();
     }catch(e){ console.error(e); toast('Veriler yüklenirken hata.'); }
   });
 </script>
