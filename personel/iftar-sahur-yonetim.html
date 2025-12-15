@@ -136,6 +136,94 @@
     .badge-yeni{background:#e3f2fd;color:#1976d2;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600}
     .badge-pasif{background:#fef3c7;color:#d97706;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600}
     
+    /* Toasts (modern & minimalist) */
+    .toast-container{
+      position:fixed;
+      top:72px;
+      right:16px;
+      z-index:12000;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      pointer-events:none;
+    }
+    .toast{
+      min-width:260px;
+      max-width:360px;
+      background:rgba(15,23,42,.96);
+      color:#f9fafb;
+      border-radius:12px;
+      padding:10px 12px;
+      display:flex;
+      align-items:flex-start;
+      gap:8px;
+      box-shadow:0 18px 40px rgba(15,23,42,.35);
+      transform:translateY(-8px) translateX(8px);
+      opacity:0;
+      transition:all .25s ease;
+      pointer-events:auto;
+      border:1px solid rgba(148,163,184,.35);
+      backdrop-filter:blur(14px);
+      -webkit-backdrop-filter:blur(14px);
+      font-size:13px;
+    }
+    .toast.show{
+      opacity:1;
+      transform:translateY(0) translateX(0);
+    }
+    .toast-icon{
+      font-size:18px;
+      margin-top:2px;
+    }
+    .toast-content{
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+    }
+    .toast-title{
+      font-weight:600;
+      letter-spacing:.01em;
+    }
+    .toast-message{
+      font-size:12px;
+      color:#e5e7eb;
+    }
+    .toast-close{
+      background:transparent;
+      border:none;
+      color:#94a3b8;
+      font-size:16px;
+      cursor:pointer;
+      padding:0 0 0 4px;
+      line-height:1;
+    }
+    .toast-close:hover{
+      color:#e5e7eb;
+    }
+    .toast.success{
+      border-left:3px solid #22c55e;
+    }
+    .toast.error{
+      border-left:3px solid #ef4444;
+    }
+    .toast.warning{
+      border-left:3px solid #f59e0b;
+    }
+    .toast.info{
+      border-left:3px solid #3b82f6;
+    }
+    @media (max-width:640px){
+      .toast-container{
+        left:12px;
+        right:12px;
+      }
+      .toast{
+        width:100%;
+        max-width:none;
+      }
+    }
+
     /* Takvim Tab */
     .cal-wrapper{display:flex;flex-direction:column;gap:8px;margin-top:12px}
     .cal-dow-row{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
@@ -147,6 +235,15 @@
     }
     .cal-day.has-data{background:#e8f5e9;border-color:var(--good)}
     .cal-day.today{border-color:var(--accent);border-width:2px}
+    .cal-day.selected{
+      box-shadow:0 0 0 2px rgba(37,99,235,.3);
+      border-color:var(--accent);
+    }
+    .cal-day.outside-ramazan{
+      background:#f9fafb;
+      color:var(--muted);
+      cursor:default;
+    }
     
     .badge-chip{padding:4px 8px;border-radius:4px;background:#f0f0f0;color:var(--ink);font-size:11px;display:inline-block;margin:2px}
     .badge-chip.iftar{background:#fff3cd;color:#856404}
@@ -361,8 +458,7 @@
             <option value="2025" selected>2025</option>
             <option value="2026">2026</option>
           </select>
-          <select id="calAy"></select>
-          <button onclick="renderCalView()">Yükle</button>
+          <button onclick="renderCalView()">Takvimi Yükle</button>
         </div>
 
         <div class="cal-wrapper">
@@ -1259,6 +1355,61 @@
     </div>
   </div>
 
+  <!-- Modal: Gün Detay (Takvim) -->
+  <div class="modal" id="modalCalDay">
+    <div class="sheet" style="max-width:900px;max-height:90vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+        <div>
+          <h3 id="calDayModalTitle" style="margin:0;font-size:18px;color:var(--text)">📅 Gün Detayı</h3>
+          <div id="calDayModalSummary" style="margin-top:4px;font-size:12px;color:var(--muted)"></div>
+        </div>
+        <button type="button" onclick="closeCalDayModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);padding:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all 0.2s" onmouseover="this.style.background='var(--hover)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--muted)'">×</button>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <h4 style="margin:0;font-size:14px;color:var(--text)">🌙 İftar Kayıtları</h4>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Personel</th>
+                  <th>Sahip / Bağışçı</th>
+                  <th>Mahal</th>
+                  <th>Müsafir</th>
+                  <th class="right">Tutar (₺)</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyCalIftar"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <h4 style="margin:0;font-size:14px;color:var(--text)">✨ Sahur Kayıtları</h4>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Personel</th>
+                  <th>Sahip / Bağışçı</th>
+                  <th>Mahal</th>
+                  <th>Müsafir</th>
+                  <th class="right">Tutar (₺)</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyCalSahur"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: Personel/Referans Detay Analizi -->
   <div class="modal" id="modalPersonelDetay">
     <div class="sheet" style="max-width:1000px;max-height:90vh;overflow-y:auto">
@@ -1360,10 +1511,6 @@
     let tutarSecenekleri = [];
     let currentYil = new Date().getFullYear();
     
-    // Toast Bildirim Sistemi
-    let toastQueue = [];
-    let toastShowing = false;
-    
     function showToast(title, message = '', type = 'success', duration = 4000) {
       const container = qs('#toastContainer');
       if (!container) return;
@@ -1384,19 +1531,34 @@
           <div class="toast-title">${title}</div>
           ${message ? `<div class="toast-message">${message}</div>` : ''}
         </div>
-        <button class="toast-close" onclick="this.closest('.toast').remove()">×</button>
+        <button class="toast-close" type="button">×</button>
       `;
       
       container.appendChild(toast);
       
+      const hideToast = () => {
+        toast.classList.remove('show');
+        setTimeout(() => {
+          if (toast.parentElement) toast.remove();
+        }, 220);
+      };
+
+      const closeBtn = toast.querySelector('.toast-close');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', hideToast);
+      }
+
       // Animasyon için
       setTimeout(() => toast.classList.add('show'), 10);
       
       // Otomatik kapanma
-      setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 300);
-      }, duration);
+      const timeoutId = setTimeout(hideToast, duration);
+
+      // Üzerine gelince duraklat, çekilince devam et
+      toast.addEventListener('mouseenter', () => clearTimeout(timeoutId));
+      toast.addEventListener('mouseleave', () => {
+        setTimeout(hideToast, duration / 2);
+      });
     }
     
     window.showToast = showToast;
@@ -1739,13 +1901,11 @@
         console.error('Kullanıcı bilgisi alınamadı:', e);
       }
       
-      // Ay seçeneklerini doldur
+      // Ay seçeneklerini doldur (kayıt filtreleri için)
       fillAyOptions();
       
-      // Ramazan yıllarını yükle ve yıl seçeneklerini güncelle
+      // Ramazan yıllarını ve aktif yılı yükle
       await loadRamazanYillari();
-      
-      // Aktif ramazan ayarını yükle
       await loadAktifRamazanAyar();
       
       // İlk yükleme
@@ -2302,6 +2462,48 @@
       });
     }
 
+    // Takvim sekmesi için seçili yıla göre ay listesini Ramazan takvimine göre doldur
+    async function updateCalAyOptionsForYear(yil) {
+      const calSel = qs('#calAy');
+      if (!calSel) return;
+
+      calSel.innerHTML = '';
+
+      // İlgili yılın Ramazan ayarını yükle
+      await loadYilRamazanAyar(yil);
+
+      let aylarSet = new Set();
+      if (yilRamazanAyar && yilRamazanAyar.baslangic && yilRamazanAyar.bitis) {
+        const bas = new Date(yilRamazanAyar.baslangic);
+        const bit = new Date(yilRamazanAyar.bitis);
+        const d = new Date(bas);
+        while (d <= bit) {
+          aylarSet.add(d.getMonth() + 1); // 1-12
+          d.setDate(d.getDate() + 1);
+        }
+      }
+
+      // Eğer Ramazan ayarı yoksa tüm ayları göster (eski davranış)
+      let aylar = Array.from(aylarSet).sort((a, b) => a - b);
+      if (aylar.length === 0) {
+        aylar = Array.from({ length: 12 }, (_, i) => i + 1);
+      }
+
+      const today = new Date();
+      let defaultAy = aylar[0];
+      if (parseInt(yil) === today.getFullYear() && aylar.includes(today.getMonth() + 1)) {
+        defaultAy = today.getMonth() + 1;
+      }
+
+      aylar.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m;
+        opt.textContent = ayIsimleri[m - 1];
+        if (m === defaultAy) opt.selected = true;
+        calSel.appendChild(opt);
+      });
+    }
+
     // Ramazan yıllarını yükle ve yıl seçeneklerini güncelle
     async function loadRamazanYillari() {
       try {
@@ -2313,6 +2515,7 @@
         updateYilSelect('exportYil', yillar);
         updateYilSelect('kapasiteYil', yillar);
         updateYilSelect('tutarYil', yillar);
+        updateYilSelect('calYil', yillar);
         
         // Aktif yıl varsa onu seç
         const aktifSnap = await db.collection('ramazan_serif').doc('ayarlar').collection('yillar').where('aktif', '==', true).limit(1).get();
@@ -2322,7 +2525,16 @@
           qs('#exportYil').value = aktifYil;
           if (qs('#kapasiteYil')) qs('#kapasiteYil').value = aktifYil;
           if (qs('#tutarYil')) qs('#tutarYil').value = aktifYil;
+          if (qs('#calYil')) qs('#calYil').value = aktifYil;
           currentYil = aktifYil;
+
+          // Takvim görünümündeki ay listesini Ramazan takvimine göre güncelle
+          await updateCalAyOptionsForYear(aktifYil);
+        } else if (yillar.length > 0) {
+          // Aktif yıl yoksa en yeni yılı kullan
+          const varsayilanYil = yillar[0];
+          if (qs('#calYil')) qs('#calYil').value = varsayilanYil;
+          await updateCalAyOptionsForYear(varsayilanYil);
         }
       } catch (e) {
         console.error('Ramazan yılları yüklenemedi:', e);
@@ -2350,6 +2562,17 @@
       }
     }
 
+    // Takvim sekmesi: yıl değiştiğinde ay listesini Ramazan takvimine göre güncelle
+    const calYilSelect = qs('#calYil');
+    if (calYilSelect) {
+      calYilSelect.addEventListener('change', (e) => {
+        const yil = e.target.value;
+        if (yil) {
+          updateCalAyOptionsForYear(yil);
+        }
+      });
+    }
+
     function fillAyOptions() {
       const sel = qs('#filtreAy');
       sel.innerHTML = '<option value="">Tüm Aylar</option>';
@@ -2360,15 +2583,7 @@
         sel.appendChild(opt);
       });
 
-      const calSel = qs('#calAy');
-      calSel.innerHTML = '';
-      ayIsimleri.forEach((ay, idx) => {
-        const opt = document.createElement('option');
-        opt.value = idx + 1;
-        opt.textContent = ay;
-        opt.selected = idx + 1 === new Date().getMonth() + 1;
-        calSel.appendChild(opt);
-      });
+      // Takvim görünümü ay seçenekleri Ramazan takvimine göre ayrı fonksiyonda güncelleniyor
     }
 
     // Kayıtları yükle
@@ -3197,22 +3412,46 @@
           }
           
           // Personel bilgisini ekle
-          if (personelAd) {
-            data.personel = personelAd;
-            data.kaydedenPersonel = personelAd;
-          }
-          if (personelUidFinal) {
-            data.personelUid = personelUidFinal;
-            data.kaydedenPersonelUid = personelUidFinal;
-          }
-          
           // Not ve açıklama ekle (muhasebe notu + kullanıcı açıklaması)
           let finalAciklama = '';
           if (id) {
-            // Güncelleme
+            // Güncelleme - mevcut kaydı al ve eski personel bilgilerini temizle
             const existingDoc = await db.collection(kayitKoleksiyon).doc(id).get();
             if (existingDoc.exists) {
               const existingData = existingDoc.data();
+              
+              // Eski personel bilgilerini temizle (yeni personel seçilmişse veya personel kaldırılmışsa)
+              if (personelAd && personelUidFinal) {
+                // Yeni personel bilgisi var - eski alanları temizle ve yeni bilgileri ekle
+                data.personel = personelAd;
+                data.kaydedenPersonel = personelAd;
+                data.personelUid = personelUidFinal;
+                data.kaydedenPersonelUid = personelUidFinal;
+                // Eski personel alanlarını sil (eğer varsa ve farklıysa)
+                if (existingData.personelAdi) {
+                  data.personelAdi = firebase.firestore.FieldValue.delete();
+                }
+              } else if (!personelAd && !personelUidFinal) {
+                // Personel kaldırılmış - tüm personel alanlarını temizle
+                data.personel = firebase.firestore.FieldValue.delete();
+                data.kaydedenPersonel = firebase.firestore.FieldValue.delete();
+                data.personelUid = firebase.firestore.FieldValue.delete();
+                data.kaydedenPersonelUid = firebase.firestore.FieldValue.delete();
+                if (existingData.personelAdi) {
+                  data.personelAdi = firebase.firestore.FieldValue.delete();
+                }
+              } else {
+                // Sadece ad veya uid var - mevcut durumu koru ama eksik olanı ekle
+                if (personelAd) {
+                  data.personel = personelAd;
+                  data.kaydedenPersonel = personelAd;
+                }
+                if (personelUidFinal) {
+                  data.personelUid = personelUidFinal;
+                  data.kaydedenPersonelUid = personelUidFinal;
+                }
+              }
+              
               let existingNot = existingData.not || existingData.aciklama || '';
               // Kullanıcı açıklaması varsa ekle
               if (aciklama) {
@@ -3230,10 +3469,26 @@
               }
             } else {
               // Yeni kayıt gibi davran
+              if (personelAd) {
+                data.personel = personelAd;
+                data.kaydedenPersonel = personelAd;
+              }
+              if (personelUidFinal) {
+                data.personelUid = personelUidFinal;
+                data.kaydedenPersonelUid = personelUidFinal;
+              }
               finalAciklama = aciklama ? aciklama + ' | ' + muhasebeNotu : muhasebeNotu;
             }
           } else {
             // Yeni kayıt
+            if (personelAd) {
+              data.personel = personelAd;
+              data.kaydedenPersonel = personelAd;
+            }
+            if (personelUidFinal) {
+              data.personelUid = personelUidFinal;
+              data.kaydedenPersonelUid = personelUidFinal;
+            }
             finalAciklama = aciklama ? aciklama + ' | ' + muhasebeNotu : muhasebeNotu;
             data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
           }
@@ -3263,28 +3518,47 @@
           };
           
           // Personel bilgisini ekle
-          if (personelAd) {
-            data.personel = personelAd;
-            data.personelAdi = personelAd;
-          }
-          if (personelUidFinal) {
-            data.personelUid = personelUidFinal;
-          }
-          
-          // Mahal bilgisini ekle
-          if (mahalId) {
-            data.mahalId = mahalId;
-          }
-          if (mahalAdi) {
-            data.mahal = mahalAdi;
-          }
-          
-          // Not ekle (muhasebe notu)
           if (id) {
-            // Güncelleme - mevcut kaydı al
+            // Güncelleme - mevcut kaydı al ve eski personel bilgilerini temizle
             const existingDoc = await yilRef.collection('kayitlar').doc(id).get();
             if (existingDoc.exists) {
               const existingData = existingDoc.data();
+              
+              // Eski personel bilgilerini temizle (yeni personel seçilmişse veya personel kaldırılmışsa)
+              if (personelAd && personelUidFinal) {
+                // Yeni personel bilgisi var - eski alanları temizle
+                data.personel = personelAd;
+                data.personelAdi = personelAd;
+                data.personelUid = personelUidFinal;
+                // Eski personel alanlarını sil (eğer varsa)
+                if (existingData.kaydedenPersonel) {
+                  data.kaydedenPersonel = firebase.firestore.FieldValue.delete();
+                }
+                if (existingData.kaydedenPersonelUid) {
+                  data.kaydedenPersonelUid = firebase.firestore.FieldValue.delete();
+                }
+              } else if (!personelAd && !personelUidFinal) {
+                // Personel kaldırılmış - tüm personel alanlarını temizle
+                data.personel = firebase.firestore.FieldValue.delete();
+                data.personelAdi = firebase.firestore.FieldValue.delete();
+                data.personelUid = firebase.firestore.FieldValue.delete();
+                if (existingData.kaydedenPersonel) {
+                  data.kaydedenPersonel = firebase.firestore.FieldValue.delete();
+                }
+                if (existingData.kaydedenPersonelUid) {
+                  data.kaydedenPersonelUid = firebase.firestore.FieldValue.delete();
+                }
+              } else {
+                // Sadece ad veya uid var - mevcut durumu koru ama eksik olanı ekle
+                if (personelAd) {
+                  data.personel = personelAd;
+                  data.personelAdi = personelAd;
+                }
+                if (personelUidFinal) {
+                  data.personelUid = personelUidFinal;
+                }
+              }
+              
               let existingNot = existingData.not || '';
               // Eğer muhasebe notu yoksa ekle, varsa güncelle
               if (!existingNot.includes('Muhasebe')) {
@@ -3295,12 +3569,35 @@
               }
               data.not = existingNot;
             } else {
+              // Doküman yoksa yeni kayıt gibi davran
+              if (personelAd) {
+                data.personel = personelAd;
+                data.personelAdi = personelAd;
+              }
+              if (personelUidFinal) {
+                data.personelUid = personelUidFinal;
+              }
               data.not = muhasebeNotu;
             }
           } else {
             // Yeni kayıt
+            if (personelAd) {
+              data.personel = personelAd;
+              data.personelAdi = personelAd;
+            }
+            if (personelUidFinal) {
+              data.personelUid = personelUidFinal;
+            }
             data.not = muhasebeNotu;
             data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+          }
+          
+          // Mahal bilgisini ekle
+          if (mahalId) {
+            data.mahalId = mahalId;
+          }
+          if (mahalAdi) {
+            data.mahal = mahalAdi;
           }
           
           if (id) {
@@ -3362,34 +3659,60 @@
       openEditModal(id, kayitTipi);
     }
 
-    // Takvim görünümü
+    // Takvim görünümü (Ramazan takvimine göre tek sayfa)
     async function renderCalView() {
       const yil = parseInt(qs('#calYil').value);
-      const ay = parseInt(qs('#calAy').value);
       
       try {
+        // Seçili yılın Ramazan takvimini yükle
+        await loadYilRamazanAyar(yil);
+
+        const grid = qs('#calViewGrid');
+        const detailBox = qs('#calDayDetail');
+        const tbodyDetail = qs('#tbodyCalDay');
+        if (!grid) return;
+
+        // Önce alanları temizle
+        grid.innerHTML = '';
+        if (detailBox && tbodyDetail) {
+          detailBox.style.display = 'none';
+          tbodyDetail.innerHTML = '';
+        }
+
+        if (!yilRamazanAyar || !yilRamazanAyar.baslangic || !yilRamazanAyar.bitis) {
+          // Ramazan takvimi tanımlı değilse bilgilendir
+          const info = document.createElement('div');
+          info.style.gridColumn = 'span 7';
+          info.style.padding = '16px';
+          info.style.textAlign = 'center';
+          info.style.color = 'var(--muted)';
+          info.style.fontSize = '13px';
+          info.textContent = 'Bu yıl için Ramazan takvimi tanımlı değil. Lütfen Ayarlar > Ramazan Ayarları bölümünden ekleyin.';
+          grid.appendChild(info);
+          return;
+        }
+
+        const bas = new Date(yilRamazanAyar.baslangic);
+        const bit = new Date(yilRamazanAyar.bitis);
+
         const yilRef = db.collection('ramazan_serif').doc(String(yil));
-        // where('yil', '==', yil) gereksiz çünkü zaten yilRef içindeyiz
-        const snap = await yilRef.collection('kayitlar')
-          .where('ay', '==', ay)
-          .get();
+        // Tüm yıl kayıtlarını çek, Ramazan aralığını client-side filtrele
+        const snap = await yilRef.collection('kayitlar').get();
         
-        const ayKayitlar = snap.docs.map(d => d.data());
+        const tumKayitlar = snap.docs.map(d => d.data());
         const byDate = new Map();
         
-        ayKayitlar.forEach(k => {
-          const tarihStr = k.tarih instanceof Date ? k.tarih.toISOString().slice(0, 10) : k.tarih;
+        tumKayitlar.forEach(k => {
+          if (!k.tarih) return;
+          const tarihDate = k.tarih.toDate ? k.tarih.toDate() :
+                            (k.tarih instanceof Date ? k.tarih : new Date(k.tarih));
+          if (tarihDate < bas || tarihDate > bit) return;
+          const tarihStr = tarihDate.toISOString().slice(0, 10);
           if (!byDate.has(tarihStr)) byDate.set(tarihStr, []);
           byDate.get(tarihStr).push(k);
         });
         
-        const grid = qs('#calViewGrid');
-        grid.innerHTML = '';
-        
-        const firstDay = new Date(yil, ay - 1, 1);
-        const lastDay = new Date(yil, ay, 0);
-        const startDay = (firstDay.getDay() + 6) % 7;
-        const daysInMonth = lastDay.getDate();
+        const startDay = (bas.getDay() + 6) % 7; // Pazartesi 0
         
         for (let i = 0; i < startDay; i++) {
           const div = document.createElement('div');
@@ -3398,9 +3721,11 @@
         }
         
         const today = new Date();
-        for (let day = 1; day <= daysInMonth; day++) {
-          const date = new Date(yil, ay - 1, day);
-          const dateStr = date.toISOString().slice(0, 10);
+        let selectedCell = null;
+        
+        const current = new Date(bas);
+        while (current <= bit) {
+          const dateStr = current.toISOString().slice(0, 10);
           const gunKayitlar = byDate.get(dateStr) || [];
           
           const div = document.createElement('div');
@@ -3408,25 +3733,102 @@
           if (dateStr === today.toISOString().slice(0, 10)) div.classList.add('today');
           if (gunKayitlar.length > 0) div.classList.add('has-data');
           
+          const gun = current.getDate();
+          const ayIndex = current.getMonth(); // 0-11
+          
+          const iftarCount = gunKayitlar.filter(k => k.tip === 'iftar').length;
+          const sahurCount = gunKayitlar.filter(k => k.tip === 'sahur').length;
+
           div.innerHTML = `
-            <div>${day}</div>
-            <div>
-              ${gunKayitlar.filter(k => k.tip === 'iftar').length > 0 ? '<span class="badge-chip iftar">İ</span>' : ''}
-              ${gunKayitlar.filter(k => k.tip === 'sahur').length > 0 ? '<span class="badge-chip sahur">S</span>' : ''}
+            <div style="font-weight:600">${gun}</div>
+            <div style="margin-top:4px;font-size:11px">
+              ${iftarCount ? `<span class="badge-chip iftar">İ ${iftarCount}</span>` : ''}
+              ${sahurCount ? `<span class="badge-chip sahur">S ${sahurCount}</span>` : ''}
             </div>
           `;
           
           if (gunKayitlar.length > 0) {
             div.onclick = () => {
-              alert(`Bu günde ${gunKayitlar.length} kayıt var:\n${gunKayitlar.map(k => `${k.tip === 'iftar' ? 'İftar' : 'Sahur'}: ${k.sahip}`).join('\n')}`);
+              if (selectedCell) selectedCell.classList.remove('selected');
+              selectedCell = div;
+              div.classList.add('selected');
+              openCalDayModal(dateStr, gunKayitlar);
             };
           }
           
           grid.appendChild(div);
+          current.setDate(current.getDate() + 1);
         }
       } catch (e) {
         console.error('Takvim yüklenemedi:', e);
       }
+    }
+
+    // Takvim gün detay modali
+    function openCalDayModal(dateStr, gunKayitlar) {
+      const modal = qs('#modalCalDay');
+      const titleEl = qs('#calDayModalTitle');
+      const summaryEl = qs('#calDayModalSummary');
+      const tbodyIftar = qs('#tbodyCalIftar');
+      const tbodySahur = qs('#tbodyCalSahur');
+      if (!modal || !titleEl || !summaryEl || !tbodyIftar || !tbodySahur) return;
+
+      const date = new Date(dateStr);
+      titleEl.textContent = date.toLocaleDateString('tr-TR', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        weekday: 'long'
+      });
+
+      const iftarList = gunKayitlar.filter(k => k.tip === 'iftar');
+      const sahurList = gunKayitlar.filter(k => k.tip === 'sahur');
+
+      const iftarCount = iftarList.length;
+      const sahurCount = sahurList.length;
+      const toplamTutar = gunKayitlar.reduce((sum, k) => {
+        const t = k.tutar || k.miktar || 0;
+        return sum + (typeof t === 'number' ? t : parseFloat(t) || 0);
+      }, 0);
+
+      summaryEl.textContent = `Toplam ${iftarCount} iftar, ${sahurCount} sahur kaydı • Toplam Tutar: ${toplamTutar.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺`;
+
+      const renderRows = (list, tbody) => {
+        tbody.innerHTML = '';
+        if (!list || list.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:10px">Kayıt bulunamadı.</td></tr>';
+          return;
+        }
+        list.forEach(k => {
+          const tr = document.createElement('tr');
+          const personel = k.personelAdi || k.personel || k.kaydedenPersonel || '-';
+          const sahip = k.sahip || k.bagisci || '-';
+          const mahal = k.mahal || '-';
+          const musafir = k.musafirAdedi != null ? k.musafirAdedi : '-';
+          const tutar = k.tutar || k.miktar || 0;
+          tr.innerHTML = `
+            <td>${personel}</td>
+            <td>${sahip}</td>
+            <td>${mahal}</td>
+            <td>${musafir}</td>
+            <td class="right">${tutar ? tutar.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      };
+
+      renderRows(iftarList, tbodyIftar);
+      renderRows(sahurList, tbodySahur);
+
+      modal.classList.add('show');
+      document.body.classList.add('modal-open');
+    }
+
+    function closeCalDayModal() {
+      const modal = qs('#modalCalDay');
+      if (!modal) return;
+      modal.classList.remove('show');
+      document.body.classList.remove('modal-open');
     }
 
     // Tutar seçenekleri
