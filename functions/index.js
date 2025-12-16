@@ -251,3 +251,160 @@ exports.runJobs = functions.region(REGION)
     await batch.commit();
     return null;
   });
+
+// =========================
+//  BİLDİRİM SİSTEMİ - FCM Push Notification
+// =========================
+
+/**
+ * Bildirim gönderildiğinde FCM push notification gönder
+ * Trigger: bildirimler koleksiyonuna yeni doküman eklendiğinde
+ */
+exports.sendNotification = functions.region(REGION)
+  .firestore.document("bildirimler/{bildirimId}")
+  .onCreate(async (snap, context) => {
+    const bildirimData = snap.data();
+    const bildirimId = context.params.bildirimId;
+    
+    try {
+      const db = admin.firestore();
+      
+      // Hedef kullanıcıları bul
+      let hedefUIDs = [];
+      
+      if (bildirimData.tip === "toplu") {
+        // Rol bazlı kullanıcıları bul
+        let query = db.collection("kullanicilar").where("aktif", "==", true);
+        
+        if (bildirimData.hedefRol && bildirimData.hedefRol !== "tum") {
+          query = query.where("rol", "==", bildirimData.hedefRol);
+        }
+        
+        const kullanicilarSnap = await query.get();
+        kullanicilarSnap.forEach(doc => {
+          hedefUIDs.push(doc.id);
+        });
+      } else if (bildirimData.tip === "kisisel" && bildirimData.hedefUID) {
+        hedefUIDs.push(bildirimData.hedefUID);
+      }
+      
+      if (hedefUIDs.length === 0) {
+        console.log("Hedef kullanıcı bulunamadı");
+        return null;
+      }
+      
+      // Her kullanıcının FCM token'larını al ve bildirim gönder
+      const fcmPromises = [];
+      
+      for (const uid of hedefUIDs) {
+        // Kullanıcının FCM token'larını al
+        const tokenSnap = await db.collection("kullanici_fcm_tokens")
+          .where("uid", "==", uid)
+          .where("aktif", "==", true)
+          .get();
+        
+        if (tokenSnap.empty) {
+          console.log(`Kullanıcı ${uid} için FCM token bulunamadı`);
+          continue;
+        }
+        
+        // Her token için bildirim gönder
+        tokenSnap.forEach(tokenDoc => {
+          const tokenData = tokenDoc.data();
+          const fcmToken = tokenData.token;
+          
+          const message = {
+            notification: {
+              title: bildirimData.baslik || "Yeni Bildirim",
+              body: bildirimData.icerik || "",
+            },
+            data: {
+              bildirimId: bildirimId,
+              tip: bildirimData.tip || "toplu",
+              click_action: "FLUTTER_NOTIFICATION_CLICK",
+            },
+            token: fcmToken,
+            webpush: {
+              notification: {
+                title: bildirimData.baslik || "Yeni Bildirim",
+                body: bildirimData.icerik || "",
+                icon: "/img/logo.png",
+                badge: "/img/kf-favicon.png",
+                requireInteraction: true,
+              },
+              fcmOptions: {
+                link: "/diger/bildirim.html"
+              }
+            }
+          };
+          
+          fcmPromises.push(
+            admin.messaging().send(message)
+              .then(() => {
+                console.log(`Bildirim gönderildi: ${uid} - ${fcmToken.substring(0, 20)}...`);
+              })
+              .catch((error) => {
+                console.error(`FCM gönderme hatası (${uid}):`, error);
+                // Geçersiz token'ları devre dışı bırak
+                if (error.code === "messaging/invalid-registration-token" || 
+                    error.code === "messaging/registration-token-not-registered") {
+                  tokenDoc.ref.update({ aktif: false, hata: error.message });
+                }
+              })
+          );
+        });
+      }
+      
+      await Promise.allSettled(fcmPromises);
+      console.log(`${hedefUIDs.length} kullanıcıya bildirim gönderme işlemi tamamlandı`);
+      
+      return null;
+    } catch (error) {
+      console.error("Bildirim gönderme hatası:", error);
+      return null;
+    }
+  });
+
+/**
+ * Manuel bildirim gönderme endpoint'i (opsiyonel)
+ * POST /sendNotification
+ * Body: { bildirimId: string }
+ */
+exports.manualSendNotification = functions.region(REGION).https.onRequest(async (req, res) => {
+  const { ALLOW_ORIGINS } = readEnv();
+  const handleCors = makeCors(ALLOW_ORIGINS);
+  
+  return handleCors(req, res, async () => {
+    if (req.method === "OPTIONS") return res.status(204).send("");
+    if (req.method !== "POST") return res.status(405).send("Method not allowed");
+    
+    try {
+      const user = await requireAuth(req);
+      const { bildirimId } = req.body || {};
+      
+      if (!bildirimId) {
+        return res.status(400).json({ error: "bildirimId gerekli" });
+      }
+      
+      const bildirimDoc = await admin.firestore().collection("bildirimler").doc(bildirimId).get();
+      
+      if (!bildirimDoc.exists) {
+        return res.status(404).json({ error: "Bildirim bulunamadı" });
+      }
+      
+      // Trigger'ı manuel tetikle
+      const snap = {
+        data: () => bildirimDoc.data(),
+        ref: bildirimDoc.ref
+      };
+      const context = { params: { bildirimId } };
+      
+      await exports.sendNotification(snap, context);
+      
+      res.status(200).json({ success: true, message: "Bildirim gönderildi" });
+    } catch (error) {
+      console.error("Manuel bildirim gönderme hatası:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+});

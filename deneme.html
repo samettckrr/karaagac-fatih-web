@@ -1,99 +1,635 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8" />
-  <title>Dosya Yükleme ve Gösterme</title>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-  <script src="https://unpkg.com/html2pdf.js@0.9.2/dist/html2pdf.bundle.min.js"></script>
-  <script src="js/firebase/firebase-init.js"></script>
-  <style>
-    body { font-family: sans-serif; margin: 40px; background: #f4f6f9; }
-    #sonuc img { margin-top: 10px; border: 1px solid #ccc; }
-    button { margin-top: 10px; }
-  </style>
+<meta charset="UTF-8" />
+<title>Deneme Sayfası | Karaağaç Fatih</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<link rel="icon" type="image/png" href="img/logo.png" />
+
+<!-- ORTAK APP SHELL CSS -->
+<link rel="stylesheet" href="css/app-shell.css" />
+
+<style>
+  /* Sayfa özel stilleri */
+  body{
+    padding-top:var(--appbar-h) !important; /* Üst panel için boşluk */
+    min-height:100vh;
+  }
+  .container{max-width:1100px; margin:0 auto; padding:16px 16px 24px}
+  .card{background:var(--card); border:1px solid var(--stroke); border-radius:14px; box-shadow:var(--shadow); padding:20px; margin-bottom:16px}
+  .card h2{margin:0 0 16px; font-size:20px}
+  .btn-group{display:flex; gap:12px; flex-wrap:wrap; margin-top:16px}
+  .btn-test{border:1px solid var(--stroke); background:var(--surface2); color:var(--text); border-radius:10px; padding:12px 20px; cursor:pointer; font-weight:700; transition:all .2s}
+  .btn-test:hover{background:var(--surface); transform:translateY(-1px); box-shadow:var(--shadow)}
+  .btn-test.success{background:#22c55e; color:#fff; border-color:#22c55e}
+  .btn-test.error{background:#ef4444; color:#fff; border-color:#ef4444}
+  .btn-test.warning{background:#f59e0b; color:#fff; border-color:#f59e0b}
+  .btn-test.info{background:#3b82f6; color:#fff; border-color:#3b82f6}
+  
+  /* Appbar düzeltmesi */
+  .appbar{
+    position:fixed !important;
+    top:0 !important;
+    left:0 !important;
+    right:0 !important;
+    z-index:60 !important;
+  }
+</style>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="js/firebase/firebase-init.js"></script>
+<!-- ORTAK APP SHELL JS -->
+<script src="js/ortak.js"></script>
 </head>
 <body>
 
-  <h2>📤 Dosya Yükle</h2>
-  <input type="file" id="dosyaSec" />
-  <button onclick="dosyaYukle()">Yükle</button>
+<!-- APPBAR (ortak yapı) -->
+<div class="appbar">
+  <div class="brand" onclick="location.href='panel.html'">
+    <img src="img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
+  </div>
+  <nav class="nav-center"><ul class="nav-list" id="navMain"></ul></nav>
+  <div class="nav-right">
+    <button class="btn hamb" id="hamburger" title="Menü">☰</button>
+    
+    <!-- Bildirim -->
+    <div class="nav-item">
+      <button class="iconbtn" id="btnNotif" title="Bildirimler">🔔
+        <span class="badge" id="notifBadge" style="display:none">0</span>
+      </button>
+      <div class="dropdown drop-right" id="notifDropdown" aria-label="Bildirim listesi">
+        <div class="muted" style="padding:6px 8px">Son bildirimler</div>
+        <div id="notifList" style="max-height:300px;overflow:auto"></div>
+        <a href="diger/bildirim.html">Tüm bildirimleri gör →</a>
+      </div>
+    </div>
 
-  <h3>📁 Kayıtlı Dosya:</h3>
-  <div id="sonuc">Yüklenmiş bir dosya henüz gösterilmiyor.</div>
+    <!-- Profil -->
+    <div class="nav-item">
+      <button class="iconbtn" id="btnProfile" title="Profil">
+        <span id="profName">Profil</span>
+      </button>
+      <div class="dropdown drop-right" id="profDropdown" aria-label="Profil menüsü">
+        <a href="diger/kullanici-yonetimi.html">👤 Profil</a>
+        <a href="diger/sistem-ayarlari.html">⚙️ Sistem Ayarları</a>
+        <a href="#" id="btnLogout">🚪 Çıkış Yap</a>
+      </div>
+    </div>
+  </div>
+</div>
+<aside class="drawer" id="drawer"></aside>
 
-  <button onclick="pdfOlustur()">📄 PDF Oluştur</button>
+<!-- Toast Container (ortak sistem) -->
+<div class="toast-container" id="toastContainer"></div>
 
-  <script>
-    // ✅ Cloudinary ayarların
-    const cloudName = "djggzgzoy";
-    const uploadPreset = "talebe_yukleme";
+<!-- CONTENT -->
+<main class="container">
+  <section class="card">
+    <h2>Toast Bildirimleri Test</h2>
+    <p>Farklı toast bildirim türlerini test edin:</p>
+    
+    <div class="btn-group">
+      <button class="btn-test success" onclick="showToast('success', 'Başarılı!', 'İşlem başarıyla tamamlandı.')">
+        ✓ Başarı Mesajı
+      </button>
+      <button class="btn-test error" onclick="showToast('error', 'Hata!', 'Bir hata oluştu. Lütfen tekrar deneyin.')">
+        ✕ Hata Mesajı
+      </button>
+      <button class="btn-test warning" onclick="showToast('warning', 'Uyarı!', 'Bu işlem geri alınamaz.')">
+        ⚠ Uyarı Mesajı
+      </button>
+      <button class="btn-test info" onclick="showToast('info', 'Bilgi', 'Bu bir bilgilendirme mesajıdır.')">
+        ℹ Bilgi Mesajı
+      </button>
+    </div>
+  </section>
 
-    // 👤 Örnek UID (giriş yapılmışsa auth.currentUser.uid kullanılmalı)
-    const aktifTalebeUID = "testtalebe123";
+  <section class="card">
+    <h2>Uzun Mesaj Testi</h2>
+    <p>Uzun mesajların nasıl göründüğünü test edin:</p>
+    
+    <div class="btn-group">
+      <button class="btn-test" onclick="showToast('info', 'Uzun Başlık Testi', 'Bu çok uzun bir mesajdır. Toast bildirimi uzun mesajları nasıl gösteriyor test ediyoruz. Bu mesaj birkaç satıra yayılabilir ve toast container içinde düzgün görünmelidir.')">
+        Uzun Mesaj Testi
+      </button>
+    </div>
+  </section>
 
-    async function dosyaYukle() {
-      const file = document.getElementById("dosyaSec").files[0];
-      if (!file) return alert("Lütfen dosya seç");
+  <section class="card">
+    <h2>Çoklu Toast Testi</h2>
+    <p>Birden fazla toast'ı aynı anda görmek için:</p>
+    
+    <div class="btn-group">
+      <button class="btn-test" onclick="testMultipleToasts()">
+        Çoklu Toast Göster
+      </button>
+    </div>
+  </section>
 
-      const url = `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`;
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("upload_preset", uploadPreset);
+  <!-- BUTTON TESTLERİ -->
+  <section class="card">
+    <h2>Button Stilleri</h2>
+    <div class="btn-group">
+      <button class="btn">Normal Button</button>
+      <button class="btn btn-primary">Primary Button</button>
+      <button class="btn btn-ghost">Ghost Button</button>
+      <button class="btn btn-success">Success Button</button>
+      <button class="btn btn-warning">Warning Button</button>
+      <button class="btn btn-danger">Danger Button</button>
+      <button class="btn cta">CTA Button</button>
+      <button class="btn" disabled>Disabled Button</button>
+    </div>
+  </section>
 
-      try {
-        const res = await fetch(url, {
-          method: "POST",
-          body: formData
-        });
-        const data = await res.json();
+  <!-- FORM TESTLERİ -->
+  <section class="card">
+    <h2>Form Bileşenleri</h2>
+    <form class="field" style="gap:16px">
+      <div class="field">
+        <label>Text Input</label>
+        <input type="text" placeholder="Bir şeyler yazın...">
+        <div class="hint">Bu bir hint mesajıdır</div>
+      </div>
+      
+      <div class="field">
+        <label>Email Input</label>
+        <input type="email" placeholder="email@example.com">
+      </div>
+      
+      <div class="field">
+        <label>Password Input</label>
+        <input type="password" placeholder="Şifrenizi girin">
+      </div>
+      
+      <div class="field">
+        <label>Select Dropdown</label>
+        <select>
+          <option>Seçenek 1</option>
+          <option>Seçenek 2</option>
+          <option>Seçenek 3</option>
+        </select>
+      </div>
+      
+      <div class="field">
+        <label>Textarea</label>
+        <textarea placeholder="Uzun metin yazın..."></textarea>
+      </div>
+      
+      <div class="field">
+        <label>Date Input</label>
+        <input type="date">
+      </div>
+      
+      <div class="field">
+        <label>Number Input</label>
+        <input type="number" placeholder="0" min="0" max="100">
+      </div>
+      
+      <div class="btn-group">
+        <button type="submit" class="btn btn-primary">Gönder</button>
+        <button type="reset" class="btn btn-ghost">Temizle</button>
+      </div>
+    </form>
+  </section>
 
-        if (data.secure_url) {
-          const secureUrl = data.secure_url;
+  <!-- TABLO TESTİ -->
+  <section class="card">
+    <h2>Tablo Stilleri</h2>
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>İsim</th>
+            <th>Email</th>
+            <th>Durum</th>
+            <th>İşlemler</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>Ahmet Yılmaz</td>
+            <td>ahmet@example.com</td>
+            <td><span class="badge success">Aktif</span></td>
+            <td><button class="btn btn-ghost" style="padding:6px 12px; font-size:12px">Düzenle</button></td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td>Mehmet Demir</td>
+            <td>mehmet@example.com</td>
+            <td><span class="badge warning">Beklemede</span></td>
+            <td><button class="btn btn-ghost" style="padding:6px 12px; font-size:12px">Düzenle</button></td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td>Ayşe Kaya</td>
+            <td>ayse@example.com</td>
+            <td><span class="badge error">Pasif</span></td>
+            <td><button class="btn btn-ghost" style="padding:6px 12px; font-size:12px">Düzenle</button></td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td>Fatma Şahin</td>
+            <td>fatma@example.com</td>
+            <td><span class="badge info">Yeni</span></td>
+            <td><button class="btn btn-ghost" style="padding:6px 12px; font-size:12px">Düzenle</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
 
-          // Firestore'a kayıt
-          await db.collection("talebeler").doc(aktifTalebeUID).set({
-            belgeUrl: secureUrl
-          }, { merge: true });
+  <!-- GRID SİSTEMİ TESTİ -->
+  <section class="card">
+    <h2>Grid Sistemi</h2>
+    <div class="row">
+      <div class="col-6">
+        <div style="background:var(--surface2); padding:16px; border-radius:12px; border:1px solid var(--stroke)">
+          <strong>Col-6</strong> (Yarım genişlik)
+        </div>
+      </div>
+      <div class="col-6">
+        <div style="background:var(--surface2); padding:16px; border-radius:12px; border:1px solid var(--stroke)">
+          <strong>Col-6</strong> (Yarım genişlik)
+        </div>
+      </div>
+      <div class="col-4">
+        <div style="background:var(--surface2); padding:16px; border-radius:12px; border:1px solid var(--stroke)">
+          <strong>Col-4</strong>
+        </div>
+      </div>
+      <div class="col-4">
+        <div style="background:var(--surface2); padding:16px; border-radius:12px; border:1px solid var(--stroke)">
+          <strong>Col-4</strong>
+        </div>
+      </div>
+      <div class="col-4">
+        <div style="background:var(--surface2); padding:16px; border-radius:12px; border:1px solid var(--stroke)">
+          <strong>Col-4</strong>
+        </div>
+      </div>
+      <div class="col-3">
+        <div style="background:var(--surface2); padding:16px; border-radius:12px; border:1px solid var(--stroke)">
+          <strong>Col-3</strong>
+        </div>
+      </div>
+      <div class="col-3">
+        <div style="background:var(--surface2); padding:16px; border-radius:12px; border:1px solid var(--stroke)">
+          <strong>Col-3</strong>
+        </div>
+      </div>
+      <div class="col-3">
+        <div style="background:var(--surface2); padding:16px; border-radius:12px; border:1px solid var(--stroke)">
+          <strong>Col-3</strong>
+        </div>
+      </div>
+      <div class="col-3">
+        <div style="background:var(--surface2); padding:16px; border-radius:12px; border:1px solid var(--stroke)">
+          <strong>Col-3</strong>
+        </div>
+      </div>
+    </div>
+  </section>
 
-          // Göster
-          document.getElementById("sonuc").innerHTML = `
-            <a href="${secureUrl}" target="_blank">Dosyayı Aç</a><br>
-            <img src="${secureUrl}" width="200" />
-          `;
-        } else {
-          document.getElementById("sonuc").innerHTML = `<p style="color:red;">❌ ${data.error?.message || "Bilinmeyen hata"}</p>`;
-        }
-      } catch (err) {
-        console.error("❌ Hata:", err);
-        alert("Yükleme başarısız: " + err.message);
-      }
-    }
+  <!-- UTILITY TESTLERİ -->
+  <section class="card">
+    <h2>Utility Stilleri</h2>
+    <div style="display:flex; flex-direction:column; gap:12px">
+      <div>
+        <strong>Badge:</strong>
+        <span class="badge">Normal</span>
+        <span class="badge success">Success</span>
+        <span class="badge error">Error</span>
+        <span class="badge warning">Warning</span>
+        <span class="badge info">Info</span>
+      </div>
+      <div>
+        <strong>Pill:</strong>
+        <span class="pill">Pill 1</span>
+        <span class="pill">Pill 2</span>
+        <span class="pill">Pill 3</span>
+      </div>
+      <div>
+        <strong>Chip:</strong>
+        <span class="chip">Chip 1</span>
+        <span class="chip">Chip 2</span>
+        <span class="chip">Chip 3</span>
+      </div>
+      <div>
+        <strong>Muted Text:</strong>
+        <span class="muted">Bu muted bir metindir</span>
+      </div>
+      <div>
+        <strong>Text Sizes:</strong>
+        <span class="text-sm">Small</span> | 
+        <span class="text-base">Base</span> | 
+        <span class="text-lg">Large</span> | 
+        <span class="text-xl">XL</span>
+      </div>
+      <div>
+        <strong>Font Weights:</strong>
+        <span class="font-normal">Normal</span> | 
+        <span class="font-semibold">Semibold</span> | 
+        <span class="font-bold">Bold</span>
+      </div>
+    </div>
+  </section>
 
-    // 🔄 Sayfa yüklendiğinde varsa Firestore’dan veriyi çek
-    window.onload = async () => {
-      const belgeRef = await db.collection("talebeler").doc(aktifTalebeUID).get();
-      const url = belgeRef.data()?.belgeUrl;
-      if (url) {
-        document.getElementById("sonuc").innerHTML = `
-          <a href="${url}" target="_blank">Dosyayı Aç</a><br>
-          <img src="${url}" width="200" />
-        `;
-      }
-    };
+  <!-- MODAL TESTİ -->
+  <section class="card">
+    <h2>Modal/Dialog</h2>
+    <div class="btn-group">
+      <button class="btn btn-primary" onclick="openModal()">Modal Aç</button>
+      <button class="btn" onclick="showLoading()">Loading Göster</button>
+    </div>
+  </section>
 
-    // 📄 PDF çıktısı
-    async function pdfOlustur() {
-      const belgeRef = await db.collection("talebeler").doc(aktifTalebeUID).get();
-      const url = belgeRef.data()?.belgeUrl;
-      const içerik = document.createElement("div");
-      içerik.innerHTML = `
-        <h3>Talebe Dosyası</h3>
-        <img src="${url}" width="400" />
-      `;
-      html2pdf().from(içerik).save("Talebe-Dosya.pdf");
-    }
-  </script>
+  <!-- HERO SECTION TESTİ -->
+  <section class="hero">
+    <h2>Hero Section</h2>
+    <p class="hero-sub">Bu bir hero section örneğidir. Önemli içerikler için kullanılabilir.</p>
+    <div class="btn-group">
+      <button class="btn btn-primary">Başla</button>
+      <button class="btn btn-ghost">Daha Fazla</button>
+    </div>
+  </section>
+
+  <!-- TYPOGRAPHY TESTİ -->
+  <section class="card">
+    <h2>Typography</h2>
+    <h1>Başlık 1 (H1)</h1>
+    <h2>Başlık 2 (H2)</h2>
+    <h3>Başlık 3 (H3)</h3>
+    <h4>Başlık 4 (H4)</h4>
+    <h5>Başlık 5 (H5)</h5>
+    <h6>Başlık 6 (H6)</h6>
+    <p>Bu bir paragraf metnidir. <strong>Kalın metin</strong> ve <em>italik metin</em> örnekleri içerir.</p>
+    <p>Link örneği: <a href="#">Bu bir link</a></p>
+    <p>Kod örneği: <code>const x = 10;</code></p>
+    <blockquote>Bu bir alıntı bloğudur. Önemli bilgileri vurgulamak için kullanılabilir.</blockquote>
+  </section>
+
+  <!-- TABS TESTİ -->
+  <section class="card">
+    <h2>Tabs Sistemi</h2>
+    <div class="tabs" id="testTabs">
+      <button class="tab-btn active" onclick="switchTab(0)">Tab 1</button>
+      <button class="tab-btn" onclick="switchTab(1)">Tab 2</button>
+      <button class="tab-btn" onclick="switchTab(2)">Tab 3</button>
+    </div>
+    <div class="tab-content active" id="tabContent0">
+      <p>Tab 1 içeriği burada görünüyor. Bu tab aktif durumda.</p>
+    </div>
+    <div class="tab-content" id="tabContent1">
+      <p>Tab 2 içeriği burada görünüyor. Bu tab şu anda pasif.</p>
+    </div>
+    <div class="tab-content" id="tabContent2">
+      <p>Tab 3 içeriği burada görünüyor. Bu da pasif bir tab.</p>
+    </div>
+  </section>
+
+  <!-- KPI KARTLARI TESTİ -->
+  <section class="card">
+    <h2>KPI Kartları</h2>
+    <div class="kpi">
+      <div class="kpi-item">
+        <div class="kpi-title">Toplam Kullanıcı</div>
+        <div class="kpi-value">1,234</div>
+      </div>
+      <div class="kpi-item success">
+        <div class="kpi-title">Aktif</div>
+        <div class="kpi-value">856</div>
+      </div>
+      <div class="kpi-item warning">
+        <div class="kpi-title">Beklemede</div>
+        <div class="kpi-value">234</div>
+      </div>
+      <div class="kpi-item error">
+        <div class="kpi-title">Pasif</div>
+        <div class="kpi-value">144</div>
+      </div>
+      <div class="kpi-item info">
+        <div class="kpi-title">Yeni</div>
+        <div class="kpi-value">89</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FLEX UTILITIES TESTİ -->
+  <section class="card">
+    <h2>Flex Utilities</h2>
+    <div style="display:flex; flex-direction:column; gap:16px">
+      <div class="flex items-center justify-between" style="padding:12px; background:var(--surface2); border-radius:8px">
+        <span>Flex - Space Between</span>
+        <button class="btn btn-ghost" style="padding:6px 12px">Buton</button>
+      </div>
+      <div class="flex items-center gap-3" style="padding:12px; background:var(--surface2); border-radius:8px">
+        <span>Flex - Center with Gap</span>
+        <span class="badge">Badge</span>
+        <span class="chip">Chip</span>
+      </div>
+      <div class="flex-col gap-2" style="padding:12px; background:var(--surface2); border-radius:8px">
+        <div>Flex Column - Item 1</div>
+        <div>Flex Column - Item 2</div>
+        <div>Flex Column - Item 3</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ACCORDION TESTİ -->
+  <section class="card">
+    <h2>Accordion/Collapsible</h2>
+    <div class="accordion">
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleAccordion(this)">
+          <h4>Accordion Item 1</h4>
+          <span class="accordion-icon">▼</span>
+        </div>
+        <div class="accordion-body">
+          <p>Bu accordion item 1'in içeriğidir. Açıldığında bu içerik görünür.</p>
+        </div>
+      </div>
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleAccordion(this)">
+          <h4>Accordion Item 2</h4>
+          <span class="accordion-icon">▼</span>
+        </div>
+        <div class="accordion-body">
+          <p>Bu accordion item 2'nin içeriğidir. İçerik burada görünür.</p>
+        </div>
+      </div>
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleAccordion(this)">
+          <h4>Accordion Item 3</h4>
+          <span class="accordion-icon">▼</span>
+        </div>
+        <div class="accordion-body">
+          <p>Bu accordion item 3'ün içeriğidir. Son örnek.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TOOLTIP TESTİ -->
+  <section class="card">
+    <h2>Tooltip</h2>
+    <div class="btn-group">
+      <div class="tooltip-wrapper">
+        <button class="btn">Hover Tooltip (Üst)</button>
+        <div class="tooltip tooltip-top">Bu bir tooltip mesajıdır</div>
+      </div>
+      <div class="tooltip-wrapper">
+        <button class="btn">Hover Tooltip (Alt)</button>
+        <div class="tooltip tooltip-bottom">Alt tooltip mesajı</div>
+      </div>
+      <div class="tooltip-wrapper">
+        <button class="btn">Hover Tooltip (Sol)</button>
+        <div class="tooltip tooltip-left">Sol tooltip mesajı</div>
+      </div>
+      <div class="tooltip-wrapper">
+        <button class="btn">Hover Tooltip (Sağ)</button>
+        <div class="tooltip tooltip-right">Sağ tooltip mesajı</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROGRESS BAR TESTİ -->
+  <section class="card">
+    <h2>Progress Bar</h2>
+    <div style="display:flex; flex-direction:column; gap:20px">
+      <div>
+        <div class="progress-text">
+          <span>Normal Progress</span>
+          <span class="progress-value">45%</span>
+        </div>
+        <div class="progress">
+          <div class="progress-bar" style="width:45%"></div>
+        </div>
+      </div>
+      <div>
+        <div class="progress-text">
+          <span>Success Progress</span>
+          <span class="progress-value">75%</span>
+        </div>
+        <div class="progress">
+          <div class="progress-bar success" style="width:75%"></div>
+        </div>
+      </div>
+      <div>
+        <div class="progress-text">
+          <span>Warning Progress</span>
+          <span class="progress-value">50%</span>
+        </div>
+        <div class="progress">
+          <div class="progress-bar warning" style="width:50%"></div>
+        </div>
+      </div>
+      <div>
+        <div class="progress-text">
+          <span>Error Progress</span>
+          <span class="progress-value">25%</span>
+        </div>
+        <div class="progress">
+          <div class="progress-bar error" style="width:25%"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- MODAL -->
+<div class="modal" id="testModal">
+  <div class="sheet">
+    <header>
+      <h3>Test Modal</h3>
+      <button class="btn btn-ghost" onclick="closeModal()" style="padding:4px 8px">✕</button>
+    </header>
+    <div class="body">
+      <p>Bu bir test modal'ıdır. Modal içeriği buraya gelir.</p>
+      <div class="field" style="margin-top:16px">
+        <label>Test Input</label>
+        <input type="text" placeholder="Bir şeyler yazın...">
+      </div>
+    </div>
+    <footer>
+      <button class="btn btn-ghost" onclick="closeModal()">İptal</button>
+      <button class="btn btn-primary" onclick="closeModal()">Kaydet</button>
+    </footer>
+  </div>
+</div>
+
+<!-- LOADING OVERLAY -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+</div>
+
+<script>
+// Çoklu toast test fonksiyonu
+function testMultipleToasts() {
+  showToast('success', 'Toast 1', 'İlk toast mesajı');
+  setTimeout(() => showToast('info', 'Toast 2', 'İkinci toast mesajı'), 300);
+  setTimeout(() => showToast('warning', 'Toast 3', 'Üçüncü toast mesajı'), 600);
+  setTimeout(() => showToast('error', 'Toast 4', 'Dördüncü toast mesajı'), 900);
+}
+
+// Modal fonksiyonları
+function openModal() {
+  document.getElementById('testModal').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('testModal').classList.remove('open');
+}
+
+// Loading fonksiyonları
+function showLoading() {
+  const overlay = document.getElementById('loadingOverlay');
+  overlay.classList.add('show');
+  setTimeout(() => {
+    overlay.classList.remove('show');
+    showToast('success', 'Yüklendi', 'Loading testi tamamlandı!');
+  }, 2000);
+}
+
+// Tab fonksiyonları
+function switchTab(index) {
+  const tabs = document.querySelectorAll('#testTabs .tab-btn');
+  const contents = document.querySelectorAll('[id^="tabContent"]');
+  
+  tabs.forEach((tab, i) => {
+    tab.classList.toggle('active', i === index);
+  });
+  
+  contents.forEach((content, i) => {
+    content.classList.toggle('active', i === index);
+  });
+}
+
+// Accordion fonksiyonları
+function toggleAccordion(header) {
+  const item = header.closest('.accordion-item');
+  const isOpen = item.classList.contains('open');
+  
+  // Tüm accordion item'ları kapat
+  document.querySelectorAll('.accordion-item').forEach(acc => {
+    acc.classList.remove('open');
+  });
+  
+  // Eğer kapalıysa aç
+  if (!isOpen) {
+    item.classList.add('open');
+  }
+}
+
+// Sayfa özel init (ortak.js'den sonra çağrılacak)
+window.initPage = async function() {
+  console.log('Deneme sayfası yüklendi');
+  showToast('info', 'Sayfa Yüklendi', 'Deneme sayfası başarıyla yüklendi.');
+};
+</script>
 </body>
 </html>
+

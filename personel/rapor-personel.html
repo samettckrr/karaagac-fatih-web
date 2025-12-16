@@ -3,280 +3,75 @@
 
 <head>
   <meta charset="UTF-8" />
-  <title>Kişi Bazlı Alacak Raporu</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>Karaağaç Fatih | Kişi Bazlı Alacak Raporu</title>
+  <link rel="icon" type="image/png" href="../img/logo.png" />
+  <link rel="stylesheet" href="../css/app-shell.css" />
 
   <!-- Firebase compat -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
   <script src="../../js/firebase/firebase-init.js"></script>
+  <script defer src="../../js/ortak.js"></script>
 
   <style>
-    :root {
-      --appbar-h: 56px;
-      --bg: #f4f6f9;
-      --card: #fff;
-      --ink: #2c3e50;
-      --muted: #6c7a89;
-      --accent: #324960;
-      --good: #2d6a4f;
-      --warn: #d35400;
-      --border: #e6ebf2;
-      --danger: #c0392b;
-      --stroke: rgba(15, 23, 42, 0.12);
-      --text: #0b1220;
-      --surface: #f1f5ff;
-      --surface2: #f6f8ff;
-      --shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
-    }
-
-    * {
-      box-sizing: border-box
-    }
-
+    /* ========== Sayfa-özel stiller (app-shell.css'den sonra) ========== */
+    /* Body - app-shell.css'den gelecek (arka plan, padding, font vs.) */
     body {
-      margin: 0;
-      font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
-      background: var(--bg);
-      color: var(--ink)
+      padding-top: var(--appbar-h) !important;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+    
+    main {
+      min-height: calc(100vh - var(--appbar-h));
+      padding-bottom: 40px;
     }
 
-    img {
-      max-width: 100%;
-      height: auto;
-      display: block
-    }
-
-    /* Üst APPBAR & Navigasyon (alacak-takibi ile uyumlu) */
+    /* Appbar - app-shell.css ile uyumlu */
     .appbar {
-      position: sticky;
-      top: 0;
-      z-index: 60;
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      z-index: 60 !important;
       height: var(--appbar-h);
-      background: var(--card);
-      backdrop-filter: blur(10px);
-      border-bottom: 1px solid var(--stroke);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 0 12px
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      cursor: pointer
-    }
-
-    .brand img {
-      width: 24px;
-      height: 24px
-    }
-
-    .brand span {
-      font-weight: 900;
-      letter-spacing: .02em;
-      color: var(--text)
-    }
-
-    .nav-center {
-      margin: 0 auto;
-      height: 100%
-    }
-
-    .nav-list {
-      display: flex;
-      gap: 22px;
-      align-items: center;
-      height: 100%;
-      list-style: none;
-      margin: 0;
-      padding: 0
-    }
-
-    .nav-item {
-      position: relative;
-      height: 100%
-    }
-
-    .nav-btn {
-      height: 100%;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-weight: 800;
-      cursor: pointer;
-      color: var(--text)
-    }
-
-    .nav-btn:hover {
-      color: var(--accent)
-    }
-
-    .caret {
-      font-size: 12px;
-      opacity: .6
-    }
-
-    .dropdown {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      min-width: 240px;
-      background: var(--card);
-      border: 1px solid var(--stroke);
-      border-radius: 12px;
-      box-shadow: var(--shadow);
-      padding: 8px;
-      display: none
-    }
-
-    .dropdown a {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 12px;
-      border-radius: 10px;
-      color: var(--text);
-      text-decoration: none
-    }
-
-    .dropdown a:hover {
-      background: var(--surface2)
-    }
-
-    .nav-item.open .dropdown {
-      display: block
-    }
-
-    .nav-right {
-      display: flex;
-      gap: 8px;
-      align-items: center
-    }
-
-    .btn {
-      border: 1px solid var(--stroke);
-      background: var(--surface2);
-      color: var(--text);
-      border-radius: 999px;
-      padding: 8px 14px;
-      cursor: pointer;
-      white-space: nowrap;
-      font-weight: 700
-    }
-
-    .hamb {
-      display: none
-    }
-
-    .iconbtn {
-      position: relative;
-      border: 1px solid var(--stroke);
-      background: var(--card);
-      color: var(--text);
-      border-radius: 999px;
-      padding: 8px 12px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px
-    }
-
-    .drop-right {
-      left: auto;
-      right: 0
-    }
-
-    .avatar {
-      width: 22px;
-      height: 22px;
-      border-radius: 999px;
-      background: linear-gradient(180deg, #94a3b8, #64748b)
-    }
-
-    @media (max-width: 960px) {
-      .nav-center {
-        display: none
-      }
-
-      .hamb {
-        display: inline-flex
-      }
-    }
-
-    /* Drawer */
-    .drawer {
-      position: fixed;
-      top: var(--appbar-h);
-      right: 0;
-      bottom: 0;
-      left: 34%;
-      transform: translateX(100%);
-      transition: .25s;
-      background: var(--card);
-      border-left: 1px solid var(--stroke);
-      z-index: 70;
-      overflow: auto;
-      padding: 16px
-    }
-
-    .drawer.open {
-      transform: translateX(0)
-    }
-
-    .drawer .panel-title {
-      margin: 14px 4px 6px;
-      font-weight: 800;
-      color: var(--muted);
-      font-size: 13px
-    }
-
-    .drawer a {
-      display: block;
-      padding: 12px;
-      border-radius: 12px;
-      border: 1px solid var(--stroke);
-      margin: 8px 0;
-      color: var(--text);
-      background: var(--surface2);
-      text-decoration: none
-    }
-
-    .drawer a:hover {
-      background: var(--surface)
+      padding-top: env(safe-area-inset-top);
+      display: grid !important;
+      grid-template-columns: auto 1fr auto !important;
+      align-items: center !important;
+      gap: 16px !important;
+      padding-left: 16px !important;
+      padding-right: 16px !important;
+      background: var(--card) !important;
+      backdrop-filter: blur(10px) !important;
+      -webkit-backdrop-filter: blur(10px) !important;
+      border-bottom: 1px solid var(--stroke) !important;
     }
 
     .wrap {
-      max-width: 1180px;
+      max-width: 1600px;
       margin: 0 auto;
-      padding: 12px 16px
+      padding: 12px 24px;
+    }
+    
+    @media (min-width: 1400px) {
+      .wrap {
+        max-width: 1800px;
+      }
     }
 
-    header {
-      position: sticky;
-      top: var(--appbar-h);
-      z-index: 5;
-      background: var(--card);
-      border-bottom: 1px solid var(--border);
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05)
-    }
-
+    /* Header kaldırıldı - başlık main içinde */
     .rapor-ust {
-      display: flex;
-      gap: 16px;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      padding: 12px 0
+      padding: 16px 0;
+      margin-bottom: 16px;
     }
 
     .rapor-baslik {
       font-size: 22px;
       line-height: 1.25;
-      margin: 0;
+      margin: 0 0 16px 0;
       white-space: normal;
       word-break: break-word;
       overflow-wrap: anywhere
@@ -286,44 +81,32 @@
       display: flex;
       gap: 8px;
       align-items: center;
-      flex-wrap: wrap
+      flex-wrap: nowrap;
+      padding: 8px 0;
+    }
+    
+    .kisi-secim select {
+      min-width:430px;
+      max-width: 100px;
+      flex: 0 0 auto;
+      height: 40px;
+      padding: 8px 10px;
+      font-size: 13px;
+    }
+    
+    .kisi-secim button {
+      flex: 0 0 auto;
+      white-space: nowrap;
+      padding: 8px 12px;
+      font-size: 17px;
+      height: 40px;
+    }
+    
+    .kisi-secim button.btn-primary {
+      padding: 8px 14px;
     }
 
-    select,
-    button {
-      height: 38px;
-      border: 1px solid var(--border);
-      background: #fff;
-      border-radius: 10px;
-      padding: 0 12px;
-      font: inherit;
-      color: var(--ink)
-    }
-
-    button {
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      cursor: pointer
-    }
-
-    button.secondary {
-      background: #fff;
-      color: var(--ink);
-      border: 1px solid var(--border)
-    }
-
-    button:hover {
-      opacity: 0.9
-    }
-
-    .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 14px;
-      margin-top: 12px
-    }
+    /* Card - app-shell.css'den geliyor, sadece sayfa-özel override'lar */
 
     .row {
       display: grid;
@@ -373,7 +156,7 @@
     /* Sıralama Rozeti */
     .rank-card {
       background: linear-gradient(135deg, #fff, #f8fafc);
-      border: 1px solid var(--border);
+      border: 1px solid var(--stroke);
       border-radius: 12px;
       padding: 12px;
       display: flex;
@@ -472,66 +255,80 @@
 
     /* Tablo */
     .table-wrap {
-      overflow: visible;
-      border: 1px solid var(--border);
-      border-radius: 12px
+      overflow-x: auto;
+      overflow-y: visible;
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      -webkit-overflow-scrolling: touch;
+      background: var(--card);
+      position: relative;
     }
 
-    /* Scroll kaldırıldı */
     table {
       width: 100%;
       border-collapse: collapse;
+      border-spacing: 0;
       background: #fff;
-      min-width: 760px
+      min-width: 760px;
+    }
+
+    thead {
+      position: relative;
     }
 
     thead th {
       position: sticky;
-      top: 60px;
+      top: 0;
       background: #fafbfc;
-      border-bottom: 1px solid var(--border);
+      border-bottom: 1px solid var(--stroke);
       font-weight: 600;
       text-align: left;
       font-size: 13px;
       color: var(--muted);
-      padding: 10px;
+      padding: 12px 10px;
       white-space: nowrap;
       cursor: pointer;
       user-select: none;
-      z-index: 4
+      z-index: 4;
+      box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
     }
 
     thead th:hover {
       background: #f1f5f9;
-      color: var(--ink)
+      color: var(--ink);
     }
 
     thead th.sort-asc::after {
       content: " ▲";
-      font-size: 10px
+      font-size: 10px;
     }
 
     thead th.sort-desc::after {
       content: " ▼";
-      font-size: 10px
+      font-size: 10px;
     }
 
     tbody td {
-      border-bottom: 1px solid var(--border);
+      border-bottom: 1px solid var(--stroke);
       padding: 10px;
-      font-size: 14px
+      font-size: 14px;
+      vertical-align: top;
+    }
+
+    tbody tr:hover {
+      background: #fafbfc;
     }
 
     tbody tr:last-child td {
-      border-bottom: none
+      border-bottom: none;
     }
 
     tfoot td {
-      border-top: 2px solid var(--border);
+      border-top: 2px solid var(--stroke);
       padding: 10px;
       font-weight: 700;
       background: #f8fafc;
-      color: var(--ink)
+      color: var(--ink);
     }
 
     .right {
@@ -603,107 +400,7 @@
       }
     }
 
-    /* Toasts (alacak-takibi ile uyumlu) */
-    .toast-container {
-      position: fixed;
-      top: 72px;
-      right: 16px;
-      z-index: 12000;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      pointer-events: none
-    }
-
-    .toast {
-      min-width: 260px;
-      max-width: 360px;
-      background: rgba(15, 23, 42, .96);
-      color: #f9fafb;
-      border-radius: 12px;
-      padding: 10px 12px;
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
-      box-shadow: 0 18px 40px rgba(15, 23, 42, .35);
-      transform: translateY(-8px) translateX(8px);
-      opacity: 0;
-      transition: all .25s ease;
-      pointer-events: auto;
-      border: 1px solid rgba(148, 163, 184, .35);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      font-size: 13px
-    }
-
-    .toast.show {
-      opacity: 1;
-      transform: translateY(0) translateX(0)
-    }
-
-    .toast-icon {
-      font-size: 18px;
-      margin-top: 2px
-    }
-
-    .toast-content {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 2px
-    }
-
-    .toast-title {
-      font-weight: 600;
-      letter-spacing: .01em
-    }
-
-    .toast-message {
-      font-size: 12px;
-      color: #e5e7eb
-    }
-
-    .toast-close {
-      background: transparent;
-      border: none;
-      color: #94a3b8;
-      font-size: 16px;
-      cursor: pointer;
-      padding: 0 0 0 4px;
-      line-height: 1
-    }
-
-    .toast-close:hover {
-      color: #e5e7eb
-    }
-
-    .toast.success {
-      border-left: 3px solid #22c55e
-    }
-
-    .toast.error {
-      border-left: 3px solid #ef4444
-    }
-
-    .toast.warning {
-      border-left: 3px solid #f59e0b
-    }
-
-    .toast.info {
-      border-left: 3px solid #3b82f6
-    }
-
-    @media (max-width:640px) {
-      .toast-container {
-        left: 12px;
-        right: 12px
-      }
-
-      .toast {
-        width: 100%;
-        max-width: none
-      }
-    }
+    /* Toast - app-shell.css'den geliyor */
   </style>
 </head>
 
@@ -718,13 +415,26 @@
     </nav>
     <div class="nav-right">
       <button class="btn hamb" id="hamburger" title="Menü">☰</button>
+      
+      <!-- Bildirim -->
+      <div class="nav-item">
+        <button class="iconbtn" id="btnNotif" title="Bildirimler">🔔
+          <span class="badge" id="notifBadge" style="display:none">0</span>
+        </button>
+        <div class="dropdown drop-right" id="notifDropdown" aria-label="Bildirim listesi">
+          <div class="muted" style="padding:6px 8px">Son bildirimler</div>
+          <div id="notifList" class="list" style="max-height:300px;overflow:auto"></div>
+        </div>
+      </div>
+
+      <!-- Profil -->
       <div class="nav-item">
         <button class="iconbtn" id="btnProfile" title="Profil">
           <span class="avatar"></span> <span id="profName" class="muted">Profil</span>
         </button>
-        <div class="dropdown drop-right" id="profDropdown">
-          <a href="../diger/kullanici-yonetimi.html">👤 Profil</a>
-          <a href="../diger/sistem-ayarlari.html">⚙️ Ayarlar</a>
+        <div class="dropdown drop-right" id="profDropdown" aria-label="Profil menüsü">
+          <a href="../../diger/kullanici-yonetimi.html">👤 Profil</a>
+          <a href="../../diger/sistem-ayarlari.html">⚙️ Sistem Ayarları</a>
           <a href="#" id="btnLogout">🚪 Çıkış Yap</a>
         </div>
       </div>
@@ -733,28 +443,24 @@
   <aside class="drawer" id="drawer"></aside>
   <div class="toast-container" id="toastContainer"></div>
 
-  <header>
-    <div class="wrap">
-      <div class="rapor-ust">
-        <h1 class="rapor-baslik">Kişi Bazlı Alacak Raporu</h1>
-        <div class="kisi-secim" id="controlPanel" style="display:none">
-          <select id="personelSecim"></select>
-          <select id="selYil">
-            <option value="2023">2023</option>
-            <option value="2024">2024</option>
-            <option value="2025" selected>2025</option>
-            <option value="2026">2026</option>
-            <option value="tum">Tüm Yıllar</option>
-          </select>
-          <button id="btnYukle">Yükle</button>
-          <button id="btnGizle" class="secondary">Kalan Sıfır Olanları Gizle</button>
-          <button id="btnYazdir" class="secondary">🖨️ Yazdır</button>
-        </div>
+  <main class="wrap">
+    <!-- Başlık ve Kontroller -->
+    <div class="rapor-ust">
+      <h1 class="rapor-baslik">Kişi Bazlı Alacak Raporu</h1>
+      <div class="kisi-secim" id="controlPanel" style="display:none">
+        <select id="personelSecim"></select>
+        <select id="selYil">
+          <option value="2023">2023</option>
+          <option value="2024">2024</option>
+          <option value="2025" selected>2025</option>
+          <option value="2026">2026</option>
+          <option value="tum">Tüm Yıllar</option>
+        </select>
+        <button id="btnYukle" class="btn btn-primary">Yükle</button>
+        <button id="btnGizle" class="btn">Kalan Sıfır Olanları Gizle</button>
+        <button id="btnYazdir" class="btn">🖨️ Yazdır</button>
       </div>
     </div>
-  </header>
-
-  <main class="wrap">
 
     <!-- Üst Bilgi Kartı -->
     <div class="card" id="infoCard">
@@ -823,16 +529,29 @@
   </main>
 
   <script>
-    // --- Ayarlar & Sabitler ---
-    const ADMINS = ['samet çakır', 'muhsin çelik'];
-    const MERGE_MAP = {
-      'keramettin kocaoğlu': 'Kerem Kocaoğlu',
-      'kerem kocaoğlu': 'Kerem Kocaoğlu'
-    };
-    const AYRILANLAR = ['burak serin'];
+    // DOMContentLoaded'da çalıştır - ortak.js yüklenene kadar bekle
+    document.addEventListener('DOMContentLoaded', function(){
+      // Ortak.js yüklenene kadar bekle
+      function waitForOrtak(callback){
+        if(typeof window.norm !== 'undefined' && typeof window.showToast !== 'undefined' && typeof firebase !== 'undefined'){
+          callback();
+        }else{
+          setTimeout(()=> waitForOrtak(callback), 50);
+        }
+      }
+      
+      waitForOrtak(()=>{
+        // --- Ayarlar & Sabitler ---
+        const ADMINS = ['samet çakır', 'muhsin çelik'];
+        const MERGE_MAP = {
+          'keramettin kocaoğlu': 'Kerem Kocaoğlu',
+          'kerem kocaoğlu': 'Kerem Kocaoğlu'
+        };
+        const AYRILANLAR = ['burak serin'];
 
-    const db = window.db;
-    const auth = firebase.auth();
+        // db ve auth - ortak.js'den window.db ve window.auth olarak gelecek
+        const db = window.db || firebase.firestore();
+        const auth = window.auth || firebase.auth();
 
     // --- Yardımcılar ---
     const qs = s => document.querySelector(s);
@@ -879,7 +598,17 @@
     let rankSortDir = 'desc'; // Varsayılan: Tahsilat nispetine göre azalan
     let rankListData = []; // Sıralama tablosu için veri
 
-    async function initPage() {
+    // window.initPage - ortak.js'deki initAppShellAuth tarafından çağrılacak
+    window.initPage = async function() {
+      // Kullanıcı bilgisini ortak.js'den al
+      const profNameEl = document.getElementById('profName');
+      if(profNameEl && profNameEl.textContent){
+        const nameText = profNameEl.textContent.replace('👤 ', '').trim();
+        const adSoyad = nameText || '';
+        currentUser = resolveName(adSoyad);
+        isAdmin = ADMINS.includes(normTR(currentUser));
+      }
+      
       await loadData();
 
       const sel = qs('#personelSecim');
@@ -902,7 +631,7 @@
       }
 
       renderReport();
-    }
+    };
 
     async function loadData() {
       const tSnap = await db.collection('tahakkuklar').get();
@@ -1376,173 +1105,11 @@
       renderTable(isAll);
     });
 
-    // ==== Toast helper (appbar ile uyumlu) ====
-    function showToast(type, title, message) {
-      const cont = document.getElementById('toastContainer');
-      if (!cont) return;
-      const div = document.createElement('div');
-      div.className = `toast ${type || 'info'}`;
-      div.innerHTML = `
-        <div class="toast-icon">${type === 'success' ? '✅' : type === 'error' ? '⚠️' : type === 'warning' ? '⚠️' : 'ℹ️'}</div>
-        <div class="toast-content">
-          <div class="toast-title">${title || ''}</div>
-          <div class="toast-message">${message || ''}</div>
-        </div>
-        <button class="toast-close" type="button">&times;</button>
-      `;
-      cont.appendChild(div);
-      requestAnimationFrame(() => div.classList.add('show'));
-      const close = () => { div.classList.remove('show'); setTimeout(() => div.remove(), 200); };
-      div.querySelector('.toast-close')?.addEventListener('click', close);
-      setTimeout(close, 4000);
-    }
-
-    /* ===== Navigation Bar (alacak-takibi ile uyumlu) ===== */
-    let CURRENT_ALLOW = new Set(), CURRENT_DENY = new Set();
-    const norm = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
-
-    function normalizeUrl(u) {
-      if (!u || u === '#') return '#';
-      if (/^https?:\/\//i.test(u)) return u;
-      if (u.startsWith('//')) return u;
-      if (u.startsWith('../') || u.startsWith('./')) return u;
-      const currentPath = location.pathname;
-      const currentDir = currentPath.substring(0, currentPath.lastIndexOf('/'));
-      const currentDepth = currentDir.split('/').filter(x => x).length;
-      const upLevels = currentDepth > 0 ? '../'.repeat(currentDepth) : '';
-      const targetPath = u.startsWith('/') ? u.substring(1) : u;
-      return upLevels + targetPath;
-    }
-
-    async function fetchPanels(allowSet, denySet) {
-      const res = [];
-      try {
-        const snap = await db.collection('sayfa_manifesti').get();
-        snap.forEach(doc => {
-          const d = doc.data() || {}, id = doc.id, panelTitle = d.title || id;
-          const panelGrant = allowSet.has(norm(id)) || allowSet.has(norm(panelTitle));
-          let pages = Array.isArray(d.pages) ? d.pages : [];
-          pages = pages
-            .filter(pg => {
-              const keyNorm = norm(pg.key || pg.title || '');
-              const pageGrant = allowSet.has(keyNorm), denied = denySet.has(keyNorm);
-              return !denied && (panelGrant || pageGrant);
-            })
-            .map(pg => ({
-              baslik: pg.title || pg.key || 'Sayfa',
-              url: normalizeUrl(pg.path || '#'),
-              key: pg.key || pg.title || '',
-              sira: typeof pg.order === 'number' ? pg.order : 9999
-            }))
-            .sort((a, b) => a.sira - b.sira);
-          if (pages.length) res.push({ id, baslik: panelTitle, sira: typeof d.order === 'number' ? d.order : 9999, pages });
-        });
-        res.sort((a, b) => a.sira - b.sira);
-      } catch (e) { console.error(e); }
-      return res;
-    }
-
-    function renderNav(panels) {
-      const ul = document.getElementById('navMain'), drawer = document.getElementById('drawer');
-      if (!ul || !drawer) return;
-      ul.innerHTML = ''; drawer.innerHTML = '';
-      if (!panels.length) {
-        ul.innerHTML = '<li class="nav-item"><div class="nav-btn">Panel yok</div></li>';
-        drawer.innerHTML = '<div class="muted" style="padding:8px">Menü bulunamadı</div>';
-        return;
-      }
-      panels.forEach(p => {
-        const li = document.createElement('li'); li.className = 'nav-item';
-        li.innerHTML = `<div class="nav-btn">${p.baslik} <span class="caret">▾</span></div>`;
-        const dd = document.createElement('div'); dd.className = 'dropdown';
-        (p.pages || []).forEach(pg => {
-          const a = document.createElement('a');
-          a.href = normalizeUrl(pg.url || pg.path || '#'); a.textContent = pg.baslik;
-          a.dataset.key = pg.key || pg.baslik; a.dataset.panel = p.id; a.dataset.panelTitle = p.baslik;
-          dd.appendChild(a);
-        });
-        li.appendChild(dd);
-        li.querySelector('.nav-btn').addEventListener('click', (e) => {
-          e.stopPropagation();
-          ul.querySelectorAll('.nav-item').forEach(x => { if (x !== li) x.classList.remove('open'); });
-          li.classList.toggle('open');
-        });
-        ul.appendChild(li);
-
-        const h = document.createElement('div'); h.className = 'panel-title'; h.textContent = p.baslik; drawer.appendChild(h);
-        (p.pages || []).forEach(pg => {
-          const a = document.createElement('a');
-          a.href = normalizeUrl(pg.url || pg.path || '#'); a.textContent = pg.baslik;
-          a.dataset.key = pg.key || pg.baslik; a.dataset.panel = p.id; a.dataset.panelTitle = p.baslik;
-          drawer.appendChild(a);
-        });
-      });
-      document.addEventListener('click', (e) => { if (!ul.contains(e.target)) ul.querySelectorAll('.nav-item').forEach(x => x.classList.remove('open')); });
-    }
-
-    (function () {
-      const hamb = document.getElementById('hamburger'), drawer = document.getElementById('drawer');
-      if (!hamb || !drawer) return;
-      hamb.addEventListener('click', () => drawer.classList.toggle('open'));
-      document.addEventListener('click', (e) => {
-        if (!drawer.contains(e.target) && !hamb.contains(e.target)) drawer.classList.remove('open');
-      });
-    })();
-
-    document.addEventListener('click', (e) => {
-      const a = e.target.closest('a[data-key]'); if (!a) return;
-      const key = norm(a.dataset.key), pnl = norm(a.dataset.panel || ''), pnlTitle = norm(a.dataset.panelTitle || '');
-      if (CURRENT_DENY.has(key)) { e.preventDefault(); return; }
-      const allowed = CURRENT_ALLOW.has(key) || CURRENT_ALLOW.has(pnl) || CURRENT_ALLOW.has(pnlTitle);
-      if (!allowed) { e.preventDefault(); }
-    });
-
-    (function () {
-      const profBtn = document.getElementById('btnProfile'), profDD = document.getElementById('profDropdown');
-      function closeAll(e) {
-        if (!profDD.contains(e.target) && e.target !== profBtn) profDD.parentElement.classList.remove('open');
-      }
-      document.addEventListener('click', closeAll);
-      profBtn?.addEventListener('click', (e) => { e.stopPropagation(); profDD.parentElement.classList.toggle('open'); });
-      document.getElementById('btnLogout')?.addEventListener('click', async (e) => {
-        e.preventDefault();
-        try { await auth.signOut(); location.assign('../../index.html'); }
-        catch (err) { console.error(err); }
-      });
-    })();
-
-    // Auth + nav + sayfa başlatma
-    auth.onAuthStateChanged(async (user) => {
-      if (!user) {
-        window.location.href = '../../index.html';
-        return;
-      }
-      try {
-        const userDoc = await db.collection('kullanicilar').doc(user.uid).get();
-        if (userDoc.exists) {
-          const data = userDoc.data();
-          const profNameEl = document.getElementById('profName');
-          if (profNameEl) profNameEl.textContent = data.adSoyad || user.email?.split('@')[0] || 'Profil';
-
-          const rawPerms = Array.isArray(data.yetkiler) ? data.yetkiler : [];
-          CURRENT_ALLOW = new Set(rawPerms.filter(s => !String(s).trim().startsWith('-') && !String(s).trim().startsWith('!')).map(norm));
-          CURRENT_DENY = new Set(rawPerms.filter(s => String(s).trim().startsWith('-') || String(s).trim().startsWith('!')).map(s => norm(String(s).replace(/^[-!]\s*/, ''))));
-
-          const panels = await fetchPanels(CURRENT_ALLOW, CURRENT_DENY);
-          renderNav(panels);
-
-          // Rapor sayfası özel mantık: mevcut kullanıcı bilgisini de ayarla
-          const adSoyad = data.adSoyad || data.isim || user.displayName || 'Bilinmeyen';
-          currentUser = resolveName(adSoyad);
-          isAdmin = ADMINS.includes(normTR(currentUser));
-        }
-      } catch (e) {
-        console.error('Kullanıcı bilgisi alınamadı:', e);
-      }
-
-      await initPage();
-    });
-
+        /* ===== Toast, Nav, Auth - ortak.js'den gelecek ===== */
+        // showToast, fetchPanels, renderNav, loadNotifications, initAppShell, initAppShellAuth - ortak.js'de tanımlı
+        // window.initPage fonksiyonu ortak.js tarafından çağrılacak
+      }); // waitForOrtak callback kapat
+    }); // DOMContentLoaded kapat
   </script>
 </body>
 

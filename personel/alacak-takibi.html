@@ -61,6 +61,7 @@
     .iconbtn{position:relative; border:1px solid var(--stroke); background:var(--card); color:var(--text); border-radius:999px; padding:8px 12px; cursor:pointer; display:flex; align-items:center; gap:8px}
     .drop-right{left:auto; right:0}
     .avatar{width:22px;height:22px;border-radius:999px;background:linear-gradient(180deg,#94a3b8,#64748b)}
+    .badge{position:absolute;top:-6px;right:-6px;background:var(--bad);color:#fff;font-size:11px;padding:2px 6px;border-radius:999px;border:2px solid var(--card);min-width:18px;text-align:center}
     @media (max-width: 960px){ .nav-center{display:none} .hamb{display:inline-flex} }
 
     /* Drawer */
@@ -340,13 +341,27 @@
     <nav class="nav-center"><ul class="nav-list" id="navMain"></ul></nav>
     <div class="nav-right">
       <button class="btn hamb" id="hamburger" title="Menü">☰</button>
+      
+      <!-- Bildirim -->
+      <div class="nav-item">
+        <button class="iconbtn" id="btnNotif" title="Bildirimler">🔔
+          <span class="badge" id="notifBadge" style="display:none">0</span>
+        </button>
+        <div class="dropdown drop-right" id="notifDropdown" aria-label="Bildirim listesi">
+          <div class="muted" style="padding:6px 8px">Son bildirimler</div>
+          <div id="notifList" class="list" style="max-height:300px;overflow:auto"></div>
+          <a href="../diger/bildirim.html">Tüm bildirimleri gör →</a>
+        </div>
+      </div>
+
+      <!-- Profil -->
       <div class="nav-item">
         <button class="iconbtn" id="btnProfile" title="Profil">
           <span class="avatar"></span> <span id="profName" class="muted">Profil</span>
         </button>
-        <div class="dropdown drop-right" id="profDropdown">
+        <div class="dropdown drop-right" id="profDropdown" aria-label="Profil menüsü">
           <a href="../diger/kullanici-yonetimi.html">👤 Profil</a>
-          <a href="../diger/sistem-ayarlari.html">⚙️ Ayarlar</a>
+          <a href="../diger/sistem-ayarlari.html">⚙️ Sistem Ayarları</a>
           <a href="#" id="btnLogout">🚪 Çıkış Yap</a>
         </div>
       </div>
@@ -1586,13 +1601,36 @@ function toDateKey(v){
       if(!allowed){ e.preventDefault(); }
     });
 
+    // Bildirim yükleme
+    async function loadNotifications(){
+      const badge = document.getElementById('notifBadge');
+      const list = document.getElementById('notifList');
+      if(!badge || !list) return;
+      list.innerHTML='';
+      try{
+        const snap = await db.collection('duyurular').orderBy('createdAt','desc').limit(5).get();
+        const n = snap.size;
+        if(n>0){ badge.style.display='block'; badge.textContent = n>99 ? '99+' : String(n); } else { badge.style.display='none'; }
+        if(n===0){
+          const empty=document.createElement('div'); empty.className='muted'; empty.style.padding='6px 8px'; empty.textContent='Yeni bildirim yok.'; list.appendChild(empty);
+        }else{
+          snap.forEach(doc=>{ const d=doc.data()||{}; const baslik=d.baslik||d.title||'Duyuru'; const detay=d.detay||d.desc||''; const row=document.createElement('a'); row.href='../diger/bildirim.html'; row.innerHTML=`<strong>${baslik}</strong><div class="muted">${detay}</div>`; list.appendChild(row); });
+        }
+      }catch(e){ console.error(e); if(badge) badge.style.display='none'; if(list){ const err=document.createElement('div'); err.className='muted'; err.style.padding='6px 8px'; err.textContent='Bildirimler yüklenemedi.'; list.appendChild(err); } }
+    }
+
+    // Bildirim & Profil dropdown
     (function(){
+      const notifBtn = document.getElementById('btnNotif');
+      const notifDD = document.getElementById('notifDropdown');
       const profBtn=document.getElementById('btnProfile'), profDD=document.getElementById('profDropdown');
       function closeAll(e){
+        if(!notifDD.contains(e.target) && e.target!==notifBtn) notifDD.parentElement.classList.remove('open');
         if(!profDD.contains(e.target)  && e.target!==profBtn)  profDD.parentElement.classList.remove('open');
       }
       document.addEventListener('click', closeAll);
-      profBtn?.addEventListener('click',(e)=>{ e.stopPropagation(); profDD.parentElement.classList.toggle('open'); });
+      notifBtn?.addEventListener('click', (e)=>{ e.stopPropagation(); notifDD.parentElement.classList.toggle('open'); profDD.parentElement.classList.remove('open'); });
+      profBtn?.addEventListener('click',(e)=>{ e.stopPropagation(); profDD.parentElement.classList.toggle('open'); notifDD.parentElement.classList.remove('open'); });
       document.getElementById('btnLogout')?.addEventListener('click', async (e) => {
         e.preventDefault();
         try { await auth.signOut(); location.assign('../../index.html'); }
@@ -1619,6 +1657,9 @@ function toDateKey(v){
 
           const panels = await fetchPanels(CURRENT_ALLOW, CURRENT_DENY);
           renderNav(panels);
+          
+          // Bildirimleri yükle
+          await loadNotifications();
         }
       } catch (e) {
         console.error('Kullanıcı bilgisi alınamadı:', e);

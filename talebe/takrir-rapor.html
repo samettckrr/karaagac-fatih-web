@@ -5,12 +5,14 @@
   <title>Genel Takrir Raporu | Karaağaç Fatih</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <link rel="icon" type="image/png" href="../img/logo.png" />
+  <link rel="stylesheet" href="../css/app-shell.css" />
 
   <!-- Firebase (compat) -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
   <script src="../js/firebase/firebase-init.js"></script>
+  <script defer src="../js/ortak.js"></script>
 
   <style>
     :root{
@@ -18,43 +20,40 @@
       --brand:#36c4b5; --brand2:#5ad1f2;
       --card:#ffffff; --radius:14px; --shadow:0 10px 24px rgba(0,0,0,.08);
       --appbar-h: calc(56px + env(safe-area-inset-top));
-      --tabbar-h: calc(52px + env(safe-area-inset-bottom));
-      --tabbar-real: var(--tabbar-h);
     }
     *{box-sizing:border-box}
     html,body{height:100%; overflow:hidden}
     body{
       margin:0; color:var(--text);
       font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
-      background:
-        radial-gradient(900px 680px at 12% 8%, rgba(90,209,242,.08), transparent 45%),
-        radial-gradient(800px 640px at 88% 92%, rgba(54,196,181,.10), transparent 50%),
-        linear-gradient(180deg, var(--bg), #eff8f5 60%);
+      /* Arka plan app-shell.css'den gelecek */
       -webkit-font-smoothing:antialiased;
+      padding-top:0 !important; /* app-shell.css'den gelen padding'i override et */
     }
     a{color:#0b5ea8; text-decoration:none}
     a:hover{text-decoration:underline}
 
-    /* Appbar */
+    /* Appbar - app-shell.css ile uyumlu */
     .appbar{
-      position:fixed; inset:0 0 auto 0; height:var(--appbar-h);
+      position:fixed !important; 
+      top:0 !important; 
+      left:0 !important;
+      right:0 !important;
+      z-index:60 !important;
+      height:var(--appbar-h);
       padding-top:env(safe-area-inset-top);
-      background:linear-gradient(180deg, var(--bg2), #ffffffcc 75%, transparent);
-      backdrop-filter:saturate(140%) blur(6px);
-      border-bottom:1px solid var(--stroke); z-index:50;
-      display:flex; align-items:flex-end;
+      display:grid !important;
+      grid-template-columns:auto 1fr auto !important;
+      align-items:center !important;
+      gap:16px !important;
+      padding-left:16px !important;
+      padding-right:16px !important;
     }
-    .appbar .inner{display:flex; align-items:center; justify-content:space-between; width:100%; padding:10px 14px}
-    .titleArea{display:flex; flex-direction:column; gap:2px}
-    .titleArea .l1{font-weight:800; font-size:19px}
-    .titleArea .l2{font-size:12.5px; color:var(--muted)}
-    .titleArea .bullet{opacity:.5; padding:0 6px}
-
     /* Scroll alanı */
     .app{
       height: calc(100dvh - var(--appbar-h));
       padding-top: var(--appbar-h);
-      padding-bottom: calc(var(--tabbar-real) + 8px) !important;
+      padding-bottom: 20px;
       overflow:auto; -webkit-overflow-scrolling:touch; overscroll-behavior-y:contain;
     }
     .container{ max-width:1180px; margin:12px auto 0 !important; padding:0 16px; }
@@ -115,9 +114,23 @@
     /* Modal */
     .modalBack{ position:fixed; inset:0; background:rgba(0,0,0,.15); z-index:70; display:none }
     .modal{
-      position:fixed; left:12px; right:12px; bottom:calc(var(--tabbar-h) + 12px);
+      position:fixed; left:12px; right:12px; bottom:20px;
       background:#fff; border:1px solid var(--stroke); border-radius:14px; box-shadow:var(--shadow);
       z-index:71; display:none; max-height:86vh; overflow:hidden;
+    }
+    /* Kitap & Ders Gör modalı - küçük */
+    #calBox{
+      max-width:600px !important;
+      max-height:70vh !important;
+      left:50% !important;
+      top:50% !important;
+      transform:translate(-50%, -50%) !important;
+      bottom:auto !important;
+      display:none;
+    }
+    #calBox[style*="display: block"]{
+      display:flex !important;
+      flex-direction:column;
     }
     .modal .head{ padding:10px 12px; font-weight:900; border-bottom:1px dashed var(--stroke); position:sticky; top:0; background:#fff; z-index:2 }
     .modal .body{ padding:0; overflow:auto; -webkit-overflow-scrolling:touch }
@@ -125,25 +138,8 @@
     .modal .foot{ padding:10px 12px; border-top:1px dashed var(--stroke); display:flex; gap:8px; justify-content:flex-end; position:sticky; bottom:0; background:#fff; z-index:2 }
     .ctrlsTop{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px }
 
-    /* Tabbar & Sheet */
-    .tabbar{
-      position:fixed; inset:auto 0 0 0; height: var(--tabbar-real);
-      padding: 0 env(safe-area-inset-left) env(safe-area-inset-bottom) env(safe-area-inset-right);
-      border-top:1px solid var(--stroke);
-      background:linear-gradient(180deg, rgba(255,255,255,.7), #fff);
-      backdrop-filter:saturate(140%) blur(6px);
-      z-index:60; display:flex; align-items:center; justify-content:center;
-    }
-    .tabbar .rail{ display:flex; align-items:center; gap:6px; max-width:1100px; width:100%; overflow-x:auto; padding:0 10px; scroll-snap-type:x proximity; }
-    .tabbar .tbtn{ flex:0 0 auto; scroll-snap-align:center; display:flex; flex-direction:column; align-items:center; gap:2px; min-width:68px; padding:6px 8px; color:var(--muted); text-decoration:none; border-radius:12px; }
-    .tabbar .tbtn.active{ color:var(--brand); }
-    .tabbar .tbtn .ico{ font-size:18px; line-height:18px; }
-    .tabbar .tbtn .lbl{ font-size:11px; }
-    .tabbar .tbtn.home{ border:1px dashed var(--stroke); }
-    .tabbar .tbtn.home .ico{ font-size:19px; } .tabbar .tbtn.home .lbl{ font-weight:700; }
-
     .sheet-backdrop{position:fixed; inset:0; z-index:59; display:none; background:rgba(0,0,0,.12)}
-    .sheet{ position:fixed; left:10px; right:10px; bottom:calc(var(--tabbar-h) + 10px); background:var(--card); border:1px solid var(--stroke); border-radius:16px; box-shadow:var(--shadow); z-index:61; display:none; max-height:40vh; overflow:auto; }
+    .sheet{ position:fixed; left:10px; right:10px; bottom:20px; background:var(--card); border:1px solid var(--stroke); border-radius:16px; box-shadow:var(--shadow); z-index:61; display:none; max-height:40vh; overflow:auto; }
     .sheet .grip{width:40px; height:4px; background:var(--stroke); border-radius:999px; margin:8px auto}
     .sheet .title{padding:6px 12px; font-weight:800; font-size:13.5px}
     .sheet .list{display:flex; flex-direction:column}
@@ -193,7 +189,7 @@
     .loaderText{ font-weight:700; color:var(--text); font-size:14px; text-align:center; }
 
     .netHint{
-      position:fixed; left:50%; bottom:calc(var(--tabbar-h) + 16px);
+      position:fixed; left:50%; bottom:20px;
       transform:translateX(-50%);
       background:#fff;
       border:1px solid var(--stroke);
@@ -216,19 +212,42 @@
 <body>
   <!-- Appbar -->
   <div class="appbar">
-    <div class="inner">
-      <div class="titleArea">
-        <div class="l1">Genel Takrir Raporu</div>
-        <div class="l2">
-          <span id="gun">—</span>
-          <span class="bullet">•</span>
-          <span id="tarih">—</span>
-          <span class="bullet">•</span>
-          <span id="subInfo">—</span>
+    <div class="brand" onclick="location.href='../panel.html'">
+      <img src="../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
+    </div>
+
+    <nav class="nav-center"><ul class="nav-list" id="navMain"></ul></nav>
+
+    <div class="nav-right">
+      <button class="btn hamb" id="hamburger" title="Menü">☰</button>
+
+      <!-- Bildirim -->
+      <div class="nav-item">
+        <button class="iconbtn" id="btnNotif" title="Bildirimler">🔔
+          <span class="badge" id="notifBadge" style="display:none">0</span>
+        </button>
+        <div class="dropdown drop-right" id="notifDropdown" aria-label="Bildirim listesi">
+          <div class="muted" style="padding:6px 8px">Son bildirimler</div>
+          <div id="notifList" class="list" style="max-height:300px;overflow:auto"></div>
+        </div>
+      </div>
+
+      <!-- Profil -->
+      <div class="nav-item">
+        <button class="iconbtn" id="btnProfile" title="Profil">
+          <span id="profName" class="muted">Profil</span>
+        </button>
+        <div class="dropdown drop-right" id="profDropdown" aria-label="Profil menüsü">
+          <a href="../diger/kullanici-yonetimi.html">👤 Profil</a>
+          <a href="../diger/sistem-ayarlari.html">⚙️ Sistem Ayarları</a>
+          <a href="#" id="btnLogout">🚪 Çıkış Yap</a>
         </div>
       </div>
     </div>
   </div>
+
+  <!-- Mobil çekmece -->
+  <aside class="drawer" id="drawer"></aside>
 
   <!-- PTR -->
   <div id="ptrHint" class="ptr-hint" aria-hidden="true">
@@ -256,6 +275,26 @@
                 <option value="8.Devre">8.Devre</option>
               </select>
               <span class="pill">Talebe yolu: <b>talebeler/&lt;devre&gt;/öğrenciler</b></span>
+            </div>
+          </div>
+
+          <!-- Talebe Seçimi (Yeni) -->
+          <div class="grp">
+            <div class="label">Rapor Modu</div>
+            <div class="inline">
+              <label><input type="radio" name="reportMode" value="genel" checked> Genel Rapor (Tüm Talebeler)</label>
+              <label><input type="radio" name="reportMode" value="talebe"> Talebe Bazlı Analiz</label>
+            </div>
+          </div>
+
+          <!-- Talebe Seçimi -->
+          <div class="grp" id="talebeSelectGrp" style="display:none">
+            <div class="label">Talebe</div>
+            <div class="inline">
+              <select id="selTalebe">
+                <option value="">— Talebe Seçin —</option>
+              </select>
+              <span class="pill">Seçilen talebenin detaylı analizi gösterilir</span>
             </div>
           </div>
 
@@ -321,9 +360,6 @@
     <div class="ring"></div><div class="lbl">Ana Sayfa</div>
   </div>
 
-  <!-- Alt Tabbar -->
-  <div class="tabbar"><div class="rail" id="tabRail"></div></div>
-
   <!-- Detay Modal -->
   <div id="mBack" class="modalBack"></div>
   <div id="mBox"  class="modal">
@@ -351,7 +387,7 @@
   <div id="calBack" class="modalBack"></div>
   <div id="calBox"  class="modal">
     <div class="head">Kitap &amp; Ders Gör</div>
-    <div class="body" style="padding:10px 12px; display:flex; flex-direction:column; gap:10px">
+    <div class="body" style="padding:12px; display:flex; flex-direction:column; gap:10px; max-height:calc(70vh - 100px); overflow:auto">
       <div class="inline">
         <button id="calTabKitap" class="btn small primary" type="button">Kitabı Gör</button>
         <button id="calTabGun"   class="btn small" type="button">Günü Gör</button>
@@ -385,6 +421,9 @@
   <!-- Internet hint -->
   <div id="netHint" class="netHint" aria-hidden="true">Bağlantı kontrol ediliyor...</div>
 
+  <!-- Toast Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
 <script>
 /* ====== Bağlantılar & Kısayollar ====== */
 const db = window.db, auth = firebase.auth();
@@ -404,11 +443,7 @@ const PANEL_ALIAS = {"Sistem Ayarları":"Ayarlar","Sistem Ayarlari":"Ayarlar","S
 function normPanelName(x){ const t=(x||'').trim(); return PANEL_ALIAS[t] || t; }
 
 /* ====== Tarih göstergesi ====== */
-function fmtHeader(d=new Date()){
-  const short = ['Pzt','Sal','Çar','Per','Cum','Cts','Paz']; const i=(d.getDay()+6)%7;
-  return { gunKisa: short[i], tarihTR: d.toLocaleDateString('tr-TR',{day:'2-digit',month:'long',year:'numeric'}) };
-}
-(function setHeaderToday(){ const {gunKisa,tarihTR}=fmtHeader(new Date()); $('gun').textContent=gunKisa; $('tarih').textContent=tarihTR; })();
+// Sayfa başlığı kaldırıldı, tarih göstergesi artık kullanılmıyor
 
 /* TR tarih etiketi */
 function trDayLabel(iso10){
@@ -422,7 +457,7 @@ function trDayLabel(iso10){
   return `${dd}.${mm}.${yyyy} ${gun}`;
 }
 
-/* ====== Tabbar / Manifest ====== */
+/* ====== Sheet (Panel Sheet) ====== */
 let CURRENT_PERMS={}, MANIFEST={};
 async function loadManifest(){
   const out={}, snap=await db.collection(PATHS.manifest).get();
@@ -436,32 +471,6 @@ async function loadManifest(){
     }).sort((a,b)=>a.order-b.order);
   }
   return out;
-}
-function renderTabbar(allowed){
-  const rail = document.getElementById('tabRail'); rail.innerHTML = '';
-  const makeBtn = (p)=>{
-    const a = document.createElement('a');
-    a.href = "#"; a.className = 'tbtn';
-    a.dataset.panel = p;
-    a.innerHTML = `<div class="ico">${ICONS[p]||'📁'}</div><div class="lbl">${p}</div>`;
-    a.onclick = e=>{ e.preventDefault(); openSheet(p); };
-    return a;
-  };
-  const home = (()=> {
-    const a = document.createElement('a');
-    a.href = "#"; a.className = 'tbtn home';
-    a.innerHTML = `<div class="ico">${ICONS.Home}</div><div class="lbl">Ana Sayfa</div>`;
-    a.onclick = e=>{ e.preventDefault(); closeSheet(); location.assign('/panel.html'); };
-    return a;
-  })();
-  const panels = ALL_PANELS.filter(p => allowed.includes(p)).slice(0, 6);
-  const leftCount  = Math.min(3, Math.ceil(panels.length / 2));
-  const rightCount = Math.min(3, panels.length - leftCount);
-  const L = panels.slice(0, leftCount);
-  const R = panels.slice(leftCount, leftCount + rightCount);
-  L.forEach(p => rail.appendChild(makeBtn(p)));
-  rail.appendChild(home);
-  R.forEach(p => rail.appendChild(makeBtn(p)));
 }
 
 const sheet=$('panelSheet'), sheetList=$('sheetList'), sheetTitle=$('sheetTitle'), sheetBackdrop=$('sheetBackdrop');
@@ -664,18 +673,222 @@ const loaderText = document.getElementById('loaderText');
 function showLoader(msg='Hazırlanıyor...'){ loaderText.textContent = msg; loader.classList.add('show'); }
 function hideLoader(){ loader.classList.remove('show'); }
 
+/* ====== TALEBE BAZLI ANALİZ ====== */
+async function runTalebeAnalysis(){
+  $('runMsg').textContent='Hazırlanıyor...';
+  const talebeUid = $('selTalebe').value;
+  if(!talebeUid){
+    alert('Lütfen bir talebe seçin.');
+    $('runMsg').textContent='';
+    return;
+  }
+
+  const talebe = state.talebeler.find(t=>t.uid===talebeUid);
+  if(!talebe){
+    alert('Talebe bulunamadı.');
+    $('runMsg').textContent='';
+    return;
+  }
+
+  // Önce kapsamı oluştur
+  await buildScopeAndMeta();
+  const dersCount = mufredatToplam();
+  
+  if(dersCount === 0){
+    alert('Seçili kitap için ders bulunamadı.');
+    $('runMsg').textContent='';
+    return;
+  }
+
+  // Talebenin tüm derslerini analiz et
+  const analiz = {
+    ad: talebe.ad,
+    toplamDers: dersCount,
+    verdi: 0,
+    yarim: 0,
+    veremedi: 0,
+    hocaBazli: {}, // {hocaAd: {verdi, yarim, veremedi, kitaplar: {kitapAd: {verdi, yarim, veremedi}}}}
+    kitapBazli: {} // {kitapAd: {verdi, yarim, veremedi, hocalar: {hocaAd: sayi}}}
+  };
+
+  if(!state.dersGrid || state.dersGrid.length === 0){
+    alert('Ders listesi bulunamadı. Lütfen kitap seçimini kontrol edin.');
+    $('runMsg').textContent='';
+    return;
+  }
+
+  for(const item of state.dersGrid){
+    const {kitap, ders, gunISO} = item;
+    if(!kitap || !ders) continue; // Geçersiz kayıtları atla
+    const col = db.collection(PATHS.main).doc(state.devre).collection(kitap).doc(ders).collection('talebeler');
+    const doc = await col.doc(talebeUid).get();
+    
+    const x = doc.exists ? doc.data() : {};
+    const durum = (x.durum||'').toLowerCase();
+    const personel = x.personel || '—';
+    
+    if(durum===STAT_VERDI) analiz.verdi++;
+    else if(durum===STAT_YARIM) analiz.yarim++;
+    else analiz.veremedi++;
+
+    // Hoca bazlı
+    if(!analiz.hocaBazli[personel]) analiz.hocaBazli[personel] = {verdi:0, yarim:0, veremedi:0, kitaplar:{}};
+    if(durum===STAT_VERDI) analiz.hocaBazli[personel].verdi++;
+    else if(durum===STAT_YARIM) analiz.hocaBazli[personel].yarim++;
+    else analiz.hocaBazli[personel].veremedi++;
+
+    // Kitap bazlı
+    if(!analiz.kitapBazli[kitap]) analiz.kitapBazli[kitap] = {verdi:0, yarim:0, veremedi:0, hocalar:{}};
+    if(durum===STAT_VERDI) analiz.kitapBazli[kitap].verdi++;
+    else if(durum===STAT_YARIM) analiz.kitapBazli[kitap].yarim++;
+    else analiz.kitapBazli[kitap].veremedi++;
+
+    // Hoca-Kitap kombinasyonu
+    if(!analiz.hocaBazli[personel].kitaplar[kitap]) analiz.hocaBazli[personel].kitaplar[kitap] = {verdi:0, yarim:0, veremedi:0};
+    if(durum===STAT_VERDI) analiz.hocaBazli[personel].kitaplar[kitap].verdi++;
+    else if(durum===STAT_YARIM) analiz.hocaBazli[personel].kitaplar[kitap].yarim++;
+    else analiz.hocaBazli[personel].kitaplar[kitap].veremedi++;
+
+    // Kitap-Hoca kombinasyonu
+    if(!analiz.kitapBazli[kitap].hocalar[personel]) analiz.kitapBazli[kitap].hocalar[personel] = 0;
+    if(durum===STAT_VERDI) analiz.kitapBazli[kitap].hocalar[personel]++;
+  }
+
+  // Özet
+  const yuzde = dersCount>0 ? ((analiz.verdi/dersCount)*100).toFixed(1)+'%' : '0%';
+  renderTalebeAnalysis(analiz, yuzde);
+  $('runMsg').textContent='';
+}
+
+function renderTalebeAnalysis(analiz, yuzde){
+  const cont = $('cards');
+  cont.innerHTML = '';
+
+  // Özet kartı
+  const sumCard = document.createElement('div');
+  sumCard.className = 'card';
+  sumCard.innerHTML = `
+    <div class="titleLine">${analiz.ad} - Genel Özet</div>
+    <div class="pillRow" style="margin-bottom:16px">
+      <span class="pill">Toplam Ders: <b>${analiz.toplamDers}</b></span>
+      <span class="pill verdi">Verilen: <b>${analiz.verdi}</b></span>
+      <span class="pill yarim">Yarım: <b>${analiz.yarim}</b></span>
+      <span class="pill veremedi">Verilmeyen: <b>${analiz.veremedi}</b></span>
+      <span class="pill">Verme Yüzdesi: <b>${yuzde}</b></span>
+    </div>
+  `;
+  cont.appendChild(sumCard);
+
+  // Hoca bazlı analiz
+  const hocaCard = document.createElement('div');
+  hocaCard.className = 'card';
+  hocaCard.innerHTML = '<div class="titleLine">Hoca Bazlı Analiz</div>';
+  const hocaBody = document.createElement('div');
+  hocaBody.style.cssText = 'display:flex; flex-direction:column; gap:12px; margin-top:12px';
+
+  Object.entries(analiz.hocaBazli).sort((a,b)=>b[1].verdi - a[1].verdi).forEach(([hoca, stats])=>{
+    const toplam = stats.verdi + stats.yarim + stats.veremedi;
+    const hocaYuzde = toplam>0 ? ((stats.verdi/toplam)*100).toFixed(1)+'%' : '0%';
+    const hocaDiv = document.createElement('div');
+    hocaDiv.style.cssText = 'border:1px solid var(--stroke); border-radius:12px; padding:12px; background:#fff';
+    hocaDiv.innerHTML = `
+      <div style="font-weight:900; margin-bottom:8px">${hoca === '—' ? '(İşaret Yok)' : hoca}</div>
+      <div class="pillRow" style="margin-bottom:10px">
+        <span class="pill">Toplam: <b>${toplam}</b></span>
+        <span class="pill verdi">Verilen: <b>${stats.verdi}</b></span>
+        <span class="pill yarim">Yarım: <b>${stats.yarim}</b></span>
+        <span class="pill veremedi">Verilmeyen: <b>${stats.veremedi}</b></span>
+        <span class="pill">Yüzde: <b>${hocaYuzde}</b></span>
+      </div>
+      <div style="font-size:12px; color:var(--muted); margin-top:8px"><strong>Kitap Bazlı Detay:</strong></div>
+      <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:6px">
+    `;
+    
+    Object.entries(stats.kitaplar).forEach(([kitap, kStats])=>{
+      const kToplam = kStats.verdi + kStats.yarim + kStats.veremedi;
+      const kYuzde = kToplam>0 ? ((kStats.verdi/kToplam)*100).toFixed(0)+'%' : '0%';
+      hocaDiv.innerHTML += `
+        <span class="pill" style="font-size:11px">
+          ${kitap}: <b>${kStats.verdi}/${kToplam}</b> (${kYuzde})
+        </span>
+      `;
+    });
+    hocaDiv.innerHTML += '</div></div>';
+    hocaBody.appendChild(hocaDiv);
+  });
+  hocaCard.appendChild(hocaBody);
+  cont.appendChild(hocaCard);
+
+  // Kitap bazlı analiz
+  const kitapCard = document.createElement('div');
+  kitapCard.className = 'card';
+  kitapCard.innerHTML = '<div class="titleLine">Kitap Bazlı Analiz</div>';
+  const kitapBody = document.createElement('div');
+  kitapBody.style.cssText = 'display:flex; flex-direction:column; gap:12px; margin-top:12px';
+
+  Object.entries(analiz.kitapBazli).sort((a,b)=>(b[1].verdi+b[1].yarim+b[1].veremedi) - (a[1].verdi+a[1].yarim+a[1].veremedi)).forEach(([kitap, stats])=>{
+    const toplam = stats.verdi + stats.yarim + stats.veremedi;
+    const kitapYuzde = toplam>0 ? ((stats.verdi/toplam)*100).toFixed(1)+'%' : '0%';
+    const kitapDiv = document.createElement('div');
+    kitapDiv.style.cssText = 'border:1px solid var(--stroke); border-radius:12px; padding:12px; background:#fff';
+    kitapDiv.innerHTML = `
+      <div style="font-weight:900; margin-bottom:8px">${kitap}</div>
+      <div class="pillRow" style="margin-bottom:10px">
+        <span class="pill">Toplam: <b>${toplam}</b></span>
+        <span class="pill verdi">Verilen: <b>${stats.verdi}</b></span>
+        <span class="pill yarim">Yarım: <b>${stats.yarim}</b></span>
+        <span class="pill veremedi">Verilmeyen: <b>${stats.veremedi}</b></span>
+        <span class="pill">Yüzde: <b>${kitapYuzde}</b></span>
+      </div>
+      <div style="font-size:12px; color:var(--muted); margin-top:8px"><strong>Hoca Bazlı Dağılım:</strong></div>
+      <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:6px">
+    `;
+    
+    Object.entries(stats.hocalar).sort((a,b)=>b[1]-a[1]).forEach(([hoca, sayi])=>{
+      kitapDiv.innerHTML += `
+        <span class="pill" style="font-size:11px">
+          ${hoca === '—' ? '(İşaret Yok)' : hoca}: <b>${sayi} ders</b>
+        </span>
+      `;
+    });
+    kitapDiv.innerHTML += '</div></div>';
+    kitapBody.appendChild(kitapDiv);
+  });
+  kitapCard.appendChild(kitapBody);
+  cont.appendChild(kitapCard);
+
+  // Özet kartını gizle (talebe analizinde gerek yok)
+  $('summaryCard').style.display='none';
+}
+
 /* runReport sarmalayıcı */
 async function runReport(){
-  showLoader('Rapor hazırlanıyor...');
-  try{
-    $('runMsg').textContent='';
-    await new Promise(r=>setTimeout(r,200));
-    await realRunReport();
-  }catch(err){
-    console.error('Rapor hatası', err);
-    alert('Bir hata oluştu, tekrar deneyin.');
-  }finally{
-    hideLoader();
+  const reportMode = document.querySelector('input[name="reportMode"]:checked')?.value || 'genel';
+  
+  if(reportMode === 'talebe'){
+    showLoader('Talebe analizi hazırlanıyor...');
+    try{
+      $('runMsg').textContent='';
+      await new Promise(r=>setTimeout(r,200));
+      await runTalebeAnalysis();
+    }catch(err){
+      console.error('Talebe analiz hatası', err);
+      alert('Bir hata oluştu, tekrar deneyin.');
+    }finally{
+      hideLoader();
+    }
+  }else{
+    showLoader('Rapor hazırlanıyor...');
+    try{
+      $('runMsg').textContent='';
+      await new Promise(r=>setTimeout(r,200));
+      await realRunReport();
+    }catch(err){
+      console.error('Rapor hatası', err);
+      alert('Bir hata oluştu, tekrar deneyin.');
+    }finally{
+      hideLoader();
+    }
   }
 }
 
@@ -710,7 +923,7 @@ async function monitorNetwork(){
   }
 }
 checkConnection();
-monitorNetwork();
+// CORS hatası nedeniyle monitorNetwork kaldırıldı - sadece online/offline event'leri yeterli
 
 /* ====== Özet & Kartlar ====== */
 function renderSummary({title, pills}){
@@ -796,7 +1009,10 @@ function renderModalRows(){
 
 /* ====== Kitap & Gün Gör (Modal) ====== */
 function openCalModal(){
-  $('calBack').style.display='block'; $('calBox').style.display='block';
+  $('calBack').style.display='block';
+  const calBox = $('calBox');
+  calBox.style.display='flex';
+  calBox.style.flexDirection='column';
   $('calKitapName').textContent = (state.kitap==='__ALL__') ? 'Tüm Kitaplar' : (state.kitap||'—');
   switchCalTab('kitap');
   loadCalForKitap().catch(console.error);
@@ -805,7 +1021,10 @@ function openCalModal(){
   $('calGunDate').value = iso10;
   $('calGunList').innerHTML='';
 }
-function closeCalModal(){ $('calBack').style.display='none'; $('calBox').style.display='none'; }
+function closeCalModal(){ 
+  $('calBack').style.display='none'; 
+  $('calBox').style.display='none'; 
+}
 $('btnTakvim').addEventListener('click', openCalModal);
 $('calClose').addEventListener('click', closeCalModal);
 $('calBack').addEventListener('click', closeCalModal);
@@ -889,10 +1108,38 @@ async function refreshKitapAndDersCount(){
   await updateDersCountPill();
 }
 
+/* ====== Talebe Dropdown Güncelle ====== */
+async function refreshTalebeSelect(){
+  const sel = $('selTalebe');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">— Talebe Seçin —</option>';
+  state.talebeler.forEach(t=>{
+    const opt = document.createElement('option');
+    opt.value = t.uid;
+    opt.textContent = t.ad;
+    if(t.uid === current) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
 /* ====== Events ====== */
+// Rapor modu değişimi
+document.querySelectorAll('input[name="reportMode"]').forEach(radio=>{
+  radio.addEventListener('change', async ()=>{
+    const mode = radio.value;
+    $('talebeSelectGrp').style.display = mode === 'talebe' ? 'block' : 'none';
+    if(mode === 'talebe' && state.talebeler.length === 0){
+      state.talebeler = await loadTalebeler(state.devre);
+      await refreshTalebeSelect();
+    }
+  });
+});
+
 $('selDevre').addEventListener('change', async ()=>{
   state.devre = $('selDevre').value;
   await refreshKitapAndDersCount();
+  state.talebeler = await loadTalebeler(state.devre);
+  await refreshTalebeSelect();
 });
 $('selKitap').addEventListener('change', async ()=>{
   state.kitap = $('selKitap').value;
@@ -905,30 +1152,42 @@ $('selSort').addEventListener('change', ()=>{
 $('btnRun').addEventListener('click', async (e)=>{ e.preventDefault(); await runReport(); });
 
 /* ====== Auth & Başlat ====== */
-auth.onAuthStateChanged(async (user)=>{
-  if(!user){ location.replace('../index.html'); return; }
-  __UID=user.uid;
-  const udoc=await db.collection(PATHS.users).doc(user.uid).get();
-  const meta=udoc.exists? udoc.data(): {};
-  __ME=meta.adSoyad || user.displayName || (user.email? user.email.split('@')[0]:'');
-  $('subInfo').textContent = __ME ? `Kullanıcı: ${__ME}` : '—';
+// ortak.js'den gelen initAppShellAuth zaten çalışıyor, burada sadece sayfa özel işlemleri yapıyoruz
+function initPage() {
+  return new Promise(async (resolve) => {
+    const user = window.auth?.currentUser || firebase.auth().currentUser;
+    if(!user){ 
+      location.replace('../index.html'); 
+      resolve();
+      return; 
+    }
+    __UID=user.uid;
+    const udoc=await db.collection(PATHS.users).doc(user.uid).get();
+    const meta=udoc.exists? udoc.data(): {};
+    __ME=meta.adSoyad || user.displayName || (user.email? user.email.split('@')[0]:'');
 
-  const rawPerms = Array.isArray(meta.yetkiler)? meta.yetkiler: [];
-  const byPanel  = {};
-  rawPerms.forEach(s=>{
-    const i=String(s).indexOf(':'); if(i<0) return;
-    let panel = normPanelName(String(s).slice(0,i).trim());
-    const label = String(s).slice(i+1).trim();
-    if(!ALL_PANELS.includes(panel)) return;
-    (byPanel[panel] ||= []).push(label);
+    const rawPerms = Array.isArray(meta.yetkiler)? meta.yetkiler: [];
+    const byPanel  = {};
+    rawPerms.forEach(s=>{
+      const i=String(s).indexOf(':'); if(i<0) return;
+      let panel = normPanelName(String(s).slice(0,i).trim());
+      const label = String(s).slice(i+1).trim();
+      if(!ALL_PANELS.includes(panel)) return;
+      (byPanel[panel] ||= []).push(label);
+    });
+    CURRENT_PERMS=byPanel;
+    MANIFEST=await loadManifest();
+
+    await refreshKitapAndDersCount();
+    state.talebeler = await loadTalebeler(state.devre);
+    await refreshTalebeSelect();
+    
+    resolve();
   });
-  CURRENT_PERMS=byPanel;
-  MANIFEST=await loadManifest();
-  renderTabbar(Object.keys(byPanel));
+}
 
-  await refreshKitapAndDersCount();
-  state.talebeler = await loadTalebeler(state.devre);
-});
+// ortak.js'den gelen window.initPage hook'u
+window.initPage = initPage;
 </script>
 </body>
 </html>
