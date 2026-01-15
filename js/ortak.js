@@ -54,7 +54,8 @@ function baslatPanel() {
 
     try {
       const doc = await firebase.firestore().collection("kullanicilar").doc(uid).get();
-      const veri = doc.data();
+      const veri
+ = doc.data();
 
       if (!veri) {
         alert("Kullanıcı bilgisi bulunamadı.");
@@ -990,38 +991,53 @@ function initAppShell() {
   });
 }
 
-/* === AUTH + INIT === */
+/* === AUTH + INIT (DÜZELTİLMİŞ HALİ) === */
 function initAppShellAuth() {
   window.auth.onAuthStateChanged(async (user) => {
+    
+    // --- DÜZELTME BAŞLANGICI ---
+    // Şu an hangi sayfadayız kontrol et
+    const path = window.location.pathname;
+    // Eğer dosya adı 'index.html' ise veya anasayfadaysak ('/'), yönlendirme yapma!
+    const isLoginPage = path.includes('index.html') || path === '/' || path.endsWith('/');
+
     if (!user) {
-      const indexPath = normalizeUrl('index.html');
-      window.location.href = indexPath;
+      // Eğer kullanıcı yoksa VE biz zaten giriş sayfasında DEĞİLSEK yönlendir
+      if (!isLoginPage) {
+        const indexPath = normalizeUrl('index.html');
+        window.location.href = indexPath;
+      }
+      // Giriş sayfasındaysak hiçbir şey yapma (kullanıcı form doldursun)
       return;
     }
+    // --- DÜZELTME BİTİŞİ ---
+
+    // Eğer kullanıcı zaten giriş yapmışsa ve şu an index.html'de ise panele at (İsteğe bağlı opsiyon)
+    if (user && isLoginPage) {
+        window.location.href = "panel.html";
+        return;
+    }
+
     try {
       const userDoc = await window.db.collection('kullanicilar').doc(user.uid).get();
       if (userDoc.exists) {
         const data = userDoc.data();
         const profNameEl = document.getElementById('profName');
         if (profNameEl) {
-          // Ad Soyad'ın tamamını göster (tüm sayfalarda aynı) + emoji
           const name = data.adSoyad || user.email?.split('@')[0] || 'Profil';
           profNameEl.textContent = `👤 ${name}`;
         }
 
-        // Yetkileri yükle (hem local hem window'a)
         const rawPerms = Array.isArray(data.yetkiler) ? data.yetkiler : [];
         CURRENT_ALLOW = new Set(rawPerms.filter(s => !String(s).trim().startsWith('-') && !String(s).trim().startsWith('!')).map(norm));
         CURRENT_DENY = new Set(rawPerms.filter(s => String(s).trim().startsWith('-') || String(s).trim().startsWith('!')).map(s => window.norm(String(s).replace(/^[-!]\s*/, ''))));
-        // Window'a da kopyala (sayfalar için)
+        
         window.CURRENT_ALLOW = CURRENT_ALLOW;
         window.CURRENT_DENY = CURRENT_DENY;
 
-        // Navigasyonu render et
         const panels = await fetchPanels(CURRENT_ALLOW, CURRENT_DENY);
         renderNav(panels);
 
-        // Bildirimleri yükle
         await loadNotifications();
       }
     } catch (e) {
@@ -1029,7 +1045,6 @@ function initAppShellAuth() {
       showToast('error', 'Hata', 'Kullanıcı bilgisi yüklenemedi.');
     }
 
-    // Sayfa özel init fonksiyonunu çağır (eğer varsa)
     if (typeof window.initPage === 'function') {
       await window.initPage();
     }
