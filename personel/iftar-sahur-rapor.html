@@ -6,78 +6,100 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
   <link rel="icon" type="image/png" href="../img/logo.png" />
 
-  <!-- Firebase compat -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-  <script src="../../js/firebase/firebase-init.js"></script>
+  <!-- CSS -->
+  <link rel="stylesheet" href="../css/app-shell.css" />
+  
+  <!-- Supabase (Auth + Database için) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="../src/supabase.js"></script>
+  <script src="../src/supabase-auth-wrapper.js"></script>
+  <script src="../src/supabase-db-wrapper.js"></script>
+  <script src="../js/ortak.js"></script>
 
   <!-- html2pdf -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
 
   <style>
-    :root{
-      --appbar-h:56px;
-      --bg:#f4f6f9; --card:#ffffff; --ink:#2c3e50; --muted:#6c7a89;
-      --accent:#324960; --good:#2d6a4f; --warn:#d35400; --bad:#c0392b;
-      --border:#e6ebf2; --stroke:rgba(15,23,42,.12); --text:#0b1220;
-      --surface:#f1f5ff; --surface2:#f6f8ff; --shadow:0 12px 28px rgba(0,0,0,.12);
+    /* app-shell.css üst bar/arka plan/toast/yetki yapısını kullanır.
+       Burada sadece sayfa-özel küçük düzenlemeler var. */
+    body {
+      padding-top: var(--appbar-h) !important;
+      overflow-x: hidden;
+      overflow-y: auto;
     }
-    *{box-sizing:border-box}
-    body{margin:0;font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;background:var(--bg);color:var(--ink)}
-    img{max-width:100%;height:auto;display:block}
-    
-    /* APPBAR */
-    .appbar{
-      position:sticky; top:0; z-index:60; height:var(--appbar-h);
-      background:var(--card); backdrop-filter:blur(10px);
-      border-bottom:1px solid var(--stroke);
-      display:flex; align-items:center; gap:10px; padding:0 12px;
-    }
-    .brand{display:flex; align-items:center; gap:10px; cursor:pointer}
-    .brand img{width:24px; height:24px}
-    .brand span{font-weight:900; letter-spacing:.02em; color:var(--text)}
-    .nav-center{margin:0 auto; height:100%}
-    .nav-list{display:flex; gap:22px; align-items:center; height:100%; list-style:none; margin:0; padding:0}
-    .nav-item{position:relative; height:100%}
-    .nav-btn{height:100%; display:flex; align-items:center; gap:6px; font-weight:800; cursor:pointer; color:var(--text)}
-    .nav-btn:hover{color:var(--accent)}
-    .caret{font-size:12px; opacity:.6}
-    .dropdown{position:absolute; top:100%; left:0; min-width:240px; background:var(--card); border:1px solid var(--stroke); border-radius:12px; box-shadow:var(--shadow); padding:8px; display:none}
-    .dropdown a{display:flex; align-items:center; gap:8px; padding:10px 12px; border-radius:10px; color:var(--text); text-decoration:none}
-    .dropdown a:hover{background:var(--surface2)}
-    .nav-item.open .dropdown{display:block}
-    .nav-right{display:flex; gap:8px; align-items:center}
-    .btn{border:1px solid var(--stroke); background:var(--surface2); color:var(--text); border-radius:999px; padding:8px 14px; cursor:pointer; white-space:nowrap; font-weight:700}
-    .hamb{display:none}
-    .iconbtn{position:relative; border:1px solid var(--stroke); background:var(--card); color:var(--text); border-radius:999px; padding:8px 12px; cursor:pointer; display:flex; align-items:center; gap:8px}
-    .drop-right{left:auto; right:0}
-    .avatar{width:22px;height:22px;border-radius:999px;background:linear-gradient(180deg,#94a3b8,#64748b)}
-    .muted{color:var(--muted)}
-    @media (max-width: 960px){ .nav-center{display:none} .hamb{display:inline-flex} }
 
-    /* DRAWER */
-    .drawer{position:fixed; top:var(--appbar-h); right:0; bottom:0; left:34%; transform:translateX(100%); transition:.25s; background:var(--card); border-left:1px solid var(--stroke); z-index:70; overflow:auto; padding:16px}
-    .drawer.open{transform:translateX(0)}
-    .drawer .panel-title{margin:14px 4px 6px; font-weight:800; color:var(--muted); font-size:13px}
-    .drawer a{display:block; padding:12px; border-radius:12px; border:1px solid var(--stroke); margin:8px 0; color:var(--text); background:var(--surface2); text-decoration:none}
-    .drawer a:hover{background:var(--surface)}
-    
-    header{position:sticky;top:var(--appbar-h);z-index:5;background:var(--card);border-bottom:1px solid var(--border);box-shadow:0 2px 4px rgba(0,0,0,.05)}
-    .wrap{max-width:1400px;margin:0 auto;padding:12px 16px}
-    
-    .toolbar{display:flex;gap:10px;flex-wrap:nowrap;align-items:center;overflow:auto;padding-bottom:6px}
-    .toolbar::-webkit-scrollbar{height:6px}
-    .toolbar::-webkit-scrollbar-thumb{background:#d7dde6;border-radius:999px}
-    select,input,button{
-      height:38px;border:1px solid var(--border);background:#fff;border-radius:10px;padding:0 12px;font:inherit;color:var(--ink);white-space:nowrap
+    /* Drawer masaüstünde kapalı kalmalı */
+    @media (min-width: 1025px) {
+      .drawer {
+        transform: translateX(100%) !important;
+      }
+
+      .drawer.open {
+        transform: translateX(0) !important;
+      }
     }
-    button{background:var(--accent);color:#fff;border:none;cursor:pointer;font-weight:500}
-    button.secondary{background:#fff;color:var(--ink);border:1px solid var(--border)}
-    button:hover{opacity:0.9}
+    
+    .wrap {
+      max-width: 1750px;
+      margin: 0 auto;
+      padding: 16px
+    }
+    
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: nowrap;
+      align-items: center;
+      overflow: auto;
+      padding-bottom: 6px
+    }
+
+    .toolbar::-webkit-scrollbar {
+      height: 6px
+    }
+
+    .toolbar::-webkit-scrollbar-thumb {
+      background: #d7dde6;
+      border-radius: 999px
+    }
+
+    select,
+    input,
+    button {
+      height: 38px;
+      border: 1px solid var(--border);
+      background: #fff;
+      border-radius: 10px;
+      padding: 0 12px;
+      font: inherit;
+      color: var(--ink)
+    }
+
+    button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      font-weight: 500
+    }
+
+    button.secondary {
+      background: #fff;
+      color: var(--ink);
+      border: 1px solid var(--border)
+    }
+
+    button:hover {
+      opacity: 0.9
+    }
+
+    button.danger {
+      background: var(--bad);
+      color: #fff
+    }
     
     .chip{padding:8px 10px;border-radius:999px;border:1px solid var(--border);background:#fff;color:var(--muted);font-size:12px;white-space:nowrap}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin:12px 0}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;margin:16px 0;box-shadow:0 1px 3px rgba(0,0,0,.05)}
     .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:16px 0}
     .kpi{display:flex;flex-direction:column;gap:4px;padding:12px;background:#fff;border:1px solid var(--border);border-radius:12px}
     .kpi .label{color:var(--muted);font-size:12px;font-weight:500}
@@ -99,7 +121,7 @@
     .right{text-align:right}
     tbody td:last-child{min-width:200px;max-width:300px;line-height:1.4}
     
-    .card-list{display:none;gap:10px;margin-top:12px}
+    .card-list{display:none!important;gap:10px;margin-top:12px}
     .mini-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px}
     .mini-line{display:flex;justify-content:space-between;gap:8px;font-size:14px}
     .mini-hl{font-weight:600}
@@ -118,7 +140,6 @@
     }
     
     @media print{
-      header{position:static;border:none}
       .toolbar{display:none!important}
       .wrap{max-width:100%;padding:0}
       .card{border:none;padding:0}
@@ -130,69 +151,79 @@
     }
 
     @media (max-width:540px){
-      .table-wrap{display:none}
-      .card-list{display:grid}
+      .table-wrap{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+      .table-wrap table{min-width:800px}
       input{min-width:160px}
     }
-    
-    header strong{font-size:clamp(16px,3.8vw,18px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40vw}
   </style>
 </head>
 <body>
 
-<!-- APPBAR -->
-<div class="appbar">
-  <div class="brand" onclick="location.href='../panel.html'">
-    <img src="../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
-  </div>
-  <nav class="nav-center"><ul class="nav-list" id="navMain"></ul></nav>
-  <div class="nav-right">
-    <button class="btn hamb" id="hamburger" title="Menü">☰</button>
-    <div class="nav-item">
-      <button class="iconbtn" id="btnProfile" title="Profil">
-        <span class="avatar"></span> <span id="profName" class="muted">Profil</span>
-      </button>
-      <div class="dropdown drop-right" id="profDropdown">
-        <a href="../diger/kullanici-yonetimi.html">👤 Profil</a>
-        <a href="../diger/sistem-ayarlari.html">⚙️ Sistem Ayarları</a>
-        <a href="#" id="btnLogout">🚪 Çıkış Yap</a>
+  <!-- ÜST APPBAR (hedef-grafik.html ile aynı yapı) -->
+  <div class="appbar">
+    <div class="brand" onclick="location.href='../panel.html'">
+      <img src="../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
+    </div>
+    <nav class="nav-center">
+      <ul class="nav-list" id="navMain"></ul>
+    </nav>
+    <div class="nav-right">
+      <button class="btn hamb" id="hamburger" title="Menü">☰</button>
+
+      <!-- Bildirim -->
+      <div class="nav-item">
+        <button class="iconbtn" id="btnNotif" title="Bildirimler">🔔
+          <span class="badge" id="notifBadge" style="display:none">0</span>
+        </button>
+        <div class="dropdown drop-right" id="notifDropdown" aria-label="Bildirim listesi">
+          <div class="muted" style="padding:6px 8px">Son bildirimler</div>
+          <div id="notifList" class="list" style="max-height:300px;overflow:auto"></div>
+        </div>
+      </div>
+
+      <!-- Profil -->
+      <div class="nav-item">
+        <button class="iconbtn" id="btnProfile" title="Profil">
+          <span class="avatar"></span> <span id="profName" class="muted">Profil</span>
+        </button>
+        <div class="dropdown drop-right" id="profDropdown" aria-label="Profil menüsü">
+          <a href="../diger/kullanici-yonetimi.html">👤 Profil</a>
+          <a href="../diger/sistem-ayarlari.html">⚙️ Sistem Ayarları</a>
+          <a href="#" id="btnLogout">🚪 Çıkış Yap</a>
+        </div>
       </div>
     </div>
   </div>
-</div>
 <aside class="drawer" id="drawer"></aside>
+<div class="toast-container" id="toastContainer"></div>
 
-<header>
-  <div class="wrap">
-    <h2 style="margin:12px 0 8px 0;font-size:24px;font-weight:800">Ramazan-ı Şerif</h2>
-    <div class="muted" style="margin-bottom:12px">İftar-Sahur Raporları</div>
-    <div class="toolbar">
-      <select id="filtreYil">
-        <option value="">Yıl seçiniz...</option>
-      </select>
-      <select id="filtreTip">
-        <option value="">Tüm Tipler</option>
-        <option value="iftar">İftar</option>
-        <option value="sahur">Sahur</option>
-      </select>
-      <input id="ara" placeholder="Sahip / Personel ara..." />
-      <select id="filtreMod">
-        <option value="tum">Tüm Kayıtlar</option>
-        <option value="kendim">Sadece Kendim</option>
-      </select>
-      <div style="flex:1"></div>
-      <label class="switcher" title="Mobilde kart görünüm otomatik açılır">
-        <input id="toggleKart" type="checkbox" style="accent-color:#324960" />
-        <span class="muted">Kart Görünüm</span>
-      </label>
-      <button id="btnExport" class="secondary">CSV Dışa Aktar</button>
-      <button id="btnDetayliRapor" class="good" style="background:var(--good)">📊 Detaylı Personel Raporu (2023-2024-2025)</button>
-      <button id="btnTumPersonelRapor" class="good" style="background:var(--accent)">📋 Tüm Personel Raporu (Yurt Mesulü)</button>
-    </div>
-  </div>
-</header>
+<!-- Progress Bar -->
+<div class="progress-container" id="progressContainer">
+  <div class="progress-bar-fill" id="progressBar"></div>
+</div>
 
 <main class="wrap" id="pdf-root">
+  <h2 style="margin:12px 0 8px 0;font-size:24px;font-weight:800">Ramazan-ı Şerif</h2>
+  <div class="muted" style="margin-bottom:12px">İftar-Sahur Raporları</div>
+  <div class="toolbar">
+    <select id="filtreYil">
+      <option value="">Yıl seçiniz...</option>
+    </select>
+    <select id="filtreTip">
+      <option value="">Tüm Tipler</option>
+      <option value="iftar">İftar</option>
+      <option value="sahur">Sahur</option>
+    </select>
+    <input id="ara" placeholder="Sahip / Personel ara..." />
+    <select id="filtreMod">
+      <option value="tum">Tüm Kayıtlar</option>
+      <option value="kendim">Sadece Kendim</option>
+    </select>
+    <div style="flex:1"></div>
+    <button id="btnExport" class="secondary">CSV Dışa Aktar</button>
+    <button id="btnDetayliRapor" class="good" style="background:var(--good)">📊 Detaylı Personel Raporu (2023-2024-2025)</button>
+    <button id="btnTumPersonelRapor" class="good" style="background:var(--accent)">📋 Tüm Personel Raporu (Yurt Mesulü)</button>
+  </div>
     <!-- KPI Kartları -->
     <div class="kpi-row" id="kpiRow">
       <div class="kpi">
@@ -218,6 +249,21 @@
       <div class="kpi">
         <span class="label">Toplam Kayıt</span>
         <span class="value" id="kpiToplam">0</span>
+      </div>
+    </div>
+
+    <!-- Detaylı İstatistikler -->
+    <div class="card" style="margin-top:16px;padding:16px;background:#f9fafb">
+      <div id="detayliIstatistikler" style="display:flex;flex-direction:column;gap:8px;font-size:14px;line-height:1.6">
+        <div><strong>Teberru toplam:</strong> <span id="statTeberruToplam">₺0</span> 
+          (<span id="statTeberruNakit">nakit: ₺0</span>, 
+          <span id="statTeberruBanka">banka: ₺0</span>, 
+          <span id="statTeberruPos">pos: ₺0</span>, 
+          <span id="statTeberruSanal">sanal: ₺0</span>)
+        </div>
+        <div><strong>Taahhüt:</strong> <span id="statTaahhut">₺0</span></div>
+        <div><strong>İftar:</strong> <span id="statIftar">0</span></div>
+        <div><strong>Sahur:</strong> <span id="statSahur">0</span></div>
       </div>
     </div>
 
@@ -335,8 +381,35 @@
   </main>
 
   <script>
-    const db = window.db;
-    const auth = window.auth;
+    // ===== SUPABASE (Tam Entegrasyon) =====
+    // supabase-auth-wrapper.js ve supabase-db-wrapper.js window.supabase'i oluşturuyor
+    // Burada direkt window.supabase'i kullanıyoruz (const/let tanımlamıyoruz, çakışma önlemek için)
+    
+    // Supabase client'ın hazır olmasını bekle
+    async function waitForSupabase() {
+      if (window.supabase && window.supabase.auth) {
+        return window.supabase;
+      }
+      
+      // Maksimum 5 saniye bekle
+      return new Promise((resolve) => {
+        let attempts = 0;
+        const maxAttempts = 50; // 5 saniye (50 * 100ms)
+        
+        const checkInterval = setInterval(() => {
+          attempts++;
+          if (window.supabase && window.supabase.auth) {
+            clearInterval(checkInterval);
+            resolve(window.supabase);
+          } else if (attempts >= maxAttempts) {
+            clearInterval(checkInterval);
+            console.warn('⚠️ Supabase client hazır olana kadar beklenemedi');
+            resolve(null);
+          }
+        }, 100);
+      });
+    }
+    
     const qs = s => document.querySelector(s);
     
     let kayitlar = [];
@@ -348,9 +421,18 @@
 
     const ayIsimleri = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
 
-    /* ===== Navigation Bar ===== */
-    let CURRENT_ALLOW=new Set(), CURRENT_DENY=new Set();
-    const norm=(s)=> String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+/* ===== Navigation Bar ===== */
+    // ortak.js zaten CURRENT_ALLOW ve CURRENT_DENY'yi window üzerinde tanımlıyor
+    // let ifadesini kaldırarak doğrudan global değişkenleri kullanıyoruz veya yoksa oluşturuyoruz
+    if (!window.CURRENT_ALLOW) window.CURRENT_ALLOW = new Set();
+    if (!window.CURRENT_DENY) window.CURRENT_DENY = new Set();
+    
+// Kodun geri kalanında kolay kullanım için referansları güncelleyelim (tekrar let tanımlamadan)
+window.CURRENT_ALLOW = window.CURRENT_ALLOW;
+    window.CURRENT_DENY = window.CURRENT_DENY;
+    
+    // norm fonksiyonu ortak.js'den geliyor, burada tekrar tanımlamaya gerek yok.
+    
     function normalizeUrl(u){
       if(!u || u === '#') return '#';
       // HTTP/HTTPS URL'leri olduğu gibi bırak
@@ -375,10 +457,18 @@
     }
 
     async function fetchPanels(allowSet, denySet){
-      const res=[]; try{
-        const snap=await db.collection('sayfa_manifesti').get();
-        snap.forEach(doc=>{
-          const d=doc.data()||{}, id=doc.id, panelTitle=d.title||id;
+      const res=[]; 
+      if (!window.supabase) return res;
+      
+      try{
+        const { data, error } = await window.supabase
+          .from('sayfa_manifesti')
+          .select('id, title, order, pages');
+        
+        if (error || !data) return res;
+        
+        data.forEach(doc=>{
+          const d=doc||{}, id=d.id||'', panelTitle=d.title||id;
           const panelGrant = allowSet.has(norm(id)) || allowSet.has(norm(panelTitle));
           let pages = Array.isArray(d.pages)? d.pages : [];
           pages = pages.filter(pg=>{
@@ -430,7 +520,29 @@
       document.addEventListener('click',(e)=>{ if(!ul.contains(e.target)) ul.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('open')); });
     }
 
-    (function(){ const hamb=document.getElementById('hamburger'), drawer=document.getElementById('drawer'); if(!hamb) return; hamb.addEventListener('click',()=>drawer.classList.toggle('open')); document.addEventListener('click',(e)=>{ if(!drawer.contains(e.target) && !hamb.contains(e.target)) drawer.classList.remove('open'); }); })();
+    (function(){ 
+      const hamb=document.getElementById('hamburger'), drawer=document.getElementById('drawer'); 
+      if(!hamb || !drawer) return; 
+      
+      // Masaüstünde drawer'ı kapat
+      function closeDrawerOnDesktop() {
+        if(window.innerWidth >= 1025) {
+          drawer.classList.remove('open');
+        }
+      }
+      
+      // Sayfa yüklendiğinde ve resize'da kontrol et
+      closeDrawerOnDesktop();
+      window.addEventListener('resize', closeDrawerOnDesktop);
+      
+      hamb.addEventListener('click',()=>{
+        if(window.innerWidth >= 1025) return; // Masaüstünde tıklamayı engelle
+        drawer.classList.toggle('open');
+      }); 
+      document.addEventListener('click',(e)=>{ 
+        if(!drawer.contains(e.target) && !hamb.contains(e.target)) drawer.classList.remove('open'); 
+      }); 
+    })();
 
     document.addEventListener('click',(e)=>{
       const a=e.target.closest('a[data-key]'); if(!a) return;
@@ -449,164 +561,471 @@
       profBtn?.addEventListener('click',(e)=>{ e.stopPropagation(); profDD.parentElement.classList.toggle('open'); });
       document.getElementById('btnLogout')?.addEventListener('click', async (e) => {
         e.preventDefault();
-        try { await auth.signOut(); location.assign('../../index.html'); }
+        try { 
+          if (window.supabase) {
+            await window.supabase.auth.signOut();
+          }
+          location.assign('../../index.html'); 
+        }
         catch(err){ console.error(err); }
       });
     })();
 
-    // Firebase Auth kontrolü
-    auth.onAuthStateChanged(async (user) => {
-      if (!user) {
-        window.location.href = '../../index.html';
+    // ===== SUPABASE AUTH KONTROLÜ (Canlı Veri için) =====
+    async function initSupabaseAuth() {
+      // window.supabase'in hazır olmasını bekle
+      const supabaseClient = await waitForSupabase();
+      if (!supabaseClient) {
+        console.warn('⚠️ Supabase client hazır değil, auth init edilemedi');
+        // Test modu için sayfanın çalışmasına izin ver
+        try {
+          await loadRamazanYillari();
+          loadKayitlar();
+        } catch (e) {
+          console.warn('Veri yükleme hatası (test modu, Supabase yok):', e);
+        }
         return;
       }
-      currentUser = user;
-      currentUserUid = user.uid;
-      
-      // Kullanıcı bilgilerini al
-      try {
-        const userDoc = await db.collection('kullanicilar').doc(user.uid).get();
-        if (userDoc.exists) {
-          const data = userDoc.data();
-          
-          // Profil adını güncelle
-          const profNameEl = document.getElementById('profName');
-          if (profNameEl) profNameEl.textContent = data.adSoyad || user.email?.split('@')[0] || 'Profil';
-          
-          // Yetkileri yükle
-          const rawPerms = Array.isArray(data.yetkiler) ? data.yetkiler : [];
-          CURRENT_ALLOW = new Set(rawPerms.filter(s=>!String(s).trim().startsWith('-') && !String(s).trim().startsWith('!')).map(norm));
-          CURRENT_DENY = new Set(rawPerms.filter(s=>String(s).trim().startsWith('-') || String(s).trim().startsWith('!')).map(s=>norm(String(s).replace(/^[-!]\s*/,''))));
-          
-          // Navigation render
-          const panels = await fetchPanels(CURRENT_ALLOW, CURRENT_DENY);
-          renderNav(panels);
-        }
-      } catch (e) {
-        console.error('Kullanıcı bilgisi alınamadı:', e);
-      }
-      
-      // Ramazan yıllarını yükle ve yıl seçeneklerini güncelle
-      await loadRamazanYillari();
-      
-      // İlk yükleme
-      loadKayitlar();
-    });
-
-    let silinenKayitlar = [];
-
-    // Kayıtları yükle (realtime listener)
-    function loadKayitlar() {
-      const yil = qs('#filtreYil').value;
-      
-      const yilRef = db.collection('ramazan_serif').doc(String(yil));
-      
-      // Realtime listener - anlık güncelleme için
-      yilRef.collection('kayitlar')
-        .orderBy('tarih', 'desc')
-        .onSnapshot((snap) => {
-          kayitlar = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          loadSilinenKayitlar(); // Silinen kayıtları da yükle
-          loadTeberruKayitlari(); // Teberru kayıtlarını yükle
-          loadTaahhutKayitlari(); // Taahhüt kayıtlarını yükle
-          loadDuzenlemeTalepleri(); // Düzenleme taleplerini yükle
-        }, (err) => {
-          console.error('Kayıtlar dinlenemedi:', err);
-        });
+      // window.supabase'i kullan
+      setupSupabaseAuth(supabaseClient);
     }
 
-    // Teberru kayıtlarını yükle
-    function loadTeberruKayitlari() {
-      const yil = qs('#filtreYil').value;
-      if(!yil) {
+    async function setupSupabaseAuth(supabaseClient = null) {
+      // Supabase client'ı al (parametre olarak verilmediyse window'dan al)
+      const supabase = supabaseClient || window.supabase;
+      
+      // Supabase client kontrolü - test modu için
+      if (!supabase || !supabase.auth) {
+        console.warn('⚠️ Supabase client hazır değil, test modu aktif');
+        // Session olmasa bile sayfanın çalışması için veri yükleme işlemlerini deneyelim
+        try {
+          await loadRamazanYillari();
+          loadKayitlar();
+        } catch (e) {
+          console.warn('Veri yükleme hatası (test modu, Supabase yok):', e);
+        }
+        return;
+      }
+      
+      // Mevcut session'ı kontrol et
+      window.supabase.auth.getSession().then(async ({ data: { session }, error }) => {
+        if (error || !session) {
+          // TEST MODU: Yönlendirme devre dışı
+          // window.location.href = '../../index.html';
+          console.warn('⚠️ Supabase oturumu yok, test modu aktif, yönlendirme durduruldu');
+          // Sayfanın çalışmaya devam etmesi için session olmasa bile devam et
+          // return; // <-- Bu satırı da yoruma aldık
+        } else {
+          // Session varsa kullanıcı bilgilerini ayarla
+          currentUser = session.user; // Supabase user objesi
+          currentUserUid = session.user.id;
+        }
+        
+        // Session varsa kullanıcı bilgilerini ayarla
+        if (session && session.user) {
+          currentUser = session.user; // Supabase user objesi
+          currentUserUid = session.user.id;
+          
+          // Kullanıcı bilgilerini Supabase'den al
+          try {
+            const { data: kullanici, error: kullaniciError } = await window.supabase
+              .from('kullanicilar')
+              .select('adsoyad, yetkiler')
+              .eq('id', currentUserUid)
+              .single();
+            
+            if (!kullaniciError && kullanici) {
+              // Profil adını güncelle
+              const profNameEl = document.getElementById('profName');
+              if (profNameEl) profNameEl.textContent = kullanici.adsoyad || currentUser.email?.split('@')[0] || 'Profil';
+              
+              // Yetkileri yükle (ortak.js'deki window.CURRENT_ALLOW ve CURRENT_DENY'yi güncelle)
+              const rawPerms = Array.isArray(kullanici.yetkiler) ? kullanici.yetkiler : [];
+              window.CURRENT_ALLOW = new Set(rawPerms.filter(s=>!String(s).trim().startsWith('-') && !String(s).trim().startsWith('!')).map(norm));
+              window.CURRENT_DENY = new Set(rawPerms.filter(s=>String(s).trim().startsWith('-') || String(s).trim().startsWith('!')).map(s=>norm(String(s).replace(/^[-!]\s*/,''))));
+              // Local referansları da güncelle (window ile senkronize et)
+              CURRENT_ALLOW = window.CURRENT_ALLOW;
+              CURRENT_DENY = window.CURRENT_DENY;
+              
+              // Navigation render (Supabase'den manifest çek)
+              if (window.supabase) {
+                try {
+                  const { data: manifestData, error: manifestError } = await window.supabase
+                    .from('sayfa_manifesti')
+                    .select('id, title, order, pages');
+                  
+                  if (!manifestError && manifestData) {
+                    const panels = [];
+                    manifestData.forEach(doc => {
+                      const d = doc || {}, id = d.id || '', panelTitle = d.title || id;
+                      const panelGrant = CURRENT_ALLOW.has(norm(id)) || CURRENT_ALLOW.has(norm(panelTitle));
+                      let pages = Array.isArray(d.pages) ? d.pages : [];
+                      pages = pages.filter(pg => {
+                        const keyNorm = norm(pg.key || pg.title || '');
+                        const pageGrant = CURRENT_ALLOW.has(keyNorm), denied = CURRENT_DENY.has(keyNorm);
+                        return !denied && (panelGrant || pageGrant);
+                      }).map(pg => ({
+                        baslik: pg.title || pg.key || 'Sayfa',
+                        url: normalizeUrl(pg.path || '#'),
+                        key: pg.key || pg.title || '',
+                        sira: typeof pg.order === 'number' ? pg.order : 9999
+                      })).sort((a, b) => a.sira - b.sira);
+                      if (pages.length) panels.push({ id, baslik: panelTitle, sira: typeof d.order === 'number' ? d.order : 9999, pages });
+                    });
+                    panels.sort((a, b) => a.sira - b.sira);
+                    renderNav(panels);
+                  }
+                } catch (e) {
+                  console.error('Navigation yüklenemedi:', e);
+                }
+              }
+            }
+          } catch (e) {
+            console.error('Kullanıcı bilgisi alınamadı:', e);
+          }
+        }
+        
+        // Ramazan yıllarını yükle ve yıl seçeneklerini güncelle (session olmasa bile test için)
+        try {
+          await loadRamazanYillari();
+          
+          // Yıl seçildikten sonra verileri yükle (yıl dropdown'u dolu olmalı)
+          // loadKayitlar() yıl değişikliği event listener'ında çağrılacak veya ilk seçilen yıldan sonra çağrılacak
+          const yilSelect = qs('#filtreYil');
+          if (yilSelect && yilSelect.value) {
+            loadKayitlar();
+          }
+        } catch (e) {
+          console.warn('Veri yükleme hatası (test modu):', e);
+        }
+      });
+
+      // Auth state değişikliklerini dinle (sadece Supabase hazırsa)
+      if (!window.supabase || !window.supabase.auth) {
+        console.warn('⚠️ Supabase auth dinleyicisi kurulamadı (test modu)');
+        return;
+      }
+      
+      window.supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'SIGNED_OUT' || !session) {
+          // TEST MODU: Yönlendirme devre dışı
+          // window.location.href = '../../index.html';
+          console.warn('⚠️ Supabase oturumu yok, test modu aktif, yönlendirme durduruldu');
+          // return; // <-- Bu satırı da yoruma aldık
+        }
+        
+        if (session && session.user) {
+          currentUser = session.user;
+          currentUserUid = session.user.id;
+          
+          // Profil bilgisini güncelle
+          const profNameEl = document.getElementById('profName');
+          if (profNameEl) {
+            try {
+              const { data: kullanici } = await window.supabase
+                .from('kullanicilar')
+                .select('adsoyad')
+                .eq('id', currentUserUid)
+                .single();
+              
+              if (kullanici && kullanici.adsoyad) {
+                profNameEl.textContent = kullanici.adsoyad;
+              }
+            } catch (e) {
+              console.error('Profil güncelleme hatası:', e);
+            }
+          }
+        }
+      });
+    }
+
+    // Supabase auth'u başlat
+    initSupabaseAuth();
+
+    let silinenKayitlar = [];
+    let supabaseChannels = []; // Realtime channel'ları saklamak için
+
+    // ===== SUPABASE: Kayıtları yükle (Realtime) =====
+    async function loadKayitlar() {
+      const yil = parseInt(qs('#filtreYil').value);
+      if (!yil) {
+        console.warn('Yıl seçilmemiş, veri yüklenemiyor');
+        return;
+      }
+      if (!window.supabase) {
+        console.warn('Supabase client hazır değil (test modu)');
+        return;
+      }
+      
+      try {
+        // Önce mevcut verileri yükle
+        const { data, error } = await window.supabase
+          .from('ramazan_kayitlari')
+          .select('id, yil, tip, sahip, tutar, istirak, musafiradedi, ay, mahalid, mahal, personel, personeladi, personeluid, kaydedenpersonel, kaydedenpersoneluid, notlar, createdat, updatedat, tarih')
+          .eq('yil', yil)
+          .order('tarih', { ascending: false });
+        
+        if (error) throw error;
+        
+        kayitlar = (data || []).map(r => ({
+          ...r,
+          musafirAdedi: r.musafiradedi, // compatibility
+          personelUid: r.personeluid // compatibility
+        }));
+        
+        // Realtime subscription (Supabase Realtime)
+        const channel = window.supabase
+          .channel(`ramazan_kayitlari_${yil}`)
+          .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'ramazan_kayitlari',
+            filter: `yil=eq.${yil}`
+          }, async (payload) => {
+            console.log('Realtime update:', payload);
+            // Veriyi yeniden yükle
+            const { data: newData } = await window.supabase
+              .from('ramazan_kayitlari')
+              .select('id, yil, tip, sahip, tutar, istirak, musafiradedi, ay, mahalid, mahal, personel, personeladi, personeluid, kaydedenpersonel, kaydedenpersoneluid, notlar, createdat, updatedat, tarih')
+              .eq('yil', yil)
+              .order('tarih', { ascending: false });
+            
+            if (newData) {
+              kayitlar = newData.map(r => ({
+                ...r,
+                musafirAdedi: r.musafiradedi,
+                personelUid: r.personeluid
+              }));
+              loadSilinenKayitlar();
+              loadTeberruKayitlari();
+              loadTaahhutKayitlari();
+              loadDuzenlemeTalepleri();
+            }
+          })
+          .subscribe();
+        
+        supabaseChannels.push(channel);
+        
+        // Diğer verileri de yükle
+        loadSilinenKayitlar();
+        loadTeberruKayitlari();
+        loadTaahhutKayitlari();
+        loadDuzenlemeTalepleri();
+      } catch (e) {
+        console.error('Kayıtlar yüklenemedi:', e);
+        kayitlar = [];
+      }
+    }
+
+    // ===== SUPABASE: Teberru kayıtlarını yükle (Realtime) =====
+    async function loadTeberruKayitlari() {
+      const yil = parseInt(qs('#filtreYil').value);
+      if (!yil || !window.supabase) {
         teberruKayitlari = [];
         render();
         return;
       }
       
-      const yilNum = parseInt(yil);
-      db.collection('teberru_kayitlari')
-        .where('yil', '==', yilNum)
-        .onSnapshot((snap) => {
-          teberruKayitlari = snap.docs.map(d => ({ id: d.id, ...d.data(), kayitTipi: 'teberru' }));
-          // Client-side sıralama
-          teberruKayitlari.sort((a, b) => {
-            const aDate = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (a.createdAt?.seconds || 0) * 1000;
-            const bDate = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (b.createdAt?.seconds || 0) * 1000;
-            return bDate - aDate;
-          });
-          render();
-        }, (err) => {
-          console.error('Teberru kayıtları dinlenemedi:', err);
-          teberruKayitlari = [];
-          render();
-        });
+      try {
+        // Önce mevcut verileri yükle
+        const { data, error } = await window.supabase
+          .from('teberru_kayitlari')
+          .select('id, aciklama, ay, bagisci, createdat, kaydedenpersonel, kaydedenpersoneluid, miktar, "not", odeme, odemeyontemi, personel, personeluid, tarih, updatedat, yil')
+          .eq('yil', yil)
+          .order('createdat', { ascending: false });
+        
+        if (error) throw error;
+        
+        teberruKayitlari = (data || []).map(r => ({
+          ...r,
+          kayitTipi: 'teberru',
+          personelUid: r.personeluid, // compatibility
+          odemeYontemi: r.odemeyontemi || r.odeme
+        }));
+        
+        // Realtime subscription
+        const channel = window.supabase
+          .channel(`teberru_kayitlari_${yil}`)
+          .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'teberru_kayitlari',
+            filter: `yil=eq.${yil}`
+          }, async (payload) => {
+            const { data: newData } = await window.supabase
+              .from('teberru_kayitlari')
+              .select('id, aciklama, ay, bagisci, createdat, kaydedenpersonel, kaydedenpersoneluid, miktar, "not", odeme, odemeyontemi, personel, personeluid, tarih, updatedat, yil')
+              .eq('yil', yil)
+              .order('createdat', { ascending: false });
+            
+            if (newData) {
+              teberruKayitlari = newData.map(r => ({
+                ...r,
+                kayitTipi: 'teberru',
+                personelUid: r.personeluid,
+                odemeYontemi: r.odemeyontemi || r.odeme
+              }));
+              render();
+            }
+          })
+          .subscribe();
+        
+        supabaseChannels.push(channel);
+        render();
+      } catch (e) {
+        console.error('Teberru kayıtları yüklenemedi:', e);
+        teberruKayitlari = [];
+        render();
+      }
     }
 
-    // Taahhüt kayıtlarını yükle
-    function loadTaahhutKayitlari() {
-      const yil = qs('#filtreYil').value;
-      if(!yil) {
+    // ===== SUPABASE: Taahhüt kayıtlarını yükle (Realtime) =====
+    async function loadTaahhutKayitlari() {
+      const yil = parseInt(qs('#filtreYil').value);
+      if (!yil || !window.supabase) {
         taahhutKayitlari = [];
         render();
         return;
       }
       
-      const yilNum = parseInt(yil);
-      db.collection('taahhut_kayitlari')
-        .where('yil', '==', yilNum)
-        .onSnapshot((snap) => {
-          taahhutKayitlari = snap.docs.map(d => ({ id: d.id, ...d.data(), kayitTipi: 'taahhut' }));
-          // Client-side sıralama
-          taahhutKayitlari.sort((a, b) => {
-            const aDate = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (a.createdAt?.seconds || 0) * 1000;
-            const bDate = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (b.createdAt?.seconds || 0) * 1000;
-            return bDate - aDate;
-          });
-          render();
-        }, (err) => {
-          console.error('Taahhüt kayıtları dinlenemedi:', err);
-          taahhutKayitlari = [];
-          render();
-        });
+      try {
+        // Önce mevcut verileri yükle
+        const { data, error } = await window.supabase
+          .from('taahhut_kayitlari')
+          .select('id, yil, ay, personel, personeluid, bagisci, miktar, aciklama, "not", durum, tarih, silindi, kaydedenpersonel, kaydedenpersoneluid, createdat, updatedat')
+          .eq('yil', yil)
+          .eq('silindi', false)
+          .order('createdat', { ascending: false });
+        
+        if (error) throw error;
+        
+        taahhutKayitlari = (data || []).map(r => ({
+          ...r,
+          kayitTipi: 'taahhut',
+          personelUid: r.personeluid // compatibility
+        }));
+        
+        // Realtime subscription
+        const channel = window.supabase
+          .channel(`taahhut_kayitlari_${yil}`)
+          .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'taahhut_kayitlari',
+            filter: `yil=eq.${yil}`
+          }, async (payload) => {
+            const { data: newData } = await window.supabase
+              .from('taahhut_kayitlari')
+              .select('id, yil, ay, personel, personeluid, bagisci, miktar, aciklama, "not", durum, tarih, silindi, kaydedenpersonel, kaydedenpersoneluid, createdat, updatedat')
+              .eq('yil', yil)
+              .eq('silindi', false)
+              .order('createdat', { ascending: false });
+            
+            if (newData) {
+              taahhutKayitlari = newData.map(r => ({
+                ...r,
+                kayitTipi: 'taahhut',
+                personelUid: r.personeluid
+              }));
+              render();
+            }
+          })
+          .subscribe();
+        
+        supabaseChannels.push(channel);
+        render();
+      } catch (e) {
+        console.error('Taahhüt kayıtları yüklenemedi:', e);
+        taahhutKayitlari = [];
+        render();
+      }
     }
 
-    // Silinen kayıtları yükle
+    // ===== SUPABASE: Silinen kayıtları yükle =====
     async function loadSilinenKayitlar() {
-      const yil = qs('#filtreYil').value;
-      if(!yil) return;
+      const yil = parseInt(qs('#filtreYil').value);
+      if (!yil || !window.supabase) {
+        silinenKayitlar = [];
+        render();
+        return;
+      }
       
       try {
-        const yilRef = db.collection('ramazan_serif').doc(String(yil));
-        const snap = await yilRef.collection('silinen_kayitlar').orderBy('silinmeTarihi', 'desc').get();
-        silinenKayitlar = snap.docs.map(d => ({ id: d.id, ...d.data(), silindi: true }));
+        // ramazan_arsiv tablosundan silinen kayıtları çek
+        const { data, error } = await window.supabase
+          .from('ramazan_arsiv')
+          .select('id, yil, tip, sahip, tutar, istirak, musafiradedi, ay, mahalid, mahal, personel, personeladi, personeluid, kaydedenpersonel, kaydedenpersoneluid, notlar, createdat, updatedat, tarih, arsiv_tarihi, silme_sebebi, silen_kisi, silenpersoneluid, silenpersoneladi, orijinalid')
+          .eq('yil', yil)
+          .order('arsiv_tarihi', { ascending: false });
+        
+        if (error) throw error;
+        
+        silinenKayitlar = (data || []).map(r => ({
+          ...r,
+          silindi: true,
+          silinmeTarihi: r.arsiv_tarihi,
+          musafirAdedi: r.musafiradedi, // compatibility
+          personelUid: r.personeluid // compatibility
+        }));
+        
         render();
-      } catch(e) {
+      } catch (e) {
         console.error('Silinen kayıtlar yüklenemedi:', e);
         silinenKayitlar = [];
         render();
       }
     }
 
-    // Düzenleme taleplerini yükle
-    function loadDuzenlemeTalepleri() {
-      const yil = qs('#filtreYil').value;
-      if(!yil) {
+    // ===== SUPABASE: Düzenleme taleplerini yükle (Realtime) =====
+    async function loadDuzenlemeTalepleri() {
+      const yil = parseInt(qs('#filtreYil').value);
+      if (!yil || !window.supabase) {
         duzenlemeTalepleri = [];
+        render();
         return;
       }
       
-      const yilRef = db.collection('ramazan_serif').doc(String(yil));
-      yilRef.collection('duzenleme_talepleri')
-        .orderBy('createdAt', 'desc')
-        .onSnapshot((snap) => {
-          duzenlemeTalepleri = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          render();
-        }, (err) => {
-          console.error('Düzenleme talepleri dinlenemedi:', err);
-          duzenlemeTalepleri = [];
-          render();
-        });
+      try {
+        // Önce mevcut verileri yükle
+        const { data, error } = await window.supabase
+          .from('duzenleme_talepleri')
+          .select('id, yil, kayitid, kayittipi, taleptipi, aciklama, durum, personeladi, yenitarih, mahalid, onaylayanuid, onaylanmatarihi, rededenuid, redtarihi, redaciklama, createdat, updatedat')
+          .eq('yil', String(yil))
+          .order('createdat', { ascending: false });
+        
+        if (error) throw error;
+        
+        duzenlemeTalepleri = data || [];
+        
+        // Realtime subscription
+        const channel = window.supabase
+          .channel(`duzenleme_talepleri_${yil}`)
+          .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'duzenleme_talepleri',
+            filter: `yil=eq.${yil}`
+          }, async (payload) => {
+            const { data: newData } = await window.supabase
+              .from('duzenleme_talepleri')
+              .select('id, yil, kayitid, kayittipi, taleptipi, aciklama, durum, personeladi, yenitarih, mahalid, onaylayanuid, onaylanmatarihi, rededenuid, redtarihi, redaciklama, createdat, updatedat')
+              .eq('yil', String(yil))
+              .order('createdat', { ascending: false });
+            
+            if (newData) {
+              duzenlemeTalepleri = newData;
+              render();
+            }
+          })
+          .subscribe();
+        
+        supabaseChannels.push(channel);
+        render();
+      } catch (e) {
+        console.error('Düzenleme talepleri yüklenemedi:', e);
+        duzenlemeTalepleri = [];
+        render();
+      }
     }
 
     // Render
@@ -615,7 +1034,6 @@
       const tip = qs('#filtreTip').value;
       const ara = qs('#ara').value.toLowerCase().trim();
       const mod = qs('#filtreMod').value;
-      const useCards = qs('#cardList').style.display === 'grid';
 
       // Aktif ve silinen kayıtları birleştir + Teberru ve Taahhüt
       let allKayitlar = [...kayitlar, ...silinenKayitlar, ...teberruKayitlari, ...taahhutKayitlari];
@@ -636,7 +1054,7 @@
       }
 
       // Kullanıcı bazlı filtre
-      if (mod === 'kendim') {
+      if (mod === 'kendim' && currentUserUid) {
         filtered = filtered.filter(k => k.personelUid === currentUserUid);
       }
 
@@ -670,17 +1088,48 @@
       qs('#kpiIstirak').textContent = istirakSayisi;
       qs('#kpiToplam').textContent = aktifKayitlar.length;
 
-      // Tablo/Kart render
-      if (!useCards) {
-        const tbody = qs('#tbody');
-        tbody.innerHTML = '';
+      // Detaylı İstatistikler
+      const filteredTeberruKayitlari = aktifKayitlar.filter(k => k.kayitTipi === 'teberru');
+      const filteredTaahhutKayitlari = aktifKayitlar.filter(k => k.kayitTipi === 'taahhut');
+      
+      // Teberru toplam ve ödeme yöntemlerine göre dağılım
+      const teberruToplam = filteredTeberruKayitlari.reduce((sum, k) => sum + (Number(k.miktar) || 0), 0);
+      const teberruNakit = filteredTeberruKayitlari
+        .filter(k => (k.odemeYontemi || k.odeme || '').toLowerCase() === 'nakit')
+        .reduce((sum, k) => sum + (Number(k.miktar) || 0), 0);
+      const teberruBanka = filteredTeberruKayitlari
+        .filter(k => (k.odemeYontemi || k.odeme || '').toLowerCase() === 'banka')
+        .reduce((sum, k) => sum + (Number(k.miktar) || 0), 0);
+      const teberruPos = filteredTeberruKayitlari
+        .filter(k => (k.odemeYontemi || k.odeme || '').toLowerCase() === 'pos')
+        .reduce((sum, k) => sum + (Number(k.miktar) || 0), 0);
+      const teberruSanal = filteredTeberruKayitlari
+        .filter(k => (k.odemeYontemi || k.odeme || '').toLowerCase() === 'sanal')
+        .reduce((sum, k) => sum + (Number(k.miktar) || 0), 0);
+      
+      // Taahhüt toplam
+      const taahhutToplam = filteredTaahhutKayitlari.reduce((sum, k) => sum + (Number(k.miktar) || 0), 0);
+      
+      // İstatistikleri göster
+      qs('#statTeberruToplam').textContent = '₺' + teberruToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 });
+      qs('#statTeberruNakit').textContent = 'nakit: ₺' + teberruNakit.toLocaleString('tr-TR', { minimumFractionDigits: 2 });
+      qs('#statTeberruBanka').textContent = 'banka: ₺' + teberruBanka.toLocaleString('tr-TR', { minimumFractionDigits: 2 });
+      qs('#statTeberruPos').textContent = 'pos: ₺' + teberruPos.toLocaleString('tr-TR', { minimumFractionDigits: 2 });
+      qs('#statTeberruSanal').textContent = 'sanal: ₺' + teberruSanal.toLocaleString('tr-TR', { minimumFractionDigits: 2 });
+      qs('#statTaahhut').textContent = '₺' + taahhutToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 });
+      qs('#statIftar').textContent = iftarSayisi;
+      qs('#statSahur').textContent = sahurSayisi;
 
-        if (filtered.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:20px">Kayıt bulunamadı</td></tr>';
-          qs('#sumTutar').textContent = '₺0';
-          qs('#sumMusafir').textContent = '0';
-          return;
-        }
+      // Tablo render (kart görünümü kaldırıldı)
+      const tbody = qs('#tbody');
+      tbody.innerHTML = '';
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:20px">Kayıt bulunamadı</td></tr>';
+        qs('#sumTutar').textContent = '₺0';
+        qs('#sumMusafir').textContent = '0';
+        return;
+      }
 
         filtered.forEach(k => {
           const tr = document.createElement('tr');
@@ -688,8 +1137,23 @@
           // Teberru veya Taahhüt kaydı mı kontrol et
           if(k.kayitTipi === 'teberru' || k.kayitTipi === 'taahhut') {
             // Teberru/Taahhüt kayıtları için özel render
+            // Supabase timestamp kontrolü
             let tarihStr = '';
-            if(k.createdAt) {
+            if(k.tarih) {
+              if(k.tarih instanceof Date) {
+                tarihStr = k.tarih.toISOString().slice(0, 10);
+              } else if(typeof k.tarih === 'string') {
+                tarihStr = k.tarih.slice(0, 10);
+              }
+            } else if(k.createdat) {
+              // Supabase createdat field
+              if(typeof k.createdat === 'string') {
+                tarihStr = k.createdat.slice(0, 10);
+              } else if(k.createdat instanceof Date) {
+                tarihStr = k.createdat.toISOString().slice(0, 10);
+              }
+            } else if(k.createdAt) {
+              // Firestore Timestamp (eski veriler için)
               if(k.createdAt.toDate) {
                 tarihStr = k.createdAt.toDate().toISOString().slice(0, 10);
               } else if(k.createdAt.seconds) {
@@ -711,9 +1175,16 @@
             durumParts.push(`<span style="color:var(--good); font-weight:600;">✓ Aktif</span>`);
             
             // Düzenleme talebi kontrolü
-            const talep = duzenlemeTalepleri.find(t => t.kayitId === k.id && (t.kayitTipi === 'teberru' || t.kayitTipi === 'taahhut'));
+            const talep = duzenlemeTalepleri.find(t => String(t.kayitid) === String(k.id) && (t.kayittipi === 'teberru' || t.kayittipi === 'taahhut'));
             if(talep) {
-              const talepTarih = talep.createdAt ? (talep.createdAt.toDate ? talep.createdAt.toDate() : new Date(talep.createdAt.seconds * 1000)) : null;
+              // Supabase timestamp
+              let talepTarih = null;
+              if(talep.createdat) {
+                talepTarih = typeof talep.createdat === 'string' ? new Date(talep.createdat) : (talep.createdat instanceof Date ? talep.createdat : null);
+              } else if(talep.createdAt) {
+                // Firestore Timestamp (eski veriler için)
+                talepTarih = talep.createdAt.toDate ? talep.createdAt.toDate() : new Date(talep.createdAt.seconds * 1000);
+              }
               const talepTarihStr = talepTarih ? talepTarih.toLocaleDateString('tr-TR') + ' ' + talepTarih.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'}) : '';
               
               let talepIcon = '📋';
@@ -742,24 +1213,39 @@
               }
             }
             
-            // Güncelleme kontrolü
-            if(k.updatedAt && k.createdAt) {
-              const createdTime = k.createdAt.toDate ? k.createdAt.toDate().getTime() : (k.createdAt.seconds || 0) * 1000;
-              const updatedTime = k.updatedAt.toDate ? k.updatedAt.toDate().getTime() : (k.updatedAt.seconds || 0) * 1000;
-              if(updatedTime > createdTime) {
-                const updateDate = k.updatedAt.toDate ? k.updatedAt.toDate() : new Date(updatedTime);
-                const updateDateStr = updateDate.toLocaleDateString('tr-TR') + ' ' + updateDate.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
-                durumParts.push(`<div style="margin-top:4px; padding:4px 6px; background:#fff3cd20; border-left:3px solid var(--warn); border-radius:4px; font-size:10px; color:var(--warn); font-weight:600;">⚠️ Değiştirildi</div>`);
-                durumParts.push(`<small style="color:var(--muted); font-size:8px; display:block; margin-top:2px;">${updateDateStr}</small>`);
+              // Güncelleme kontrolü (Supabase)
+              if(k.updatedat && k.createdat) {
+                const createdTime = k.createdat instanceof Date ? k.createdat.getTime() : (typeof k.createdat === 'string' ? new Date(k.createdat).getTime() : 0);
+                const updatedTime = k.updatedat instanceof Date ? k.updatedat.getTime() : (typeof k.updatedat === 'string' ? new Date(k.updatedat).getTime() : 0);
+                if(updatedTime > createdTime + 1000) { // 1 saniye tolerans
+                  const updateDate = k.updatedat instanceof Date ? k.updatedat : new Date(k.updatedat);
+                  const updateDateStr = updateDate.toLocaleDateString('tr-TR') + ' ' + updateDate.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
+                  durumParts.push(`<div style="margin-top:4px; padding:4px 6px; background:#fff3cd20; border-left:3px solid var(--warn); border-radius:4px; font-size:10px; color:var(--warn); font-weight:600;">⚠️ Değiştirildi</div>`);
+                  durumParts.push(`<small style="color:var(--muted); font-size:8px; display:block; margin-top:2px;">${updateDateStr}</small>`);
+                }
+              } else if(k.updatedAt && k.createdAt) {
+                // Firestore Timestamp (eski veriler için)
+                const createdTime = k.createdAt.toDate ? k.createdAt.toDate().getTime() : (k.createdAt.seconds || 0) * 1000;
+                const updatedTime = k.updatedAt.toDate ? k.updatedAt.toDate().getTime() : (k.updatedAt.seconds || 0) * 1000;
+                if(updatedTime > createdTime + 1000) {
+                  const updateDate = k.updatedAt.toDate ? k.updatedAt.toDate() : new Date(updatedTime);
+                  const updateDateStr = updateDate.toLocaleDateString('tr-TR') + ' ' + updateDate.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
+                  durumParts.push(`<div style="margin-top:4px; padding:4px 6px; background:#fff3cd20; border-left:3px solid var(--warn); border-radius:4px; font-size:10px; color:var(--warn); font-weight:600;">⚠️ Değiştirildi</div>`);
+                  durumParts.push(`<small style="color:var(--muted); font-size:8px; display:block; margin-top:2px;">${updateDateStr}</small>`);
+                }
               }
-            }
-            
-            // Oluşturulma tarihi
-            if(k.createdAt) {
-              const createdDate = k.createdAt.toDate ? k.createdAt.toDate() : new Date(k.createdAt.seconds * 1000);
-              const createdDateStr = createdDate.toLocaleDateString('tr-TR') + ' ' + createdDate.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
-              durumParts.push(`<small style="color:var(--muted); font-size:8px; display:block; margin-top:4px; border-top:1px solid var(--border); padding-top:4px;">Oluşturulma: ${createdDateStr}</small>`);
-            }
+              
+              // Oluşturulma tarihi (Supabase)
+              if(k.createdat) {
+                const createdDate = k.createdat instanceof Date ? k.createdat : new Date(k.createdat);
+                const createdDateStr = createdDate.toLocaleDateString('tr-TR') + ' ' + createdDate.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
+                durumParts.push(`<small style="color:var(--muted); font-size:8px; display:block; margin-top:4px; border-top:1px solid var(--border); padding-top:4px;">Oluşturulma: ${createdDateStr}</small>`);
+              } else if(k.createdAt) {
+                // Firestore Timestamp (eski veriler için)
+                const createdDate = k.createdAt.toDate ? k.createdAt.toDate() : new Date(k.createdAt.seconds * 1000);
+                const createdDateStr = createdDate.toLocaleDateString('tr-TR') + ' ' + createdDate.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
+                durumParts.push(`<small style="color:var(--muted); font-size:8px; display:block; margin-top:4px; border-top:1px solid var(--border); padding-top:4px;">Oluşturulma: ${createdDateStr}</small>`);
+              }
             
             durumHtml = durumParts.join('');
             
@@ -778,17 +1264,18 @@
             tbody.appendChild(tr);
           } else {
             // İftar-Sahur kayıtları için mevcut render
-            // Firestore Timestamp kontrolü
+            // Supabase timestamp kontrolü (string veya Date)
             let tarihStr = '';
             if(k.tarih) {
-              if(k.tarih.toDate) {
-                tarihStr = k.tarih.toDate().toISOString().slice(0, 10);
-              } else if(k.tarih instanceof Date) {
+              if(k.tarih instanceof Date) {
                 tarihStr = k.tarih.toISOString().slice(0, 10);
               } else if(typeof k.tarih === 'string') {
                 tarihStr = k.tarih.slice(0, 10);
+              } else if(k.tarih.toDate) {
+                // Firestore Timestamp (eski veriler için)
+                tarihStr = k.tarih.toDate().toISOString().slice(0, 10);
               } else if(k.tarih.seconds) {
-                // Timestamp objesi (seconds property var)
+                // Firestore Timestamp objesi (eski veriler için)
                 tarihStr = new Date(k.tarih.seconds * 1000).toISOString().slice(0, 10);
               }
             }
@@ -801,25 +1288,48 @@
             if(k.silindi) {
               let silTarihStr = '';
               if(k.silinmeTarihi) {
-                const silTarih = k.silinmeTarihi.toDate ? k.silinmeTarihi.toDate() : new Date(k.silinmeTarihi.seconds * 1000);
-                silTarihStr = silTarih.toLocaleDateString('tr-TR') + ' ' + silTarih.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
+                // Supabase timestamp veya Firestore Timestamp
+                let silTarih = null;
+                if(k.silinmeTarihi instanceof Date) {
+                  silTarih = k.silinmeTarihi;
+                } else if(typeof k.silinmeTarihi === 'string') {
+                  silTarih = new Date(k.silinmeTarihi);
+                } else if(k.silinmeTarihi.toDate) {
+                  silTarih = k.silinmeTarihi.toDate();
+                } else if(k.silinmeTarihi.seconds) {
+                  silTarih = new Date(k.silinmeTarihi.seconds * 1000);
+                }
+                if(silTarih) {
+                  silTarihStr = silTarih.toLocaleDateString('tr-TR') + ' ' + silTarih.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
+                }
               }
               durumParts.push(`<span style="color:var(--bad); font-weight:700; font-size:13px;">❌ Silindi</span>`);
-              durumParts.push(`<small style="color:var(--muted); font-size:10px; display:block; margin-top:2px;">Silen: ${k.silenPersonelAdi || 'Bilinmiyor'}</small>`);
+              durumParts.push(`<small style="color:var(--muted); font-size:10px; display:block; margin-top:2px;">Silen: ${k.silenpersoneladi || k.silenPersonelAdi || 'Bilinmiyor'}</small>`);
               if(silTarihStr) {
                 durumParts.push(`<small style="color:var(--muted); font-size:9px; display:block;">${silTarihStr}</small>`);
               }
-              if(k.silmeAciklama) {
-                durumParts.push(`<small style="color:var(--muted); font-size:9px; display:block; margin-top:2px; font-style:italic;">"${k.silmeAciklama}"</small>`);
+              if(k.silmeaciklama || k.silmeAciklama) {
+                durumParts.push(`<small style="color:var(--muted); font-size:9px; display:block; margin-top:2px; font-style:italic;">"${k.silmeaciklama || k.silmeAciklama}"</small>`);
               }
             } else {
               // Aktif kayıt - detaylı durum bilgisi
               durumParts.push(`<span style="color:var(--good); font-weight:600;">✓ Aktif</span>`);
               
               // Düzenleme talebi kontrolü
-              const talep = duzenlemeTalepleri.find(t => t.kayitId === k.id && t.kayitTipi === 'iftar-sahur');
+              const talep = duzenlemeTalepleri.find(t => String(t.kayitid) === String(k.id) && (t.kayittipi === 'iftar-sahur' || t.kayittipi === 'ramazan'));
               if(talep) {
-                const talepTarih = talep.createdAt ? (talep.createdAt.toDate ? talep.createdAt.toDate() : new Date(talep.createdAt.seconds * 1000)) : null;
+                // Supabase timestamp (string veya Date)
+                let talepTarih = null;
+                if(talep.createdat) {
+                  if(typeof talep.createdat === 'string') {
+                    talepTarih = new Date(talep.createdat);
+                  } else if(talep.createdat instanceof Date) {
+                    talepTarih = talep.createdat;
+                  }
+                } else if(talep.createdAt) {
+                  // Firestore Timestamp (eski veriler için)
+                  talepTarih = talep.createdAt.toDate ? talep.createdAt.toDate() : new Date(talep.createdAt.seconds * 1000);
+                }
                 const talepTarihStr = talepTarih ? talepTarih.toLocaleDateString('tr-TR') + ' ' + talepTarih.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'}) : '';
                 
                 let talepIcon = '📋';
@@ -912,175 +1422,31 @@
         const aktifToplamMusafir = filtered.filter(k => !k.silindi && !k.kayitTipi).reduce((sum, k) => sum + (Number(k.musafirAdedi) || 0), 0);
         qs('#sumTutar').innerHTML = '<strong>₺' + aktifToplamTutar.toLocaleString('tr-TR',{minimumFractionDigits:2}) + '</strong>';
         qs('#sumMusafir').innerHTML = '<strong>' + aktifToplamMusafir + '</strong>';
-      } else {
-        // Kart görünümü
-        const list = qs('#cardList');
-        list.innerHTML = '';
-
-        if (filtered.length === 0) {
-          list.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px">Kayıt bulunamadı</div>';
-          return;
-        }
-
-        filtered.forEach(k => {
-          // Firestore Timestamp kontrolü
-          let tarihStr = '';
-          if(k.tarih) {
-            if(k.tarih.toDate) {
-              tarihStr = k.tarih.toDate().toISOString().slice(0, 10);
-            } else if(k.tarih instanceof Date) {
-              tarihStr = k.tarih.toISOString().slice(0, 10);
-            } else if(typeof k.tarih === 'string') {
-              tarihStr = k.tarih.slice(0, 10);
-            } else if(k.tarih.seconds) {
-              tarihStr = new Date(k.tarih.seconds * 1000).toISOString().slice(0, 10);
-            }
-          }
-          const tarih = tarihStr ? new Date(tarihStr) : new Date();
-          const div = document.createElement('div');
-          div.className = 'mini-card';
-          div.innerHTML = `
-            <div class="mini-line">
-              <span class="mini-hl">${tarih.getDate()}.${tarih.getMonth() + 1}.${tarih.getFullYear()}</span>
-              <span class="chip-badge ${k.tip}">${k.tip === 'iftar' ? '🌙 İftar' : '🌟 Sahur'}</span>
-            </div>
-            <div class="mini-line">
-              <span>Sahip</span>
-              <span class="mini-hl">${k.sahip || '-'}</span>
-            </div>
-            <div class="mini-line">
-              <span>Tutar</span>
-              <span class="mini-hl">₺${Number(k.tutar || 0).toLocaleString('tr-TR',{minimumFractionDigits:2})}</span>
-            </div>
-            <div class="mini-line">
-              <span>İştirak</span>
-              <span>${k.istirak ? '✓ Evet' : '✗ Hayır'}</span>
-            </div>
-            <div class="mini-line">
-              <span>Müsafir</span>
-              <span>${k.musafirAdedi || 0}</span>
-            </div>
-            ${k.mahal ? `<div class="mini-line">
-              <span>Mahal</span>
-              <span>${k.mahal}</span>
-            </div>` : ''}
-            <div class="mini-line">
-              <span>Personel</span>
-              <span>${k.personelAdi || k.personel || '-'}</span>
-            </div>
-            ${k.not ? `<div class="mini-line">
-              <span>Not</span>
-              <span style="font-size:11px; color:var(--muted);">${k.not}</span>
-            </div>` : ''}
-            <div class="mini-line" style="flex-direction:column; align-items:flex-start; gap:4px;">
-              <span style="font-weight:600; margin-bottom:4px;">Durum</span>
-              <div style="width:100%;">
-                ${(() => {
-                  if(k.silindi) {
-                    let silTarihStr = '';
-                    if(k.silinmeTarihi) {
-                      const silTarih = k.silinmeTarihi.toDate ? k.silinmeTarihi.toDate() : new Date(k.silinmeTarihi.seconds * 1000);
-                      silTarihStr = silTarih.toLocaleDateString('tr-TR') + ' ' + silTarih.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
-                    }
-                    let html = `<span style="color:var(--bad); font-weight:700; font-size:12px;">❌ Silindi</span>`;
-                    html += `<small style="color:var(--muted); font-size:9px; display:block; margin-top:2px;">Silen: ${k.silenPersonelAdi || 'Bilinmiyor'}</small>`;
-                    if(silTarihStr) {
-                      html += `<small style="color:var(--muted); font-size:8px; display:block; margin-top:2px;">${silTarihStr}</small>`;
-                    }
-                    if(k.silmeAciklama) {
-                      html += `<small style="color:var(--muted); font-size:8px; display:block; margin-top:2px; font-style:italic;">"${k.silmeAciklama}"</small>`;
-                    }
-                    return html;
-                  } else {
-                    let html = `<span style="color:var(--good); font-weight:600; font-size:12px;">✓ Aktif</span>`;
-                    
-                    // Düzenleme talebi kontrolü
-                    const talep = duzenlemeTalepleri.find(t => t.kayitId === k.id && t.kayitTipi === 'iftar-sahur');
-                    if(talep) {
-                      const talepTarih = talep.createdAt ? (talep.createdAt.toDate ? talep.createdAt.toDate() : new Date(talep.createdAt.seconds * 1000)) : null;
-                      const talepTarihStr = talepTarih ? talepTarih.toLocaleDateString('tr-TR') + ' ' + talepTarih.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'}) : '';
-                      
-                      let talepIcon = '📋';
-                      let talepRenk = '#17a2b8';
-                      let talepText = 'Düzenleme Talebi';
-                      
-                      if(talep.talepTipi === 'yer_degistir') {
-                        talepIcon = '🔄';
-                        talepText = 'Yer Değiştirme';
-                        if(talep.yeniTarih && talep.eskiTarih) {
-                          const eskiTarih = new Date(talep.eskiTarih);
-                          const yeniTarih = new Date(talep.yeniTarih);
-                          talepText += ` (${eskiTarih.getDate()}.${eskiTarih.getMonth()+1} → ${yeniTarih.getDate()}.${yeniTarih.getMonth()+1})`;
-                        }
-                      } else if(talep.talepTipi === 'duzenle') {
-                        talepIcon = '✏️';
-                        talepText = 'Düzenleme';
-                      }
-                      
-                      if(talep.durum === 'onaylandi') {
-                        talepRenk = '#28a745';
-                        talepText = '✅ ' + talepText + ' Onaylandı';
-                      } else if(talep.durum === 'reddedildi') {
-                        talepRenk = '#dc3545';
-                        talepText = '❌ ' + talepText + ' Reddedildi';
-                      }
-                      
-                      html += `<div style="margin-top:4px; padding:3px 5px; background:${talepRenk}15; border-left:2px solid ${talepRenk}; border-radius:3px; font-size:9px; color:${talepRenk}; font-weight:600;">${talepIcon} ${talepText}</div>`;
-                      if(talepTarihStr) {
-                        html += `<small style="color:var(--muted); font-size:8px; display:block; margin-top:2px;">${talepTarihStr}</small>`;
-                      }
-                    }
-                    
-                    // Güncelleme kontrolü
-                    if(k.updatedAt && k.createdAt) {
-                      const createdTime = k.createdAt.toDate ? k.createdAt.toDate().getTime() : (k.createdAt.seconds || 0) * 1000;
-                      const updatedTime = k.updatedAt.toDate ? k.updatedAt.toDate().getTime() : (k.updatedAt.seconds || 0) * 1000;
-                      if(updatedTime > createdTime) {
-                        const updateDate = k.updatedAt.toDate ? k.updatedAt.toDate() : new Date(updatedTime);
-                        const updateDateStr = updateDate.toLocaleDateString('tr-TR') + ' ' + updateDate.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
-                        html += `<div style="margin-top:4px; padding:3px 5px; background:#fff3cd20; border-left:2px solid var(--warn); border-radius:3px; font-size:9px; color:var(--warn); font-weight:600;">⚠️ Değiştirildi</div>`;
-                        html += `<small style="color:var(--muted); font-size:8px; display:block; margin-top:2px;">${updateDateStr}</small>`;
-                      }
-                    }
-                    
-                    return html;
-                  }
-                })()}
-              </div>
-            </div>
-          `;
-          list.appendChild(div);
-        });
-      }
     }
 
-    // Kart görünüm toggle
+    // Sadece tablo görünümü - kart görünümü kaldırıldı
     function toggleView() {
-      const useCards = qs('#toggleKart').checked || window.innerWidth <= 540;
-      qs('#tableWrap').style.display = useCards ? 'none' : 'block';
-      qs('#cardList').style.display = useCards ? 'grid' : 'none';
+      qs('#tableWrap').style.display = 'block';
+      qs('#cardList').style.display = 'none';
       render();
-    }
-
-    qs('#toggleKart').addEventListener('change', toggleView);
-    window.addEventListener('resize', () => {
-      if (window.innerWidth <= 540) {
-        qs('#toggleKart').checked = true;
-        toggleView();
-      }
-    });
-
-    // İlk yükleme
-    if (window.innerWidth <= 540) {
-      qs('#toggleKart').checked = true;
     }
 
     // Filtre değişiklikleri
     // Ramazan yıllarını yükle ve yıl seçeneklerini güncelle
+    // ===== SUPABASE: Ramazan yıllarını yükle =====
     async function loadRamazanYillari() {
+      if (!window.supabase) {
+        console.warn('Supabase client hazır değil, ramazan yılları yüklenemiyor');
+        return;
+      }
+      
       try {
-        const snap = await db.collection('ramazan_serif').doc('ayarlar').collection('yillar').orderBy('yil', 'desc').get();
-        const yillar = snap.docs.map(d => d.data().yil);
+        const { data, error } = await window.supabase
+          .from('ramazan_yillar')
+          .select('id, yil, aktif, baslangic, bitis, createdat, hicriyil, updatedat')
+          .order('yil', { ascending: false });
+        
+        if (error) throw error;
         
         // Filtre yıl seçeneklerini güncelle
         const select = qs('#filtreYil');
@@ -1088,22 +1454,28 @@
           const currentValue = select.value;
           select.innerHTML = '';
           
-          yillar.forEach(yil => {
+          (data || []).forEach(d => {
             const opt = document.createElement('option');
-            opt.value = yil;
-            opt.textContent = `${yil} Ramazan-ı Şerif`;
+            opt.value = d.yil;
+            opt.textContent = `${d.yil} Ramazan-ı Şerif${d.aktif ? ' (Aktif)' : ''}`;
             select.appendChild(opt);
+            
+            // Aktif yıl varsa onu seç
+            if (d.aktif) {
+              select.value = d.yil;
+            }
           });
           
-          // Aktif yıl varsa onu seç
-          const aktifSnap = await db.collection('ramazan_serif').doc('ayarlar').collection('yillar').where('aktif', '==', true).limit(1).get();
-          if (!aktifSnap.empty) {
-            const aktifYil = aktifSnap.docs[0].data().yil;
-            select.value = aktifYil;
-          } else if (currentValue && yillar.includes(parseInt(currentValue))) {
+          // Eğer aktif yıl seçilmediyse, mevcut değeri koru veya ilk yılı seç
+          if (!select.value && currentValue && data.some(d => d.yil === parseInt(currentValue))) {
             select.value = currentValue;
-          } else if (yillar.length > 0) {
-            select.value = yillar[0];
+          } else if (!select.value && data.length > 0) {
+            select.value = data[0].yil;
+          }
+          
+          // Yıl seçildikten sonra ilk verileri yükle
+          if (select.value) {
+            loadKayitlar();
           }
         }
       } catch (e) {
@@ -1111,13 +1483,21 @@
       }
     }
 
-    ['#filtreYil', '#filtreTip', '#filtreMod'].forEach(sel => {
+    // Yıl değiştiğinde önceki channel'ları temizle ve yeni verileri yükle
+    qs('#filtreYil').addEventListener('change', () => {
+      // Önceki Supabase channel'ları unsubscribe et
+      supabaseChannels.forEach(ch => {
+        window.supabase.removeChannel(ch);
+      });
+      supabaseChannels = [];
+      
+      // Yeni verileri yükle
+      loadKayitlar();
+    });
+    
+    ['#filtreTip', '#filtreMod'].forEach(sel => {
       qs(sel).addEventListener('change', () => {
-        if (sel === '#filtreYil') {
-          loadKayitlar();
-        } else {
-          render();
-        }
+        render();
       });
     });
 
@@ -1133,7 +1513,7 @@
       let filtered = [...kayitlar];
       filtered = filtered.filter(k => k.yil === parseInt(yil));
       if (tip) filtered = filtered.filter(k => k.tip === tip);
-      if (mod === 'kendim') filtered = filtered.filter(k => k.personelUid === currentUserUid);
+      if (mod === 'kendim' && currentUserUid) filtered = filtered.filter(k => k.personelUid === currentUserUid);
       if (ara) {
         filtered = filtered.filter(k =>
           (k.sahip || '').toLowerCase().includes(ara) ||
@@ -1313,6 +1693,28 @@
       if (!name) return '';
       const trimmed = String(name).trim();
       if (!trimmed) return '';
+      
+      // Belirli personelleri "diğer" olarak gruplandır
+      const digerPersoneller = [
+        'burak serin',
+        'muzaffer tunahan arıkan',
+        'muharrem morcalı',
+        'muharrem küçükkaya'
+      ];
+      
+      const normalizedName = trimmed.toLocaleLowerCase('tr-TR').trim();
+      
+      // Her bir "diğer" personeli için kontrol et
+      for (const digerPersonel of digerPersoneller) {
+        const digerPersonelNormalized = digerPersonel.toLocaleLowerCase('tr-TR').trim();
+        // Tam eşleşme veya içerme kontrolü
+        if (normalizedName === digerPersonelNormalized || 
+            normalizedName.includes(digerPersonelNormalized) || 
+            digerPersonelNormalized.includes(normalizedName)) {
+          return 'DİĞER';
+        }
+      }
+      
       // Türkçe karakter desteği ile büyük harf
       return trimmed.toLocaleUpperCase('tr-TR');
     }
@@ -1324,59 +1726,55 @@
 
     let allYearsData = {}; // 2023, 2024, 2025 verileri
     
-    // Tüm yılların verilerini yükle (analiz collection'ından)
+    // ===== SUPABASE: Tüm yılların verilerini yükle (ramazan_veriler tablosundan) =====
     async function loadAllYearsData() {
+      if (!window.supabase) {
+        console.warn('Supabase client hazır değil, analiz verileri yüklenemiyor');
+        allYearsData = {};
+        return;
+      }
+      
       allYearsData = {};
       const yillar = [2023, 2024, 2025];
       
       for (const yil of yillar) {
         try {
-          // Önce analiz collection'ından dene (personel/referans bilgileri burada)
-          const analizSnap = await db.collection('ramazan_serif').doc('analiz').collection('veriler')
-            .where('yil', '==', yil)
-            .get();
+          const veriler = [];
           
-          let veriler = [];
+          // ramazan_veriler tablosundan veri çek
+          const { data: ramazanVerilerData, error: ramazanVerilerError } = await window.supabase
+            .from('ramazan_veriler')
+            .select('id, createdat, diger, personel, sahip, tip, tutar, yil, yukleyen, updatedat, referans')
+            .eq('yil', yil);
           
-          if (!analizSnap.empty) {
-            // Analiz collection'ından veri var
-            veriler = analizSnap.docs.map(d => {
-              const data = d.data();
-              return {
-                id: d.id,
-                yil: data.yil || yil,
-                tip: data.tip || '',
-                sahip: data.sahip || '',
-                tutar: Number(data.tutar) || 0,
-                referans: data.referans || '',
-                personel: data.personel || data.referans || '',
-                diger: data.diger || '',
-                tarih: data.tarih || null
-              };
-            });
-          } else {
-            // Analiz collection'ında yoksa kayitlar collection'ından dene
-            console.log(`${yil} için analiz verisi yok, kayitlar collection'ından yükleniyor...`);
-            const kayitlarSnap = await db.collection('ramazan_serif').doc(String(yil)).collection('kayitlar').get();
-            
-            veriler = kayitlarSnap.docs.map(d => {
-              const data = d.data();
-              return {
-                id: d.id,
-                yil: data.yil || yil,
-                tip: data.tip || '',
-                sahip: data.sahip || '',
-                tutar: Number(data.tutar) || 0,
-                referans: data.referans || '',
-                personel: data.personel || data.referans || '',
-                diger: data.diger || '',
-                tarih: data.tarih || null
-              };
+          if (ramazanVerilerError) {
+            console.error(`${yil} yılı ramazan_veriler yüklenirken hata:`, ramazanVerilerError);
+          } else if (ramazanVerilerData) {
+            ramazanVerilerData.forEach(r => {
+              veriler.push({
+                id: r.id || '',
+                yil: r.yil || yil,
+                tip: (r.tip || '').toLowerCase(),
+                sahip: r.sahip || '',
+                tutar: Number(r.tutar) || 0,
+                personel: r.personel || '',
+                personeluid: '', // ramazan_veriler tablosunda personeluid yok
+                tarih: r.createdat || null,
+                referans: r.referans || '',
+                diger: r.diger || '',
+                yukleyen: r.yukleyen || ''
+              });
             });
           }
           
           allYearsData[yil] = veriler;
-          console.log(`${yil} yılı için ${veriler.length} kayıt yüklendi`);
+          console.log(`${yil} yılı için ${veriler.length} kayıt yüklendi (ramazan_veriler: ${ramazanVerilerData?.length || 0})`);
+          
+          // Debug: Personel bilgilerini kontrol et
+          if (veriler.length > 0) {
+            const personelListesi = [...new Set(veriler.map(v => v.personel).filter(p => p))];
+            console.log(`${yil} yılı personel listesi (${personelListesi.length} adet):`, personelListesi.slice(0, 10));
+          }
         } catch (e) {
           console.error(`${yil} yılı verileri yüklenemedi:`, e);
           allYearsData[yil] = [];
@@ -1409,10 +1807,7 @@
           }
           
           // Personel belirleme
-          let rawPersonel = v.personel || v.referans || '';
-          if (v.referans && normalizeTurkish(v.referans) === 'diğer') {
-            rawPersonel = 'DİĞER';
-          }
+          let rawPersonel = v.personel || '';
           const personelAdi = normalizePersonelName(rawPersonel);
           
           if (!personelAdi) {
@@ -1468,8 +1863,21 @@
         personelAdiYokSayisi: personelAdiYokSayisi,
         personelSayisi: Object.keys(personeller).length,
         bagisciSayisi: Object.keys(bagiscilar).length,
-        personelListesi: Object.keys(personeller)
+        personelListesi: Object.keys(personeller),
+        personelListesiDetay: Object.keys(personeller).slice(0, 10)
       });
+      
+      // Debug: Eğer personel bulunamadıysa, verilerdeki personel alanlarını kontrol et
+      if (Object.keys(personeller).length === 0 && toplamIslenen > 0) {
+        console.warn('⚠️ Personel bulunamadı ama veri var! İlk 10 kayıt personel alanları:', 
+          Object.values(allYearsData).flat().slice(0, 10).map(v => ({ 
+            tip: v.tip, 
+            personel: v.personel, 
+            personelVar: !!v.personel,
+            personelLength: String(v.personel || '').length
+          }))
+        );
+      }
       
       return { personeller, bagiscilar };
     }
@@ -2241,5 +2649,4 @@
   </script>
 </body>
 </html>
-
 

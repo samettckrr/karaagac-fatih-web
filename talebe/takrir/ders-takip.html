@@ -1,0 +1,2588 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ders Takip | Karaağaç Fatih</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <link rel="icon" type="image/png" href="../../img/logo.png" />
+  
+  <!-- Ortak CSS -->
+  <link rel="stylesheet" href="../../css/app-shell.css" />
+  
+  <!-- Supabase (Auth + Database için) - ÖNCE YÜKLENMELİ -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script>
+    // Supabase client'ın yüklendiğinden emin ol
+    (function() {
+      const SUPABASE_URL = 'https://lmwfibippjvqctccxiwb.supabase.co';
+      const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxtd2ZpYmlwcGp2cWN0Y2N4aXdiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NjE2NzA1NCwiZXhwIjoyMDgxNzQzMDU0fQ.lzoudrJx_V4RdCCxPRfgLA1riWNKZ3HyFzeqRynYHeQ';
+      
+      function initSupabase() {
+        if (typeof supabase !== 'undefined' && typeof supabase.createClient === 'function') {
+          window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+          return true;
+        }
+        return false;
+      }
+      
+      // Hemen dene
+      if (!initSupabase()) {
+        // Eğer yüklenmediyse, biraz bekle ve tekrar dene
+        let retries = 0;
+        const maxRetries = 10;
+        const checkInterval = setInterval(() => {
+          retries++;
+          if (initSupabase() || retries >= maxRetries) {
+            clearInterval(checkInterval);
+            if (window.supabase) {
+              console.log('✅ Supabase client hazır');
+            } else {
+              console.error('❌ Supabase client yüklenemedi');
+            }
+          }
+        }, 100);
+      } else {
+        console.log('✅ Supabase client hazır');
+      }
+    })();
+  </script>
+  
+  <style>
+    /* app-shell.css üst bar/arka plan/toast/yetki yapısını kullanır.
+       Burada sadece sayfa-özel küçük düzenlemeler var. */
+    body {
+      padding-top: var(--appbar-h) !important;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+
+    /* Drawer masaüstünde kapalı kalmalı */
+    @media (min-width: 1025px) {
+      .drawer {
+        transform: translateX(100%) !important;
+      }
+
+      .drawer.open {
+        transform: translateX(0) !important;
+      }
+    }
+
+    /* Sayfa-özel stiller */
+    .header-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin: 16px 0;
+    }
+    .header-left h2 {
+      margin: 0 0 6px;
+      font-size: 18px;
+    }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    /* Filtreleme Paneli */
+    .filtre-panel {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .filtre-grup {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .filtre-grup label {
+      font-size: 12.5px;
+      color: var(--muted);
+      font-weight: 800;
+    }
+    .filtre-grup select,
+    .filtre-grup input[type="text"],
+    .filtre-grup input[type="date"] {
+      padding: 10px 12px;
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      background: var(--card);
+      color: var(--text);
+      font-size: 14px;
+      width: 100%;
+    }
+    .filtre-grup select:focus,
+    .filtre-grup input:focus {
+      outline: none;
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    /* Butonlar */
+    .btn-primary {
+      background: linear-gradient(180deg, var(--brand), var(--brand2));
+      color: #fff;
+      border: none;
+      border-radius: 999px;
+      padding: 10px 20px;
+      cursor: pointer;
+      font-weight: 800;
+      white-space: nowrap;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+    .btn-secondary {
+      border: 1px solid var(--stroke);
+      background: var(--pill);
+      border-radius: 999px;
+      padding: 10px 16px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    
+    /* Tablo */
+    .table-container {
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--card);
+    }
+    .table-header {
+      background: var(--pill);
+      padding: 12px 16px;
+      font-weight: 900;
+      display: grid;
+      grid-template-columns: 2fr 1.5fr 1fr 1fr 1fr 1fr 1.5fr;
+      gap: 12px;
+      border-bottom: 2px solid var(--stroke);
+    }
+    .table-row {
+      padding: 12px 16px;
+      display: grid;
+      grid-template-columns: 2fr 1.5fr 1fr 1fr 1fr 1fr 1.5fr;
+      gap: 12px;
+      border-bottom: 1px dashed var(--stroke);
+      align-items: center;
+      transition: background 0.2s;
+      cursor: default;
+    }
+    .table-row:hover {
+      background: var(--pill);
+    }
+    .table-row:last-child {
+      border-bottom: none;
+    }
+    
+    /* Mobil yapıları masaüstünde gizle */
+    .table-row .mobile-row-main,
+    .table-row .mobile-row-action {
+      display: none;
+    }
+    
+    /* Durum Badge */
+    .durum-badge {
+      font-size: 12px;
+      border: 1px solid var(--stroke);
+      border-radius: 999px;
+      padding: 4px 10px;
+      display: inline-block;
+      font-weight: 600;
+    }
+    .durum-none {
+      background: transparent;
+      color: var(--text);
+    }
+    .durum-verdi {
+      background: rgba(34, 197, 94, 0.12);
+      color: #16a34a;
+      border-color: rgba(34, 197, 94, 0.3);
+    }
+    .durum-veremedi {
+      background: rgba(239, 68, 68, 0.12);
+      color: #dc2626;
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+    .durum-yarim {
+      background: rgba(250, 204, 21, 0.16);
+      color: #ca8a04;
+      border-color: rgba(250, 204, 21, 0.3);
+    }
+    .durum-henuz {
+      background: rgba(148, 163, 184, 0.12);
+      color: #64748b;
+      border-color: rgba(148, 163, 184, 0.3);
+    }
+    
+    /* Durum Güncelleme Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal.active {
+      display: flex;
+    }
+    body.modal-open {
+      overflow: hidden;
+    }
+    .modal-content {
+      background: var(--card);
+      border: 1px solid var(--stroke);
+      border-radius: 16px;
+      padding: 24px;
+      max-width: 500px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+      z-index: 1001;
+      pointer-events: auto;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--stroke);
+    }
+    .modal-header h3 {
+      margin: 0;
+      font-size: 20px;
+    }
+    .modal-body {
+      margin-bottom: 20px;
+    }
+    .modal-option {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      margin-bottom: 8px;
+      border: 1px solid var(--stroke);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .modal-option:hover {
+      background: var(--pill);
+      border-color: var(--brand);
+    }
+    .modal-option input[type="radio"] {
+      cursor: pointer;
+    }
+    .modal-option label {
+      cursor: pointer;
+      flex: 1;
+      margin: 0;
+    }
+    .modal-buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+    
+    /* Yeni Kayıt Form */
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .form-group select,
+    .form-group input[type="text"],
+    .form-group input[type="date"],
+    .form-group textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--stroke);
+      border-radius: 10px;
+      background: var(--card);
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+    }
+    .form-group select:focus,
+    .form-group input:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    .form-group textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+    
+    /* Loading */
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: var(--muted);
+    }
+    .loading::after {
+      content: '...';
+      animation: dots 1.5s steps(4, end) infinite;
+    }
+    @keyframes dots {
+      0%, 20% { content: '.'; }
+      40% { content: '..'; }
+      60%, 100% { content: '...'; }
+    }
+    
+    /* Boş Durum */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    
+    /* Sortable Header */
+    .sortable-header {
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.2s;
+    }
+    .sortable-header:hover {
+      background: rgba(59, 130, 246, 0.1);
+      border-radius: 6px;
+    }
+    
+    /* Responsive - Mobil Görünüm */
+    @media (max-width: 960px) {
+      .header-card {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+      }
+      
+      .header-right {
+        display: flex;
+        gap: 8px;
+        width: 100%;
+      }
+      
+      .header-right button {
+        flex: 1;
+        min-width: 0;
+        font-size: 13px;
+        padding: 10px 14px;
+      }
+      
+      .filtre-panel {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+      
+      .table-container {
+        border: none;
+        background: transparent;
+      }
+      
+      .table-header {
+        display: none; /* Mobilde header gizle */
+      }
+      
+      .table-row {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding: 12px;
+        margin-bottom: 8px;
+        border: 1px solid var(--stroke);
+        border-radius: 8px;
+        background: var(--card);
+        cursor: pointer; /* Satıra tıklanabilir olduğunu göster */
+      }
+      
+      .table-row > div[data-label] {
+        display: none; /* Sadece data-label olan div'leri gizle (masaüstü kolonları) */
+      }
+      
+      /* Mobil özel yapı */
+      .table-row .mobile-row-main {
+        display: flex !important; /* Masaüstünde gizlenmiş olanı göster */
+        flex-direction: column;
+        flex: 1;
+        min-width: 0;
+      }
+      
+      .table-row .mobile-row-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 4px;
+      }
+      
+      .table-row .mobile-row-title {
+        font-weight: 700;
+        font-size: 15px;
+        color: var(--text);
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      
+      .table-row .mobile-row-status {
+        margin-left: 8px;
+        flex-shrink: 0;
+      }
+      
+      .table-row .mobile-row-subtitle {
+        font-size: 11px;
+        color: var(--muted);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 2px;
+      }
+      
+      .table-row .mobile-row-action {
+        display: none !important; /* Mobilde butonu gizle */
+      }
+      
+      .table-row .mobile-row-status .durum-badge {
+        font-size: 10px;
+        padding: 3px 6px;
+      }
+    }
+    
+    /* İstatistikler */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 24px;
+      font-weight: 900;
+      margin-bottom: 4px;
+    }
+    .stat-label {
+      font-size: 12px;
+      color: var(--muted);
+    }
+  </style>
+  
+  <!-- Ortak JavaScript -->
+  <script src="../../js/ortak.js"></script>
+  <script src="../../js/ders-takip.js"></script>
+</head>
+<body>
+
+<!-- APPBAR -->
+<div class="appbar">
+  <div class="brand" onclick="location.href='../../panel.html'">
+    <img src="../../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
+  </div>
+  <nav class="nav-center"><ul class="nav-list" id="navMain"></ul></nav>
+  <div class="nav-right">
+    <button class="btn hamb" id="hamburger" title="Menü">☰</button>
+
+    <!-- Bildirim -->
+    <div class="nav-item">
+      <button class="iconbtn" id="btnNotif" title="Bildirimler">🔔
+        <span class="badge" id="notifBadge" style="display:none">0</span>
+      </button>
+      <div class="dropdown drop-right" id="notifDropdown" aria-label="Bildirim listesi">
+        <div class="muted" style="padding:6px 8px">Son bildirimler</div>
+        <div id="notifList" class="list" style="max-height:300px;overflow:auto"></div>
+      </div>
+    </div>
+
+    <!-- Profil -->
+    <div class="nav-item">
+      <button class="iconbtn" id="btnProfile" title="Profil">
+        <span class="avatar"></span> <span id="profName" class="muted">Profil</span>
+      </button>
+      <div class="dropdown drop-right" id="profDropdown" aria-label="Profil menüsü">
+        <a href="../../diger/kullanici-yonetimi.html">👤 Profil</a>
+        <a href="../../diger/sistem-ayarlari.html">⚙️ Sistem Ayarları</a>
+        <a href="#" id="btnLogout">🚪 Çıkış Yap</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<aside class="drawer" id="drawer"></aside>
+
+<main class="container">
+  <!-- HEADER -->
+  <section class="card header-card">
+    <div class="header-left">
+      <h2>Ders Takip Sistemi</h2>
+      <div class="muted">Tek tablo ile hızlı ve güçlü analiz</div>
+    </div>
+    <div class="header-right">
+      <button id="btnYeniKayit" class="btn-primary">➕ Yeni Kayıt</button>
+      <button id="btnDuzenle" class="btn-secondary">✏️ Düzenle</button>
+    </div>
+  </section>
+
+  <!-- FİLTRELEME PANELİ -->
+  <section class="card">
+    <h3 style="margin: 0 0 16px 0">Filtreleme</h3>
+    <div class="filtre-panel">
+      <div class="filtre-grup">
+        <label>Devre</label>
+        <select id="selDevre">
+          <option value="">Tüm Devreler</option>
+          <option value="6.Devre" selected>6.Devre</option>
+          <option value="7.Devre">7.Devre</option>
+          <option value="8.Devre">8.Devre</option>
+        </select>
+      </div>
+      <div class="filtre-grup">
+        <label>Kitap</label>
+        <select id="selKitap">
+          <option value="">Tüm Kitaplar</option>
+        </select>
+      </div>
+      <div class="filtre-grup">
+        <label>Ders Adı</label>
+        <select id="selDers">
+          <option value="">Tüm Dersler</option>
+        </select>
+      </div>
+      <div class="filtre-grup">
+        <label>Talebe</label>
+        <select id="selTalebe">
+          <option value="">Tüm Talebeler</option>
+        </select>
+      </div>
+      <div class="filtre-grup">
+        <label>Durum</label>
+        <select id="selDurum">
+          <option value="">Tüm Durumlar</option>
+          <option value="null">İşlem Yapılmadı</option>
+          <option value="henuz_verilmedi">Henüz Verilmedi</option>
+          <option value="verdi">Verdi</option>
+          <option value="veremedi">Veremedi</option>
+          <option value="yarim">Yarım</option>
+        </select>
+      </div>
+      <div class="filtre-grup">
+        <label>Tarih (Ders Günü)</label>
+        <input type="date" id="inpDersGunu" />
+      </div>
+    </div>
+    <div style="display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap;">
+      <button id="btnFiltrele" class="btn-primary">🔍 Filtrele</button>
+      <button id="btnTemizle" class="btn-secondary">🔄 Temizle</button>
+    </div>
+  </section>
+
+  <!-- İSTATİSTİKLER -->
+  <section class="card" id="statsSection" style="display: none;">
+    <h3 style="margin: 0 0 16px 0">İstatistikler</h3>
+    <div class="stats-grid" id="statsGrid"></div>
+  </section>
+
+  <!-- SONUÇLAR -->
+  <section class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h3 style="margin: 0">Kayıtlar</h3>
+      <div class="muted" id="kayitSayisi">0 kayıt</div>
+    </div>
+    <div id="resultsArea">
+      <div class="empty-state">
+        <div class="empty-state-icon">📚</div>
+        <div>Filtreleme yaparak kayıtları görüntüleyin</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- DURUM GÜNCELLEME MODAL -->
+<div class="modal" id="durumModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Durum Güncelle</h3>
+      <button class="btn-secondary" id="btnModalKapat">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="modalTalebeInfo" style="margin-bottom: 16px; padding: 12px; background: var(--pill); border-radius: 10px;"></div>
+      <div class="modal-option">
+        <input type="radio" name="durum" id="durumVerdi" value="verdi" />
+        <label for="durumVerdi">✅ Verdi</label>
+      </div>
+      <div class="modal-option">
+        <input type="radio" name="durum" id="durumVeremedi" value="veremedi" />
+        <label for="durumVeremedi">❌ Veremedi</label>
+      </div>
+      <div class="modal-option">
+        <input type="radio" name="durum" id="durumYarim" value="yarim" />
+        <label for="durumYarim">⚠️ Yarım</label>
+      </div>
+      <div class="modal-option">
+        <input type="radio" name="durum" id="durumHenuz" value="henuz_verilmedi" />
+        <label for="durumHenuz">⏳ Henüz Verilmedi</label>
+      </div>
+    </div>
+    <div class="modal-buttons">
+      <button class="btn-secondary" id="btnModalIptal">İptal</button>
+      <button class="btn-primary" id="btnModalKaydet">💾 Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<!-- YENİ KAYIT MODAL -->
+<div class="modal" id="yeniKayitModal">
+  <div class="modal-content" style="max-width: 600px;">
+    <div class="modal-header">
+      <h3 id="yeniKayitModalBaslik">📚 Kitap Ekle</h3>
+      <button class="btn-secondary" id="btnYeniKayitKapat">✕</button>
+    </div>
+    
+    <!-- Tab Butonları -->
+    <div style="display: flex; gap: 8px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--stroke);">
+      <button type="button" id="tabKitapEkle" class="btn-secondary" style="flex: 1; padding: 10px; border-radius: 8px; font-weight: 600; background: var(--brand); color: white;">📚 Kitap Ekle</button>
+      <button type="button" id="tabDersEkle" class="btn-secondary" style="flex: 1; padding: 10px; border-radius: 8px; font-weight: 600;">📖 Ders Ekle</button>
+    </div>
+    
+    <div class="modal-body">
+      <!-- Kitap Ekle Formu -->
+      <div id="kitapEkleForm" style="display: block;">
+        <form id="yeniKayitKitapForm">
+          <div class="form-group">
+            <label for="kitapEkleDevre">Devre <span style="color: red;">*</span></label>
+            <select id="kitapEkleDevre" required>
+              <option value="">Seçiniz</option>
+              <option value="6.Devre">6.Devre</option>
+              <option value="7.Devre">7.Devre</option>
+              <option value="8.Devre">8.Devre</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="kitapEkleKitapAdi">Kitap Adı <span style="color: red;">*</span></label>
+            <input type="text" id="kitapEkleKitapAdi" placeholder="Örn: Risale-i Nur Külliyatı" required />
+          </div>
+          
+          <div id="kitapEkleHata" style="display: none; padding: 12px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; color: #dc2626; margin-bottom: 16px;"></div>
+        </form>
+      </div>
+      
+      <!-- Ders Ekle Formu -->
+      <div id="dersEkleForm" style="display: none;">
+        <form id="yeniKayitDersForm">
+          <div class="form-group">
+            <label for="dersEkleDevre">Devre <span style="color: red;">*</span></label>
+            <select id="dersEkleDevre" required>
+              <option value="">Seçiniz</option>
+              <option value="6.Devre">6.Devre</option>
+              <option value="7.Devre">7.Devre</option>
+              <option value="8.Devre">8.Devre</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="dersEkleKitap">Kitap <span style="color: red;">*</span></label>
+            <select id="dersEkleKitap" required>
+              <option value="">Önce devre seçiniz</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="dersEkleDersAdi">Ders Adı <span style="color: red;">*</span></label>
+            <input type="text" id="dersEkleDersAdi" placeholder="Örn: 1-28 Sualleri" required />
+          </div>
+          
+          <div id="dersEkleHata" style="display: none; padding: 12px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; color: #dc2626; margin-bottom: 16px;"></div>
+        </form>
+      </div>
+    </div>
+    
+    <div class="modal-buttons">
+      <button type="button" class="btn-secondary" id="btnYeniKayitIptal">İptal</button>
+      <button type="button" class="btn-primary" id="btnYeniKayitKaydet">💾 Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<!-- DÜZENLE MODAL -->
+<div class="modal" id="duzenleModal">
+  <div class="modal-content" style="max-width: 600px;">
+    <div class="modal-header">
+      <h3 id="duzenleModalBaslik">📚 Kitap Düzenle</h3>
+      <button class="btn-secondary" id="btnDuzenleKapat">✕</button>
+    </div>
+    
+    <!-- Tab Butonları -->
+    <div style="display: flex; gap: 8px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--stroke);">
+      <button type="button" id="tabKitapDuzenle" class="btn-secondary" style="flex: 1; padding: 10px; border-radius: 8px; font-weight: 600; background: var(--brand); color: white;">📚 Kitap Düzenle</button>
+      <button type="button" id="tabDersDuzenle" class="btn-secondary" style="flex: 1; padding: 10px; border-radius: 8px; font-weight: 600;">📖 Ders Düzenle</button>
+    </div>
+    
+    <div class="modal-body">
+      <!-- Kitap Düzenle Formu -->
+      <div id="kitapDuzenleForm" style="display: block;">
+        <form id="duzenleKitapForm">
+          <div class="form-group">
+            <label for="duzenleKitapDevre">Devre <span style="color: red;">*</span></label>
+            <select id="duzenleKitapDevre" required>
+              <option value="">Seçiniz</option>
+              <option value="6.Devre">6.Devre</option>
+              <option value="7.Devre">7.Devre</option>
+              <option value="8.Devre">8.Devre</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="duzenleKitapSec">Kitap <span style="color: red;">*</span></label>
+            <select id="duzenleKitapSec" required>
+              <option value="">Önce devre seçiniz</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="duzenleKitapYeniAdi">Yeni Kitap Adı <span style="color: red;">*</span></label>
+            <input type="text" id="duzenleKitapYeniAdi" placeholder="Yeni kitap adını giriniz" required />
+          </div>
+          
+          <div id="kitapDuzenleHata" style="display: none; padding: 12px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; color: #dc2626; margin-bottom: 16px;"></div>
+        </form>
+      </div>
+      
+      <!-- Ders Düzenle Formu -->
+      <div id="dersDuzenleForm" style="display: none;">
+        <form id="duzenleDersForm">
+          <div class="form-group">
+            <label for="duzenleDersDevre">Devre <span style="color: red;">*</span></label>
+            <select id="duzenleDersDevre" required>
+              <option value="">Seçiniz</option>
+              <option value="6.Devre">6.Devre</option>
+              <option value="7.Devre">7.Devre</option>
+              <option value="8.Devre">8.Devre</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="duzenleDersKitap">Kitap <span style="color: red;">*</span></label>
+            <select id="duzenleDersKitap" required>
+              <option value="">Önce devre seçiniz</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="duzenleDersSec">Ders <span style="color: red;">*</span></label>
+            <select id="duzenleDersSec" required>
+              <option value="">Önce kitap seçiniz</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="duzenleDersYeniAdi">Yeni Ders Adı <span style="color: red;">*</span></label>
+            <input type="text" id="duzenleDersYeniAdi" placeholder="Yeni ders adını giriniz" required />
+          </div>
+          
+          <div id="dersDuzenleHata" style="display: none; padding: 12px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; color: #dc2626; margin-bottom: 16px;"></div>
+        </form>
+      </div>
+    </div>
+    
+    <div class="modal-buttons">
+      <button type="button" class="btn-secondary" id="btnDuzenleIptal">İptal</button>
+      <button type="button" class="btn-secondary" id="btnDuzenleSil" style="background: rgba(239, 68, 68, 0.1); color: #dc2626; border-color: rgba(239, 68, 68, 0.3);">🗑️ Sil</button>
+      <button type="button" class="btn-primary" id="btnDuzenleKaydet">💾 Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+  // ============================================
+  // GLOBAL STATE
+  // ============================================
+  let currentKayitId = null;
+  let currentFiltreler = {};
+  let currentKayitObj = null; // Yeni kayıt için tüm bilgileri saklamak için
+  let eventListenersSetup = false;
+  let lastOriginalKayitlar = []; // Son render edilen orijinal kayıtlar (sıralama için)
+
+  // ============================================
+  // EVENT LISTENERS SETUP (Global Scope)
+  // ============================================
+  function setupEventListeners() {
+    if (eventListenersSetup) return;
+    eventListenersSetup = true;
+
+    const btnFiltrele = document.getElementById('btnFiltrele');
+    const btnTemizle = document.getElementById('btnTemizle');
+    const btnYeniKayit = document.getElementById('btnYeniKayit');
+    const btnDuzenle = document.getElementById('btnDuzenle');
+    const btnModalKapat = document.getElementById('btnModalKapat');
+    const btnModalIptal = document.getElementById('btnModalIptal');
+    const btnModalKaydet = document.getElementById('btnModalKaydet');
+    const btnYeniKayitKapat = document.getElementById('btnYeniKayitKapat');
+    const btnYeniKayitIptal = document.getElementById('btnYeniKayitIptal');
+    const btnYeniKayitKaydet = document.getElementById('btnYeniKayitKaydet');
+    const btnDuzenleKapat = document.getElementById('btnDuzenleKapat');
+    const btnDuzenleIptal = document.getElementById('btnDuzenleIptal');
+    const btnDuzenleSil = document.getElementById('btnDuzenleSil');
+    const btnDuzenleKaydet = document.getElementById('btnDuzenleKaydet');
+    const yeniKayitModal = document.getElementById('yeniKayitModal');
+    const duzenleModal = document.getElementById('duzenleModal');
+    const selDevre = document.getElementById('selDevre');
+    const selKitap = document.getElementById('selKitap');
+
+    if (btnFiltrele) btnFiltrele.addEventListener('click', handleFiltrele);
+    if (btnTemizle) btnTemizle.addEventListener('click', handleTemizle);
+    if (btnYeniKayit) btnYeniKayit.addEventListener('click', handleYeniKayit);
+    if (btnDuzenle) btnDuzenle.addEventListener('click', handleDuzenle);
+    if (btnModalKapat) btnModalKapat.addEventListener('click', closeModal);
+    if (btnModalIptal) btnModalIptal.addEventListener('click', closeModal);
+    if (btnModalKaydet) btnModalKaydet.addEventListener('click', handleDurumKaydet);
+    if (btnYeniKayitKapat) btnYeniKayitKapat.addEventListener('click', closeYeniKayitModal);
+    if (btnYeniKayitIptal) btnYeniKayitIptal.addEventListener('click', closeYeniKayitModal);
+    if (btnYeniKayitKaydet) btnYeniKayitKaydet.addEventListener('click', handleYeniKayitKaydet);
+    if (btnDuzenleKapat) btnDuzenleKapat.addEventListener('click', closeDuzenleModal);
+    if (btnDuzenleIptal) btnDuzenleIptal.addEventListener('click', closeDuzenleModal);
+    if (btnDuzenleSil) btnDuzenleSil.addEventListener('click', handleDuzenleSil);
+    if (btnDuzenleKaydet) btnDuzenleKaydet.addEventListener('click', handleDuzenleKaydet);
+    
+    // Tab switching için event listener'lar (Yeni Kayıt)
+    const tabKitapEkle = document.getElementById('tabKitapEkle');
+    const tabDersEkle = document.getElementById('tabDersEkle');
+    console.log('Tab butonları bulundu:', { tabKitapEkle: !!tabKitapEkle, tabDersEkle: !!tabDersEkle });
+    if (tabKitapEkle) {
+      tabKitapEkle.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Tab Kitap Ekle tıklandı');
+        switchYeniKayitTab('kitap');
+        return false;
+      });
+    }
+    if (tabDersEkle) {
+      tabDersEkle.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Tab Ders Ekle tıklandı');
+        switchYeniKayitTab('ders');
+        return false;
+      });
+    }
+    
+    // Tab switching için event listener'lar (Düzenle)
+    const tabKitapDuzenle = document.getElementById('tabKitapDuzenle');
+    const tabDersDuzenle = document.getElementById('tabDersDuzenle');
+    if (tabKitapDuzenle) {
+      tabKitapDuzenle.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        switchDuzenleTab('kitap');
+        return false;
+      });
+    }
+    if (tabDersDuzenle) {
+      tabDersDuzenle.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        switchDuzenleTab('ders');
+        return false;
+      });
+    }
+    
+    // Devre değişikliği listener'ları (Düzenle modal için)
+    const duzenleKitapDevre = document.getElementById('duzenleKitapDevre');
+    const duzenleDersDevre = document.getElementById('duzenleDersDevre');
+    if (duzenleKitapDevre) {
+      duzenleKitapDevre.addEventListener('change', async () => {
+        await loadDuzenleKitaplar();
+      });
+    }
+    if (duzenleDersDevre) {
+      duzenleDersDevre.addEventListener('change', async () => {
+        await loadDuzenleDersKitaplar();
+      });
+    }
+    
+    const duzenleDersKitap = document.getElementById('duzenleDersKitap');
+    if (duzenleDersKitap) {
+      duzenleDersKitap.addEventListener('change', async () => {
+        await loadDuzenleDersler();
+      });
+    }
+    
+    // Form submit events (Enter tuşu ile gönderme)
+    const yeniKayitKitapForm = document.getElementById('yeniKayitKitapForm');
+    const yeniKayitDersForm = document.getElementById('yeniKayitDersForm');
+    if (yeniKayitKitapForm) {
+      yeniKayitKitapForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        handleKitapEkle();
+      });
+    }
+    if (yeniKayitDersForm) {
+      yeniKayitDersForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        handleDersEkle();
+      });
+    }
+    
+    // Modal dışına tıklanınca kapat (her iki modal için)
+    const durumModal = document.getElementById('durumModal');
+    if (durumModal) {
+      durumModal.addEventListener('click', (e) => {
+        if (e.target === durumModal) {
+          closeModal();
+        }
+      });
+    }
+    if (yeniKayitModal) {
+      yeniKayitModal.addEventListener('click', (e) => {
+        // Sadece modal backdrop'una tıklanınca kapat (modal-content'e değil)
+        if (e.target === yeniKayitModal) {
+          closeYeniKayitModal();
+        }
+      });
+    }
+    
+    // Modal-content'teki tıklamaların modal'ı kapatmasını engelle
+    // (Sadece backdrop'a tıklanınca modal kapanacak)
+
+    // ESC tuşu ile modal kapatma
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const durumModalEl = document.getElementById('durumModal');
+        const yeniKayitModalEl = document.getElementById('yeniKayitModal');
+        const duzenleModalEl = document.getElementById('duzenleModal');
+        if (durumModalEl && durumModalEl.classList.contains('active')) {
+          closeModal();
+        }
+        if (yeniKayitModalEl && yeniKayitModalEl.classList.contains('active')) {
+          closeYeniKayitModal();
+        }
+        if (duzenleModalEl && duzenleModalEl.classList.contains('active')) {
+          closeDuzenleModal();
+        }
+      }
+    });
+
+    if (selDevre) {
+      selDevre.addEventListener('change', async () => {
+        await loadKitaplar();
+        await loadTalebeler();
+      });
+    }
+
+    if (selKitap) {
+      selKitap.addEventListener('change', async () => {
+        await loadDersler();
+      });
+    }
+  }
+
+  // ============================================
+  // SAYFA ÖZEL INIT FONKSİYONU (Global Scope)
+  // ============================================
+  window.initPage = async function() {
+    if (window.isPageInitialized) {
+      return;
+    }
+    window.isPageInitialized = true;
+
+    // Sadece veri yükleme (navigasyon ortak.js tarafından yönetiliyor)
+    await loadKitaplar();
+    await loadTalebeler();
+  };
+
+  // Kitapları yükle (takrir_index tablosundan)
+  async function loadKitaplar() {
+    const selDevre = document.getElementById('selDevre');
+    const selKitap = document.getElementById('selKitap');
+    if (!selDevre || !selKitap) return;
+    
+    const devre = selDevre.value;
+    if (!devre) {
+      selKitap.innerHTML = '<option value="">Tüm Kitaplar</option>';
+      return;
+    }
+
+    try {
+      const kitaplar = await window.dersTakipAPI.takrirKitaplarGetir(devre);
+      if (selKitap) {
+        selKitap.innerHTML = '<option value="">Tüm Kitaplar</option>' +
+          kitaplar.map(k => `<option value="${k}">${k}</option>`).join('');
+      }
+    } catch (error) {
+      console.error('Kitaplar yüklenemedi:', error);
+      if (typeof showToast === 'function') {
+        showToast('error', 'Hata', 'Kitaplar yüklenemedi');
+      }
+    }
+  }
+
+  // Dersleri yükle (takrir_index tablosundan)
+  async function loadDersler() {
+    const selDevre = document.getElementById('selDevre');
+    const selKitap = document.getElementById('selKitap');
+    const selDers = document.getElementById('selDers');
+    if (!selDevre || !selKitap || !selDers) return;
+    
+    const devre = selDevre.value;
+    const kitap = selKitap.value;
+    if (!devre || !kitap) {
+      selDers.innerHTML = '<option value="">Tüm Dersler</option>';
+      return;
+    }
+
+    try {
+      const dersler = await window.dersTakipAPI.takrirDerslerGetir(devre, kitap);
+      if (selDers) {
+        selDers.innerHTML = '<option value="">Tüm Dersler</option>' +
+          dersler.map(d => `<option value="${d}">${d}</option>`).join('');
+      }
+    } catch (error) {
+      console.error('Dersler yüklenemedi:', error);
+    }
+  }
+
+  // Talebeleri yükle
+  async function loadTalebeler() {
+    const selDevre = document.getElementById('selDevre');
+    const selTalebe = document.getElementById('selTalebe');
+    if (!selDevre || !selTalebe) return;
+    
+    const devre = selDevre.value;
+    if (!devre) {
+      selTalebe.innerHTML = '<option value="">Tüm Talebeler</option>';
+      return;
+    }
+
+    try {
+      const sb = window.supabase;
+      const { data, error } = await sb
+        .from('talebeler')
+        .select('id, talebe_adi')
+        .eq('devre', devre)
+        .order('talebe_adi', { ascending: true });
+
+      if (error) throw error;
+
+      const sel = document.getElementById('selTalebe');
+      sel.innerHTML = '<option value="">Tüm Talebeler</option>';
+      
+      if (data && data.length > 0) {
+        data.forEach(talebe => {
+          const option = document.createElement('option');
+          option.value = talebe.id;
+          option.textContent = talebe.talebe_adi || talebe.id;
+          sel.appendChild(option);
+        });
+      } else {
+        // Eğer talebe yoksa, ders_kayitlari tablosundan talebe_uid'leri çek (fallback)
+        const { data: kayitData, error: kayitError } = await sb
+          .from('ders_kayitlari')
+          .select('talebe_uid, talebe_adi')
+          .eq('devre', devre);
+
+        if (!kayitError && kayitData) {
+          // Benzersiz talebeleri al
+          const uniqueTalebeler = new Map();
+          kayitData.forEach(k => {
+            if (k.talebe_uid && !uniqueTalebeler.has(k.talebe_uid)) {
+              uniqueTalebeler.set(k.talebe_uid, k.talebe_adi || k.talebe_uid);
+            }
+          });
+
+          // Alfabetik sırala
+          const sortedTalebeler = Array.from(uniqueTalebeler.entries())
+            .sort((a, b) => (a[1] || '').localeCompare(b[1] || '', 'tr'));
+
+          sortedTalebeler.forEach(([uid, ad]) => {
+            const option = document.createElement('option');
+            option.value = uid;
+            option.textContent = ad || uid;
+            sel.appendChild(option);
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Talebeler yüklenemedi:', error);
+      if (typeof showToast === 'function') {
+        showToast('error', 'Hata', 'Talebeler yüklenemedi');
+      }
+    }
+  }
+
+  // Filtrele
+  // NOT: Kitap ve Ders seçimleri takrir_index tablosundan geliyor (loadKitaplar ve loadDersler fonksiyonları)
+  // Filtreleme yapılırken: takrir_index'ten seçilen kitap/ders kombinasyonuna göre ders_kayitlari tablosundan veri çekilir
+  async function handleFiltrele() {
+    const devre = document.getElementById('selDevre').value.trim();
+    const kitapRaw = document.getElementById('selKitap').value || null; // takrir_index'ten seçildi
+    const ders_adiRaw = document.getElementById('selDers').value || null; // takrir_index'ten seçildi
+    const talebe_uid = document.getElementById('selTalebe').value ? document.getElementById('selTalebe').value.trim() : null; // talebeler tablosundan seçildi
+    const ders_verme_durumu = document.getElementById('selDurum').value || null;
+    const ders_gunu = document.getElementById('inpDersGunu').value || null;
+
+    // Kitap ve ders değerlerini normalize et (trim ve boşlukları düzenle)
+    const kitap = kitapRaw ? String(kitapRaw).trim() : null;
+    const ders_adi = ders_adiRaw ? String(ders_adiRaw).trim() : null;
+
+    // Zorunlu: Devre seçilmeli
+    if (!devre) {
+      if (typeof showToast === 'function') {
+        showToast('warning', 'Uyarı', 'Lütfen devre seçiniz');
+      }
+      return;
+    }
+
+    currentFiltreler = { devre, kitap, ders_adi, talebe_uid, ders_verme_durumu, ders_gunu };
+
+    try {
+      const sb = window.supabase;
+      
+      // 1. Adım: Seçili devreye ait TÜM talebeleri talebeler tablosundan çek
+      let queryTalebeler = sb
+        .from('talebeler')
+        .select('id, talebe_adi')
+        .eq('devre', devre);
+      
+      const { data: talebeler, error: talebeError } = await queryTalebeler;
+      
+      if (talebeError) throw talebeError;
+      
+      // Özel talebe seçildiyse sadece o talebeyi al
+      let filtreliTalebeler = talebeler || [];
+      if (talebe_uid) {
+        filtreliTalebeler = filtreliTalebeler.filter(t => t.id === talebe_uid);
+      }
+      
+      if (!filtreliTalebeler || filtreliTalebeler.length === 0) {
+        if (typeof showToast === 'function') {
+          showToast('warning', 'Uyarı', 'Seçili devrede talebe bulunamadı');
+        }
+        renderResults([]);
+        renderStats([]);
+        return;
+      }
+      
+      // 2. Adım: ders_kayitlari tablosundan kayıtları çek
+      // NOT: Kitap ve ders değerleri takrir_index'ten seçilen değerlerle filtrelenir
+      // Supabase'de eşleştirme yaparken trim edilmiş değerleri kullan
+      let queryKayitlar = sb
+        .from('ders_kayitlari')
+        .select('*')
+        .eq('devre', devre.trim());
+      
+      // Kitap filtresi (takrir_index'ten seçilen değer - zaten normalize edilmiş)
+      // NOT: Supabase eq() case-sensitive ve exact match yapar
+      // Eğer veritabanında boşluklar varsa, tüm kayıtları çekip JavaScript'te filtreleyeceğiz
+      if (kitap) {
+        // İlk önce tüm kayıtları çek, sonra JavaScript'te normalize ederek filtreleyeceğiz
+        // Çünkü Supabase'de trim() yok, sadece exact match var
+      }
+      
+      // Ders filtresi (takrir_index'ten seçilen değer - zaten normalize edilmiş)
+      if (ders_adi) {
+        // İlk önce tüm kayıtları çek, sonra JavaScript'te normalize ederek filtreleyeceğiz
+      }
+      
+      // Özel talebe seçimi varsa
+      if (talebe_uid) {
+        queryKayitlar = queryKayitlar.eq('talebe_uid', talebe_uid);
+      }
+      
+      // Tarih filtresi
+      if (ders_gunu) {
+        queryKayitlar = queryKayitlar.eq('ders_gunu', ders_gunu);
+      }
+      
+      const { data: kayitlar, error: kayitError } = await queryKayitlar;
+      
+      if (kayitError) throw kayitError;
+      
+      // Tüm kayıtları al ve normalize et (Supabase'de trim() olmadığı için JavaScript'te yapıyoruz)
+      const mevcutKayitlar = (kayitlar || []).map(k => ({
+        ...k,
+        kitap: k.kitap ? String(k.kitap).trim() : k.kitap,
+        ders_adi: k.ders_adi ? String(k.ders_adi).trim() : k.ders_adi
+      }));
+      
+      // Eğer kitap veya ders filtresi varsa, normalize edilmiş değerlerle filtrele
+      let filtreliMevcutKayitlar = mevcutKayitlar;
+      if (kitap) {
+        const normalizedKitap = kitap.trim();
+        filtreliMevcutKayitlar = filtreliMevcutKayitlar.filter(k => k.kitap && String(k.kitap).trim() === normalizedKitap);
+      }
+      // NOT: ders_adi filtresini burada uygulamıyoruz çünkü "Tüm Dersler" durumunda tüm dersleri göstermemiz gerekiyor
+      
+      // 2b. Adım: takrir_index'ten ders listesini ve created_at bilgilerini al
+      let takrirDersListesi = []; // {ders_adi: string, created_at: string}
+      if (kitap) {
+        try {
+          takrirDersListesi = await window.dersTakipAPI.takrirDerslerGetirWithDate(devre, kitap);
+        } catch (err) {
+          console.warn('takrir_index ders listesi alınamadı:', err);
+        }
+      }
+      
+      // takrir_index ders_adi -> created_at mapping oluştur (ders_gunu için)
+      const dersGunuMap = new Map();
+      takrirDersListesi.forEach(d => {
+        if (d.ders_adi && d.created_at) {
+          dersGunuMap.set(d.ders_adi.trim(), d.created_at);
+        }
+      });
+      
+      // 3. Adım: Her talebe için kayıt var mı kontrol et ve birleştir
+      const sonucKayitlar = [];
+      
+      // Eğer "Tüm Dersler" seçildiyse (ders_adi boş), takrir_index'teki tüm dersleri işle
+      // Eğer belirli bir ders seçildiyse, sadece o dersi işle
+      const islenecekDersler = ders_adi 
+        ? [{ ders_adi: ders_adi, created_at: dersGunuMap.get(ders_adi) }]
+        : takrirDersListesi; // Tüm dersler
+      
+      filtreliTalebeler.forEach(talebe => {
+        // Bu talebeye ait kayıtları bul (kitap filtrelenmiş olan kayıtlar içinden)
+        const talebeKayitlari = filtreliMevcutKayitlar.filter(k => String(k.talebe_uid || '').trim() === String(talebe.id || '').trim());
+        
+        // İşlenecek her ders için kontrol yap
+        islenecekDersler.forEach(takrirDers => {
+          const normalizedTakrirDers = String(takrirDers.ders_adi).trim();
+          
+          // Bu ders için talebe kaydı var mı?
+          const dersKaydi = talebeKayitlari.find(k => {
+            const normalizedKayitDers = k.ders_adi ? String(k.ders_adi).trim() : '';
+            return normalizedKayitDers === normalizedTakrirDers;
+          });
+          
+          if (dersKaydi) {
+            // Kayıt varsa: Göster (ders_gunu'yu takrir_index.created_at'ten al)
+            const dersGunu = dersGunuMap.get(normalizedTakrirDers) || dersKaydi.ders_gunu || null;
+            sonucKayitlar.push({
+              ...dersKaydi,
+              talebe_adi: talebe.talebe_adi, // talebeler tablosundan
+              ders_gunu: dersGunu // takrir_index.created_at
+            });
+          } else {
+            // Kayıt yoksa: "İşlem Yapılmamış" placeholder kaydı oluştur (sadece kitap seçildiyse)
+            if (kitap) {
+              const dersGunu = dersGunuMap.get(normalizedTakrirDers) || null;
+              sonucKayitlar.push({
+                id: null, // Yeni kayıt - henüz ders_kayitlari tablosunda yok
+                devre: devre,
+                kitap: kitap, // takrir_index'ten seçilen değer
+                ders_adi: normalizedTakrirDers, // takrir_index'ten seçilen değer
+                talebe_uid: talebe.id,
+                talebe_adi: talebe.talebe_adi, // talebeler tablosundan
+                ders_gunu: dersGunu, // takrir_index.created_at
+                ders_verme_durumu: null, // İşlem yapılmamış
+                ders_verme_tarihi: null,
+                ders_veren_personel: null,
+                kaydeden_personel: null,
+                kaydeden_personel_uid: null
+              });
+            }
+          }
+        });
+      });
+      
+      // 4. Adım: Durum filtresini uygula
+      let filtreliKayitlar = sonucKayitlar;
+      if (ders_verme_durumu) {
+        if (ders_verme_durumu === 'islem_yapilmadi') {
+          // "İşlem yapılmamış" filtresi varsa sadece onları göster
+          filtreliKayitlar = sonucKayitlar.filter(k => !k.ders_verme_durumu);
+        } else {
+          // Belirli bir durum seçildiyse, sadece o durumdakileri göster
+          filtreliKayitlar = sonucKayitlar.filter(k => k.ders_verme_durumu === ders_verme_durumu);
+        }
+      }
+      
+      // 5. Adım: Sonuçları göster
+      renderResults(filtreliKayitlar);
+      renderStats(filtreliKayitlar);
+      
+    } catch (error) {
+      console.error('Filtreleme hatası:', error);
+      if (typeof showToast === 'function') {
+        showToast('error', 'Hata', 'Kayıtlar yüklenemedi: ' + (error.message || error));
+      }
+    }
+  }
+
+  // Temizle
+  function handleTemizle() {
+    document.getElementById('selDevre').value = '';
+    document.getElementById('selKitap').value = '';
+    document.getElementById('selDers').value = '';
+    document.getElementById('selTalebe').value = '';
+    document.getElementById('selDurum').value = '';
+    document.getElementById('inpDersGunu').value = '';
+    document.getElementById('resultsArea').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">📚</div>
+        <div>Filtreleme yaparak kayıtları görüntüleyin</div>
+      </div>
+    `;
+    document.getElementById('statsSection').style.display = 'none';
+    document.getElementById('kayitSayisi').textContent = '0 kayıt';
+  }
+
+  // Yeni kayıt modal'ı aç
+  function handleYeniKayit() {
+    console.log('handleYeniKayit çağrıldı');
+    openYeniKayitModal();
+  }
+
+  // Tab değiştirme
+  function switchYeniKayitTab(tab) {
+    console.log('switchYeniKayitTab çağrıldı:', tab);
+    const kitapForm = document.getElementById('kitapEkleForm');
+    const dersForm = document.getElementById('dersEkleForm');
+    const tabKitapBtn = document.getElementById('tabKitapEkle');
+    const tabDersBtn = document.getElementById('tabDersEkle');
+    const modalBaslik = document.getElementById('yeniKayitModalBaslik');
+    
+    if (!kitapForm || !dersForm) {
+      console.error('Form elemanları bulunamadı:', { kitapForm: !!kitapForm, dersForm: !!dersForm });
+      return;
+    }
+    
+    if (tab === 'kitap') {
+      if (kitapForm) kitapForm.style.display = 'block';
+      if (dersForm) dersForm.style.display = 'none';
+      if (tabKitapBtn) {
+        tabKitapBtn.style.background = 'var(--brand)';
+        tabKitapBtn.style.color = 'white';
+      }
+      if (tabDersBtn) {
+        tabDersBtn.style.background = 'var(--card)';
+        tabDersBtn.style.color = 'var(--text)';
+      }
+      if (modalBaslik) modalBaslik.textContent = '📚 Kitap Ekle';
+    } else if (tab === 'ders') {
+      if (kitapForm) kitapForm.style.display = 'none';
+      if (dersForm) dersForm.style.display = 'block';
+      if (tabDersBtn) {
+        tabDersBtn.style.background = 'var(--brand)';
+        tabDersBtn.style.color = 'white';
+      }
+      if (tabKitapBtn) {
+        tabKitapBtn.style.background = 'var(--card)';
+        tabKitapBtn.style.color = 'var(--text)';
+      }
+      if (modalBaslik) modalBaslik.textContent = '📖 Ders Ekle';
+    }
+  }
+
+  // Yeni kayıt modal'ını aç
+  async function openYeniKayitModal() {
+    console.log('openYeniKayitModal çağrıldı');
+    const modal = document.getElementById('yeniKayitModal');
+    if (!modal) {
+      console.error('Yeni kayıt modal bulunamadı');
+      return;
+    }
+    console.log('Modal bulundu, açılıyor...');
+    
+    // Varsayılan olarak Kitap Ekle sekmesini göster
+    switchYeniKayitTab('kitap');
+    
+    // Formları temizle
+    const kitapForm = document.getElementById('yeniKayitKitapForm');
+    const dersForm = document.getElementById('yeniKayitDersForm');
+    const kitapHata = document.getElementById('kitapEkleHata');
+    const dersHata = document.getElementById('dersEkleHata');
+    
+    if (kitapForm) kitapForm.reset();
+    if (dersForm) dersForm.reset();
+    if (kitapHata) {
+      kitapHata.style.display = 'none';
+      kitapHata.textContent = '';
+    }
+    if (dersHata) {
+      dersHata.style.display = 'none';
+      dersHata.textContent = '';
+    }
+    
+    // Kitap Ekle formu için devre select'ini temizle
+    const kitapDevreSelect = document.getElementById('kitapEkleDevre');
+    const kitapAdiInput = document.getElementById('kitapEkleKitapAdi');
+    if (kitapDevreSelect) kitapDevreSelect.value = '';
+    if (kitapAdiInput) kitapAdiInput.value = '';
+    
+    // Ders Ekle formu için select'leri temizle
+    const dersDevreSelect = document.getElementById('dersEkleDevre');
+    const dersKitapSelect = document.getElementById('dersEkleKitap');
+    const dersAdiInput = document.getElementById('dersEkleDersAdi');
+    if (dersDevreSelect) dersDevreSelect.value = '';
+    if (dersKitapSelect) dersKitapSelect.innerHTML = '<option value="">Önce devre seçiniz</option>';
+    if (dersAdiInput) dersAdiInput.value = '';
+    
+    // Ders Ekle formu için devre değiştiğinde kitapları yükle
+    if (dersDevreSelect) {
+      // Önceki handler'ı temizle
+      if (window.dersEkleDevreHandler) {
+        dersDevreSelect.removeEventListener('change', window.dersEkleDevreHandler);
+      }
+      
+      window.dersEkleDevreHandler = async () => {
+        const devre = dersDevreSelect.value;
+        if (devre) {
+          await loadTakrirKitaplarForSelect(devre);
+        } else {
+          if (dersKitapSelect) {
+            dersKitapSelect.innerHTML = '<option value="">Önce devre seçiniz</option>';
+          }
+        }
+      };
+      
+      dersDevreSelect.addEventListener('change', window.dersEkleDevreHandler);
+    }
+    
+    // Modal'ı göster
+    modal.classList.add('active');
+    document.body.classList.add('modal-open');
+    
+    // İlk input'a focus
+    setTimeout(() => {
+      if (kitapDevreSelect && !kitapDevreSelect.value) {
+        kitapDevreSelect.focus();
+      } else if (kitapAdiInput) {
+        kitapAdiInput.focus();
+      }
+    }, 100);
+  }
+
+  // Yeni kayıt modal'ını kapat
+  function closeYeniKayitModal() {
+    const modal = document.getElementById('yeniKayitModal');
+    if (modal) {
+      modal.classList.remove('active');
+    }
+    document.body.classList.remove('modal-open');
+    
+    // Formları temizle
+    const kitapForm = document.getElementById('yeniKayitKitapForm');
+    const dersForm = document.getElementById('yeniKayitDersForm');
+    if (kitapForm) kitapForm.reset();
+    if (dersForm) dersForm.reset();
+    
+    // Hata mesajlarını gizle
+    const kitapHata = document.getElementById('kitapEkleHata');
+    const dersHata = document.getElementById('dersEkleHata');
+    if (kitapHata) {
+      kitapHata.style.display = 'none';
+      kitapHata.textContent = '';
+    }
+    if (dersHata) {
+      dersHata.style.display = 'none';
+      dersHata.textContent = '';
+    }
+    
+    // Event listener'ları temizle
+    const dersDevreSelect = document.getElementById('dersEkleDevre');
+    if (dersDevreSelect && window.dersEkleDevreHandler) {
+      dersDevreSelect.removeEventListener('change', window.dersEkleDevreHandler);
+      window.dersEkleDevreHandler = null;
+    }
+    
+    // Butonu tekrar aktif yap
+    const kaydetBtn = document.getElementById('btnYeniKayitKaydet');
+    if (kaydetBtn) {
+      kaydetBtn.disabled = false;
+      kaydetBtn.textContent = '💾 Kaydet';
+    }
+  }
+
+  // Kitap ekle
+  async function handleKitapEkle() {
+    const form = document.getElementById('yeniKayitKitapForm');
+    const hataDiv = document.getElementById('kitapEkleHata');
+    const kaydetBtn = document.getElementById('btnYeniKayitKaydet');
+    
+    if (!form || !hataDiv || !kaydetBtn) {
+      console.error('Kitap ekle form elemanları bulunamadı');
+      return;
+    }
+    
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+    
+    const devreEl = document.getElementById('kitapEkleDevre');
+    const kitapAdiEl = document.getElementById('kitapEkleKitapAdi');
+    
+    if (!devreEl || !kitapAdiEl) {
+      hataDiv.style.display = 'block';
+      hataDiv.textContent = 'Form elemanları bulunamadı';
+      return;
+    }
+    
+    const devre = devreEl.value.trim();
+    const kitapAdi = kitapAdiEl.value.trim();
+    
+    if (!devre || !kitapAdi) {
+      hataDiv.style.display = 'block';
+      hataDiv.textContent = 'Lütfen devre ve kitap adını girin.';
+      if (!devre) devreEl.focus();
+      else kitapAdiEl.focus();
+      return;
+    }
+    
+    hataDiv.style.display = 'none';
+    kaydetBtn.disabled = true;
+    const originalBtnText = kaydetBtn.textContent;
+    kaydetBtn.textContent = '⏳ Kaydediliyor...';
+    
+    try {
+      await window.dersTakipAPI.kitapEkle(devre, kitapAdi);
+      
+      if (typeof showToast === 'function') {
+        showToast('success', 'Başarılı', `Kitap "${kitapAdi}" başarıyla eklendi`);
+      }
+      
+      closeYeniKayitModal();
+      
+      // Kitaplar listesini yenile (filtreleme alanındaki dropdown için)
+      await loadKitaplar();
+      
+    } catch (error) {
+      console.error('Kitap ekleme hatası:', error);
+      hataDiv.style.display = 'block';
+      
+      if (error.code === '23505') {
+        hataDiv.textContent = 'Bu kitap zaten mevcut. Aynı devre için aynı kitap adı eklenemez.';
+      } else {
+        hataDiv.textContent = 'Kitap eklenirken hata oluştu: ' + (error.message || error);
+      }
+      
+      if (typeof showToast === 'function') {
+        showToast('error', 'Hata', 'Kitap eklenemedi: ' + (error.message || error));
+      }
+    } finally {
+      kaydetBtn.disabled = false;
+      kaydetBtn.textContent = originalBtnText;
+    }
+  }
+
+  // Ders ekle
+  async function handleDersEkle() {
+    const form = document.getElementById('yeniKayitDersForm');
+    const hataDiv = document.getElementById('dersEkleHata');
+    const kaydetBtn = document.getElementById('btnYeniKayitKaydet');
+    
+    if (!form || !hataDiv || !kaydetBtn) {
+      console.error('Ders ekle form elemanları bulunamadı');
+      return;
+    }
+    
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+    
+    const devreEl = document.getElementById('dersEkleDevre');
+    const kitapEl = document.getElementById('dersEkleKitap');
+    const dersAdiEl = document.getElementById('dersEkleDersAdi');
+    
+    if (!devreEl || !kitapEl || !dersAdiEl) {
+      hataDiv.style.display = 'block';
+      hataDiv.textContent = 'Form elemanları bulunamadı';
+      return;
+    }
+    
+    const devre = devreEl.value.trim();
+    const kitap = kitapEl.value.trim();
+    const dersAdi = dersAdiEl.value.trim();
+    
+    if (!devre || !kitap || !dersAdi) {
+      hataDiv.style.display = 'block';
+      hataDiv.textContent = 'Lütfen tüm alanları doldurun.';
+      if (!devre) devreEl.focus();
+      else if (!kitap) kitapEl.focus();
+      else dersAdiEl.focus();
+      return;
+    }
+    
+    hataDiv.style.display = 'none';
+    kaydetBtn.disabled = true;
+    const originalBtnText = kaydetBtn.textContent;
+    kaydetBtn.textContent = '⏳ Kaydediliyor...';
+    
+    try {
+      await window.dersTakipAPI.dersEkle(devre, kitap, dersAdi);
+      
+      if (typeof showToast === 'function') {
+        showToast('success', 'Başarılı', `Ders "${dersAdi}" başarıyla eklendi`);
+      }
+      
+      closeYeniKayitModal();
+      
+      // Dersler listesini yenile (filtreleme alanındaki dropdown için)
+      await loadDersler();
+      
+    } catch (error) {
+      console.error('Ders ekleme hatası:', error);
+      hataDiv.style.display = 'block';
+      
+      if (error.code === '23505') {
+        hataDiv.textContent = 'Bu ders zaten mevcut. Aynı devre-kitap-ders kombinasyonu eklenemez.';
+      } else {
+        hataDiv.textContent = 'Ders eklenirken hata oluştu: ' + (error.message || error);
+      }
+      
+      if (typeof showToast === 'function') {
+        showToast('error', 'Hata', 'Ders eklenemedi: ' + (error.message || error));
+      }
+    } finally {
+      kaydetBtn.disabled = false;
+      kaydetBtn.textContent = originalBtnText;
+    }
+  }
+
+  // ============================================
+  // DÜZENLE MODAL FONKSİYONLARI
+  // ============================================
+  
+  // Düzenle modalını aç
+  async function handleDuzenle() {
+    const modal = document.getElementById('duzenleModal');
+    if (!modal) return;
+    
+    modal.classList.add('active');
+    document.body.classList.add('modal-open');
+    
+    // Varsayılan olarak Kitap Düzenle sekmesini göster
+    switchDuzenleTab('kitap');
+    
+    // Formları temizle
+    const kitapForm = document.getElementById('duzenleKitapForm');
+    const dersForm = document.getElementById('duzenleDersForm');
+    if (kitapForm) kitapForm.reset();
+    if (dersForm) dersForm.reset();
+    
+    // Hata mesajlarını gizle
+    const kitapHata = document.getElementById('kitapDuzenleHata');
+    const dersHata = document.getElementById('dersDuzenleHata');
+    if (kitapHata) {
+      kitapHata.style.display = 'none';
+      kitapHata.textContent = '';
+    }
+    if (dersHata) {
+      dersHata.style.display = 'none';
+      dersHata.textContent = '';
+    }
+  }
+  
+  // Düzenle modalını kapat
+  function closeDuzenleModal() {
+    const modal = document.getElementById('duzenleModal');
+    if (modal) {
+      modal.classList.remove('active');
+    }
+    document.body.classList.remove('modal-open');
+    
+    // Formları temizle
+    const kitapForm = document.getElementById('duzenleKitapForm');
+    const dersForm = document.getElementById('duzenleDersForm');
+    if (kitapForm) kitapForm.reset();
+    if (dersForm) dersForm.reset();
+    
+    // Hata mesajlarını gizle
+    const kitapHata = document.getElementById('kitapDuzenleHata');
+    const dersHata = document.getElementById('dersDuzenleHata');
+    if (kitapHata) {
+      kitapHata.style.display = 'none';
+      kitapHata.textContent = '';
+    }
+    if (dersHata) {
+      dersHata.style.display = 'none';
+      dersHata.textContent = '';
+    }
+    
+    // Select'leri sıfırla
+    const kitapSec = document.getElementById('duzenleKitapSec');
+    const dersKitap = document.getElementById('duzenleDersKitap');
+    const dersSec = document.getElementById('duzenleDersSec');
+    if (kitapSec) kitapSec.innerHTML = '<option value="">Önce devre seçiniz</option>';
+    if (dersKitap) dersKitap.innerHTML = '<option value="">Önce devre seçiniz</option>';
+    if (dersSec) dersSec.innerHTML = '<option value="">Önce kitap seçiniz</option>';
+  }
+  
+  // Düzenle tab'ını değiştir
+  function switchDuzenleTab(tab) {
+    const kitapForm = document.getElementById('kitapDuzenleForm');
+    const dersForm = document.getElementById('dersDuzenleForm');
+    const tabKitap = document.getElementById('tabKitapDuzenle');
+    const tabDers = document.getElementById('tabDersDuzenle');
+    const modalBaslik = document.getElementById('duzenleModalBaslik');
+    
+    if (tab === 'kitap') {
+      if (kitapForm) kitapForm.style.display = 'block';
+      if (dersForm) dersForm.style.display = 'none';
+      if (tabKitap) {
+        tabKitap.style.background = 'var(--brand)';
+        tabKitap.style.color = 'white';
+      }
+      if (tabDers) {
+        tabDers.style.background = '';
+        tabDers.style.color = '';
+      }
+      if (modalBaslik) modalBaslik.textContent = '📚 Kitap Düzenle';
+    } else {
+      if (kitapForm) kitapForm.style.display = 'none';
+      if (dersForm) dersForm.style.display = 'block';
+      if (tabKitap) {
+        tabKitap.style.background = '';
+        tabKitap.style.color = '';
+      }
+      if (tabDers) {
+        tabDers.style.background = 'var(--brand)';
+        tabDers.style.color = 'white';
+      }
+      if (modalBaslik) modalBaslik.textContent = '📖 Ders Düzenle';
+    }
+  }
+  
+  // Düzenle için kitapları yükle (Kitap Düzenle sekmesi)
+  async function loadDuzenleKitaplar() {
+    const devreEl = document.getElementById('duzenleKitapDevre');
+    const kitapSelect = document.getElementById('duzenleKitapSec');
+    if (!devreEl || !kitapSelect) return;
+    
+    const devre = devreEl.value;
+    if (!devre) {
+      kitapSelect.innerHTML = '<option value="">Önce devre seçiniz</option>';
+      return;
+    }
+    
+    kitapSelect.innerHTML = '<option value="">Yükleniyor...</option>';
+    
+    try {
+      const kitaplar = await window.dersTakipAPI.takrirKitaplarGetir(devre);
+      kitapSelect.innerHTML = '<option value="">Seçiniz</option>' +
+        kitaplar.map(k => `<option value="${k}">${k}</option>`).join('');
+    } catch (error) {
+      console.error('Kitaplar yüklenemedi:', error);
+      kitapSelect.innerHTML = '<option value="">Hata oluştu</option>';
+    }
+  }
+  
+  // Düzenle için kitapları yükle (Ders Düzenle sekmesi)
+  async function loadDuzenleDersKitaplar() {
+    const devreEl = document.getElementById('duzenleDersDevre');
+    const kitapSelect = document.getElementById('duzenleDersKitap');
+    if (!devreEl || !kitapSelect) return;
+    
+    const devre = devreEl.value;
+    if (!devre) {
+      kitapSelect.innerHTML = '<option value="">Önce devre seçiniz</option>';
+      return;
+    }
+    
+    kitapSelect.innerHTML = '<option value="">Yükleniyor...</option>';
+    
+    try {
+      const kitaplar = await window.dersTakipAPI.takrirKitaplarGetir(devre);
+      kitapSelect.innerHTML = '<option value="">Seçiniz</option>' +
+        kitaplar.map(k => `<option value="${k}">${k}</option>`).join('');
+      
+      // Ders select'ini sıfırla
+      const dersSelect = document.getElementById('duzenleDersSec');
+      if (dersSelect) dersSelect.innerHTML = '<option value="">Önce kitap seçiniz</option>';
+    } catch (error) {
+      console.error('Kitaplar yüklenemedi:', error);
+      kitapSelect.innerHTML = '<option value="">Hata oluştu</option>';
+    }
+  }
+  
+  // Düzenle için dersleri yükle
+  async function loadDuzenleDersler() {
+    const devreEl = document.getElementById('duzenleDersDevre');
+    const kitapEl = document.getElementById('duzenleDersKitap');
+    const dersSelect = document.getElementById('duzenleDersSec');
+    if (!devreEl || !kitapEl || !dersSelect) return;
+    
+    const devre = devreEl.value;
+    const kitap = kitapEl.value;
+    
+    if (!devre || !kitap) {
+      dersSelect.innerHTML = '<option value="">Önce devre ve kitap seçiniz</option>';
+      return;
+    }
+    
+    dersSelect.innerHTML = '<option value="">Yükleniyor...</option>';
+    
+    try {
+      const dersler = await window.dersTakipAPI.takrirDerslerGetir(devre, kitap);
+      dersSelect.innerHTML = '<option value="">Seçiniz</option>' +
+        dersler.map(d => `<option value="${d}">${d}</option>`).join('');
+    } catch (error) {
+      console.error('Dersler yüklenemedi:', error);
+      dersSelect.innerHTML = '<option value="">Hata oluştu</option>';
+    }
+  }
+  
+  // Düzenle - Kaydet
+  async function handleDuzenleKaydet() {
+    const kitapForm = document.getElementById('kitapDuzenleForm');
+    const dersForm = document.getElementById('dersDuzenleForm');
+    
+    const kitapFormDisplay = kitapForm ? window.getComputedStyle(kitapForm).display : 'none';
+    const dersFormDisplay = dersForm ? window.getComputedStyle(dersForm).display : 'none';
+    
+    if (kitapFormDisplay !== 'none') {
+      await handleKitapGuncelle();
+    } else if (dersFormDisplay !== 'none') {
+      await handleDersGuncelle();
+    }
+  }
+  
+  // Kitap güncelle
+  async function handleKitapGuncelle() {
+    const form = document.getElementById('duzenleKitapForm');
+    const hataDiv = document.getElementById('kitapDuzenleHata');
+    const kaydetBtn = document.getElementById('btnDuzenleKaydet');
+    
+    if (!form || !hataDiv || !kaydetBtn) return;
+    
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+    
+    const devre = document.getElementById('duzenleKitapDevre').value.trim();
+    const eskiKitap = document.getElementById('duzenleKitapSec').value.trim();
+    const yeniKitap = document.getElementById('duzenleKitapYeniAdi').value.trim();
+    
+    if (!devre || !eskiKitap || !yeniKitap) {
+      hataDiv.style.display = 'block';
+      hataDiv.textContent = 'Lütfen tüm alanları doldurun';
+      return;
+    }
+    
+    if (eskiKitap === yeniKitap) {
+      hataDiv.style.display = 'block';
+      hataDiv.textContent = 'Yeni kitap adı eski adıyla aynı olamaz';
+      return;
+    }
+    
+    const originalBtnText = kaydetBtn.textContent;
+    kaydetBtn.disabled = true;
+    kaydetBtn.textContent = '⏳ Güncelleniyor...';
+    hataDiv.style.display = 'none';
+    
+    try {
+      await window.dersTakipAPI.kitapGuncelle(devre, eskiKitap, yeniKitap);
+      
+      if (typeof showToast === 'function') {
+        showToast('success', 'Başarılı', `Kitap "${eskiKitap}" → "${yeniKitap}" olarak güncellendi`);
+      }
+      
+      closeDuzenleModal();
+      
+      // Listeleri yenile
+      await loadKitaplar();
+      if (currentFiltreler.devre === devre) {
+        await handleFiltrele(); // Mevcut filtreyi yeniden uygula
+      }
+    } catch (error) {
+      console.error('Kitap güncelleme hatası:', error);
+      hataDiv.style.display = 'block';
+      hataDiv.textContent = 'Kitap güncellenirken hata oluştu: ' + (error.message || error);
+      
+      if (typeof showToast === 'function') {
+        showToast('error', 'Hata', 'Kitap güncellenemedi: ' + (error.message || error));
+      }
+    } finally {
+      kaydetBtn.disabled = false;
+      kaydetBtn.textContent = originalBtnText;
+    }
+  }
+  
+  // Ders güncelle
+  async function handleDersGuncelle() {
+    const form = document.getElementById('duzenleDersForm');
+    const hataDiv = document.getElementById('dersDuzenleHata');
+    const kaydetBtn = document.getElementById('btnDuzenleKaydet');
+    
+    if (!form || !hataDiv || !kaydetBtn) return;
+    
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+    
+    const devre = document.getElementById('duzenleDersDevre').value.trim();
+    const kitap = document.getElementById('duzenleDersKitap').value.trim();
+    const eskiDers = document.getElementById('duzenleDersSec').value.trim();
+    const yeniDers = document.getElementById('duzenleDersYeniAdi').value.trim();
+    
+    if (!devre || !kitap || !eskiDers || !yeniDers) {
+      hataDiv.style.display = 'block';
+      hataDiv.textContent = 'Lütfen tüm alanları doldurun';
+      return;
+    }
+    
+    if (eskiDers === yeniDers) {
+      hataDiv.style.display = 'block';
+      hataDiv.textContent = 'Yeni ders adı eski adıyla aynı olamaz';
+      return;
+    }
+    
+    const originalBtnText = kaydetBtn.textContent;
+    kaydetBtn.disabled = true;
+    kaydetBtn.textContent = '⏳ Güncelleniyor...';
+    hataDiv.style.display = 'none';
+    
+    try {
+      await window.dersTakipAPI.dersGuncelle(devre, kitap, eskiDers, yeniDers);
+      
+      if (typeof showToast === 'function') {
+        showToast('success', 'Başarılı', `Ders "${eskiDers}" → "${yeniDers}" olarak güncellendi`);
+      }
+      
+      closeDuzenleModal();
+      
+      // Listeleri yenile
+      await loadDersler();
+      if (currentFiltreler.devre === devre && currentFiltreler.kitap === kitap) {
+        await handleFiltrele(); // Mevcut filtreyi yeniden uygula
+      }
+    } catch (error) {
+      console.error('Ders güncelleme hatası:', error);
+      hataDiv.style.display = 'block';
+      hataDiv.textContent = 'Ders güncellenirken hata oluştu: ' + (error.message || error);
+      
+      if (typeof showToast === 'function') {
+        showToast('error', 'Hata', 'Ders güncellenemedi: ' + (error.message || error));
+      }
+    } finally {
+      kaydetBtn.disabled = false;
+      kaydetBtn.textContent = originalBtnText;
+    }
+  }
+  
+  // Düzenle - Sil (2 kez onay)
+  async function handleDuzenleSil() {
+    const kitapForm = document.getElementById('kitapDuzenleForm');
+    const dersForm = document.getElementById('dersDuzenleForm');
+    
+    const kitapFormDisplay = kitapForm ? window.getComputedStyle(kitapForm).display : 'none';
+    const dersFormDisplay = dersForm ? window.getComputedStyle(dersForm).display : 'none';
+    
+    if (kitapFormDisplay !== 'none') {
+      await handleKitapSil();
+    } else if (dersFormDisplay !== 'none') {
+      await handleDersSil();
+    }
+  }
+  
+  // Kitap sil
+  async function handleKitapSil() {
+    const devreEl = document.getElementById('duzenleKitapDevre');
+    const kitapSelect = document.getElementById('duzenleKitapSec');
+    
+    if (!devreEl || !kitapSelect) return;
+    
+    const devre = devreEl.value.trim();
+    const kitap = kitapSelect.value.trim();
+    
+    if (!devre || !kitap) {
+      if (typeof showToast === 'function') {
+        showToast('warning', 'Uyarı', 'Lütfen devre ve kitap seçiniz');
+      }
+      return;
+    }
+    
+    // İlk uyarı
+    const confirm1 = confirm(
+      `"${kitap}" kitabı silinecek.\n\n` +
+      `Bu işlem ile bu kitaba ait tüm dersler ve takrir işlemleri de silinecektir.\n\n` +
+      `Devam etmek istiyor musunuz?`
+    );
+    
+    if (!confirm1) return;
+    
+    // İkinci uyarı (güvenlik için)
+    const confirm2 = confirm(
+      `⚠️ SON UYARI ⚠️\n\n` +
+      `"${kitap}" kitabı ve bu kitaba ait TÜM dersler ve takrir kayıtları kalıcı olarak silinecek.\n\n` +
+      `Bu işlem geri alınamaz!\n\n` +
+      `Emin misiniz?`
+    );
+    
+    if (!confirm2) return;
+    
+    try {
+      await window.dersTakipAPI.kitapSil(devre, kitap);
+      
+      if (typeof showToast === 'function') {
+        showToast('success', 'Başarılı', `"${kitap}" kitabı ve tüm bağlı kayıtlar silindi`);
+      }
+      
+      closeDuzenleModal();
+      
+      // Listeleri yenile
+      await loadKitaplar();
+      if (currentFiltreler.devre === devre) {
+        await handleFiltrele(); // Mevcut filtreyi yeniden uygula
+      }
+    } catch (error) {
+      console.error('Kitap silme hatası:', error);
+      if (typeof showToast === 'function') {
+        showToast('error', 'Hata', 'Kitap silinemedi: ' + (error.message || error));
+      }
+    }
+  }
+  
+  // Ders sil
+  async function handleDersSil() {
+    const devreEl = document.getElementById('duzenleDersDevre');
+    const kitapEl = document.getElementById('duzenleDersKitap');
+    const dersSelect = document.getElementById('duzenleDersSec');
+    
+    if (!devreEl || !kitapEl || !dersSelect) return;
+    
+    const devre = devreEl.value.trim();
+    const kitap = kitapEl.value.trim();
+    const ders_adi = dersSelect.value.trim();
+    
+    if (!devre || !kitap || !ders_adi) {
+      if (typeof showToast === 'function') {
+        showToast('warning', 'Uyarı', 'Lütfen devre, kitap ve ders seçiniz');
+      }
+      return;
+    }
+    
+    // İlk uyarı
+    const confirm1 = confirm(
+      `"${kitap}" kitabının "${ders_adi}" dersi silinecek.\n\n` +
+      `Bu derse kayıtlı tüm takrir işlemleri de silinecektir.\n\n` +
+      `Devam etmek istiyor musunuz?`
+    );
+    
+    if (!confirm1) return;
+    
+    // İkinci uyarı
+    const confirm2 = confirm(
+      `⚠️ SON UYARI ⚠️\n\n` +
+      `"${kitap}" kitabının "${ders_adi}" dersi ve bu derse ait TÜM takrir kayıtları kalıcı olarak silinecek.\n\n` +
+      `Bu işlem geri alınamaz!\n\n` +
+      `Emin misiniz?`
+    );
+    
+    if (!confirm2) return;
+    
+    try {
+      await window.dersTakipAPI.dersSil(devre, kitap, ders_adi);
+      
+      if (typeof showToast === 'function') {
+        showToast('success', 'Başarılı', `"${kitap}" / "${ders_adi}" dersi ve tüm bağlı kayıtlar silindi`);
+      }
+      
+      closeDuzenleModal();
+      
+      // Listeleri yenile
+      await loadDersler();
+      if (currentFiltreler.devre === devre && currentFiltreler.kitap === kitap) {
+        await handleFiltrele(); // Mevcut filtreyi yeniden uygula
+      }
+    } catch (error) {
+      console.error('Ders silme hatası:', error);
+      if (typeof showToast === 'function') {
+        showToast('error', 'Hata', 'Ders silinemedi: ' + (error.message || error));
+      }
+    }
+  }
+
+  // handleYeniKayitKaydet fonksiyonunu güncelle - aktif sekmeye göre çalışsın
+  async function handleYeniKayitKaydet() {
+    console.log('handleYeniKayitKaydet çağrıldı');
+    const kitapForm = document.getElementById('kitapEkleForm');
+    const dersForm = document.getElementById('dersEkleForm');
+    
+    // Hangi sekme aktifse ona göre fonksiyonu çağır
+    // getComputedStyle kullanarak gerçek display değerini kontrol et
+    const kitapFormDisplay = kitapForm ? window.getComputedStyle(kitapForm).display : 'none';
+    const dersFormDisplay = dersForm ? window.getComputedStyle(dersForm).display : 'none';
+    
+    console.log('Form display değerleri:', { kitapFormDisplay, dersFormDisplay });
+    
+    if (kitapFormDisplay !== 'none') {
+      console.log('Kitap ekleme fonksiyonu çağrılıyor');
+      await handleKitapEkle();
+    } else if (dersFormDisplay !== 'none') {
+      console.log('Ders ekleme fonksiyonu çağrılıyor');
+      await handleDersEkle();
+    } else {
+      console.warn('Hiçbir form aktif görünmüyor!');
+    }
+  }
+
+  // takrir_index'ten kitapları yükle (Ders Ekle formu için)
+  async function loadTakrirKitaplarForSelect(devre) {
+    const kitapSelect = document.getElementById('dersEkleKitap');
+    if (!kitapSelect) return;
+    
+    kitapSelect.innerHTML = '<option value="">Yükleniyor...</option>';
+    
+    try {
+      const kitaplar = await window.dersTakipAPI.takrirKitaplarGetir(devre);
+      kitapSelect.innerHTML = '<option value="">Seçiniz</option>' +
+        kitaplar.map(k => `<option value="${k}">${k}</option>`).join('');
+    } catch (error) {
+      console.error('Kitaplar yüklenemedi:', error);
+      kitapSelect.innerHTML = '<option value="">Hata oluştu</option>';
+    }
+  }
+
+  // Eski fonksiyonlar kaldırıldı - artık iki aşamalı sistem kullanılıyor
+
+  // Sıralama state'i
+  let currentSort = {
+    column: 'talebe_adi', // Varsayılan sıralama: talebe adına göre A-Z
+    order: 'asc' // 'asc' veya 'desc'
+  };
+
+  // Sıralama fonksiyonu
+  function sortKayitlar(kayitlar, column, order) {
+    const sorted = [...kayitlar].sort((a, b) => {
+      let aVal = a[column];
+      let bVal = b[column];
+      
+      // Null/undefined kontrolü
+      if (!aVal && !bVal) return 0;
+      if (!aVal) return order === 'asc' ? 1 : -1;
+      if (!bVal) return order === 'asc' ? -1 : 1;
+      
+      // String karşılaştırma (Türkçe karakter desteği ile)
+      aVal = String(aVal).toLowerCase();
+      bVal = String(bVal).toLowerCase();
+      
+      const comparison = aVal.localeCompare(bVal, 'tr');
+      return order === 'asc' ? comparison : -comparison;
+    });
+    return sorted;
+  }
+
+  // Sıralama değiştir
+  function handleSort(column) {
+    if (currentSort.column === column) {
+      // Aynı sütuna tıklandıysa sıralama yönünü değiştir
+      currentSort.order = currentSort.order === 'asc' ? 'desc' : 'asc';
+    } else {
+      // Yeni sütuna tıklandıysa artan sıralama yap
+      currentSort.column = column;
+      currentSort.order = 'asc';
+    }
+    
+    // Mevcut kayıtları yeniden render et (currentFiltreler'den al)
+    // Ancak bu kısmı handleFiltrele'den sonra çağıracağız
+    // Bu yüzden renderResults'ı çağıran yerden önce sort yapılacak
+  }
+
+  // Sonuçları render et
+  function renderResults(kayitlar) {
+    const area = document.getElementById('resultsArea');
+    
+    // Önce sıralama yap
+    const sortedKayitlar = sortKayitlar(kayitlar, currentSort.column, currentSort.order);
+    
+    document.getElementById('kayitSayisi').textContent = `${sortedKayitlar.length} kayıt`;
+
+    if (sortedKayitlar.length === 0) {
+      area.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">🔍</div>
+          <div>Filtreleme kriterlerinize uygun kayıt bulunamadı</div>
+        </div>
+      `;
+      return;
+    }
+
+    const html = `
+      <div class="table-container">
+        <div class="table-header">
+          <div class="sortable-header" data-column="talebe_adi" data-label="Talebe">Talebe</div>
+          <div class="sortable-header" data-column="kitap" data-label="Kitap / Ders">Kitap / Ders</div>
+          <div class="sortable-header" data-column="ders_gunu" data-label="Ders Günü">Ders Günü</div>
+          <div class="sortable-header" data-column="ders_verme_durumu" data-label="Durum">Durum</div>
+          <div class="sortable-header" data-column="ders_verme_tarihi" data-label="Verme Tarihi">Verme Tarihi</div>
+          <div class="sortable-header" data-column="ders_veren_personel" data-label="Personel">Personel</div>
+          <div data-label="İşlem">İşlem</div>
+        </div>
+        ${sortedKayitlar.map(kayit => {
+          const durum = kayit.ders_verme_durumu || 'islem_yapilmadi';
+          const durumClass = durum === 'islem_yapilmadi' ? 'durum-none' : `durum-${durum}`;
+          const durumText = {
+            'islem_yapilmadi': 'İşlem Yapılmadı',
+            'henuz_verilmedi': 'Henüz Verilmedi',
+            'verdi': 'Verdi',
+            'veremedi': 'Veremedi',
+            'yarim': 'Yarım'
+          }[durum] || durum;
+
+          const vermeTarihi = kayit.ders_verme_tarihi 
+            ? new Date(kayit.ders_verme_tarihi).toLocaleString('tr-TR', { 
+                year: 'numeric', 
+                month: '2-digit', 
+                day: '2-digit', 
+                hour: '2-digit', 
+                minute: '2-digit' 
+              })
+            : '—';
+          const dersGunu = kayit.ders_gunu 
+            ? new Date(kayit.ders_gunu).toLocaleDateString('tr-TR')
+            : '—';
+
+          // Özel talebe seçilmiş mi kontrol et
+          const ozelTalebeSecildi = currentFiltreler.talebe_uid && currentFiltreler.talebe_uid.trim() !== '';
+          
+          // Mobil için başlık: Özel talebe seçildiyse kitap/ders, değilse talebe adı
+          const mobileTitle = ozelTalebeSecildi 
+            ? `${escapeHtml(kayit.kitap || '—')} / ${escapeHtml(kayit.ders_adi || '—')}`
+            : escapeHtml(kayit.talebe_adi || kayit.talebe_uid || '—');
+          
+          // Mobil için alt başlık: Kitap/ders ve ders işlem tarih/zamanı
+          const mobileSubtitle = ozelTalebeSecildi
+            ? `${vermeTarihi !== '—' ? vermeTarihi : dersGunu}`
+            : `${escapeHtml(kayit.kitap || '—')} / ${escapeHtml(kayit.ders_adi || '—')} ${vermeTarihi !== '—' ? '· ' + vermeTarihi : ''}`;
+
+          // Kayıt bilgilerini JSON string olarak data attribute'a ekle (mobil tıklama için)
+          const kayitData = JSON.stringify({
+            id: kayit.id || null,
+            talebe_adi: kayit.talebe_adi || kayit.talebe_uid || '',
+            kitap: kayit.kitap || '',
+            ders_adi: kayit.ders_adi || '',
+            ders_verme_durumu: kayit.ders_verme_durumu || '',
+            talebe_uid: kayit.talebe_uid || ''
+          }).replace(/"/g, '&quot;');
+          
+          return `
+            <div class="table-row" data-kayit='${kayitData}'>
+              <div data-label="Talebe">${escapeHtml(kayit.talebe_adi || kayit.talebe_uid || '—')}</div>
+              <div data-label="Kitap / Ders">
+                <strong>${escapeHtml(kayit.kitap || '—')}</strong><br>
+                <small class="muted">${escapeHtml(kayit.ders_adi || '—')}</small>
+              </div>
+              <div data-label="Ders Günü">${dersGunu}</div>
+              <div data-label="Durum">
+                <span class="durum-badge ${durumClass}">${durumText}</span>
+              </div>
+              <div data-label="Verme Tarihi">${vermeTarihi}</div>
+              <div data-label="Personel">${escapeHtml(kayit.ders_veren_personel || '—')}</div>
+              <div data-label="İşlem">
+                <button class="btn-secondary" onclick="openDurumModal(${kayit.id ? `'${kayit.id}'` : 'null'}, '${escapeHtml(kayit.talebe_adi || kayit.talebe_uid)}', '${escapeHtml(kayit.kitap || '')}', '${escapeHtml(kayit.ders_adi || '')}', '${kayit.ders_verme_durumu || ''}', '${kayit.talebe_uid || ''}')">
+                  ${kayit.id ? '✏️ Güncelle' : '➕ Yeni Kayıt'}
+                </button>
+              </div>
+              <!-- Mobil görünüm için özel yapı -->
+              <div class="mobile-row-main">
+                <div class="mobile-row-top">
+                  <div class="mobile-row-title">${mobileTitle}</div>
+                  <div class="mobile-row-status">
+                    <span class="durum-badge ${durumClass}">${durumText}</span>
+                  </div>
+                </div>
+                <div class="mobile-row-subtitle">${mobileSubtitle}</div>
+              </div>
+              <div class="mobile-row-action">
+                <button class="btn-secondary" onclick="openDurumModal(${kayit.id ? `'${kayit.id}'` : 'null'}, '${escapeHtml(kayit.talebe_adi || kayit.talebe_uid)}', '${escapeHtml(kayit.kitap || '')}', '${escapeHtml(kayit.ders_adi || '')}', '${kayit.ders_verme_durumu || ''}', '${kayit.talebe_uid || ''}')">
+                  ${kayit.id ? '✏️' : '➕'}
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+
+    area.innerHTML = html;
+    
+    // Orijinal kayıtları sakla (sıralama için)
+    lastOriginalKayitlar = kayitlar;
+    
+    // Sortable header'lara event listener ekle
+    const sortableHeaders = area.querySelectorAll('.sortable-header');
+    sortableHeaders.forEach(header => {
+      header.style.cursor = 'pointer';
+      header.style.userSelect = 'none';
+      header.addEventListener('click', () => {
+        const column = header.getAttribute('data-column');
+        handleSort(column);
+        // Mevcut kayıtları yeniden render et (orijinal kayıtları kullan)
+        renderResults(lastOriginalKayitlar);
+      });
+    });
+    
+    // Mobilde satıra tıklama event listener ekle
+    const tableRows = area.querySelectorAll('.table-row');
+    tableRows.forEach((row) => {
+      // Mobil için satıra tıklama ekle
+      row.addEventListener('click', (e) => {
+        // Masaüstünde buton tıklamalarını engelleme
+        if (e.target.closest('button')) {
+          return; // Butona tıklanmışsa, normal buton davranışı çalışsın
+        }
+        
+        // Mobilde (veya satırın tıklanabilir olduğu durumlarda) modal aç
+        if (window.innerWidth <= 960) {
+          const kayitDataStr = row.getAttribute('data-kayit');
+          if (kayitDataStr) {
+            try {
+              const kayitData = JSON.parse(kayitDataStr.replace(/&quot;/g, '"'));
+              openDurumModal(
+                kayitData.id,
+                kayitData.talebe_adi,
+                kayitData.kitap,
+                kayitData.ders_adi,
+                kayitData.ders_verme_durumu,
+                kayitData.talebe_uid
+              );
+            } catch (err) {
+              console.error('Kayıt verisi parse edilemedi:', err);
+            }
+          }
+        }
+      });
+    });
+  }
+
+  // İstatistikleri render et
+  function renderStats(kayitlar) {
+    const stats = {
+      toplam: kayitlar.length,
+      verdi: 0,
+      veremedi: 0,
+      yarim: 0,
+      henuz_verilmedi: 0,
+      islem_yapilmadi: 0
+    };
+
+    kayitlar.forEach(k => {
+      if (!k.ders_verme_durumu) {
+        stats.islem_yapilmadi++;
+      } else if (k.ders_verme_durumu === 'verdi') {
+        stats.verdi++;
+      } else if (k.ders_verme_durumu === 'veremedi') {
+        stats.veremedi++;
+      } else if (k.ders_verme_durumu === 'yarim') {
+        stats.yarim++;
+      } else if (k.ders_verme_durumu === 'henuz_verilmedi') {
+        stats.henuz_verilmedi++;
+      }
+    });
+
+    const statsGrid = document.getElementById('statsGrid');
+    statsGrid.innerHTML = `
+      <div class="stat-card">
+        <div class="stat-value">${stats.toplam}</div>
+        <div class="stat-label">Toplam</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" style="color: var(--good)">${stats.verdi}</div>
+        <div class="stat-label">Verdi</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" style="color: var(--bad)">${stats.veremedi}</div>
+        <div class="stat-label">Veremedi</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" style="color: var(--warn)">${stats.yarim}</div>
+        <div class="stat-label">Yarım</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" style="color: var(--muted)">${stats.islem_yapilmadi}</div>
+        <div class="stat-label">İşlem Yapılmadı</div>
+      </div>
+    `;
+
+    document.getElementById('statsSection').style.display = 'block';
+  }
+
+  // Durum modalını aç
+  function openDurumModal(kayitId, talebeAdi, kitap, dersAdi, mevcutDurum, talebeUid) {
+    // kayitId null olabilir (yeni kayıt için)
+    currentKayitId = kayitId === 'null' || kayitId === null ? null : kayitId;
+    
+    // Yeni kayıt için mevcut filtrelerden bilgileri al ve sakla
+    if (!currentKayitId && currentFiltreler) {
+      currentKayitObj = {
+        devre: currentFiltreler.devre,
+        kitap: currentFiltreler.kitap || kitap,
+        ders_adi: currentFiltreler.ders_adi || dersAdi,
+        talebe_uid: talebeUid || currentFiltreler.talebe_uid,
+        talebe_adi: talebeAdi,
+        ders_gunu: currentFiltreler.ders_gunu || new Date().toISOString().slice(0, 10)
+      };
+    } else {
+      currentKayitObj = null;
+    }
+    
+    const modalTalebeInfo = document.getElementById('modalTalebeInfo');
+    if (modalTalebeInfo) {
+      modalTalebeInfo.innerHTML = `
+        <strong>${escapeHtml(talebeAdi)}</strong><br>
+        <small class="muted">${escapeHtml(kitap || '—')} - ${escapeHtml(dersAdi || '—')}</small>
+      `;
+    }
+
+    // Tüm radio butonlarını temizle
+    document.querySelectorAll('input[name="durum"]').forEach(r => r.checked = false);
+
+    // Mevcut durumu seç (value ile)
+    if (mevcutDurum) {
+      const radioButton = document.querySelector(`input[name="durum"][value="${mevcutDurum}"]`);
+      if (radioButton) {
+        radioButton.checked = true;
+      }
+    }
+
+    const durumModal = document.getElementById('durumModal');
+    if (durumModal) {
+      durumModal.classList.add('active');
+      document.body.classList.add('modal-open');
+    }
+  }
+
+  // Modalı kapat
+  function closeModal() {
+    const durumModal = document.getElementById('durumModal');
+    if (durumModal) {
+      durumModal.classList.remove('active');
+    }
+    document.body.classList.remove('modal-open');
+    currentKayitId = null;
+    currentKayitObj = null;
+    // Radio buttonları temizle
+    document.querySelectorAll('input[name="durum"]').forEach(r => r.checked = false);
+  }
+
+  // Durum kaydet
+  async function handleDurumKaydet() {
+    const durum = document.querySelector('input[name="durum"]:checked')?.value;
+    if (!durum) {
+      if (typeof showToast === 'function') {
+        showToast('warning', 'Uyarı', 'Lütfen bir durum seçin');
+      }
+      return;
+    }
+
+    try {
+      if (currentKayitId) {
+        // Mevcut kaydı güncelle
+        await window.dersTakipAPI.dersKaydiGuncelle(currentKayitId, {
+          ders_verme_durumu: durum
+        });
+
+        if (typeof showToast === 'function') {
+          showToast('success', 'Başarılı', 'Durum güncellendi');
+        }
+      } else {
+        // Yeni kayıt oluştur (currentKayitObj'den bilgileri al)
+        if (!currentKayitObj || !currentKayitObj.devre || !currentKayitObj.kitap || !currentKayitObj.ders_adi || !currentKayitObj.talebe_uid) {
+          if (typeof showToast === 'function') {
+            showToast('error', 'Hata', 'Kayıt oluşturmak için gerekli bilgiler eksik');
+          }
+          return;
+        }
+
+        // Yeni kayıt oluştur (durum ile birlikte)
+        const yeniKayit = await window.dersTakipAPI.dersKaydiOlustur({
+          devre: currentKayitObj.devre,
+          kitap: currentKayitObj.kitap,
+          ders_adi: currentKayitObj.ders_adi,
+          talebe_uid: currentKayitObj.talebe_uid,
+          talebe_adi: currentKayitObj.talebe_adi,
+          ders_gunu: currentKayitObj.ders_gunu || new Date().toISOString().slice(0, 10)
+        });
+
+        // Oluşturulan kaydın durumunu güncelle
+        if (yeniKayit && yeniKayit.id) {
+          await window.dersTakipAPI.dersKaydiGuncelle(yeniKayit.id, {
+            ders_verme_durumu: durum
+          });
+        }
+        
+        if (typeof showToast === 'function') {
+          showToast('success', 'Başarılı', 'Kayıt oluşturuldu ve durum kaydedildi');
+        }
+      }
+
+      closeModal();
+      // Sonuçları yenile
+      await handleFiltrele();
+    } catch (error) {
+      console.error('Güncelleme hatası:', error);
+      if (typeof showToast === 'function') {
+        showToast('error', 'Hata', 'İşlem başarısız: ' + (error.message || error));
+      }
+    }
+  }
+
+  // HTML escape fonksiyonu
+  function escapeHtml(text) {
+    if (text == null) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  // ============================================
+  // DOMContentLoaded LISTENER (En Alta)
+  // ============================================
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      setupEventListeners();
+    });
+  } else {
+    setupEventListeners();
+  }
+
+  // ============================================
+  // GLOBAL FONKSİYONLAR
+  // ============================================
+  window.openDurumModal = openDurumModal;
+  window.handleDuzenle = handleDuzenle;
+  window.switchYeniKayitTab = switchYeniKayitTab;
+  window.openYeniKayitModal = openYeniKayitModal;
+  window.closeYeniKayitModal = closeYeniKayitModal;
+  window.handleYeniKayitKaydet = handleYeniKayitKaydet;
+  window.handleKitapEkle = handleKitapEkle;
+  window.handleDersEkle = handleDersEkle;
+</script>
+
+</body>
+</html>

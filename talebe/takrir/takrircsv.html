@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Firebase JSON > Supabase CSV Dönüştürücü</title>
+    <style>
+        body { font-family: sans-serif; padding: 50px; background: #f4f4f9; text-align: center; }
+        .container { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto; }
+        h2 { color: #3ecf8e; } /* Supabase yeşili */
+        input { margin: 20px 0; padding: 10px; border: 1px solid #ddd; width: 100%; box-sizing: border-box; }
+        button { background: #3ecf8e; color: white; border: none; padding: 15px 30px; font-size: 16px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #34b379; }
+        #status { margin-top: 20px; font-weight: bold; color: #555; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>⚡ JSON'dan CSV'ye Dönüştürücü</h2>
+    <p>Firefoo'dan indirdiğin .json dosyasını seç, otomatik olarak CSV insin.</p>
+    
+    <input type="file" id="fileInput" accept=".json">
+    <button onclick="processFile()">Dönüştür ve İndir</button>
+    <div id="status"></div>
+</div>
+
+<script>
+    function processFile() {
+        const fileInput = document.getElementById('fileInput');
+        const statusDiv = document.getElementById('status');
+
+        if (!fileInput.files.length) {
+            statusDiv.textContent = "⚠️ Lütfen önce bir dosya seçin!";
+            statusDiv.style.color = "red";
+            return;
+        }
+
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+
+        statusDiv.textContent = "⏳ Dosya okunuyor ve işleniyor...";
+        statusDiv.style.color = "orange";
+
+        reader.onload = function(e) {
+            try {
+                const json = JSON.parse(e.target.result);
+                const csvContent = convertToCSV(json);
+                downloadCSV(csvContent, "tum_veriler_supabase.csv");
+                
+                statusDiv.textContent = "✅ Başarılı! Dosya indirildi. Supabase'e yükleyebilirsin.";
+                statusDiv.style.color = "green";
+            } catch (err) {
+                console.error(err);
+                statusDiv.textContent = "❌ Hata: Dosya formatı bozuk veya uygun değil. Konsolu kontrol et.";
+                statusDiv.style.color = "red";
+            }
+        };
+
+        reader.readAsText(file);
+    }
+
+    // --- SENİN VERİ YAPINA ÖZEL DÖNÜŞTÜRME MOTORU ---
+    function convertToCSV(json) {
+        const rows = [];
+        // Sütun Başlıkları
+        rows.push(["id", "devre", "ders_adi", "konu_adi", "tarih", "durum", "personel", "personel_uid", "islem_zamani", "cihaz"]);
+
+        // JSON yapısında "data" anahtarı ile başlıyor mu kontrol et
+        const rootData = json.data || json; 
+
+        // 1. DÖNGÜ: Tüm Devreleri Gezer (6.Devre, 7.Devre vs. ne varsa)
+        for (const [devreAdi, devreIcerik] of Object.entries(rootData)) {
+            if (!devreIcerik.__collections__) continue;
+
+            // 2. DÖNGÜ: Tüm Dersleri Gezer (Alaka, Kıraat vs.)
+            for (const [dersAdi, dersIcerik] of Object.entries(devreIcerik.__collections__)) {
+                
+                // 3. DÖNGÜ: Tüm Konuları Gezer (1-28 Sualleri vs.)
+                for (const [konuAdi, konuIcerik] of Object.entries(dersIcerik)) {
+                    if (konuAdi === "__collections__") continue; 
+                    
+                    // Konunun altında talebeler var mı?
+                    if (konuIcerik.__collections__ && konuIcerik.__collections__.talebeler) {
+                        
+                        // 4. DÖNGÜ: Binlerce talebe kaydını burada gezer
+                        const talebeler = konuIcerik.__collections__.talebeler;
+                        for (const [kayitId, veri] of Object.entries(talebeler)) {
+                            
+                            // Veriyi temizle (Virgül varsa CSV bozulmasın diye tırnak içine alacağız)
+                            const clean = (val) => val ? String(val).replace(/"/g, '""') : "";
+
+                            const row = [
+                                `"${clean(kayitId)}"`,
+                                `"${clean(devreAdi)}"`,
+                                `"${clean(dersAdi)}"`,
+                                `"${clean(konuAdi)}"`,
+                                `"${clean(veri.dersGunu)}"`,
+                                `"${clean(veri.durum)}"`,
+                                `"${clean(veri.personel)}"`,
+                                `"${clean(veri.personelUid)}"`,
+                                `"${clean(veri.islemISO ? veri.islemISO.__time__ : "")}"`,
+                                `"${clean(veri.device)}"`
+                            ];
+                            
+                            rows.push(row.join(","));
+                        }
+                    }
+                }
+            }
+        }
+        return rows.join("\n");
+    }
+
+    function downloadCSV(csvContent, fileName) {
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", fileName);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+</script>
+
+</body>
+</html>

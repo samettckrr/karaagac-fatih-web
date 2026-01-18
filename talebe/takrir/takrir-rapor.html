@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Genel Takrir Raporu | Karaağaç Fatih</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <link rel="icon" type="image/png" href="../../img/logo.png" />
+  <link rel="stylesheet" href="../../css/app-shell.css" />
+
+  <!-- Firebase (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="../../js/firebase/firebase-init.js"></script>
+  <script defer src="../../js/ortak.js"></script>
+
+  <style>
+    :root{
+      --bg:#f4fbf8; --bg2:#ffffff; --text:#09323a; --muted:#4f6a70; --stroke:#d7ece6;
+      --brand:#36c4b5; --brand2:#5ad1f2;
+      --card:#ffffff; --radius:14px; --shadow:0 10px 24px rgba(0,0,0,.08);
+      --appbar-h: calc(56px + env(safe-area-inset-top));
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%; overflow:hidden}
+    body{
+      margin:0; color:var(--text);
+      font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+      /* Arka plan app-shell.css'den gelecek */
+      -webkit-font-smoothing:antialiased;
+      padding-top:0 !important; /* app-shell.css'den gelen padding'i override et */
+    }
+    a{color:#0b5ea8; text-decoration:none}
+    a:hover{text-decoration:underline}
+
+    /* Appbar - app-shell.css ile uyumlu */
+    .appbar{
+      position:fixed !important; 
+      top:0 !important; 
+      left:0 !important;
+      right:0 !important;
+      z-index:60 !important;
+      height:var(--appbar-h);
+      padding-top:env(safe-area-inset-top);
+      display:grid !important;
+      grid-template-columns:auto 1fr auto !important;
+      align-items:center !important;
+      gap:16px !important;
+      padding-left:16px !important;
+      padding-right:16px !important;
+    }
+    /* Scroll alanı */
+    .app{
+      height: calc(100dvh - var(--appbar-h));
+      padding-top: var(--appbar-h);
+      padding-bottom: 20px;
+      overflow:auto; -webkit-overflow-scrolling:touch; overscroll-behavior-y:contain;
+    }
+    .container{ max-width:1180px; margin:12px auto 0 !important; padding:0 16px; }
+    .container > .card{ margin-bottom:14px; }
+
+    /* Kart, tipografi */
+    .card{ background:var(--card); border:1px solid var(--stroke); border-radius:var(--radius); padding:14px; box-shadow:var(--shadow) }
+    .titleLine{font-weight:900; font-size:16px; margin:0 0 8px}
+    .subLine{color:var(--muted); font-size:12.5px}
+    .muted{color:var(--muted)}
+    .tiny{font-size:11px; color:var(--muted)}
+
+    .row{display:flex; flex-direction:column; gap:10px}
+    .grp{ border:1px dashed var(--stroke); border-radius:12px; padding:10px; background:#fff; display:flex; flex-direction:column; gap:8px }
+    .grp .label{ font-size:12.5px; color:var(--muted); font-weight:800 }
+    .inline{ display:flex; gap:8px; flex-wrap:wrap; align-items:center }
+
+    select, input[type="text"],input[type="date"]{
+      padding:10px 12px; border:1px solid var(--stroke); border-radius:12px; background:#fff; color:var(--text); font-size:14px;
+      min-width:200px;
+    }
+    .btn{ border:1px solid var(--stroke); background:#fff; color:#09323a; padding:10px 14px; border-radius:12px; cursor:pointer; font-weight:800 }
+    .btn.primary{ background:linear-gradient(90deg, var(--brand2), var(--brand)); color:#fff; border-color:transparent }
+    .btn.small{ padding:8px 10px; font-size:12.5px }
+
+    .pill{ padding:6px 10px; border-radius:999px; border:1px solid var(--stroke); background:#f6fffd; font-size:12px; display:inline-flex; gap:6px; align-items:center }
+    .pillRow{ display:flex; flex-wrap:wrap; gap:6px }
+    /* Renkli pill'ler */
+    .pill.verdi    { background:#c8f7c5; color:#043a00; border-color:#a6e8a3; }
+    .pill.yarim    { background:#fff6c2; color:#5a4b00; border-color:#f4e37f; }
+    .pill.veremedi { background:#ffd7d7; color:#6b0000; border-color:#ffb5b5; }
+
+    /* Talebe kartları */
+    .grid{ display:grid; grid-template-columns:1fr; gap:12px }
+    @media (min-width:760px){ .grid{ grid-template-columns:1fr 1fr } }
+    @media (min-width:1040px){ .grid{ grid-template-columns:1fr 1fr 1fr } }
+    .tCard{ border:1px solid var(--stroke); border-radius:12px; padding:12px; background:#fff; cursor:pointer; transition:transform .06s ease }
+    .tCard:active{ transform:scale(.995) }
+    .tHeader{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px }
+    .tHeader .name{ font-weight:900; }
+    .tHeader .perc{ font-weight:900; font-variant-numeric: tabular-nums; }
+    .tMeta{ font-size:12.5px; color:#456; }
+
+    /* Detay tablo */
+    .table{ border:1px solid var(--stroke); border-radius:12px; overflow:hidden; width:max-content; min-width:720px }
+    .thead{ position:sticky; top:0; z-index:1; background:#f6fffd; border-bottom:1px dashed var(--stroke) }
+    .thead, .trow{ display:grid; grid-template-columns:1.2fr .9fr .7fr .8fr .9fr }
+    .thead div{ background:#f6fffd; font-weight:900; padding:8px 10px; border-bottom:1px dashed var(--stroke) }
+    .trow div{ padding:8px 10px; border-bottom:1px dashed var(--stroke) }
+    .trow:last-child div{ border-bottom:none }
+
+    /* Basit liste (kitap/ders & gün gör) */
+    .sList{ border:1px solid var(--stroke); border-radius:12px; overflow:hidden }
+    .sHead{ background:#f6fffd; padding:8px 10px; font-weight:900; display:flex; gap:10px; align-items:center; justify-content:space-between }
+    .sRow{ padding:10px 12px; display:flex; align-items:center; justify-content:space-between; border-top:1px dashed var(--stroke) }
+    .sRow:first-child{ border-top:none }
+
+    /* Modal */
+    .modalBack{ position:fixed; inset:0; background:rgba(0,0,0,.15); z-index:70; display:none }
+    .modal{
+      position:fixed; left:12px; right:12px; bottom:20px;
+      background:#fff; border:1px solid var(--stroke); border-radius:14px; box-shadow:var(--shadow);
+      z-index:71; display:none; max-height:86vh; overflow:hidden;
+    }
+    /* Kitap & Ders Gör modalı - küçük */
+    #calBox{
+      max-width:600px !important;
+      max-height:70vh !important;
+      left:50% !important;
+      top:50% !important;
+      transform:translate(-50%, -50%) !important;
+      bottom:auto !important;
+      display:none;
+    }
+    #calBox[style*="display: block"]{
+      display:flex !important;
+      flex-direction:column;
+    }
+    .modal .head{ padding:10px 12px; font-weight:900; border-bottom:1px dashed var(--stroke); position:sticky; top:0; background:#fff; z-index:2 }
+    .modal .body{ padding:0; overflow:auto; -webkit-overflow-scrolling:touch }
+    .modal .innerScroll{ padding:10px 12px; min-width:720px }
+    .modal .foot{ padding:10px 12px; border-top:1px dashed var(--stroke); display:flex; gap:8px; justify-content:flex-end; position:sticky; bottom:0; background:#fff; z-index:2 }
+    .ctrlsTop{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px }
+
+    .sheet-backdrop{position:fixed; inset:0; z-index:59; display:none; background:rgba(0,0,0,.12)}
+    .sheet{ position:fixed; left:10px; right:10px; bottom:20px; background:var(--card); border:1px solid var(--stroke); border-radius:16px; box-shadow:var(--shadow); z-index:61; display:none; max-height:40vh; overflow:auto; }
+    .sheet .grip{width:40px; height:4px; background:var(--stroke); border-radius:999px; margin:8px auto}
+    .sheet .title{padding:6px 12px; font-weight:800; font-size:13.5px}
+    .sheet .list{display:flex; flex-direction:column}
+    .sheet .item{padding:10px 12px; border-top:1px dashed var(--stroke); display:flex; align-items:center; justify-content:space-between; gap:10px}
+    .sheet .item .go{font-size:18px; opacity:.6}
+
+    /* PTR & Edge Hints */
+    .ptr-hint{ position:fixed; top:calc(env(safe-area-inset-top) + 8px); left:50%; transform:translate(-50%, -16px); display:flex; align-items:center; gap:10px; pointer-events:none; user-select:none; z-index:85; opacity:0; transition:opacity .15s ease, transform .15s ease }
+    .ptr-hint.show{ opacity:1; transform:translate(-50%, 0) }
+    .ptr-hint .ring{ --p:0; width:36px; height:36px; border-radius:50%; background: conic-gradient(var(--brand) calc(var(--p)*360deg), #e8f4f1 0); box-shadow:0 6px 14px rgba(0,0,0,.08); position:relative }
+    .ptr-hint .ring::before{ content:""; position:absolute; inset:4px; border-radius:50%; background:#fff; border:1px solid var(--stroke) }
+    .ptr-hint .ring::after{ content:""; position:absolute; top:50%; left:50%; width:10px; height:10px; transform:translate(-50%,-50%) rotate(135deg); border-top:2px solid var(--brand); border-right:2px solid var(--brand) }
+    .ptr-hint .lbl{ font-weight:800; background:#fff; border:1px solid var(--stroke); padding:6px 10px; border-radius:999px; font-size:12.5px; color:var(--muted); box-shadow:var(--shadow) }
+
+    .edge-hint{ position:fixed; top:50%; transform:translateY(-50%); display:flex; align-items:center; gap:10px; pointer-events:none; user-select:none; z-index:85; opacity:0; transition:opacity .15s ease, transform .15s ease; color:var(--text) }
+    .edge-hint.left{ left:max(6px, env(safe-area-inset-left)); transform:translate(-6px,-50%) }
+    .edge-hint.right{ right:max(6px, env(safe-area-inset-right)); transform:translate(6px,-50%); flex-direction:row-reverse }
+    .edge-hint.show{ opacity:1; transform:translate(0,-50%) }
+    .edge-hint .ring{ --p:0; width:36px; height:36px; border-radius:50%; background: conic-gradient(var(--brand) calc(var(--p)*360deg), #e8f4f1 0); box-shadow:0 6px 14px rgba(0,0,0,.08); position:relative }
+    .edge-hint .ring::before{ content:""; position:absolute; inset:4px; border-radius:50%; background:#fff; border:1px solid var(--stroke) }
+    .edge-hint.left .ring::after,
+    .edge-hint.right .ring::after{ content:""; position:absolute; top:50%; transform:translateY(-50%); width:10px; height:10px; border-top:2px solid var(--brand); border-right:2px solid var(--brand) }
+    .edge-hint.left .ring::after{ left:50%; transform:translate(-50%,-50%) rotate(225deg) }
+    .edge-hint.right .ring::after{ right:50%; transform:translate(50%,-50%) rotate(45deg) }
+
+    /* ====== Loader & Connection Hint ====== */
+    .loaderOverlay{
+      position:fixed; inset:0;
+      background:rgba(255,255,255,.8);
+      backdrop-filter:blur(4px);
+      display:flex; align-items:center; justify-content:center;
+      flex-direction:column;
+      z-index:999;
+      transition:opacity .3s ease;
+      opacity:0; pointer-events:none;
+    }
+    .loaderOverlay.show{opacity:1; pointer-events:auto;}
+    .loaderSpinner{
+      width:44px; height:44px;
+      border:4px solid #d0eae4;
+      border-top-color:var(--brand);
+      border-radius:50%;
+      animation:spin 1s linear infinite;
+      margin-bottom:12px;
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .loaderText{ font-weight:700; color:var(--text); font-size:14px; text-align:center; }
+
+    .netHint{
+      position:fixed; left:50%; bottom:20px;
+      transform:translateX(-50%);
+      background:#fff;
+      border:1px solid var(--stroke);
+      border-radius:999px;
+      box-shadow:0 6px 20px rgba(0,0,0,.1);
+      font-size:13px;
+      padding:8px 16px;
+      color:var(--muted);
+      z-index:1000;
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .3s ease, transform .3s ease;
+    }
+    .netHint.show{ opacity:1; transform:translate(-50%, -4px); }
+    .netHint.bad{  background:#ffdddd;  color:#8a0000; border-color:#f5aaaa; }
+    .netHint.warn{ background:#fff7e0; color:#8a6d00; border-color:#f1d48c; }
+    .netHint.ok{   background:#e6ffea; color:#0b7a35; border-color:#b9e5c4; }
+  </style>
+</head>
+<body>
+  <!-- Appbar -->
+  <div class="appbar">
+    <div class="brand" onclick="location.href='../../panel.html'">
+      <img src="../../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
+    </div>
+
+    <nav class="nav-center"><ul class="nav-list" id="navMain"></ul></nav>
+
+    <div class="nav-right">
+      <button class="btn hamb" id="hamburger" title="Menü">☰</button>
+
+      <!-- Bildirim -->
+      <div class="nav-item">
+        <button class="iconbtn" id="btnNotif" title="Bildirimler">🔔
+          <span class="badge" id="notifBadge" style="display:none">0</span>
+        </button>
+        <div class="dropdown drop-right" id="notifDropdown" aria-label="Bildirim listesi">
+          <div class="muted" style="padding:6px 8px">Son bildirimler</div>
+          <div id="notifList" class="list" style="max-height:300px;overflow:auto"></div>
+        </div>
+      </div>
+
+      <!-- Profil -->
+      <div class="nav-item">
+        <button class="iconbtn" id="btnProfile" title="Profil">
+          <span id="profName" class="muted">Profil</span>
+        </button>
+        <div class="dropdown drop-right" id="profDropdown" aria-label="Profil menüsü">
+          <a href="../../diger/kullanici-yonetimi.html">👤 Profil</a>
+          <a href="../../diger/sistem-ayarlari.html">⚙️ Sistem Ayarları</a>
+          <a href="#" id="btnLogout">🚪 Çıkış Yap</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobil çekmece -->
+  <aside class="drawer" id="drawer"></aside>
+
+  <!-- PTR -->
+  <div id="ptrHint" class="ptr-hint" aria-hidden="true">
+    <div class="ring"></div>
+    <div class="lbl" id="ptrLbl">Yenilemek için çek</div>
+  </div>
+
+  <!-- Scroll -->
+  <div class="app" id="scrollArea">
+    <div class="container">
+
+      <!-- Seçimler -->
+      <section class="card">
+        <div class="titleLine">Seçimler</div>
+        <div class="subLine">Yalnızca “tüm tarihler” bazında raporlanır.</div>
+
+        <div class="row">
+          <!-- Devre -->
+          <div class="grp">
+            <div class="label">Devre</div>
+            <div class="inline">
+              <select id="selDevre">
+                <option value="6.Devre">6.Devre</option>
+                <option value="7.Devre">7.Devre</option>
+                <option value="8.Devre">8.Devre</option>
+              </select>
+              <span class="pill">Talebe yolu: <b>talebeler/&lt;devre&gt;/öğrenciler</b></span>
+            </div>
+          </div>
+
+          <!-- Talebe Seçimi (Yeni) -->
+          <div class="grp">
+            <div class="label">Rapor Modu</div>
+            <div class="inline">
+              <label><input type="radio" name="reportMode" value="genel" checked> Genel Rapor (Tüm Talebeler)</label>
+              <label><input type="radio" name="reportMode" value="talebe"> Talebe Bazlı Analiz</label>
+            </div>
+          </div>
+
+          <!-- Talebe Seçimi -->
+          <div class="grp" id="talebeSelectGrp" style="display:none">
+            <div class="label">Talebe</div>
+            <div class="inline">
+              <select id="selTalebe">
+                <option value="">— Talebe Seçin —</option>
+              </select>
+              <span class="pill">Seçilen talebenin detaylı analizi gösterilir</span>
+            </div>
+          </div>
+
+          <!-- Kitap -->
+          <div class="grp">
+            <div class="label">Kitap</div>
+            <div class="inline">
+              <select id="selKitap">
+                <option value="__ALL__">— Tüm Kitaplar —</option>
+              </select>
+              <span id="dersCount" class="pill">Toplam Ders: <b>—</b></span>
+              <button id="btnTakvim" class="btn small" type="button">Kitap &amp; Ders Gör</button>
+            </div>
+          </div>
+
+          <!-- Git -->
+          <div class="grp">
+            <div class="label">Raporu Oluştur</div>
+            <div class="inline">
+              <button id="btnRun" class="btn primary" type="button">Raporu Getir</button>
+              <span id="runMsg" class="muted"></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Özet -->
+      <section class="card" id="summaryCard" style="display:none">
+        <div class="titleLine" id="sumTitle">—</div>
+        <div class="pillRow" id="sumPills"></div>
+      </section>
+
+      <!-- Talebe Kartları -->
+      <section class="card">
+        <div class="titleLine">Sonuçlar</div>
+        <div class="inline" style="margin-bottom:8px">
+          <label for="selSort">Sırala:</label>
+          <select id="selSort">
+            <option value="desc">Yüzde: Büyük → Küçük</option>
+            <option value="asc">Yüzde: Küçük → Büyük</option>
+            <option value="alpha">İsim: A → Z</option>
+          </select>
+        </div>
+        <div id="cards" class="grid"></div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- Panel Sheet -->
+  <div class="sheet-backdrop" id="sheetBackdrop"></div>
+  <div class="sheet" id="panelSheet">
+    <div class="grip"></div>
+    <div class="title" id="sheetTitle">—</div>
+    <div class="list" id="sheetList"></div>
+  </div>
+
+  <!-- Edge swipe hints -->
+  <div id="edgeHintLeft"  class="edge-hint left"  aria-hidden="true">
+    <div class="ring"></div><div class="lbl">Geri</div>
+  </div>
+  <div id="edgeHintRight" class="edge-hint right" aria-hidden="true">
+    <div class="ring"></div><div class="lbl">Ana Sayfa</div>
+  </div>
+
+  <!-- Detay Modal -->
+  <div id="mBack" class="modalBack"></div>
+  <div id="mBox"  class="modal">
+    <div class="head" id="mHead">Detaylar</div>
+    <div class="body">
+      <div class="ctrlsTop" style="padding:10px 12px">
+        <label><input type="radio" name="msort" value="date" checked> Tarih sıralı</label>
+        <label><input type="radio" name="msort" value="status"> Duruma göre</label>
+      </div>
+      <div class="innerScroll">
+        <div class="table">
+          <div class="thead">
+            <div>Tarih</div><div>Kitap/Ders</div><div>Durum</div><div>Personel</div><div>İşlem Tarihi</div>
+          </div>
+          <div id="mRows"></div>
+        </div>
+      </div>
+    </div>
+    <div class="foot">
+      <button id="mClose" class="btn" type="button">Kapat</button>
+    </div>
+  </div>
+
+  <!-- Kitap & Gün Gör Modal -->
+  <div id="calBack" class="modalBack"></div>
+  <div id="calBox"  class="modal">
+    <div class="head">Kitap &amp; Ders Gör</div>
+    <div class="body" style="padding:12px; display:flex; flex-direction:column; gap:10px; max-height:calc(70vh - 100px); overflow:auto">
+      <div class="inline">
+        <button id="calTabKitap" class="btn small primary" type="button">Kitabı Gör</button>
+        <button id="calTabGun"   class="btn small" type="button">Günü Gör</button>
+      </div>
+
+      <div id="calKitapPane">
+        <div class="tiny muted">Seçili kitap: <b id="calKitapName">—</b></div>
+        <div id="calKitapList" class="sList" style="margin-top:6px"></div>
+      </div>
+
+      <div id="calGunPane" style="display:none">
+        <div class="inline">
+          <input id="calGunDate" type="date" />
+          <button id="calGunYukle" class="btn small" type="button">Yükle</button>
+        </div>
+        <div id="calGunInfo" class="tiny muted">Bu görünüm, sistemde kayıtlı <b>tüm dersleri</b> listeler (işlem olup olmamasına bakmaz).</div>
+        <div id="calGunList" class="sList" style="margin-top:6px"></div>
+      </div>
+    </div>
+    <div class="foot">
+      <button id="calClose" class="btn" type="button">Kapat</button>
+    </div>
+  </div>
+
+  <!-- Loader -->
+  <div id="loader" class="loaderOverlay" aria-hidden="true">
+    <div class="loaderSpinner"></div>
+    <div class="loaderText" id="loaderText">Hazırlanıyor...</div>
+  </div>
+
+  <!-- Internet hint -->
+  <div id="netHint" class="netHint" aria-hidden="true">Bağlantı kontrol ediliyor...</div>
+
+  <!-- Toast Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+<script>
+/* ====== Bağlantılar & Kısayollar ====== */
+const db = window.db, auth = firebase.auth();
+const $  = (id)=>document.getElementById(id);
+
+const PATHS = {
+  users:'kullanicilar',
+  talebeler:'talebeler',
+  index:'takrir_index',
+  main:'takrir takibi',
+  byDate:'takrir takibi tarih',
+  manifest:'sayfa_manifesti'
+};
+const ALL_PANELS = ["Talebe","Personel","Nehari","Kermes","Muhasebe","Ayarlar","Admin"];
+const ICONS = {Talebe:"👨‍🎓",Personel:"👥",Nehari:"📚",Kermes:"🧺",Muhasebe:"📊",Ayarlar:"⚙️",Admin:"🛡️",Home:"🏠"};
+const PANEL_ALIAS = {"Sistem Ayarları":"Ayarlar","Sistem Ayarlari":"Ayarlar","Sistem Ayarları ":"Ayarlar"};
+function normPanelName(x){ const t=(x||'').trim(); return PANEL_ALIAS[t] || t; }
+
+/* ====== Tarih göstergesi ====== */
+// Sayfa başlığı kaldırıldı, tarih göstergesi artık kullanılmıyor
+
+/* TR tarih etiketi */
+function trDayLabel(iso10){
+  if(!iso10) return '—';
+  const d = new Date(iso10+'T00:00:00');
+  const gunler=['Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi','Pazar'];
+  const gun = gunler[(d.getDay()+6)%7];
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const yyyy = d.getFullYear();
+  return `${dd}.${mm}.${yyyy} ${gun}`;
+}
+
+/* ====== Sheet (Panel Sheet) ====== */
+let CURRENT_PERMS={}, MANIFEST={};
+async function loadManifest(){
+  const out={}, snap=await db.collection(PATHS.manifest).get();
+  for(const doc of snap.docs){
+    const panelName = normPanelName(doc.id);
+    const d=doc.data()||{}, pages=Array.isArray(d.pages)?d.pages:[];
+    out[panelName] = pages.map(p=>{
+      const key=(p.key||'').trim(), title=(p.title||'').trim(), path=(p.path||'').trim(), order=+p.order||0;
+      let label=title||((key.includes(':')?key.split(':')[1]:key)||'').trim();
+      return {label,path,order,key};
+    }).sort((a,b)=>a.order-b.order);
+  }
+  return out;
+}
+
+const sheet=$('panelSheet'), sheetList=$('sheetList'), sheetTitle=$('sheetTitle'), sheetBackdrop=$('sheetBackdrop');
+function openSheet(panel){
+  sheetTitle.textContent=panel; sheetList.innerHTML='';
+  const allowed=(CURRENT_PERMS[panel]||[]).map(s=>s.toLowerCase()), items=(MANIFEST[panel]||[]).filter(p=>{
+    const lbl=(p.label||'').toLowerCase(), key=(p.key||'').toLowerCase();
+    return allowed.length && (allowed.includes(lbl)||allowed.includes(`${panel.toLowerCase()}: ${lbl}`)||allowed.includes(key)||allowed.includes(panel.toLowerCase()));
+  });
+  if(!items.length){
+    const it=document.createElement('div'); it.className='item'; it.textContent='Bu panel için erişimin yok veya sayfa tanımlı değil';
+    sheetList.appendChild(it);
+  }else{
+    items.forEach(p=>{
+      const it=document.createElement('div'); it.className='item';
+      it.innerHTML=`<div>${p.label}</div><div class="go">›</div>`;
+      it.onclick=()=>p.path&&location.assign(p.path.startsWith('/')?p.path:('/'+p.path.replace(/^\.?\//,'')));
+      sheetList.appendChild(it);
+    });
+  }
+  sheet.style.display='block'; sheetBackdrop.style.display='block';
+}
+function closeSheet(){ sheet.style.display='none'; sheetBackdrop.style.display='none'; }
+sheetBackdrop?.addEventListener('click', closeSheet);
+
+/* ====== PTR & Edge swipe ====== */
+(function enablePTR(){
+  const area=$('scrollArea'), hint=$('ptrHint'), ring=hint.querySelector('.ring'), lbl=$('ptrLbl');
+  const SHOW_AT=14, COMPLETE=120, RESTRAINT_X=50;
+  let startY=0,startX=0,pulling=false,maxPull=0;
+  function setP(p){ ring.style.setProperty('--p', Math.max(0,Math.min(1,p))); }
+  function show(on){ hint.classList.toggle('show', !!on); }
+  function reset(){ pulling=false; maxPull=0; setP(0); show(false); lbl.textContent='Yenilemek için çek'; }
+  area.addEventListener('touchstart',e=>{ if(area.scrollTop>0) return reset(); const t=e.touches[0]; startY=t.clientY; startX=t.clientX; pulling=true; maxPull=0; setP(0); show(false); },{passive:true});
+  area.addEventListener('touchmove',e=>{ if(!pulling) return; if(area.scrollTop>0){ reset(); return; } const t=e.touches[0]; const dy=t.clientY-startY, dx=t.clientX-startX; if(Math.abs(dx)>RESTRAINT_X){ reset(); return; } if(dy>SHOW_AT){ show(true); } maxPull=Math.max(maxPull,dy); const p=(dy-SHOW_AT)/(COMPLETE-SHOW_AT); setP(p); lbl.textContent=(p>=1)?'Bırakınca yenilenir':'Yenilemek için çek'; },{passive:true});
+  area.addEventListener('touchend',()=>{ if(!pulling){ reset(); return; } const p=parseFloat(getComputedStyle(ring).getPropertyValue('--p'))||0; const ok=(p>=1)&&(maxPull>=120); reset(); if(ok){ try{ navigator.vibrate && navigator.vibrate(15);}catch(_){ } location.reload(); } },{passive:true});
+  area.addEventListener('touchcancel', reset, {passive:true});
+})();
+(function edge(){
+  const area=$('scrollArea'); const left=$('edgeHintLeft'), right=$('edgeHintRight');
+  const COMPLETE=120, SHOW_AT=16, RESTRAINT_Y=60, EDGE=24; let sx=0,sy=0,mode=null,active=false;
+  function setP(el,p){ el?.style.setProperty('--p', Math.max(0,Math.min(1,p))); } function show(el,on){ el?.classList.toggle('show',!!on); }
+  area.addEventListener('touchstart',e=>{ const t=e.touches[0]; sx=t.clientX; sy=t.clientY; mode=null; active=false; if(sx<=EDGE) mode='back'; else if(window.innerWidth-sx<=EDGE) mode='forward'; },{passive:true});
+  area.addEventListener('touchmove',e=>{ if(!mode) return; const t=e.touches[0], dx=t.clientX-sx, dy=t.clientY-sy; if(Math.abs(dy)>RESTRAINT_Y){ hide(); return; } active=true;
+    if(mode==='back'){ const pull=Math.max(0,dx); const p=Math.max(0,(pull-SHOW_AT)/(COMPLETE-SHOW_AT)); setP(left.querySelector('.ring'),p); show(left,pull>SHOW_AT); show(right,false); }
+    else { const pull=Math.max(0,-dx); const p=Math.max(0,(pull-SHOW_AT)/(COMPLETE-SHOW_AT)); setP(right.querySelector('.ring'),p); show(right,pull>SHOW_AT); show(left,false); } },{passive:true});
+  area.addEventListener('touchend',()=>{ if(!mode||!active){ hide(); return; } const ring=(mode==='back')?left.querySelector('.ring'):right.querySelector('.ring'); const p=parseFloat(getComputedStyle(ring).getPropertyValue('--p'))||0; hide(); if(p>=1){ try{navigator.vibrate&&navigator.vibrate(15);}catch(_){ } if(mode==='back') history.back(); else location.assign('/panel.html'); } },{passive:true});
+  area.addEventListener('touchcancel', hide, {passive:true});
+  function hide(){ show(left,false); show(right,false); setP(left?.querySelector('.ring'),0); setP(right?.querySelector('.ring'),0); mode=null; active=false; }
+})();
+
+/* ====== Durum sabitleri ====== */
+const STAT_VERDI='verdi', STAT_VEREMEDI='vermedi', STAT_YARIM='yarım kaldı';
+
+/* ====== State ====== */
+let __ME=''; let __UID=null;
+let state={
+  devre:'6.Devre',
+  kitap:'__ALL__',
+  talebeler:[],          // {uid, ad}
+  dersMeta: {},          // kitap -> [{ad,ilkKayitISO,ilkKayitBy}]
+  dersGrid: [],          // [{kitap,ders,gunISO}]
+  lastRows: null,        // son rapor kart verileri
+  lastContext: ''        // başlık bağlamı (kitap adı / tüm kitaplar)
+};
+
+/* ====== Index okuma ====== */
+async function listKitaplar(devre){
+  const doc=await db.collection(PATHS.index).doc(devre).get();
+  const arr=(doc.exists && Array.isArray(doc.data().kitaplar))? doc.data().kitaplar : [];
+  return arr.sort((a,b)=>a.localeCompare(b,'tr'));
+}
+async function listDersler(devre, kitap){
+  const ref=db.collection(PATHS.index).doc(devre).collection('dersler').doc(kitap);
+  const doc=await ref.get();
+  const arr=(doc.exists && Array.isArray(doc.data().dersler))? doc.data().dersler : [];
+  return arr.sort((a,b)=>a.localeCompare(b,'tr'));
+}
+async function listDerslerWithMeta(devre, kitap){
+  if(!kitap || kitap==='__ALL__') return [];
+  const qs = await db.collection(PATHS.main).doc(devre).collection(kitap).get();
+  const rows=[];
+  qs.forEach(doc=>{
+    if(doc.id==='__meta__') return;
+    const x=doc.data()||{};
+    rows.push({ ad:doc.id, ilkKayitISO:x.ilkKayitISO||x.created||null, ilkKayitBy:x.ilkKayitBy||'—' });
+  });
+  rows.sort((a,b)=>((b.ilkKayitISO||'').localeCompare(a.ilkKayitISO||'')));
+  return rows;
+}
+async function loadTalebeler(devre){
+  const out=[]; const qs=await db.collection(PATHS.talebeler).doc(devre).collection('öğrenciler').get();
+  qs.forEach(d=>{ const x=d.data()||{}; out.push({uid:d.id, ad:x.kullAd||'—'}); });
+  return out.sort((a,b)=>a.ad.localeCompare(b.ad,'tr'));
+}
+const pct = (x)=> (x*100).toFixed(1)+'%';
+function sortRows(rows, how){
+  if(how==='alpha') return rows.slice().sort((a,b)=>a.ad.localeCompare(b.ad,'tr'));
+  if(how==='asc')   return rows.slice().sort((a,b)=>a.p-b.p || a.ad.localeCompare(b.ad,'tr'));
+  return rows.slice().sort((a,b)=>b.p-a.p || a.ad.localeCompare(b.ad,'tr'));
+}
+
+/* ====== Müfredat kapsamı ====== */
+async function buildScopeAndMeta(){
+  const kitaplar = (state.kitap==='__ALL__') ? await listKitaplar(state.devre) : [state.kitap];
+  state.dersMeta = {};
+  state.dersGrid = [];
+  for(const k of kitaplar){
+    const meta = await listDerslerWithMeta(state.devre, k);
+    if(!meta.length){
+      const names = await listDersler(state.devre, k);
+      state.dersMeta[k] = names.map(n=>({ad:n, ilkKayitISO:null, ilkKayitBy:'—'}));
+    }else{
+      state.dersMeta[k] = meta;
+    }
+    (state.dersMeta[k]||[]).forEach(d=>{
+      state.dersGrid.push({kitap:k, ders:d.ad, gunISO:(d.ilkKayitISO||'').slice(0,10)||''});
+    });
+  }
+  state.dersGrid.sort((a,b)=> (a.kitap+a.ders).localeCompare(b.kitap+b.ders,'tr'));
+}
+function mufredatToplam(){
+  return Object.values(state.dersMeta).reduce((n,arr)=> n + (arr?.length||0), 0);
+}
+
+/* ====== RAPOR ====== */
+async function realRunReport(){
+  $('runMsg').textContent='Hazırlanıyor...';
+
+  // 1) Talebeler + kapsam
+  state.talebeler = await loadTalebeler(state.devre);
+  await buildScopeAndMeta();
+  const dersCount = mufredatToplam();
+
+  // 2) Her ders için talebe durumlarını oku ve topla
+  const agg = {};
+  state.talebeler.forEach(t=> agg[t.uid] = { ad:t.ad, verdi:0, yarim:0, veremedi:0, detay:[] });
+
+  for(const item of state.dersGrid){
+    const {kitap, ders, gunISO} = item;
+    const col = db.collection(PATHS.main).doc(state.devre).collection(kitap).doc(ders).collection('talebeler');
+    const qs  = await col.get();
+
+    const recMap = new Map(); // uid -> {durum, personel, islemISO}
+    qs.forEach(doc=>{
+      const x=doc.data()||{};
+      const iso = x.islemISO?.toDate ? x.islemISO.toDate().toISOString() : (x.islemISO||x.islemISOStr||'');
+      recMap.set(doc.id, {durum:(x.durum||'').toLowerCase(), personel:x.personel||'—', islemISO:iso, dersGunu:x.dersGunu||gunISO});
+    });
+
+    for(const t of state.talebeler){
+      const a = agg[t.uid];
+      const rec = recMap.get(t.uid);
+      let durumLbl = '—';
+      let personel = '—';
+      let islemISO = '';
+      if(rec){ durumLbl = rec.durum || '—'; personel = rec.personel || '—'; islemISO = rec.islemISO || ''; }
+
+      if(durumLbl===STAT_VERDI) a.verdi++;
+      else if(durumLbl===STAT_YARIM) a.yarim++;
+      else a.veremedi++; // işaret yok / veremedi
+
+      a.detay.push({
+        tarih: gunISO || '',
+        kitap, ders,
+        durum: rec ? (rec.durum || '—') : '(işaret yok)',
+        personel, islemISO
+      });
+    }
+  }
+
+  // 3) satırları hazırla
+  const rows = Object.entries(agg).map(([uid,a])=>{
+    const p = dersCount>0 ? (a.verdi / dersCount) : 0;
+    return { uid, ad:a.ad, mufredat:dersCount, verdi:a.verdi, yarim:a.yarim, veremedi:a.veremedi, p, detay:a.detay };
+  });
+
+  // 4) Özet + kartlar
+  const toplamTalebe = rows.length || 1;
+  const toplamVerilen = rows.reduce((n,r)=> n + (r.verdi||0), 0);
+  const yuzde = (dersCount*toplamTalebe)>0 ? ((toplamVerilen/(dersCount*toplamTalebe))*100).toFixed(1)+'%' : '0%';
+  const sumTitle = (state.kitap==='__ALL__') ? 'Tüm Kitaplar' : state.kitap;
+
+  renderSummary({title: `${sumTitle}`, pills:[
+    ['Toplam Ders Sayısı (Müfredat)', dersCount],
+    ['Genel Verme Yüzdesi', yuzde]
+  ]});
+
+  // son sonuçları sakla (sıralama/yeniden çizim için)
+  state.lastRows = rows;
+  state.lastContext = sumTitle;
+  renderCards(state.lastRows, state.lastContext);
+
+  $('runMsg').textContent='';
+}
+
+/* ===== Loader Kontrol ===== */
+const loader = document.getElementById('loader');
+const loaderText = document.getElementById('loaderText');
+function showLoader(msg='Hazırlanıyor...'){ loaderText.textContent = msg; loader.classList.add('show'); }
+function hideLoader(){ loader.classList.remove('show'); }
+
+/* ====== TALEBE BAZLI ANALİZ ====== */
+async function runTalebeAnalysis(){
+  $('runMsg').textContent='Hazırlanıyor...';
+  const talebeUid = $('selTalebe').value;
+  if(!talebeUid){
+    alert('Lütfen bir talebe seçin.');
+    $('runMsg').textContent='';
+    return;
+  }
+
+  const talebe = state.talebeler.find(t=>t.uid===talebeUid);
+  if(!talebe){
+    alert('Talebe bulunamadı.');
+    $('runMsg').textContent='';
+    return;
+  }
+
+  // Önce kapsamı oluştur
+  await buildScopeAndMeta();
+  const dersCount = mufredatToplam();
+  
+  if(dersCount === 0){
+    alert('Seçili kitap için ders bulunamadı.');
+    $('runMsg').textContent='';
+    return;
+  }
+
+  // Talebenin tüm derslerini analiz et
+  const analiz = {
+    ad: talebe.ad,
+    toplamDers: dersCount,
+    verdi: 0,
+    yarim: 0,
+    veremedi: 0,
+    hocaBazli: {}, // {hocaAd: {verdi, yarim, veremedi, kitaplar: {kitapAd: {verdi, yarim, veremedi}}}}
+    kitapBazli: {} // {kitapAd: {verdi, yarim, veremedi, hocalar: {hocaAd: sayi}}}
+  };
+
+  if(!state.dersGrid || state.dersGrid.length === 0){
+    alert('Ders listesi bulunamadı. Lütfen kitap seçimini kontrol edin.');
+    $('runMsg').textContent='';
+    return;
+  }
+
+  for(const item of state.dersGrid){
+    const {kitap, ders, gunISO} = item;
+    if(!kitap || !ders) continue; // Geçersiz kayıtları atla
+    const col = db.collection(PATHS.main).doc(state.devre).collection(kitap).doc(ders).collection('talebeler');
+    const doc = await col.doc(talebeUid).get();
+    
+    const x = doc.exists ? doc.data() : {};
+    const durum = (x.durum||'').toLowerCase();
+    const personel = x.personel || '—';
+    
+    if(durum===STAT_VERDI) analiz.verdi++;
+    else if(durum===STAT_YARIM) analiz.yarim++;
+    else analiz.veremedi++;
+
+    // Hoca bazlı
+    if(!analiz.hocaBazli[personel]) analiz.hocaBazli[personel] = {verdi:0, yarim:0, veremedi:0, kitaplar:{}};
+    if(durum===STAT_VERDI) analiz.hocaBazli[personel].verdi++;
+    else if(durum===STAT_YARIM) analiz.hocaBazli[personel].yarim++;
+    else analiz.hocaBazli[personel].veremedi++;
+
+    // Kitap bazlı
+    if(!analiz.kitapBazli[kitap]) analiz.kitapBazli[kitap] = {verdi:0, yarim:0, veremedi:0, hocalar:{}};
+    if(durum===STAT_VERDI) analiz.kitapBazli[kitap].verdi++;
+    else if(durum===STAT_YARIM) analiz.kitapBazli[kitap].yarim++;
+    else analiz.kitapBazli[kitap].veremedi++;
+
+    // Hoca-Kitap kombinasyonu
+    if(!analiz.hocaBazli[personel].kitaplar[kitap]) analiz.hocaBazli[personel].kitaplar[kitap] = {verdi:0, yarim:0, veremedi:0};
+    if(durum===STAT_VERDI) analiz.hocaBazli[personel].kitaplar[kitap].verdi++;
+    else if(durum===STAT_YARIM) analiz.hocaBazli[personel].kitaplar[kitap].yarim++;
+    else analiz.hocaBazli[personel].kitaplar[kitap].veremedi++;
+
+    // Kitap-Hoca kombinasyonu
+    if(!analiz.kitapBazli[kitap].hocalar[personel]) analiz.kitapBazli[kitap].hocalar[personel] = 0;
+    if(durum===STAT_VERDI) analiz.kitapBazli[kitap].hocalar[personel]++;
+  }
+
+  // Özet
+  const yuzde = dersCount>0 ? ((analiz.verdi/dersCount)*100).toFixed(1)+'%' : '0%';
+  renderTalebeAnalysis(analiz, yuzde);
+  $('runMsg').textContent='';
+}
+
+function renderTalebeAnalysis(analiz, yuzde){
+  const cont = $('cards');
+  cont.innerHTML = '';
+
+  // Özet kartı
+  const sumCard = document.createElement('div');
+  sumCard.className = 'card';
+  sumCard.innerHTML = `
+    <div class="titleLine">${analiz.ad} - Genel Özet</div>
+    <div class="pillRow" style="margin-bottom:16px">
+      <span class="pill">Toplam Ders: <b>${analiz.toplamDers}</b></span>
+      <span class="pill verdi">Verilen: <b>${analiz.verdi}</b></span>
+      <span class="pill yarim">Yarım: <b>${analiz.yarim}</b></span>
+      <span class="pill veremedi">Verilmeyen: <b>${analiz.veremedi}</b></span>
+      <span class="pill">Verme Yüzdesi: <b>${yuzde}</b></span>
+    </div>
+  `;
+  cont.appendChild(sumCard);
+
+  // Hoca bazlı analiz
+  const hocaCard = document.createElement('div');
+  hocaCard.className = 'card';
+  hocaCard.innerHTML = '<div class="titleLine">Hoca Bazlı Analiz</div>';
+  const hocaBody = document.createElement('div');
+  hocaBody.style.cssText = 'display:flex; flex-direction:column; gap:12px; margin-top:12px';
+
+  Object.entries(analiz.hocaBazli).sort((a,b)=>b[1].verdi - a[1].verdi).forEach(([hoca, stats])=>{
+    const toplam = stats.verdi + stats.yarim + stats.veremedi;
+    const hocaYuzde = toplam>0 ? ((stats.verdi/toplam)*100).toFixed(1)+'%' : '0%';
+    const hocaDiv = document.createElement('div');
+    hocaDiv.style.cssText = 'border:1px solid var(--stroke); border-radius:12px; padding:12px; background:#fff';
+    hocaDiv.innerHTML = `
+      <div style="font-weight:900; margin-bottom:8px">${hoca === '—' ? '(İşaret Yok)' : hoca}</div>
+      <div class="pillRow" style="margin-bottom:10px">
+        <span class="pill">Toplam: <b>${toplam}</b></span>
+        <span class="pill verdi">Verilen: <b>${stats.verdi}</b></span>
+        <span class="pill yarim">Yarım: <b>${stats.yarim}</b></span>
+        <span class="pill veremedi">Verilmeyen: <b>${stats.veremedi}</b></span>
+        <span class="pill">Yüzde: <b>${hocaYuzde}</b></span>
+      </div>
+      <div style="font-size:12px; color:var(--muted); margin-top:8px"><strong>Kitap Bazlı Detay:</strong></div>
+      <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:6px">
+    `;
+    
+    Object.entries(stats.kitaplar).forEach(([kitap, kStats])=>{
+      const kToplam = kStats.verdi + kStats.yarim + kStats.veremedi;
+      const kYuzde = kToplam>0 ? ((kStats.verdi/kToplam)*100).toFixed(0)+'%' : '0%';
+      hocaDiv.innerHTML += `
+        <span class="pill" style="font-size:11px">
+          ${kitap}: <b>${kStats.verdi}/${kToplam}</b> (${kYuzde})
+        </span>
+      `;
+    });
+    hocaDiv.innerHTML += '</div></div>';
+    hocaBody.appendChild(hocaDiv);
+  });
+  hocaCard.appendChild(hocaBody);
+  cont.appendChild(hocaCard);
+
+  // Kitap bazlı analiz
+  const kitapCard = document.createElement('div');
+  kitapCard.className = 'card';
+  kitapCard.innerHTML = '<div class="titleLine">Kitap Bazlı Analiz</div>';
+  const kitapBody = document.createElement('div');
+  kitapBody.style.cssText = 'display:flex; flex-direction:column; gap:12px; margin-top:12px';
+
+  Object.entries(analiz.kitapBazli).sort((a,b)=>(b[1].verdi+b[1].yarim+b[1].veremedi) - (a[1].verdi+a[1].yarim+a[1].veremedi)).forEach(([kitap, stats])=>{
+    const toplam = stats.verdi + stats.yarim + stats.veremedi;
+    const kitapYuzde = toplam>0 ? ((stats.verdi/toplam)*100).toFixed(1)+'%' : '0%';
+    const kitapDiv = document.createElement('div');
+    kitapDiv.style.cssText = 'border:1px solid var(--stroke); border-radius:12px; padding:12px; background:#fff';
+    kitapDiv.innerHTML = `
+      <div style="font-weight:900; margin-bottom:8px">${kitap}</div>
+      <div class="pillRow" style="margin-bottom:10px">
+        <span class="pill">Toplam: <b>${toplam}</b></span>
+        <span class="pill verdi">Verilen: <b>${stats.verdi}</b></span>
+        <span class="pill yarim">Yarım: <b>${stats.yarim}</b></span>
+        <span class="pill veremedi">Verilmeyen: <b>${stats.veremedi}</b></span>
+        <span class="pill">Yüzde: <b>${kitapYuzde}</b></span>
+      </div>
+      <div style="font-size:12px; color:var(--muted); margin-top:8px"><strong>Hoca Bazlı Dağılım:</strong></div>
+      <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:6px">
+    `;
+    
+    Object.entries(stats.hocalar).sort((a,b)=>b[1]-a[1]).forEach(([hoca, sayi])=>{
+      kitapDiv.innerHTML += `
+        <span class="pill" style="font-size:11px">
+          ${hoca === '—' ? '(İşaret Yok)' : hoca}: <b>${sayi} ders</b>
+        </span>
+      `;
+    });
+    kitapDiv.innerHTML += '</div></div>';
+    kitapBody.appendChild(kitapDiv);
+  });
+  kitapCard.appendChild(kitapBody);
+  cont.appendChild(kitapCard);
+
+  // Özet kartını gizle (talebe analizinde gerek yok)
+  $('summaryCard').style.display='none';
+}
+
+/* runReport sarmalayıcı */
+async function runReport(){
+  const reportMode = document.querySelector('input[name="reportMode"]:checked')?.value || 'genel';
+  
+  if(reportMode === 'talebe'){
+    showLoader('Talebe analizi hazırlanıyor...');
+    try{
+      $('runMsg').textContent='';
+      await new Promise(r=>setTimeout(r,200));
+      await runTalebeAnalysis();
+    }catch(err){
+      console.error('Talebe analiz hatası', err);
+      alert('Bir hata oluştu, tekrar deneyin.');
+    }finally{
+      hideLoader();
+    }
+  }else{
+    showLoader('Rapor hazırlanıyor...');
+    try{
+      $('runMsg').textContent='';
+      await new Promise(r=>setTimeout(r,200));
+      await realRunReport();
+    }catch(err){
+      console.error('Rapor hatası', err);
+      alert('Bir hata oluştu, tekrar deneyin.');
+    }finally{
+      hideLoader();
+    }
+  }
+}
+
+/* ====== İnternet Bağlantı Durumu ====== */
+const netHint = document.getElementById('netHint');
+let netTimer=null;
+function showNetHint(text,cls=''){
+  netHint.textContent=text;
+  netHint.className='netHint '+cls;
+  netHint.classList.add('show');
+  clearTimeout(netTimer);
+  netTimer=setTimeout(()=>netHint.classList.remove('show'),4000);
+}
+function checkConnection(){
+  if(navigator.onLine) showNetHint('Bağlantı sağlandı ✓','ok');
+  else showNetHint('İnternet bağlantısı yok, tekrar deneniyor...','bad');
+}
+window.addEventListener('online', ()=> showNetHint('Bağlantı geri geldi ✓','ok'));
+window.addEventListener('offline', ()=> showNetHint('İnternet bağlantısı kesildi','bad'));
+async function monitorNetwork(){
+  while(true){
+    try{
+      const ctrl=new AbortController();
+      const t=setTimeout(()=>ctrl.abort(),4000);
+      await fetch('https://www.gstatic.com/generate_204',{signal:ctrl.signal});
+      clearTimeout(t);
+    }catch(e){
+      if(!navigator.onLine) showNetHint('Bağlantı yok, bağlanmaya çalışılıyor...','bad');
+      else showNetHint('Bağlantı yavaş, lütfen bekleyin...','warn');
+    }
+    await new Promise(r=>setTimeout(r,15000));
+  }
+}
+checkConnection();
+// CORS hatası nedeniyle monitorNetwork kaldırıldı - sadece online/offline event'leri yeterli
+
+/* ====== Özet & Kartlar ====== */
+function renderSummary({title, pills}){
+  $('summaryCard').style.display='block';
+  $('sumTitle').textContent = title;
+  const wrap=$('sumPills'); wrap.innerHTML='';
+  pills.forEach(([k,v])=>{
+    const span=document.createElement('span'); span.className='pill'; span.innerHTML=`${k}: <b>${v}</b>`;
+    wrap.appendChild(span);
+  });
+}
+function renderCards(aggRows, contextTitle){
+  const cont=$('cards'); cont.innerHTML='';
+  const how=$('selSort').value;
+  const rows = sortRows(aggRows, how);
+
+  rows.forEach(r=>{
+    const card=document.createElement('div'); card.className='tCard';
+    const header = `<div class="tHeader"><div class="name">${r.ad}</div><div class="perc">${pct(r.p||0)}</div></div>`;
+    const pills=`
+      <span class="pill">Ders: <b>${r.mufredat ?? 0}</b></span>
+      <span class="pill verdi">Verilen: <b>${r.verdi}</b></span>
+      <span class="pill yarim">Yarım: <b>${r.yarim}</b></span>
+      <span class="pill veremedi">Verilmeyen: <b>${r.veremedi}</b></span>
+    `;
+    card.innerHTML = `${header}<div class="tMeta pillRow">${pills}</div>`;
+    card.addEventListener('click', ()=> openDetailModal(`${r.ad} • ${contextTitle}`, r.detay||[]));
+    cont.appendChild(card);
+  });
+}
+
+/* ====== Detay Modal ====== */
+let __DETAIL_CTX = { list:[], filter:'date' };
+function openDetailModal(title, list){
+  __DETAIL_CTX.list = list.slice();
+  document.body.style.overflow='hidden';
+  $('mHead').textContent = title;
+  $('mBack').style.display='block'; $('mBox').style.display='block';
+  renderModalRows();
+}
+function closeDetailModal(){ $('mBack').style.display='none'; $('mBox').style.display='none'; document.body.style.overflow=''; }
+$('mBack').addEventListener('click', closeDetailModal);
+$('mClose').addEventListener('click', closeDetailModal);
+document.querySelectorAll('input[name="msort"]').forEach(r=>{
+  r.addEventListener('change', ()=>{ __DETAIL_CTX.filter = r.value; renderModalRows(); });
+});
+function tLabel(x){ return x ? trDayLabel(x) : '—'; }
+function iLabel(x){ try{ return x ? new Date(x).toLocaleString('tr-TR') : '—'; }catch(_){ return String(x||'—'); } }
+function renderModalRows(){
+  const body=$('mRows'); body.innerHTML='';
+  let arr=__DETAIL_CTX.list.slice();
+
+  if(__DETAIL_CTX.filter==='status'){
+    const o = { [STAT_VEREMEDI]:0, 'vermedi':0, [STAT_YARIM]:1, 'yarım':1, [STAT_VERDI]:2, 'verdi':2 };
+    arr.sort((a,b)=>{
+      const da = (String(a.durum||'').toLowerCase());
+      const db = (String(b.durum||'').toLowerCase());
+      return (o[da]??0) - (o[db]??0) || String(a.kitap+a.ders).localeCompare(b.kitap+b.ders,'tr');
+    });
+  }else{
+    arr.sort((a,b)=> String(a.tarih||'').localeCompare(String(b.tarih||'')) || String(a.kitap+a.ders).localeCompare(b.kitap+b.ders,'tr'));
+  }
+
+  arr.forEach(x=>{
+    const row=document.createElement('div'); row.className='trow';
+    const d=(String(x.durum||'').toLowerCase());
+    if(!d || d==='—' || d.includes('işaret'))      row.style.background='#ffd7d7';
+    else if(d.includes('vermedi'))                  row.style.background='#ffd7d7';
+    else if(d.includes('yarım'))                    row.style.background='#fff6c2';
+    else if(d.includes('verdi'))                    row.style.background='#c8f7c5';
+
+    const dersLbl = `${x.kitap || '—'} / ${x.ders || '—'}`;
+    row.innerHTML = `
+      <div>${tLabel(x.tarih)}</div>
+      <div>${dersLbl}</div>
+      <div>${x.durum || '(işaret yok)'}</div>
+      <div>${x.personel||'—'}</div>
+      <div>${iLabel(x.islemISO)}</div>
+    `;
+    body.appendChild(row);
+  });
+}
+
+/* ====== Kitap & Gün Gör (Modal) ====== */
+function openCalModal(){
+  $('calBack').style.display='block';
+  const calBox = $('calBox');
+  calBox.style.display='flex';
+  calBox.style.flexDirection='column';
+  $('calKitapName').textContent = (state.kitap==='__ALL__') ? 'Tüm Kitaplar' : (state.kitap||'—');
+  switchCalTab('kitap');
+  loadCalForKitap().catch(console.error);
+
+  const iso10 = new Date().toISOString().slice(0,10);
+  $('calGunDate').value = iso10;
+  $('calGunList').innerHTML='';
+}
+function closeCalModal(){ 
+  $('calBack').style.display='none'; 
+  $('calBox').style.display='none'; 
+}
+$('btnTakvim').addEventListener('click', openCalModal);
+$('calClose').addEventListener('click', closeCalModal);
+$('calBack').addEventListener('click', closeCalModal);
+function switchCalTab(which){
+  const A=$('calTabKitap'), B=$('calTabGun');
+  const P1=$('calKitapPane'), P2=$('calGunPane');
+  if(which==='kitap'){ A.classList.add('primary'); B.classList.remove('primary'); P1.style.display='block'; P2.style.display='none'; }
+  else { B.classList.add('primary'); A.classList.remove('primary'); P2.style.display='block'; P1.style.display='none'; }
+}
+$('calTabKitap').addEventListener('click', ()=>switchCalTab('kitap'));
+$('calTabGun').addEventListener('click', ()=>switchCalTab('gun'));
+$('calGunYukle').addEventListener('click', loadCalForDay);
+
+async function loadCalForKitap(){
+  const box=$('calKitapList'); box.innerHTML='';
+  if(state.kitap==='__ALL__'){
+    box.innerHTML = `<div class="sHead"><div>Dersler</div></div><div class="sRow"><div>Tüm Kitaplar seçiliyken “Kitabı Gör” için önce tek bir kitap seçin.</div></div>`;
+    return;
+  }
+  const dersler = await listDerslerWithMeta(state.devre, state.kitap);
+  const head = document.createElement('div'); head.className='sHead';
+  head.innerHTML = `<div>Dersler</div><div class="tiny">Toplam: ${dersler.length}</div>`;
+  box.appendChild(head);
+  const body = document.createElement('div');
+  dersler.forEach(d=>{
+    const row=document.createElement('div'); row.className='sRow';
+    row.innerHTML = `
+      <div><div>${d.ad}</div><div class="tiny">${(d.ilkKayitISO||'').slice(0,10)}</div></div>
+      <div class="tiny">${d.ilkKayitBy || '—'}</div>`;
+    body.appendChild(row);
+  });
+  box.appendChild(body);
+}
+
+/* “Günü Gör”: işlem var/yok bakmadan kayıtlı dersleri listeler */
+async function loadCalForDay(){
+  const iso10 = $('calGunDate').value;
+  const box = $('calGunList'); box.innerHTML='';
+  const head = document.createElement('div'); head.className='sHead';
+  head.innerHTML = `<div>${iso10 || '—'} gününde sistemde kayıtlı dersler</div>`;
+  box.appendChild(head);
+
+  const kitaplar = (state.kitap==='__ALL__') ? await listKitaplar(state.devre) : [state.kitap];
+
+  const items = [];
+  for(const k of kitaplar){
+    const dersler = await listDersler(state.devre, k);
+    dersler.forEach(dName=> items.push({kitap:k, ders:dName}));
+  }
+  if(items.length===0){
+    box.appendChild(Object.assign(document.createElement('div'),{className:'sRow',innerHTML:'<div>Kayıtlı ders bulunamadı.</div>'}));
+    return;
+  }
+  items.sort((a,b)=> (a.kitap+a.ders).localeCompare(b.kitap+b.ders,'tr'));
+
+  const body = document.createElement('div');
+  items.forEach(x=>{
+    const row=document.createElement('div'); row.className='sRow';
+    row.innerHTML = `<div><div>${x.kitap}</div><div class="tiny">${x.ders}</div></div>`;
+    body.appendChild(row);
+  });
+  box.appendChild(body);
+}
+
+/* ====== UI Yardımcıları ====== */
+async function updateDersCountPill(){
+  const el=$('dersCount').querySelector('b');
+  if(state.kitap==='__ALL__'){
+    let sum=0; for(const k of await listKitaplar(state.devre)){ const d=await listDersler(state.devre,k); sum+=d.length; }
+    el.textContent = sum || '0';
+  }else{
+    const ders=await listDersler(state.devre,state.kitap);
+    el.textContent = ders.length || '0';
+  }
+}
+async function refreshKitapAndDersCount(){
+  const kitaplar = await listKitaplar(state.devre);
+  const sel=$('selKitap'), cur=sel.value;
+  sel.innerHTML = `<option value="__ALL__">— Tüm Kitaplar —</option>` + kitaplar.map(k=>`<option>${k}</option>`).join('');
+  if([...sel.options].some(o=>o.value===cur)) sel.value=cur;
+  await updateDersCountPill();
+}
+
+/* ====== Talebe Dropdown Güncelle ====== */
+async function refreshTalebeSelect(){
+  const sel = $('selTalebe');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">— Talebe Seçin —</option>';
+  state.talebeler.forEach(t=>{
+    const opt = document.createElement('option');
+    opt.value = t.uid;
+    opt.textContent = t.ad;
+    if(t.uid === current) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+/* ====== Events ====== */
+// Rapor modu değişimi
+document.querySelectorAll('input[name="reportMode"]').forEach(radio=>{
+  radio.addEventListener('change', async ()=>{
+    const mode = radio.value;
+    $('talebeSelectGrp').style.display = mode === 'talebe' ? 'block' : 'none';
+    if(mode === 'talebe' && state.talebeler.length === 0){
+      state.talebeler = await loadTalebeler(state.devre);
+      await refreshTalebeSelect();
+    }
+  });
+});
+
+$('selDevre').addEventListener('change', async ()=>{
+  state.devre = $('selDevre').value;
+  await refreshKitapAndDersCount();
+  state.talebeler = await loadTalebeler(state.devre);
+  await refreshTalebeSelect();
+});
+$('selKitap').addEventListener('change', async ()=>{
+  state.kitap = $('selKitap').value;
+  await updateDersCountPill();
+});
+$('selSort').addEventListener('change', ()=>{
+  // son rapor varsa yeniden çiz
+  if(state.lastRows) renderCards(state.lastRows, state.lastContext||'');
+});
+$('btnRun').addEventListener('click', async (e)=>{ e.preventDefault(); await runReport(); });
+
+/* ====== Auth & Başlat ====== */
+// ortak.js'den gelen initAppShellAuth zaten çalışıyor, burada sadece sayfa özel işlemleri yapıyoruz
+function initPage() {
+  return new Promise(async (resolve) => {
+    const user = window.auth?.currentUser || firebase.auth().currentUser;
+    if(!user){ 
+      location.replace('../../index.html'); 
+      resolve();
+      return; 
+    }
+    __UID=user.uid;
+    const udoc=await db.collection(PATHS.users).doc(user.uid).get();
+    const meta=udoc.exists? udoc.data(): {};
+    __ME=meta.adSoyad || user.displayName || (user.email? user.email.split('@')[0]:'');
+
+    const rawPerms = Array.isArray(meta.yetkiler)? meta.yetkiler: [];
+    const byPanel  = {};
+    rawPerms.forEach(s=>{
+      const i=String(s).indexOf(':'); if(i<0) return;
+      let panel = normPanelName(String(s).slice(0,i).trim());
+      const label = String(s).slice(i+1).trim();
+      if(!ALL_PANELS.includes(panel)) return;
+      (byPanel[panel] ||= []).push(label);
+    });
+    CURRENT_PERMS=byPanel;
+    MANIFEST=await loadManifest();
+
+    await refreshKitapAndDersCount();
+    state.talebeler = await loadTalebeler(state.devre);
+    await refreshTalebeSelect();
+    
+    resolve();
+  });
+}
+
+// ortak.js'den gelen window.initPage hook'u
+window.initPage = initPage;
+</script>
+</body>
+</html>

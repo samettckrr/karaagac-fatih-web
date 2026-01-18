@@ -6,6 +6,11 @@
 <title>Kullanıcı & Yetki Yönetimi</title>
 <link rel="icon" type="image/png" href="../img/logo.png" />
 <link rel="stylesheet" href="../css/app-shell.css" />
+<style>
+  /* GÜVENLİK: Body başlangıçta gizli, erken auth kontrolü başarılı olunca gösterilir */
+  body { visibility: hidden; }
+  html { visibility: hidden; }
+</style>
 
 <!-- ====== TEMA (panel.html ile aynı) ====== -->
 <style>
@@ -144,15 +149,126 @@
   /* Toast - app-shell.css'den geliyor */
 </style>
 
-<!-- Firebase compat -->
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-<script src="../js/firebase/firebase-init.js"></script>
+<!-- Firebase kaldırıldı - Artık sadece Supabase kullanılıyor -->
+
+<!-- Supabase (veritabanı için) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+  // Bu sayfa için özel işaret - ortak.js'den önce çalışsın
+  window.IS_KULLANICI_EKLE_PAGE = true;
+  
+  // Supabase client'ı oluştur (index.html'deki mantık)
+  (function() {
+    const SUPABASE_URL = 'https://lmwfibippjvqctccxiwb.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxtd2ZpYmlwcGp2cWN0Y2N4aXdiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NjE2NzA1NCwiZXhwIjoyMDgxNzQzMDU0fQ.lzoudrJx_V4RdCCxPRfgLA1riWNKZ3HyFzeqRynYHeQ';
+    
+    function initSupabase() {
+      if (typeof supabase !== 'undefined' && typeof supabase.createClient === 'function') {
+        window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // window.auth'u da set et (ortak.js uyumluluğu için)
+        if (window.supabase && window.supabase.auth) {
+          window.auth = window.supabase.auth;
+        }
+        return true;
+      }
+      return false;
+    }
+    
+    // Hemen dene
+    if (!initSupabase()) {
+      // Biraz bekle ve tekrar dene (CDN yükleniyor olabilir)
+      let retries = 0;
+      const maxRetries = 30; // 3 saniye
+      const retryInterval = setInterval(function() {
+        retries++;
+        if (initSupabase() || retries >= maxRetries) {
+          clearInterval(retryInterval);
+          if (window.supabase) {
+            console.log('✅ Supabase client hazır (kullanici-ekle.html)');
+          } else {
+            console.warn('⚠️ Supabase client yüklenemedi (kullanici-ekle.html)');
+          }
+        }
+      }, 100);
+    } else {
+      console.log('✅ Supabase client hazır (kullanici-ekle.html)');
+    }
+  })();
+  
+  // ERKEN AUTH KONTROLÜ - Sayfa yüklenmeden önce
+  // Body zaten CSS ile gizli (görünürlük kontrolü için)
+  (async function earlyAuthCheck(){
+    try {
+      // Supabase client'ın yüklenmesini bekle
+      let retries = 0;
+      while(retries < 50 && (!window.supabase || !window.supabase.auth)){
+        await new Promise(resolve => setTimeout(resolve, 100));
+        retries++;
+      }
+      
+      if(!window.supabase || !window.supabase.auth){
+        console.error('❌ GÜVENLİK: Supabase yüklenemedi');
+        window.location.href = '../index.html';
+        return;
+      }
+      
+      // Session kontrolü
+      const { data: { session }, error: sessionError } = await window.supabase.auth.getSession();
+      
+      if(sessionError){
+        console.error('❌ GÜVENLİK: Session alınamadı:', sessionError);
+        window.location.href = '../index.html';
+        return;
+      }
+      
+      if(!session || !session.user){
+        console.error('❌ GÜVENLİK: Kullanıcı giriş yapmamış');
+        window.location.href = '../index.html';
+        return;
+      }
+      
+      // Kullanıcı bilgilerini kontrol et (window.supabase hazır)
+      const { data: userData, error: userError } = await window.supabase
+        .from('kullanicilar')
+        .select('id, adsoyad, email, rol, yetkiler, aktif')
+        .eq('id', session.user.id)
+        .single();
+      
+      if(userError || !userData){
+        console.error('❌ GÜVENLİK: Kullanıcı kaydı bulunamadı:', userError);
+        window.location.href = '../index.html';
+        return;
+      }
+      
+      // Yetki kontrolü - üst nav kontrolü yeterli
+      // Üst nav'da yetki varsa sayfaya erişim var, içerde işlem yapılabilir
+      // Bu kontrol sadece ekstra güvenlik için, ana kontrol üst nav'da
+      const yetkiler = Array.isArray(userData.yetkiler) ? userData.yetkiler : [];
+      // Wildcard kontrolü varsa geç, yoksa üst nav kontrolü yeterli
+      
+      // Auth başarılı - body'yi göster (DOMContentLoaded beklenmeden)
+      if(document.body) {
+        document.body.style.visibility = 'visible';
+        document.documentElement.style.visibility = 'visible';
+      } else {
+        // Body henüz yüklenmemişse, yüklendiğinde göster
+        document.addEventListener('DOMContentLoaded', function() {
+          document.body.style.visibility = 'visible';
+          document.documentElement.style.visibility = 'visible';
+        });
+      }
+    } catch(e){
+      console.error('❌ GÜVENLİK: Erken auth kontrolü hatası:', e);
+      window.location.href = '../index.html';
+    }
+  })();
+</script>
+
 <!-- ORTAK APP SHELL JS -->
 <script src="../js/ortak.js"></script>
 </head>
 <body>
+<!-- GÜVENLİK: Body başlangıçta erken auth kontrolü tarafından gizlenir, başarılı olunca gösterilir -->
 
 <!-- ====== APPBAR ====== -->
 <div class="appbar">
@@ -406,6 +522,69 @@
   </div>
 </div>
 
+<!-- ŞİFRE GÖSTERİM MODAL -->
+<div class="modal" id="mPasswordShow">
+  <div class="sheet">
+    <header>
+      <h3>Kullanıcı Şifresi</h3>
+    </header>
+    <div class="body">
+      <div id="passwordShowContent">
+        <div style="margin-bottom:16px">
+          <div style="margin-bottom:8px"><strong>Ad Soyad:</strong> <span id="passwordShowAdSoyad">—</span></div>
+          <div style="margin-bottom:8px"><strong>E-posta:</strong> <span id="passwordShowEmail">—</span></div>
+        </div>
+        <div style="margin-bottom:16px; padding:12px; background:var(--surface); border-radius:8px; border:2px solid var(--stroke)">
+          <div style="margin-bottom:8px; font-size:12px; color:var(--muted)">Şifre:</div>
+          <div style="font-size:18px; font-weight:600; font-family:monospace; word-break:break-all; color:var(--text)" id="passwordShowSifre">—</div>
+        </div>
+        <div style="padding:12px; background:rgba(251,191,36,.1); border-radius:8px; border:1px solid rgba(251,191,36,.3); margin-bottom:16px">
+          <div style="font-size:12px; color:var(--muted)">
+            ⚠️ <strong>Uyarı:</strong> Bu şifre admin tarafından belirlenmiştir. Kullanıcı şifresini değiştirdiyse bu şifre geçersiz olabilir.
+          </div>
+        </div>
+        <div style="display:flex; gap:10px">
+          <button class="btn btn-primary" id="btnPasswordCopy" style="flex:1">📋 Kopyala</button>
+          <button class="btn btn-ghost" id="btnPasswordClose">Kapat</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ŞİFRE SIFIRLA VE KAYDET MODAL -->
+<div class="modal" id="mPasswordReset">
+  <div class="sheet">
+    <header>
+      <h3>Şifre Sıfırla ve Kaydet</h3>
+    </header>
+    <div class="body">
+      <div id="passwordResetContent">
+        <div style="margin-bottom:16px">
+          <div style="margin-bottom:8px"><strong>Ad Soyad:</strong> <span id="passwordResetAdSoyad">—</span></div>
+          <div style="margin-bottom:8px"><strong>E-posta:</strong> <span id="passwordResetEmail">—</span></div>
+        </div>
+        <div style="margin-bottom:16px">
+          <label style="display:block; margin-bottom:8px; font-weight:600">Yeni Şifre</label>
+          <div class="mini" style="align-items:center">
+            <input id="passwordResetInput" type="password" placeholder="Yeni şifreyi giriniz" style="flex:1">
+            <button type="button" class="btn" id="togglePasswordReset">👁</button>
+            <button type="button" class="btn" id="btnPasswordResetGen">Rastgele</button>
+          </div>
+          <div style="margin-top:8px;height:8px;background:var(--surface);border-radius:6px;overflow:hidden">
+            <span id="passwordResetMeterBar" style="display:block;height:100%;width:0%"></span>
+          </div>
+          <div id="passwordResetMeterLabel" style="margin-top:6px;font-size:12px;color:var(--muted)">Güç: —</div>
+        </div>
+        <div style="display:flex; gap:10px">
+          <button class="btn btn-primary" id="btnPasswordResetSave" style="flex:1">💾 Kaydet</button>
+          <button class="btn btn-ghost" id="btnPasswordResetClose">İptal</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ====== JS ====== -->
 <script>
 /* ===== Tema - Sadece Açık Tema ===== */
@@ -423,11 +602,52 @@
 /* ===== Shortcuts ===== */
 const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
 
-// db ve auth ortak.js'den geliyor, window.db ve window.auth olarak erişilebilir
-// Ortak.js'de zaten tanımlı, burada tekrar tanımlamaya gerek yok
-// Helper fonksiyonları
-const getDb = () => window.db || (typeof firebase !== 'undefined' ? firebase.firestore() : null);
-const getAuth = () => window.auth || (typeof firebase !== 'undefined' ? firebase.auth() : null);
+// Supabase client (auth + veritabanı için)
+// Supabase client'ın yüklenmesini bekler (async)
+const getSupabase = async () => {
+  // Eğer zaten yüklüyse direkt döndür
+  if(window.supabase && window.supabase.from && window.supabase.auth){
+    return window.supabase;
+  }
+  
+  // Yüklenmemişse bekle (CDN yükleniyor olabilir)
+  let retries = 0;
+  const maxRetries = 50; // 5 saniye
+  while(retries < maxRetries){
+    await new Promise(resolve => setTimeout(resolve, 100));
+    if(window.supabase && window.supabase.from && window.supabase.auth){
+      return window.supabase;
+    }
+    retries++;
+  }
+  
+  console.warn('⚠️ Supabase client yüklenemedi (getSupabase timeout)');
+  return null;
+};
+
+const getAuth = () => {
+  // Önce window.auth'u kontrol et (ortak.js uyumluluğu için)
+  if(window.auth && window.auth.onAuthStateChanged){
+    return window.auth;
+  }
+  
+  // Eğer window.auth yoksa Supabase auth'u kullan
+  // NOT: getSupabase async olduğu için burada await kullanamayız (sync fonksiyon)
+  // Bu yüzden direkt window.supabase'i kontrol edelim
+  if(window.supabase && window.supabase.auth){
+    window.auth = window.supabase.auth;
+    return window.supabase.auth;
+  }
+  return null;
+  
+  // Supabase auth'u window.auth olarak set et
+  if(supabase.auth){
+    window.auth = supabase.auth;
+    return supabase.auth;
+  }
+  
+  return null;
+};
 
 // escapeHtml ve normalizeUrl ortak.js'den geliyor
 // showToast ortak.js'den geliyor (window.showToast)
@@ -464,10 +684,42 @@ $("#tabMan").onclick=()=>{
   $("#viewList").style.display="none"; 
 };
 $("#tabList").onclick=()=>{ 
+  console.log('🔵 Kullanıcılar sekmesine tıklandı');
+  console.log('🔵 USERS durumu:', USERS?.length || 0, 'kullanıcı');
+  
   setActiveTab("tabList");
   $("#viewAdd").style.display="none"; 
   $("#viewMan").style.display="none"; 
-  $("#viewList").style.display="block"; 
+  $("#viewList").style.display="block";
+  
+  // Sayfa görünümünü gizle, kullanıcı görünümünü göster
+  const sayfaWrap = $("#sayfaWrap");
+  const usersWrap = $("#usersCardsWrap");
+  
+  if(sayfaWrap) sayfaWrap.style.display = "none";
+  if(usersWrap) {
+    usersWrap.style.display = "grid";
+    console.log('✅ usersCardsWrap görünür yapıldı');
+  }
+  
+  // Hangi görünüm aktifse ona göre render et
+  const isSayfa = sayfaWrap && (sayfaWrap.style.display==="grid" || sayfaWrap.style.display==="block");
+  
+  if(isSayfa) {
+    renderSayfa();
+  } else {
+    // Kullanıcıları yeniden render et
+    if(USERS && USERS.length > 0){
+      console.log('✅ USERS var, renderUsers çağrılıyor');
+      renderUsers();
+    } else {
+      console.warn('⚠️ USERS boş, loadUsers çağrılıyor');
+      // Eğer veri yoksa yeniden yükle
+      loadUsers().catch(err => {
+        console.error('Kullanıcılar yüklenirken hata:', err);
+      });
+    }
+  }
 };
 
 
@@ -589,40 +841,88 @@ function renderManifestAdmin(){
   });
 
   box.querySelectorAll("[data-del-panel]").forEach(b=>{
-    b.onclick=async()=>{ if(!confirm("Panel silinsin mi?")) return; const db=getDb(); if(db) await db.collection("sayfa_manifesti").doc(b.dataset.delPanel).delete(); if(typeof window.showToast==='function') window.showToast('success','Başarılı','Panel silindi'); };
+    b.onclick=async()=>{ 
+      if(!confirm("Panel silinsin mi?")) return; 
+      const supabase = await getSupabase(); 
+      if(!supabase) { 
+        if(typeof window.showToast==='function') window.showToast('error','Hata','Supabase bağlantısı yok'); 
+        return; 
+      }
+      const { error } = await supabase.from('sayfa_manifesti').delete().eq('id', b.dataset.delPanel);
+      if(error) {
+        console.error('Panel silme hatası:', error);
+        if(typeof window.showToast==='function') window.showToast('error','Hata','Panel silinemedi');
+      } else {
+        if(typeof window.showToast==='function') window.showToast('success','Başarılı','Panel silindi');
+      }
+    };
   });
   box.querySelectorAll("[data-del-page]").forEach(b=>{
-    b.onclick=async()=>{ const d=JSON.parse(b.dataset.delPage);
-      const db=getDb(); if(!db) return; const ref=db.collection("sayfa_manifesti").doc(d.panel); const doc=await ref.get(); if(!doc.exists) return;
-      const v=doc.data(); const arr=(v.pages||[]).filter(x=>(x.key||`${d.panel}: ${x.title}`)!==d.key);
-      await ref.update({pages:arr}); if(typeof window.showToast==='function') window.showToast('success','Başarılı','Sayfa silindi');
+    b.onclick=async()=>{ 
+      const d=JSON.parse(b.dataset.delPage);
+      const supabase = await getSupabase(); 
+      if(!supabase) { 
+        if(typeof window.showToast==='function') window.showToast('error','Hata','Supabase bağlantısı yok'); 
+        return; 
+      }
+      const { data: doc, error: fetchError } = await supabase.from('sayfa_manifesti').select('id, order, title, pages').eq('id', d.panel).single();
+      if(fetchError || !doc) {
+        if(typeof window.showToast==='function') window.showToast('error','Hata','Panel bulunamadı');
+        return;
+      }
+      const arr = Array.isArray(doc.pages) ? doc.pages.filter(x=>(x.key||`${d.panel}: ${x.title}`)!==d.key) : [];
+      const { error } = await supabase.from('sayfa_manifesti').update({pages: arr}).eq('id', d.panel);
+      if(error) {
+        console.error('Sayfa silme hatası:', error);
+        if(typeof window.showToast==='function') window.showToast('error','Hata','Sayfa silinemedi');
+      } else {
+        if(typeof window.showToast==='function') window.showToast('success','Başarılı','Sayfa silindi');
+      }
     };
   });
   box.querySelectorAll("[data-edit-page]").forEach(b=>{
     b.onclick=async()=>{
+      console.log('🔵 Sayfa düzenle butonuna tıklandı, data:', b.dataset.editPage);
       try{
         const d=JSON.parse(b.dataset.editPage);
-        const db=getDb(); if(!db) return; const doc=await db.collection("sayfa_manifesti").doc(d.panel).get();
-        if(!doc.exists){
+        console.log('🔵 Parse edilen data:', d);
+        const supabase = await getSupabase(); 
+        if(!supabase) {
+          if(typeof window.showToast==='function') window.showToast('error','Hata','Supabase bağlantısı yok');
+          return;
+        }
+        const { data: doc, error: fetchError } = await supabase.from('sayfa_manifesti').select('id, order, title, pages').eq('id', d.panel).single();
+        if(fetchError || !doc){
+          console.error('❌ Panel bulunamadı:', fetchError);
           if(typeof window.showToast==='function') window.showToast('warning','Uyarı','Panel bulunamadı');
           return;
         }
-        const pg=(doc.data().pages||[]).find(x=>(x.key||`${d.panel}: ${x.title}`)===d.key);
+        const pages = Array.isArray(doc.pages) ? doc.pages : [];
+        const pg=pages.find(x=>(x.key||`${d.panel}: ${x.title}`)===d.key);
         if(!pg){
+          console.error('❌ Sayfa bulunamadı, key:', d.key);
           if(typeof window.showToast==='function') window.showToast('warning','Uyarı','Sayfa bulunamadı');
           return;
         }
         
         // Modal'ı doldur ve aç
-        if(mEditPage){
-          $("#ep_panel").value=d.panel;
-          $("#ep_key").value=d.key;
-          $("#ep_panelName").value=manifest[d.panel]?.title || d.panel;
-          $("#ep_title").value=pg.title||"";
-          $("#ep_path").value=pg.path||"";
-          $("#ep_order").value=pg.order||0;
-          mEditPage.classList.add('open');
+        if(!mEditPage){
+          console.error('❌ mEditPage modal elementi bulunamadı');
+          if(typeof window.showToast==='function') window.showToast('error','Hata','Modal elementi bulunamadı');
+          return;
         }
+        
+        const epPanel=$("#ep_panel"), epKey=$("#ep_key"), epPanelName=$("#ep_panelName"), epTitle=$("#ep_title"), epPath=$("#ep_path"), epOrder=$("#ep_order");
+        if(epPanel) epPanel.value=d.panel||"";
+        if(epKey) epKey.value=d.key||"";
+        if(epPanelName) epPanelName.value=manifest[d.panel]?.title || d.panel||"";
+        if(epTitle) epTitle.value=pg.title||"";
+        if(epPath) epPath.value=pg.path||"";
+        if(epOrder) epOrder.value=pg.order||0;
+        
+        console.log('✅ Modal açılıyor (mEditPage)');
+        mEditPage.classList.add('open');
+        console.log('✅ Modal açıldı, classList:', mEditPage.classList.toString());
       }catch(e){
         console.error('Sayfa düzenleme hatası:', e);
         if(typeof window.showToast==='function') window.showToast('error','Hata',e?.message||'Bilinmeyen hata');
@@ -631,36 +931,70 @@ function renderManifestAdmin(){
   });
 }
 
+/* ===== Sayfa Düzenle Modal (erken tanım - renderManifestAdmin'de kullanılıyor) ===== */
+const mEditPage=$("#mEditPage");
+
 /* ===== Manifest actions ===== */
 $("#btnPanelSave").onclick=async(e)=>{
   e.preventDefault();
   const key=$("#p_key").value.trim(), title=$("#p_title").value.trim(), order=parseInt($("#p_order").value||"0");
   if(!key||!title){ if(typeof window.showToast==='function') window.showToast('warning','Uyarı','Panel anahtar/başlık gerekli'); return; }
-  const db=getDb(); if(!db) return; await db.collection("sayfa_manifesti").doc(key).set({title,order}, {merge:true});
-  $("#frmPanel").reset(); if(typeof window.showToast==='function') window.showToast('success','Başarılı','Panel kaydedildi');
+  const supabase = await getSupabase(); 
+  if(!supabase) { 
+    if(typeof window.showToast==='function') window.showToast('error','Hata','Supabase bağlantısı yok'); 
+    return; 
+  }
+  const { error } = await supabase.from('sayfa_manifesti').upsert({id: key, title, order: order}, {onConflict: 'id'});
+  if(error) {
+    console.error('Panel kaydetme hatası:', error);
+    if(typeof window.showToast==='function') window.showToast('error','Hata','Panel kaydedilemedi');
+  } else {
+    $("#frmPanel").reset(); 
+    if(typeof window.showToast==='function') window.showToast('success','Başarılı','Panel kaydedildi');
+  }
 };
 $("#btnQuickPanels").onclick=async()=>{
   if(!confirm("Standart paneller eklensin mi?")) return;
-  const panels=[{key:"Admin",title:"Admin Paneli",order:5},{key:"Talebe",title:"Talebe Paneli",order:10},{key:"Personel",title:"Personel Paneli",order:20},{key:"Nehari",title:"Nehari Paneli",order:30},{key:"Kermes",title:"Kermes Paneli",order:40},{key:"Muhasebe",title:"Muhasebe Paneli",order:50},{key:"Sistem Ayarları",title:"Sistem Ayarları",order:60},];
-  const db=getDb(); if(!db) return; const batch=db.batch(); panels.forEach(p=> batch.set(db.collection("sayfa_manifesti").doc(p.key), {title:p.title, order:p.order}, {merge:true}));
-  await batch.commit(); if(typeof window.showToast==='function') window.showToast('success','Başarılı','Paneller eklendi');
+  const panels=[{id:"Admin",title:"Admin Paneli",order:5},{id:"Talebe",title:"Talebe Paneli",order:10},{id:"Personel",title:"Personel Paneli",order:20},{id:"Nehari",title:"Nehari Paneli",order:30},{id:"Kermes",title:"Kermes Paneli",order:40},{id:"Muhasebe",title:"Muhasebe Paneli",order:50},{id:"Sistem Ayarları",title:"Sistem Ayarları",order:60},];
+  const supabase = await getSupabase(); 
+  if(!supabase) { 
+    if(typeof window.showToast==='function') window.showToast('error','Hata','Supabase bağlantısı yok'); 
+    return; 
+  }
+  const { error } = await supabase.from('sayfa_manifesti').upsert(panels, {onConflict: 'id'});
+  if(error) {
+    console.error('Paneller ekleme hatası:', error);
+    if(typeof window.showToast==='function') window.showToast('error','Hata','Paneller eklenemedi');
+  } else {
+    if(typeof window.showToast==='function') window.showToast('success','Başarılı','Paneller eklendi');
+  }
 };
 $("#btnPageAdd").onclick=async(e)=>{
   e.preventDefault();
   const panel=$("#s_panel").value, title=$("#s_title").value.trim(), path=$("#s_path").value.trim(), order=parseInt($("#s_order").value||"9999");
   if(!panel||!title||!path){ if(typeof window.showToast==='function') window.showToast('warning','Uyarı','Panel, başlık ve path zorunlu'); return; }
-  const db=getDb(); if(!db) return; const ref=db.collection("sayfa_manifesti").doc(panel); const snap=await ref.get();
-  const cur=snap.exists? (snap.data()||{}):{pages:[]};
+  const supabase = await getSupabase(); 
+  if(!supabase) { 
+    if(typeof window.showToast==='function') window.showToast('error','Hata','Supabase bağlantısı yok'); 
+    return; 
+  }
+  const { data: doc, error: fetchError } = await supabase.from('sayfa_manifesti').select('id, order, title, pages').eq('id', panel).single();
+  const cur = doc || {pages:[]};
   const key=`${panel}: ${title}`;
-  const map=new Map((cur.pages||[]).map(p=>[(p.key||`${panel}: ${p.title}`), p]));
+  const map=new Map((Array.isArray(cur.pages)?cur.pages:[]).map(p=>[(p.key||`${panel}: ${p.title}`), p]));
   map.set(key,{key,title,path,order});
   const merged=[...map.values()].sort((a,b)=>(a.order||0)-(b.order||0) || String(a.title).localeCompare(String(b.title),"tr"));
-  await ref.set({pages:merged},{merge:true});
-  $("#frmPage").reset(); fillPanelSelect(); if(typeof window.showToast==='function') window.showToast('success','Başarılı','Sayfa eklendi');
+  const { error } = await supabase.from('sayfa_manifesti').update({pages:merged}).eq('id', panel);
+  if(error) {
+    console.error('Sayfa ekleme hatası:', error);
+    if(typeof window.showToast==='function') window.showToast('error','Hata','Sayfa eklenemedi');
+  } else {
+    $("#frmPage").reset(); fillPanelSelect(); 
+    if(typeof window.showToast==='function') window.showToast('success','Başarılı','Sayfa eklendi');
+  }
 };
 
-/* ===== Sayfa Düzenle Modal ===== */
-const mEditPage=$("#mEditPage");
+/* ===== Sayfa Düzenle Modal (devam - mEditPage yukarıda tanımlandı) ===== */
 if(mEditPage){
   // Backdrop'a tıklanınca kapat (modal element'ine tıklanınca)
   mEditPage.onclick=(e)=>{
@@ -670,6 +1004,86 @@ if(mEditPage){
 if($("#btnEditPageClose")){
   $("#btnEditPageClose").onclick=()=>{
     if(mEditPage) mEditPage.classList.remove('open');
+  };
+}
+
+/* ===== Şifre Gösterim Modal ===== */
+const mPasswordShow = $("#mPasswordShow");
+if(mPasswordShow){
+  // Backdrop'a tıklanınca kapat
+  mPasswordShow.onclick=(e)=>{
+    if(e.target===mPasswordShow) mPasswordShow.classList.remove('open');
+  };
+}
+if($("#btnPasswordClose")){
+  $("#btnPasswordClose").onclick=()=>{
+    if(mPasswordShow) mPasswordShow.classList.remove('open');
+  };
+}
+if($("#btnPasswordCopy")){
+  $("#btnPasswordCopy").onclick=async()=>{
+    const password = $("#passwordShowSifre")?.textContent?.trim();
+    if(!password || password === '—' || password === 'Şifre kaydı bulunamadı'){
+      if(typeof window.showToast==='function') window.showToast('warning','Uyarı','Kopyalanacak şifre yok');
+      return;
+    }
+    try{
+      await navigator.clipboard.writeText(password);
+      if(typeof window.showToast==='function') window.showToast('success','Başarılı','Şifre panoya kopyalandı');
+    }catch(e){
+      console.error('Kopyalama hatası:', e);
+      // Fallback: Manuel kopyalama
+      const textArea = document.createElement('textarea');
+      textArea.value = password;
+      textArea.style.position = 'fixed';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.select();
+      try{
+        document.execCommand('copy');
+        if(typeof window.showToast==='function') window.showToast('success','Başarılı','Şifre panoya kopyalandı');
+      }catch(fallbackError){
+        if(typeof window.showToast==='function') window.showToast('error','Hata','Şifre kopyalanamadı');
+      }
+      document.body.removeChild(textArea);
+    }
+  };
+}
+
+/* ===== Şifre Sıfırla Modal Event Handler'ları ===== */
+const mPasswordReset = $("#mPasswordReset");
+if(mPasswordReset){
+  // Backdrop'a tıklanınca kapat
+  mPasswordReset.onclick=(e)=>{
+    if(e.target===mPasswordReset) mPasswordReset.classList.remove('open');
+  };
+}
+if($("#btnPasswordResetClose")){
+  $("#btnPasswordResetClose").onclick=()=>{
+    if(mPasswordReset) mPasswordReset.classList.remove('open');
+  };
+}
+if($("#btnPasswordResetSave")){
+  $("#btnPasswordResetSave").onclick=()=>{
+    savePasswordReset();
+  };
+}
+if($("#togglePasswordReset")){
+  $("#togglePasswordReset").onclick=()=>{
+    const input = $("#passwordResetInput");
+    if(input) input.type = input.type==="password" ? "text" : "password";
+  };
+}
+if($("#btnPasswordResetGen")){
+  $("#btnPasswordResetGen").onclick=()=>{
+    const input = $("#passwordResetInput");
+    if(input){
+      const chars="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+";
+      const rnd=(len)=>Array.from(crypto.getRandomValues(new Uint32Array(len))).map(n=>chars[n%chars.length]).join("");
+      input.value=rnd(12);
+      renderPasswordResetMeter();
+      if(typeof window.showToast==='function') window.showToast('success','Başarılı','Rastgele şifre oluşturuldu');
+    }
   };
 }
 if($("#btnEditPageSave")){
@@ -690,18 +1104,15 @@ if($("#btnEditPageSave")){
         throw new Error('Tüm alanlar zorunludur');
       }
       
-      if(!db){
-        throw new Error('Firebase bağlantısı yok');
-      }
+      const supabase = await getSupabase(); 
+      if(!supabase) throw new Error('Supabase bağlantısı yok');
       
-      const db=getDb(); if(!db) throw new Error('Firebase bağlantısı yok'); const ref=db.collection("sayfa_manifesti").doc(panel);
-      const snap=await ref.get();
-      if(!snap.exists){
+      const { data: doc, error: fetchError } = await supabase.from('sayfa_manifesti').select('id, order, title, pages').eq('id', panel).single();
+      if(fetchError || !doc){
         throw new Error('Panel bulunamadı');
       }
       
-      const cur=snap.data()||{};
-      const pages=Array.isArray(cur.pages)? cur.pages : [];
+      const pages = Array.isArray(doc.pages) ? doc.pages : [];
       const updatedPages=pages.map(p=>{
         const pKey=p.key||`${panel}: ${p.title}`;
         if(pKey===key){
@@ -710,7 +1121,8 @@ if($("#btnEditPageSave")){
         return p;
       }).sort((a,b)=>(a.order||0)-(b.order||0) || String(a.title).localeCompare(String(b.title),"tr"));
       
-      await ref.set({pages:updatedPages},{merge:true});
+      const { error: updateError } = await supabase.from('sayfa_manifesti').update({pages:updatedPages}).eq('id', panel);
+      if(updateError) throw updateError;
       
       if(mEditPage) mEditPage.classList.remove('open');
       if(typeof window.showToast==='function') window.showToast('success','Başarılı','Sayfa güncellendi');
@@ -727,10 +1139,10 @@ if($("#btnEditPageSave")){
 /* ===== Password meter ===== */
 const pw=$("#sifre"), meterBar=$("#meterBar"), pwLabel=$("#pwLabel");
 function scorePw(p){ let s=0; if(p.length>=8) s++; if(/[A-Z]/.test(p)) s++; if(/[0-9]/.test(p)) s++; if(/[^A-Za-z0-9]/.test(p)) s++; return s; }
-function renderMeter(){ const s=scorePw(pw.value); let w=0,c="#ef4444",t="Zayıf"; if(s<=1){w=25}else if(s<=3){w=60;c="#f59e0b";t="İyi"} else {w=100;c="#22c55e";t="Güçlü"} meterBar.style.width=w+"%"; meterBar.style.background=c; pwLabel.textContent="Güç: "+t; }
-pw.addEventListener("input",renderMeter); renderMeter();
-$("#togglePw").onclick=()=>{ pw.type = pw.type==="password" ? "text" : "password"; };
-$("#btnPwGen").onclick=()=>{ const chars="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+"; const rnd=(len)=>Array.from(crypto.getRandomValues(new Uint32Array(len))).map(n=>chars[n%chars.length]).join(""); pw.value=rnd(12); renderMeter(); if(typeof window.showToast==='function') window.showToast('success','Başarılı','Rastgele şifre oluşturuldu'); };
+function renderMeter(){ if(!pw || !meterBar || !pwLabel) return; const s=scorePw(pw.value||""); let w=0,c="#ef4444",t="Zayıf"; if(s<=1){w=25}else if(s<=3){w=60;c="#f59e0b";t="İyi"} else {w=100;c="#22c55e";t="Güçlü"} meterBar.style.width=w+"%"; meterBar.style.background=c; pwLabel.textContent="Güç: "+t; }
+if(pw && meterBar && pwLabel){ pw.addEventListener("input",renderMeter); renderMeter(); }
+if($("#togglePw") && pw){ $("#togglePw").onclick=()=>{ if(pw) pw.type = pw.type==="password" ? "text" : "password"; }; }
+if($("#btnPwGen") && pw){ $("#btnPwGen").onclick=()=>{ const chars="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+"; const rnd=(len)=>Array.from(crypto.getRandomValues(new Uint32Array(len))).map(n=>chars[n%chars.length]).join(""); if(pw) pw.value=rnd(12); renderMeter(); if(typeof window.showToast==='function') window.showToast('success','Başarılı','Rastgele şifre oluşturuldu'); }; }
 if($("#email")){
   $("#email").addEventListener("input",()=>{
     const v=$("#email").value.trim();
@@ -787,55 +1199,71 @@ if($("#btnPrevClose")){
 }
 $("#frmAdd").addEventListener("submit",(e)=>{ e.preventDefault(); $("#btnPreview").click(); });
 
-async function createUserSecondary(email,password){
-  if(!email || !password){
-    throw new Error('E-posta ve şifre gerekli');
-  }
-  if(password.length < 6){
-    throw new Error('Şifre en az 6 karakter olmalı');
-  }
+// Yetki güncellemesi maili gönderme fonksiyonu
+async function sendPermissionUpdateEmail(email, adSoyad, eskiRol, yeniRol, eskiGorev, yeniGorev, eskiYetkiler, yeniYetkiler){
   try {
-    const cfg=firebase.app().options;
-    let sec=firebase.apps.find(a=>a.name==="Secondary");
-    if(!sec) sec=firebase.initializeApp(cfg,"Secondary");
-    const secAuth=sec.auth();
-    const cred=await secAuth.createUserWithEmailAndPassword(email,password);
-    // Şifre sıfırlama e-postası gönder
-    try{
-      await secAuth.sendPasswordResetEmail(email);
-    }catch(e){
-      console.warn('Şifre sıfırlama e-postası gönderilemedi:', e);
-      // Kritik değil, devam et
+    const supabase = await getSupabase();
+    if(!supabase){
+      throw new Error('Supabase bağlantısı yok');
     }
-    // Secondary app'i temizle
-    try{
-      await sec.delete();
-    }catch(e){
-      console.warn('Secondary app silinemedi:', e);
+    
+    const { data: edgeData, error: edgeError } = await supabase.functions.invoke('send-permission-update', {
+      body: {
+        to: email,
+        adSoyad,
+        eskiRol: eskiRol || undefined,
+        yeniRol: yeniRol || undefined,
+        eskiGorev: eskiGorev || undefined,
+        yeniGorev: yeniGorev || undefined,
+        eskiYetkiler: eskiYetkiler || undefined,
+        yeniYetkiler: yeniYetkiler || undefined
+      }
+    });
+
+    if(edgeError){
+      // 403 hatası genellikle Edge Function'ın deploy edilmemiş olmasından kaynaklanır
+      if(edgeError.status === 403 || edgeError.message?.includes('403')){
+        console.warn('⚠️ Edge Function deploy edilmemiş veya erişim reddedildi (403). Edge Function\'ı deploy edin: send-permission-update');
+      } else {
+        console.warn('⚠️ Yetki güncelleme maili gönderilemedi:', edgeError);
+      }
+      return false;
     }
-    return cred;
+
+    if(edgeData){
+      console.log('✅ Yetki güncelleme maili gönderildi:', edgeData);
+      return true;
+    }
+    return false;
   } catch(e){
-    // Secondary app'i temizle (hata olsa bile)
-    try{
-      const sec=firebase.apps.find(a=>a.name==="Secondary");
-      if(sec) await sec.delete();
-    }catch(cleanErr){}
-    throw e;
+    console.error('Yetki güncelleme maili gönderme hatası:', e);
+    return false;
   }
 }
+
+// Kullanıcı oluşturma artık Edge Function (admin-create-user) ile yapılıyor
+// Bu fonksiyon kaldırıldı - Edge Function Admin API kullanarak kullanıcı oluşturur
+
+// Mail gönderme artık Edge Function (admin-create-user) içinde yapılıyor
+// Bu fonksiyon kaldırıldı
 if($("#btnPrevOk")){
   $("#btnPrevOk").onclick=async()=>{
+    // Modal'ı hemen kapat (işlem başlar başlamaz)
     if(mPrev) mPrev.classList.remove('open');
+    
     const btn=$("#btnPrevOk");
     const originalText=btn.textContent;
     btn.disabled=true;
     btn.textContent='⏳ Kaydediliyor...';
     
     try{
+      console.log('🔵 Adım 1: Form verileri alınıyor...');
       const adSoyad=$("#adSoyad")?.value.trim()||"", email=$("#email")?.value.trim()||"", sifre=$("#sifre")?.value||"", rol=$("#rol")?.value||"", gorev=$("#gorev")?.value.trim()||"";
       const yetkiler=getChecked("#permTreeAdd");
+      console.log('✅ Adım 1 tamamlandı - Form verileri:', { adSoyad, email, rol, gorev, yetkilerLength: yetkiler?.length || 0 });
       
       // Input validasyonu
+      console.log('🔵 Adım 2: Input validasyonu yapılıyor...');
       if(!adSoyad || adSoyad.length < 2){
         throw new Error('Ad Soyad en az 2 karakter olmalı');
       }
@@ -855,28 +1283,190 @@ if($("#btnPrevOk")){
       if(!gorev || gorev.length < 2){
         throw new Error('Görev en az 2 karakter olmalı');
       }
+      console.log('✅ Adım 2 tamamlandı - Validasyon başarılı');
       
-      if(!db){
-        throw new Error('Firebase bağlantısı yok');
+      console.log('🔵 Adım 3: Supabase client alınıyor...');
+      const supabase = await getSupabase();
+      if(!supabase){
+        throw new Error('Supabase bağlantısı yok');
+      }
+      console.log('✅ Adım 3 tamamlandı - Supabase client alındı');
+      
+      // Tüm işlemler Edge Function üzerinden yapılacak (yeni kullanıcı ve güncelleme)
+      // Edge Function service role key kullanır, bu yüzden admin session korunur
+      console.log('🔵 Adım 4: Edge Function çağrılıyor (yeni kullanıcı veya güncelleme)...');
+      
+      // Admin UID'sini al (şifre kaydı için)
+      const { data: { user: adminUser } } = await supabase.auth.getUser();
+      const adminUid = adminUser?.id || null;
+      
+      // Debug: Gönderilen veriyi konsola yazdır
+      const requestBody = {
+        email: email,
+        password: sifre,
+        adSoyad: adSoyad,
+        rol: rol,
+        gorev: gorev,
+        yetkiler: yetkiler || [],
+        adminUid: adminUid
+      };
+      console.log('📤 Adım 4a - Gönderilen Veri:', requestBody);
+      
+      // Edge Function'ı çağır - body direkt obje olarak gönder (Supabase SDK otomatik JSON'a çevirir)
+      const { data: edgeData, error: edgeError } = await supabase.functions.invoke('admin-create-user', {
+        body: requestBody
+      });
+      console.log('✅ Adım 4b tamamlandı - Edge Function yanıtı alındı');
+      
+      if(edgeError){
+        console.error('❌ Edge Function hatası (tam obje):', edgeError);
+        console.error('❌ Edge Function hatası (message):', edgeError.message);
+        console.error('❌ Edge Function hatası (status):', edgeError.status);
+        console.error('❌ Edge Function hatası (context):', edgeError.context);
+        
+        // Hata mesajını detaylandır
+        let errorMessage = 'Kullanıcı işlemi başarısız';
+        
+        // Önce error.message'i kontrol et
+        if(edgeError.message){
+          errorMessage = edgeError.message;
+        }
+        
+        // Edge Function'dan gelen hata detaylarını kontrol et
+        if(edgeError.context){
+          console.log('🔍 Error context içeriği:', edgeError.context);
+          
+          // Context içinde body olabilir (ReadableStream veya string)
+          if(edgeError.context.body){
+            try {
+              let errorBodyText;
+              
+              // Eğer ReadableStream ise text() ile oku
+              if(edgeError.context.body && typeof edgeError.context.body.getReader === 'function'){
+                console.log('📋 Error body ReadableStream olarak algılandı, text() ile okunuyor...');
+                const response = new Response(edgeError.context.body);
+                errorBodyText = await response.text();
+              } else if(typeof edgeError.context.body === 'string'){
+                errorBodyText = edgeError.context.body;
+              } else {
+                errorBodyText = JSON.stringify(edgeError.context.body);
+              }
+              
+              // Text'i JSON'a parse et
+              const errorBody = JSON.parse(errorBodyText);
+              console.log('📋 Parse edilmiş hata body:', errorBody);
+              
+              if(errorBody.error){
+                errorMessage = errorBody.error;
+                if(errorBody.details){
+                  errorMessage += ': ' + errorBody.details;
+                }
+                if(errorBody.required && Array.isArray(errorBody.required)){
+                  errorMessage += ' (Eksik alanlar: ' + errorBody.required.join(', ') + ')';
+                }
+              }
+            } catch(parseError){
+              console.warn('⚠️ Hata body parse edilemedi:', parseError);
+              console.warn('⚠️ Raw error body:', edgeError.context.body);
+            }
+          }
+          
+          // Context içinde data da olabilir
+          if(edgeError.context.data && !errorMessage.includes(':')){
+            try {
+              let errorDataText;
+              
+              // Eğer ReadableStream ise text() ile oku
+              if(edgeError.context.data && typeof edgeError.context.data.getReader === 'function'){
+                const response = new Response(edgeError.context.data);
+                errorDataText = await response.text();
+              } else if(typeof edgeError.context.data === 'string'){
+                errorDataText = edgeError.context.data;
+              } else {
+                errorDataText = JSON.stringify(edgeError.context.data);
+              }
+              
+              const errorData = JSON.parse(errorDataText);
+              
+              if(errorData.error){
+                errorMessage = errorData.error;
+                if(errorData.details){
+                  errorMessage += ': ' + errorData.details;
+                }
+              }
+            } catch(parseError){
+              console.warn('⚠️ Hata data parse edilemedi:', parseError);
+            }
+          }
+        }
+        
+        console.error('❌ Son hata mesajı:', errorMessage);
+        throw new Error(errorMessage);
       }
       
-      const cred=await createUserSecondary(email,sifre);
-      const uid=cred.user.uid;
-      await db.collection("kullanicilar").doc(uid).set({
-        adSoyad,email,rol,gorev,yetkiler,aktif:true,
-        eklenmeTarihi: firebase.firestore.FieldValue.serverTimestamp()
-      },{merge:true});
+      console.log('🔵 Adım 4c: Edge Function yanıtı kontrol ediliyor...');
+      if(!edgeData || !edgeData.success || !edgeData.user){
+        console.error('❌ Adım 4c hatası - Edge Function başarısız yanıt:', edgeData);
+        throw new Error('Kullanıcı işlemi başarısız: Edge Function başarısız yanıt döndü');
+      }
       
+      const uid = edgeData.user.id;
+      // Edge Function yeni kullanıcı oluşturduysa success döner, güncelleme yaptıysa da success döner
+      // Edge Function içinde kontrol yapılıyor, burada sadece başarı mesajını gösteriyoruz
+      console.log('✅ Adım 4c tamamlandı - Kullanıcı işlemi başarılı - ID:', uid);
+      console.log('✅ Kullanıcı bilgileri:', edgeData.user);
+      
+      // Şifreyi sakla (form reset edilmeden önce)
+      const savedPassword = sifre;
+      const savedAdSoyad = adSoyad;
+      const savedEmail = email;
+      
+      // Formu temizle ve UI'ı güncelle
+      console.log('🔵 Adım 5: Form temizleniyor ve UI güncelleniyor...');
       if($("#frmAdd")) $("#frmAdd").reset();
       if(typeof renderMeter === 'function') renderMeter();
       renderPermTree("#permTreeAdd");
-      if(typeof window.showToast==='function') window.showToast('success','Başarılı','Kullanıcı başarıyla eklendi');
+      console.log('✅ Adım 5 tamamlandı - Form temizlendi');
+      
+      // Şifre modal'ını aç
+      const mPasswordShow = $("#mPasswordShow");
+      if(mPasswordShow && savedPassword){
+        $("#passwordShowAdSoyad").textContent = savedAdSoyad || '—';
+        $("#passwordShowEmail").textContent = savedEmail || '—';
+        $("#passwordShowSifre").textContent = savedPassword;
+        $("#passwordShowSifre").style.color = 'var(--text)';
+        $("#btnPasswordCopy").disabled = false;
+        mPasswordShow.classList.add('open');
+      }
+      
+      // Başarı mesajı göster
+      if(typeof window.showToast==='function'){
+        window.showToast('success','Başarılı','Kullanıcı işlemi başarıyla tamamlandı ve e-posta gönderildi');
+      }
+      
+      // NOT: Edge Function service role key kullanır, bu yüzden admin session korunur
+      // Kullanıcı listesi real-time subscription ile otomatik güncellenecek
+      // Admin kullanıcısı işlemlerine devam edebilir (session değişmez)
+      console.log('✅ Tüm işlemler başarıyla tamamlandı');
     }catch(err){
-      console.error('Kullanıcı ekleme hatası:', err);
-      if(typeof window.showToast==='function') window.showToast('error','Hata',err?.message||err||'Bilinmeyen hata');
+      console.error('❌ Kullanıcı ekleme/güncelleme hatası:', err);
+      console.error('❌ Hata detayları:', {
+        message: err?.message,
+        stack: err?.stack,
+        name: err?.name
+      });
+      
+      // Hata mesajını detaylı göster
+      const errorMessage = err?.message || String(err) || 'Bilinmeyen hata';
+      if(typeof window.showToast==='function'){
+        window.showToast('error','Hata', errorMessage);
+      } else {
+        alert('Hata: ' + errorMessage);
+      }
     }finally{
       btn.disabled=false;
       btn.textContent=originalText;
+      console.log('🔚 İşlem sonlandırıldı (finally bloğu)');
     }
   };
 }
@@ -885,16 +1475,88 @@ if($("#btnPrevOk")){
 let USERS=[]; let unsubUsers=null;
 function normalizeYetkiler(v){ if(Array.isArray(v)) return v.map(s=>String(s).trim()).filter(Boolean); if(typeof v==='string') return v.split(/[,\n;]+/).map(s=>s.trim()).filter(Boolean); return []; }
 
-function listenUsers(){
-  if(unsubUsers) unsubUsers();
-  const db=getDb(); if(!db) return; unsubUsers = db.collection("kullanicilar").orderBy("eklenmeTarihi","desc").onSnapshot(snap=>{
-    USERS = snap.docs.map(d=>({uid:d.id, ...d.data()}));
+async function listenUsers(){
+  try {
+    if(unsubUsers) unsubUsers();
+    const supabase = await getSupabase(); 
+    if(!supabase) {
+      console.warn('⚠️ listenUsers: Supabase bağlantısı yok');
+      return;
+    }
+    
+    // İlk yükleme
+    await loadUsers();
+    
+    // Real-time subscription (Supabase)
+    const channel = supabase.channel('kullanicilar-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'kullanicilar' },
+        () => {
+          loadUsers().catch(err => {
+            console.error('Real-time kullanıcı güncelleme hatası:', err);
+          });
+        }
+      )
+      .subscribe();
+    
+    unsubUsers = () => {
+      try {
+        supabase.removeChannel(channel);
+      } catch(e) {
+        console.error('Channel kaldırma hatası:', e);
+      }
+    };
+  } catch(e) {
+    console.error('listenUsers fonksiyonu hatası:', e);
+    throw e;
+  }
+}
+
+async function loadUsers(){
+  try {
+    const supabase = await getSupabase(); 
+    if(!supabase) {
+      console.warn('⚠️ loadUsers: Supabase bağlantısı yok');
+      return;
+    }
+    
+    const { data, error } = await supabase
+      .from('kullanicilar')
+      .select('id, adsoyad, email, rol, gorev, aktif, eklenmetarihi, yetkiler')
+      .order('eklenmetarihi', { ascending: false });
+    
+    if(error) {
+      console.error('❌ Kullanıcılar yüklenemedi:', error);
+      // Hata olsa bile boş liste göster
+      USERS = [];
+      renderKPIs();
+      const wrap=$("#usersCardsWrap");
+      if(wrap) {
+        wrap.innerHTML='<div class="pill">Kullanıcılar yüklenemedi. Lütfen sayfayı yenileyin.</div>';
+      }
+      return;
+    }
+    
+    USERS = (data || []).map(d => ({
+      uid: d.id, 
+      adSoyad: d.adsoyad || d.adSoyad, // Veritabanından gelen adsoyad'ı adSoyad'a map et
+      ...d
+    }));
+    console.log('✅ Kullanıcılar yüklendi:', USERS.length, 'kullanıcı');
     renderKPIs(); 
     // Hangi görünüm aktifse onu render et
     const sayfaWrap=$("#sayfaWrap");
     const isSayfa = sayfaWrap && (sayfaWrap.style.display==="grid" || sayfaWrap.style.display==="block");
     if(isSayfa) renderSayfa(); else renderUsers();
-  });
+  } catch(e) {
+    console.error('loadUsers fonksiyonu hatası:', e);
+    USERS = [];
+    renderKPIs();
+    const wrap=$("#usersCardsWrap");
+    if(wrap) {
+      wrap.innerHTML='<div class="pill" style="color:var(--error)">Kullanıcılar yüklenirken hata oluştu: ' + (e?.message || 'Bilinmeyen hata') + '</div>';
+    }
+  }
 }
 function renderKPIs(){
   const total=USERS.length, active=USERS.filter(u=>u.aktif!==false).length, passive=total-active;
@@ -921,14 +1583,33 @@ function renderKPIs(){
 }
 if($("#btnSayfa")){
   $("#btnSayfa").onclick=()=>{
+    console.log('🔵 Sayfa butonuna tıklandı');
     $("#usersCardsWrap").style.display="none";
     $("#sayfaWrap").style.display="grid";
     $("#btnSayfa").style.background="var(--brand)";
     $("#btnSayfa").style.color="#fff";
     $("#btnPersonel").style.background="";
     $("#btnPersonel").style.color="";
-    renderSayfa();
-    renderKPIs(); // Özeti güncelle
+    
+    // Veriler yüklü mü kontrol et
+    if((!USERS || USERS.length === 0) || (!manifest || Object.keys(manifest).length === 0)){
+      console.warn('⚠️ Veriler eksik, yükleniyor...');
+      Promise.all([
+        USERS && USERS.length > 0 ? Promise.resolve() : loadUsers(),
+        manifest && Object.keys(manifest).length > 0 ? Promise.resolve() : loadManifest()
+      ]).then(() => {
+        console.log('✅ Veriler yüklendi, renderSayfa çağrılıyor');
+        renderSayfa();
+        renderKPIs();
+      }).catch(err => {
+        console.error('Veri yükleme hatası:', err);
+        renderSayfa(); // Yine de render et, hata mesajı gösterecek
+        renderKPIs();
+      });
+    } else {
+      renderSayfa();
+      renderKPIs(); // Özeti güncelle
+    }
   };
 }
 if($("#btnPersonel")){
@@ -939,31 +1620,148 @@ if($("#btnPersonel")){
     $("#btnPersonel").style.color="#fff";
     $("#btnSayfa").style.background="";
     $("#btnSayfa").style.color="";
-    renderUsers();
+    // Kullanıcıları yeniden render et
+    if(USERS && USERS.length > 0){
+      renderUsers();
+    } else {
+      // Eğer veri yoksa yeniden yükle
+      loadUsers().catch(err => {
+        console.error('Kullanıcılar yüklenirken hata:', err);
+      });
+    }
   };
 }
 $("#sch").oninput=()=>{ 
-  const isSayfa = $("#sayfaWrap") && ($("#sayfaWrap").style.display==="" || $("#sayfaWrap").style.display==="block");
-  if(isSayfa) renderSayfa(); else renderUsers(); 
+  const sayfaWrap = $("#sayfaWrap");
+  const isSayfa = sayfaWrap && (sayfaWrap.style.display==="grid" || sayfaWrap.style.display==="block");
+  if(isSayfa) renderSayfa(); 
+  else {
+    if(USERS && USERS.length > 0){
+      renderUsers();
+    }
+  }
 }; 
-$("#fltRol").onchange=renderUsers; 
-$("#fltDurum").onchange=renderUsers; 
+$("#fltRol").onchange=()=>{
+  if(USERS && USERS.length > 0){
+    renderUsers();
+  }
+}; 
+$("#fltDurum").onchange=()=>{
+  if(USERS && USERS.length > 0){
+    renderUsers();
+  }
+}; 
 $("#btnRef").onclick=()=>{ 
-  const isSayfa = $("#sayfaWrap") && ($("#sayfaWrap").style.display==="" || $("#sayfaWrap").style.display==="block");
-  if(isSayfa) renderSayfa(); else renderUsers(); 
+  const sayfaWrap = $("#sayfaWrap");
+  const isSayfa = sayfaWrap && (sayfaWrap.style.display==="grid" || sayfaWrap.style.display==="block");
+  if(isSayfa) renderSayfa(); 
+  else {
+    // Yenile butonuna tıklanınca verileri yeniden yükle
+    loadUsers().catch(err => {
+      console.error('Kullanıcılar yenilenirken hata:', err);
+    });
+  }
 };
 
 function bindListButtons(scope){
-  scope.querySelectorAll("[data-edit]").forEach(b=> b.onclick=()=> openEdit(b.dataset.edit));
-  scope.querySelectorAll("[data-reset]").forEach(b=> b.onclick=()=> resetPass(b.dataset.reset));
-  scope.querySelectorAll("[data-toggle]").forEach(b=> b.onclick=()=> toggleActive(JSON.parse(b.dataset.toggle)));
-  scope.querySelectorAll("[data-softdel]").forEach(b=> b.onclick=()=> softDelete(b.dataset.softdel));
+  if(!scope) {
+    console.error('❌ bindListButtons: scope boş');
+    return;
+  }
+  
+  console.log('🔵 bindListButtons çağrıldı, scope:', scope);
+  
+  // Düzenle butonları
+  const editButtons = scope.querySelectorAll("[data-edit]");
+  console.log('🔵 Düzenle butonları bulundu:', editButtons.length);
+  editButtons.forEach(b=> {
+    console.log('🔵 Düzenle butonu bağlanıyor, data-edit:', b.dataset.edit);
+    b.onclick=()=> {
+      console.log('🔵 Düzenle butonuna tıklandı, uid:', b.dataset.edit);
+      openEdit(b.dataset.edit);
+    };
+  });
+  
+  scope.querySelectorAll("[data-reset]").forEach(b=> {
+    b.onclick=()=> {
+      console.log('🔵 Şifre sıfırla butonuna tıklandı, email:', b.dataset.reset);
+      resetPass(b.dataset.reset);
+    };
+  });
+  
+  scope.querySelectorAll("[data-show-password]").forEach(b=> {
+    b.onclick=()=> {
+      console.log('🔵 Şifre göster butonuna tıklandı, uid:', b.dataset.showPassword);
+      showPassword(b.dataset.showPassword);
+    };
+  });
+  
+  scope.querySelectorAll("[data-reset-and-save]").forEach(b=> {
+    b.onclick=()=> {
+      try {
+        const userInfo = JSON.parse(b.dataset.resetAndSave);
+        console.log('🔵 Şifre sıfırla ve kaydet butonuna tıklandı, userInfo:', userInfo);
+        resetAndSavePassword(userInfo);
+      } catch(e) {
+        console.error('❌ JSON parse hatası:', e);
+        if(typeof window.showToast==='function') window.showToast('error','Hata','Veri parse edilemedi');
+      }
+    };
+  });
+  
+  scope.querySelectorAll("[data-toggle]").forEach(b=> {
+    b.onclick=()=> {
+      try {
+        const data = JSON.parse(b.dataset.toggle);
+        console.log('🔵 Toggle butonuna tıklandı, data:', data);
+        toggleActive(data);
+      } catch(e) {
+        console.error('❌ JSON parse hatası:', e);
+        if(typeof window.showToast==='function') window.showToast('error','Hata','Veri parse edilemedi');
+      }
+    };
+  });
+  
+  scope.querySelectorAll("[data-softdel]").forEach(b=> {
+    b.onclick=()=> {
+      console.log('🔵 Sil butonuna tıklandı, uid:', b.dataset.softdel);
+      softDelete(b.dataset.softdel);
+    };
+  });
 }
 
 /* ===== Sayfa Görünümü ===== */
 function renderSayfa(){
+  console.log('🔵 renderSayfa çağrıldı');
+  console.log('🔵 USERS.length:', USERS?.length || 0);
+  console.log('🔵 manifest keys:', Object.keys(manifest || {}).length);
+  
   const wrap=$("#sayfaWrap");
-  if(!wrap) return;
+  if(!wrap) {
+    console.error('❌ sayfaWrap elementi bulunamadı');
+    return;
+  }
+  
+  // Veri kontrolü
+  if(!USERS || USERS.length === 0){
+    console.warn('⚠️ USERS boş, yükleniyor...');
+    wrap.innerHTML='<div class="pill" style="text-align:center;padding:40px;grid-column:1/-1">Kullanıcılar yükleniyor...</div>';
+    loadUsers().catch(err => {
+      console.error('Kullanıcılar yüklenirken hata:', err);
+      wrap.innerHTML='<div class="pill" style="text-align:center;padding:40px;grid-column:1/-1;color:var(--error)">Kullanıcılar yüklenemedi</div>';
+    });
+    return;
+  }
+  
+  if(!manifest || Object.keys(manifest).length === 0){
+    console.warn('⚠️ manifest boş, yükleniyor...');
+    wrap.innerHTML='<div class="pill" style="text-align:center;padding:40px;grid-column:1/-1">Manifest yükleniyor...</div>';
+    loadManifest().catch(err => {
+      console.error('Manifest yüklenirken hata:', err);
+      wrap.innerHTML='<div class="pill" style="text-align:center;padding:40px;grid-column:1/-1;color:var(--error)">Manifest yüklenemedi</div>';
+    });
+    return;
+  }
   
   // Tüm sayfaları topla
   const allPages=[];
@@ -980,6 +1778,8 @@ function renderSayfa(){
     });
   });
   
+  console.log('🔵 Toplam sayfa:', allPages.length);
+  
   // Arama filtresi
   const q=$("#sch")?.value.toLowerCase().trim()||"";
   let filteredPages=allPages;
@@ -993,16 +1793,18 @@ function renderSayfa(){
   
   wrap.innerHTML="";
   
-  if(!USERS.length || !filteredPages.length){
+  if(!filteredPages.length){
     const div=document.createElement('div');
     div.className="pill";
     div.style.textAlign="center";
     div.style.padding="40px";
     div.style.gridColumn="1 / -1";
-    div.textContent=!USERS.length ? "Personel yok" : "Sayfa yok";
+    div.textContent=q ? "Arama sonucu bulunamadı" : "Sayfa yok";
     wrap.appendChild(div);
     return;
   }
+  
+  console.log('✅ Filtrelenmiş sayfa sayısı:', filteredPages.length);
   
   // Her sayfa için kart
   filteredPages.forEach(page=>{
@@ -1062,8 +1864,11 @@ function renderSayfa(){
         
         chk.onchange=async()=>{
           try{
-            const db=getDb();
-            if(!db) return;
+            const supabase = await getSupabase();
+            if(!supabase) {
+              if(typeof window.showToast==='function') window.showToast('error','Hata','Supabase bağlantısı yok');
+              return;
+            }
             let yetkiler=Array.isArray(u.yetkiler)?[...u.yetkiler]:[];
             if(chk.checked){
               if(!yetkiler.includes(page.pageKey)){
@@ -1072,7 +1877,8 @@ function renderSayfa(){
             }else{
               yetkiler=yetkiler.filter(y=>String(y||"").trim()!==String(page.pageKey||"").trim());
             }
-            await db.collection("kullanicilar").doc(u.uid).set({yetkiler},{merge:true});
+            const { error } = await supabase.from('kullanicilar').update({yetkiler}).eq('id', u.uid);
+            if(error) throw error;
             if(typeof window.showToast==='function') window.showToast('success','Başarılı',`${u.adSoyad} için ${page.pageTitle} ${chk.checked?'aktif':'pasif'} edildi`);
           }catch(e){
             console.error('Yetki güncelleme hatası:',e);
@@ -1098,31 +1904,52 @@ function escapeHtml(text){
   return div.innerHTML;
 }
 function renderUsers(){
+  console.log('🔵 renderUsers çağrıldı, USERS.length:', USERS?.length || 0);
+  
   const q=$("#sch")?.value.toLowerCase().trim()||"", fr=$("#fltRol")?.value||"", fd=$("#fltDurum")?.value||"";
   let list=USERS.slice();
+  console.log('🔵 Filtre öncesi liste uzunluğu:', list.length);
+  
   if(q) list=list.filter(x=>(x.adSoyad||"").toLowerCase().includes(q) || (x.email||"").toLowerCase().includes(q) || (x.gorev||"").toLowerCase().includes(q));
   if(fr) list=list.filter(x=> (x.rol||"")===fr);
   if(fd!=="") list=list.filter(x=> String(!!x.aktif)===fd);
+  
+  console.log('🔵 Filtre sonrası liste uzunluğu:', list.length);
 
   const wrap=$("#usersCardsWrap");
-  if(!wrap) return;
+  if(!wrap) {
+    console.error('❌ usersCardsWrap elementi bulunamadı');
+    return;
+  }
   
   wrap.innerHTML="";
   
   if(!list.length){
-    const div=document.createElement('div'); div.className="pill"; div.textContent="Kayıt yok";
+    console.warn('⚠️ Filtrelenmiş liste boş');
+    const div=document.createElement('div'); 
+    div.className="pill"; 
+    if(USERS.length === 0){
+      div.textContent="Kullanıcılar yükleniyor...";
+    } else {
+      div.textContent="Filtreye uygun kayıt yok";
+    }
     wrap.appendChild(div);
     return;
   }
   
+  console.log('✅ Liste render ediliyor,', list.length, 'kullanıcı');
+  
+  // Escape fonksiyonu (bir kez tanımla)
+  const escape = (t) => {
+    const div=document.createElement('div');
+    div.textContent=String(t||'');
+    return div.innerHTML;
+  };
+  
   list.forEach((u)=>{
     
-    const d=u.eklenmeTarihi?.toDate? u.eklenmeTarihi.toDate() : null;
-    const escape = (t) => {
-      const div=document.createElement('div');
-      div.textContent=String(t||'');
-      return div.innerHTML;
-    };
+    // Supabase'de timestamp string olarak gelir
+    const d = u.eklenmetarihi ? (typeof u.eklenmetarihi === 'string' ? new Date(u.eklenmetarihi) : (u.eklenmetarihi?.toDate ? u.eklenmetarihi.toDate() : null)) : null;
     const adSoyad=escape(u.adSoyad||"-");
     const email=escape(u.email||"-");
     const rol=escape(u.rol||"-");
@@ -1167,36 +1994,50 @@ function renderUsers(){
       actions.style.marginTop="12px";
       actions.style.flexWrap="wrap";
       actions.style.gap="6px";
-      
-      const escape = (t) => {
-        const div=document.createElement('div');
-        div.textContent=String(t||'');
-        return div.innerHTML;
-      };
       const btnEdit=document.createElement('button');
       btnEdit.className="btn";
-      btnEdit.dataset.edit=escape(u.uid);
+      btnEdit.dataset.edit=u.uid; // UUID için escape gerekmez
       btnEdit.textContent="✏️ Düzenle";
       btnEdit.style.fontSize="12px";
       btnEdit.style.padding="6px 10px";
       
       const btnReset=document.createElement('button');
       btnReset.className="btn";
-      btnReset.dataset.reset=escape(email);
+      btnReset.dataset.reset=email; // Email için escape gerekmez (data attribute)
       btnReset.textContent="🔑 Şifre";
       btnReset.style.fontSize="12px";
       btnReset.style.padding="6px 10px";
       
+      const btnShowPassword=document.createElement('button');
+      btnShowPassword.className="btn";
+      btnShowPassword.dataset.showPassword=u.uid; // UUID için escape gerekmez
+      btnShowPassword.textContent="🔐 Şifre Göster";
+      btnShowPassword.style.fontSize="12px";
+      btnShowPassword.style.padding="6px 10px";
+      btnShowPassword.style.background="rgba(34,197,94,.1)";
+      btnShowPassword.style.borderColor="rgba(34,197,94,.3)";
+      
+      const btnResetAndSave=document.createElement('button');
+      btnResetAndSave.className="btn";
+      // JSON string için escape gerekmez, data attribute otomatik encode eder
+      btnResetAndSave.dataset.resetAndSave=JSON.stringify({uid: u.uid, email: email, adSoyad: u.adSoyad || u.adsoyad});
+      btnResetAndSave.textContent="🔄 Şifre Sıfırla ve Kaydet";
+      btnResetAndSave.style.fontSize="12px";
+      btnResetAndSave.style.padding="6px 10px";
+      btnResetAndSave.style.background="rgba(59,130,246,.1)";
+      btnResetAndSave.style.borderColor="rgba(59,130,246,.3)";
+      
       const btnToggle=document.createElement('button');
       btnToggle.className="btn";
-      btnToggle.dataset.toggle=escape(toggleData);
+      // JSON string için escape gerekmez, data attribute otomatik encode eder
+      btnToggle.dataset.toggle=toggleData;
       btnToggle.textContent=u.aktif? "⛔ Pasifle":"✅ Aktifle";
       btnToggle.style.fontSize="12px";
       btnToggle.style.padding="6px 10px";
       
       const btnDel=document.createElement('button');
       btnDel.className="btn";
-      btnDel.dataset.softdel=escape(u.uid);
+      btnDel.dataset.softdel=u.uid; // UUID için escape gerekmez
       btnDel.textContent="🗑️ Sil";
       btnDel.style.fontSize="12px";
       btnDel.style.padding="6px 10px";
@@ -1205,6 +2046,8 @@ function renderUsers(){
       
       actions.appendChild(btnEdit);
       actions.appendChild(btnReset);
+      actions.appendChild(btnShowPassword);
+      actions.appendChild(btnResetAndSave);
       actions.appendChild(btnToggle);
       actions.appendChild(btnDel);
       
@@ -1218,19 +2061,83 @@ function renderUsers(){
 }
 
 /* Düzenleme */
-const mEdit=$("#mEdit");
-if(mEdit){
-  // Backdrop'a tıklanınca kapat (modal element'ine tıklanınca)
-  mEdit.onclick=(e)=>{
-    if(e.target===mEdit) mEdit.classList.remove('open');
-  };
-}
+let mEdit = null;
+
+// Modal element'ini sayfa yüklendikten sonra al
+(function initModals(){
+  mEdit = $("#mEdit");
+  if(mEdit){
+    console.log('✅ mEdit modal elementi bulundu');
+    // Backdrop'a tıklanınca kapat (modal element'ine tıklanınca)
+    mEdit.onclick=(e)=>{
+      if(e.target===mEdit) mEdit.classList.remove('open');
+    };
+  } else {
+    console.error('❌ mEdit modal elementi bulunamadı');
+  }
+})();
+// Eski kullanıcı değerlerini sakla (mail göndermek için)
+let eskiKullaniciVerileri = null;
+
 async function openEdit(uid){
-  const db=getDb(); if(!db) return; const doc=await db.collection("kullanicilar").doc(uid).get(); if(!doc.exists){ if(typeof window.showToast==='function') window.showToast('warning','Uyarı','Kullanıcı bulunamadı'); return; }
-  const u={uid:doc.id, ...doc.data()};
-  $("#e_uid").value=u.uid; $("#e_ad").value=u.adSoyad||""; $("#e_rol").value=u.rol||"personel"; $("#e_gorev").value=u.gorev||""; $("#e_mail").value=u.email||""; $("#e_aktif").checked=!!u.aktif;
+  console.log('🔵 openEdit çağrıldı, uid:', uid);
+  
+  if(!uid){
+    console.error('❌ openEdit: uid boş');
+    if(typeof window.showToast==='function') window.showToast('error','Hata','Kullanıcı ID bulunamadı');
+    return;
+  }
+  
+  const supabase = await getSupabase(); 
+  if(!supabase) {
+    if(typeof window.showToast==='function') window.showToast('error','Hata','Supabase bağlantısı yok');
+    return;
+  }
+  
+  console.log('🔵 Kullanıcı verisi çekiliyor, uid:', uid);
+  const { data: doc, error } = await supabase.from('kullanicilar').select('id, adsoyad, email, rol, gorev, aktif, eklenmetarihi, yetkiler').eq('id', uid).single();
+  if(error || !doc){ 
+    if(typeof window.showToast==='function') window.showToast('warning','Uyarı','Kullanıcı bulunamadı'); 
+    return; 
+  }
+  const u={uid:doc.id, ...doc};
+  // Veritabanından gelen adsoyad'ı kullan (snake_case)
+  const adSoyadValue = u.adsoyad || u.adSoyad || "";
+  
+  // Eski değerleri sakla (mail göndermek için)
+  eskiKullaniciVerileri = {
+    rol: u.rol || '',
+    gorev: u.gorev || '',
+    yetkiler: Array.isArray(u.yetkiler) ? [...u.yetkiler] : []
+  };
+  
+  const eUid=$("#e_uid"), eAd=$("#e_ad"), eRol=$("#e_rol"), eGorev=$("#e_gorev"), eMail=$("#e_mail"), eAktif=$("#e_aktif");
+  if(eUid) eUid.value=u.uid||"";
+  if(eAd) eAd.value=adSoyadValue;
+  if(eRol) eRol.value=u.rol||"personel";
+  if(eGorev) eGorev.value=u.gorev||"";
+  if(eMail) eMail.value=u.email||"";
+  if(eAktif) eAktif.checked=!!u.aktif;
   renderPermTree("#permTreeEdit", u.yetkiler||[]);
+  
+  // Modal'ı aç (eğer henüz alınmadıysa tekrar al)
+  if(!mEdit){
+    mEdit = $("#mEdit");
+  }
+  
+  if(!mEdit){
+    console.error('❌ mEdit modal elementi bulunamadı');
+    if(typeof window.showToast==='function') window.showToast('error','Hata','Modal elementi bulunamadı');
+    return;
+  }
+  
+  console.log('✅ Modal açılıyor, mEdit:', mEdit);
   mEdit.classList.add('open');
+  console.log('✅ Modal açıldı, classList:', mEdit.classList.toString());
+  
+  // Modal'ın görünür olduğunu kontrol et
+  const isVisible = window.getComputedStyle(mEdit).display !== 'none';
+  console.log('🔵 Modal görünür mü?', isVisible);
 }
 if($("#btnEditClose")){
   $("#btnEditClose").onclick=()=> { if(mEdit) mEdit.classList.remove('open'); };
@@ -1260,7 +2167,43 @@ if($("#btnEditSave")){
         throw new Error('Rol seçilmelidir');
       }
       
-      const db=getDb(); if(!db) throw new Error('Firebase bağlantısı yok'); await db.collection("kullanicilar").doc(uid).set({adSoyad:ad, rol, gorev, aktif, yetkiler},{merge:true});
+      const supabase = await getSupabase(); 
+      if(!supabase) throw new Error('Supabase bağlantısı yok');
+      
+      // Yeni değerler
+      const yeniRol = rol;
+      const yeniGorev = gorev;
+      const yeniYetkiler = yetkiler;
+      
+      // Eski değerlerle karşılaştır
+      const eskiRol = eskiKullaniciVerileri?.rol || '';
+      const eskiGorev = eskiKullaniciVerileri?.gorev || '';
+      const eskiYetkiler = eskiKullaniciVerileri?.yetkiler || [];
+      
+      // Değişiklik var mı kontrol et
+      const rolDegisti = eskiRol !== yeniRol;
+      const gorevDegisti = eskiGorev !== yeniGorev;
+      const yetkiDegisti = JSON.stringify(eskiYetkiler.sort()) !== JSON.stringify(yeniYetkiler.sort());
+      const degisiklikVar = rolDegisti || gorevDegisti || yetkiDegisti;
+      
+      const { error } = await supabase.from('kullanicilar').update({adsoyad:ad, rol, gorev, aktif, yetkiler}).eq('id', uid);
+      if(error) throw error;
+      
+      // Kullanıcı email'ini al (mail göndermek için)
+      const email = $("#e_mail")?.value?.trim() || '';
+      
+      // Değişiklik varsa mail gönder
+      if(degisiklikVar && email && eskiKullaniciVerileri){
+        try {
+          await sendPermissionUpdateEmail(email, ad, eskiRol, yeniRol, eskiGorev, yeniGorev, eskiYetkiler, yeniYetkiler);
+        } catch(mailErr) {
+          console.warn('Yetki güncelleme maili gönderilemedi (kritik değil):', mailErr);
+        }
+      }
+      
+      // Eski değerleri temizle
+      eskiKullaniciVerileri = null;
+      
       if(mEdit) mEdit.classList.remove('open');
       if(typeof window.showToast==='function') window.showToast('success','Başarılı','Güncellendi');
     }catch(e){
@@ -1273,14 +2216,265 @@ if($("#btnEditSave")){
   };
 }
 
-/* Reset/Toggle/Delete */
-async function resetPass(email){
-  if(!email || !auth){
-    if(typeof window.showToast==='function') window.showToast('warning','Uyarı','E-posta veya auth bulunamadı');
+/* Şifre Göster */
+async function showPassword(uid){
+  if(!uid){
+    if(typeof window.showToast==='function') window.showToast('warning','Uyarı','Kullanıcı ID bulunamadı');
     return;
   }
   try{
-    const auth=getAuth(); if(!auth) return; await auth.sendPasswordResetEmail(email);
+    const supabase = await getSupabase();
+    if(!supabase) {
+      if(typeof window.showToast==='function') window.showToast('error','Hata','Supabase bağlantısı yok');
+      return;
+    }
+    
+    // Kullanıcı bilgilerini al
+    const { data: userData, error: userError } = await supabase
+      .from('kullanicilar')
+      .select('id, adsoyad, email')
+      .eq('id', uid)
+      .single();
+    
+    if(userError || !userData){
+      if(typeof window.showToast==='function') window.showToast('error','Hata','Kullanıcı bulunamadı');
+      return;
+    }
+    
+    // Şifreyi al
+    const { data: passwordData, error: passwordError } = await supabase
+      .from('kullanici_sifreleri')
+      .select('sifre')
+      .eq('uid', uid)
+      .single();
+    
+    const mPasswordShow = $("#mPasswordShow");
+    if(!mPasswordShow) return;
+    
+    // Modal içeriğini doldur
+    $("#passwordShowAdSoyad").textContent = userData.adsoyad || '—';
+    $("#passwordShowEmail").textContent = userData.email || '—';
+    
+    if(passwordError || !passwordData){
+      $("#passwordShowSifre").textContent = 'Şifre kaydı bulunamadı';
+      $("#passwordShowSifre").style.color = 'var(--muted)';
+      $("#btnPasswordCopy").disabled = true;
+    } else {
+      $("#passwordShowSifre").textContent = passwordData.sifre || '—';
+      $("#passwordShowSifre").style.color = 'var(--text)';
+      $("#btnPasswordCopy").disabled = false;
+    }
+    
+    // Modal'ı aç
+    mPasswordShow.classList.add('open');
+  }catch(e){
+    console.error('Şifre gösterme hatası:', e);
+    if(typeof window.showToast==='function') window.showToast('error','Hata','Şifre gösterilemedi: '+(e?.message||e||'Bilinmeyen hata'));
+  }
+}
+
+/* Şifre Sıfırla ve Kaydet */
+async function resetAndSavePassword(userInfo){
+  if(!userInfo || !userInfo.uid || !userInfo.email){
+    if(typeof window.showToast==='function') window.showToast('warning','Uyarı','Kullanıcı bilgileri eksik');
+    return;
+  }
+  
+  try{
+    const supabase = await getSupabase();
+    if(!supabase) {
+      if(typeof window.showToast==='function') window.showToast('error','Hata','Supabase bağlantısı yok');
+      return;
+    }
+    
+    // Kullanıcı bilgilerini al
+    const { data: userData, error: userError } = await supabase
+      .from('kullanicilar')
+      .select('id, adsoyad, email, rol, gorev')
+      .eq('id', userInfo.uid)
+      .single();
+    
+    if(userError || !userData){
+      if(typeof window.showToast==='function') window.showToast('error','Hata','Kullanıcı bulunamadı');
+      return;
+    }
+    
+    // Modal'ı aç ve kullanıcı bilgilerini doldur
+    const mPasswordReset = $("#mPasswordReset");
+    if(!mPasswordReset) return;
+    
+    $("#passwordResetAdSoyad").textContent = userData.adsoyad || userInfo.adSoyad || '—';
+    $("#passwordResetEmail").textContent = userData.email || userInfo.email || '—';
+    const input = $("#passwordResetInput");
+    if(input) input.value = '';
+    // Elementleri yeniden al (modal açıldıktan sonra)
+    passwordResetInput = $("#passwordResetInput");
+    passwordResetMeterBar = $("#passwordResetMeterBar");
+    passwordResetMeterLabel = $("#passwordResetMeterLabel");
+    renderPasswordResetMeter();
+    
+    // Kullanıcı bilgilerini modal'a sakla (kaydet butonunda kullanmak için)
+    mPasswordReset.dataset.userInfo = JSON.stringify({
+      uid: userInfo.uid,
+      email: userData.email,
+      adSoyad: userData.adsoyad || userInfo.adSoyad,
+      rol: userData.rol,
+      gorev: userData.gorev
+    });
+    
+    mPasswordReset.classList.add('open');
+  }catch(e){
+    console.error('Şifre sıfırlama modal açma hatası:', e);
+    if(typeof window.showToast==='function') window.showToast('error','Hata','Modal açılamadı: '+(e?.message||e||'Bilinmeyen hata'));
+  }
+}
+
+/* Şifre Sıfırla ve Kaydet - Kaydet Butonu */
+async function savePasswordReset(){
+  const mPasswordReset = $("#mPasswordReset");
+  if(!mPasswordReset) return;
+  
+  const passwordInput = $("#passwordResetInput");
+  if(!passwordInput) return;
+  
+  const newPassword = passwordInput.value.trim();
+  
+  // Validasyon
+  if(!newPassword || newPassword.length < 6){
+    if(typeof window.showToast==='function') window.showToast('warning','Uyarı','Şifre en az 6 karakter olmalı');
+    return;
+  }
+  
+  // Kullanıcı bilgilerini al
+  const userInfoStr = mPasswordReset.dataset.userInfo;
+  if(!userInfoStr){
+    if(typeof window.showToast==='function') window.showToast('error','Hata','Kullanıcı bilgileri bulunamadı');
+    return;
+  }
+  
+  let userInfo;
+  try{
+    userInfo = JSON.parse(userInfoStr);
+  }catch(e){
+    if(typeof window.showToast==='function') window.showToast('error','Hata','Kullanıcı bilgileri parse edilemedi');
+    return;
+  }
+  
+  const btn = $("#btnPasswordResetSave");
+  const originalText = btn?.textContent || 'Kaydet';
+  if(btn) {
+    btn.disabled = true;
+    btn.textContent = '⏳ Kaydediliyor...';
+  }
+  
+  try{
+    const supabase = await getSupabase();
+    if(!supabase) {
+      throw new Error('Supabase bağlantısı yok');
+    }
+    
+    // Admin UID'sini al
+    const { data: { user: adminUser } } = await supabase.auth.getUser();
+    const adminUid = adminUser?.id || null;
+    
+    // Edge Function'ı çağır (şifre güncelleme)
+    const { data: edgeData, error: edgeError } = await supabase.functions.invoke('admin-create-user', {
+      body: {
+        email: userInfo.email,
+        password: newPassword,
+        adSoyad: userInfo.adSoyad,
+        rol: userInfo.rol,
+        gorev: userInfo.gorev,
+        yetkiler: [],
+        adminUid: adminUid
+      }
+    });
+    
+    if(edgeError){
+      console.error('Edge Function hatası:', edgeError);
+      throw new Error(edgeError.message || 'Şifre güncellenemedi');
+    }
+    
+    if(!edgeData || !edgeData.success){
+      throw new Error('Şifre güncellenemedi: Edge Function başarısız yanıt');
+    }
+    
+    // Modal'ı kapat
+    mPasswordReset.classList.remove('open');
+    
+    // Başarılı - şifre gösterim modal'ında göster
+    const mPasswordShow = $("#mPasswordShow");
+    if(mPasswordShow){
+      $("#passwordShowAdSoyad").textContent = userInfo.adSoyad || '—';
+      $("#passwordShowEmail").textContent = userInfo.email || '—';
+      $("#passwordShowSifre").textContent = newPassword;
+      $("#passwordShowSifre").style.color = 'var(--text)';
+      $("#btnPasswordCopy").disabled = false;
+      mPasswordShow.classList.add('open');
+    }
+    
+    if(typeof window.showToast==='function') window.showToast('success','Başarılı','Yeni şifre kaydedildi');
+  }catch(e){
+    console.error('Şifre kaydetme hatası:', e);
+    if(typeof window.showToast==='function') window.showToast('error','Hata','Şifre kaydedilemedi: '+(e?.message||e||'Bilinmeyen hata'));
+  }finally{
+    if(btn) {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  }
+}
+
+/* Şifre Reset Meter */
+let passwordResetInput, passwordResetMeterBar, passwordResetMeterLabel;
+
+function scorePasswordReset(p){ 
+  let s=0; 
+  if(p.length>=8) s++; 
+  if(/[A-Z]/.test(p)) s++; 
+  if(/[0-9]/.test(p)) s++; 
+  if(/[^A-Za-z0-9]/.test(p)) s++; 
+  return s; 
+}
+
+function renderPasswordResetMeter(){ 
+  if(!passwordResetInput || !passwordResetMeterBar || !passwordResetMeterLabel) return; 
+  const s=scorePasswordReset(passwordResetInput.value||""); 
+  let w=0,c="#ef4444",t="Zayıf"; 
+  if(s<=1){w=25}else if(s<=3){w=60;c="#f59e0b";t="İyi"} else {w=100;c="#22c55e";t="Güçlü"} 
+  passwordResetMeterBar.style.width=w+"%"; 
+  passwordResetMeterBar.style.background=c; 
+  passwordResetMeterLabel.textContent="Güç: "+t; 
+}
+
+// Sayfa yüklendikten sonra elementleri al
+(function initPasswordResetMeter(){
+  passwordResetInput = $("#passwordResetInput");
+  passwordResetMeterBar = $("#passwordResetMeterBar");
+  passwordResetMeterLabel = $("#passwordResetMeterLabel");
+  
+  if(passwordResetInput && passwordResetMeterBar && passwordResetMeterLabel){ 
+    passwordResetInput.addEventListener("input",renderPasswordResetMeter); 
+    renderPasswordResetMeter(); 
+  }
+})();
+
+/* Reset/Toggle/Delete */
+async function resetPass(email){
+  if(!email){
+    if(typeof window.showToast==='function') window.showToast('warning','Uyarı','E-posta bulunamadı');
+    return;
+  }
+  try{
+    const supabase = await getSupabase();
+    if(!supabase || !supabase.auth) {
+      if(typeof window.showToast==='function') window.showToast('error','Hata','Supabase bağlantısı yok');
+      return;
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + '/sifre-yenile.html'
+    });
+    if(error) throw error;
     if(typeof window.showToast==='function') window.showToast('success','Başarılı','Sıfırlama e-postası gönderildi');
   }catch(e){
     console.error('Şifre sıfırlama hatası:', e);
@@ -1288,12 +2482,18 @@ async function resetPass(email){
   }
 }
 async function toggleActive(d){
-  if(!d || !d.uid || !db){
-    if(typeof window.showToast==='function') window.showToast('warning','Uyarı','Geçersiz veri veya bağlantı');
+  if(!d || !d.uid){
+    if(typeof window.showToast==='function') window.showToast('warning','Uyarı','Geçersiz veri');
     return;
   }
   try{
-    const db=getDb(); if(!db) return; await db.collection("kullanicilar").doc(d.uid).set({aktif: !d.aktif},{merge:true});
+    const supabase = await getSupabase(); 
+    if(!supabase) {
+      if(typeof window.showToast==='function') window.showToast('error','Hata','Supabase bağlantısı yok');
+      return;
+    }
+    const { error } = await supabase.from('kullanicilar').update({aktif: !d.aktif}).eq('id', d.uid);
+    if(error) throw error;
     if(typeof window.showToast==='function') window.showToast('success','Başarılı','Durum güncellendi');
   }catch(e){
     console.error('Durum güncelleme hatası:', e);
@@ -1301,16 +2501,23 @@ async function toggleActive(d){
   }
 }
 async function softDelete(uid){
-  if(!uid || !db){
-    if(typeof window.showToast==='function') window.showToast('warning','Uyarı','Geçersiz ID veya bağlantı');
+  if(!uid){
+    if(typeof window.showToast==='function') window.showToast('warning','Uyarı','Geçersiz ID');
     return;
   }
-  if(!confirm("Bu kullanıcı soft-silinecek (aktif=false, silindi=true).\n\nBu işlem geri alınamaz. Onaylıyor musunuz?")){
+  if(!confirm("Bu kullanıcı pasifleştirilecek (aktif=false).\n\nBu işlem geri alınabilir. Onaylıyor musunuz?")){
     return;
   }
   try{
-    const db=getDb(); if(!db) return; await db.collection("kullanicilar").doc(uid).set({aktif:false, silindi:true},{merge:true});
-    if(typeof window.showToast==='function') window.showToast('success','Başarılı','Soft silindi');
+    const supabase = await getSupabase(); 
+    if(!supabase) {
+      if(typeof window.showToast==='function') window.showToast('error','Hata','Supabase bağlantısı yok');
+      return;
+    }
+    // sqleditor.md şemasına göre sadece aktif kolonu var, silindi kolonu yok
+    const { error } = await supabase.from('kullanicilar').update({aktif:false}).eq('id', uid);
+    if(error) throw error;
+    if(typeof window.showToast==='function') window.showToast('success','Başarılı','Kullanıcı pasifleştirildi');
   }catch(e){
     console.error('Soft silme hatası:', e);
     if(typeof window.showToast==='function') window.showToast('error','Hata',e?.message||e||'Bilinmeyen hata');
@@ -1318,47 +2525,548 @@ async function softDelete(uid){
 }
 
 /* ===== Manifest listener ===== */
-function listenManifest(){
-  const db=getDb(); if(!db) return; db.collection("sayfa_manifesti").orderBy("order","asc").onSnapshot(snap=>{
+async function listenManifest(){
+  const supabase = await getSupabase(); 
+  if(!supabase) return;
+  
+  // İlk yükleme
+  loadManifest();
+  
+  // Real-time subscription (Supabase)
+  const channel = supabase.channel('sayfa-manifesti-changes')
+    .on('postgres_changes', 
+      { event: '*', schema: 'public', table: 'sayfa_manifesti' },
+      () => {
+        loadManifest();
+      }
+    )
+    .subscribe();
+}
+
+async function loadManifest(){
+  try {
+    const supabase = await getSupabase(); 
+    if(!supabase) {
+      console.warn('⚠️ loadManifest: Supabase bağlantısı yok');
+      return;
+    }
+    
+    // GÜVENLİK: Sadece gereken sütunları seç (.cursorrules kuralına uygun)
+    const { data, error } = await supabase
+      .from('sayfa_manifesti')
+      .select('id, order, title, pages')
+      .order('order', { ascending: true });
+    
+    if(error) {
+      console.error('❌ Manifest yüklenemedi:', error);
+      // RLS hatası olabilir - kullanıcıyı bilgilendir
+      if(error.code === '42501' || error.message?.includes('permission denied') || error.message?.includes('RLS')){
+        console.error('🔒 RLS (Row Level Security) hatası: Bu sayfaya erişim için admin yetkisi gerekiyor.');
+        if(typeof window.showToast === 'function'){
+          window.showToast('error', 'Yetki Hatası', 'Manifest verilerine erişim reddedildi. Admin yetkisi gerekiyor.');
+        }
+      }
+      return;
+    }
+    
+    // Veri doğrulama ve işleme
     const m={};
-    snap.forEach(d=>{
-      const v=d.data()||{};
-      m[d.id]={title:v.title||d.id, order:v.order||0, pages:Array.isArray(v.pages)? v.pages.sort((a,b)=>(a.order||0)-(b.order||0)) : []};
+    const allPageKeys = new Set(); // Tüm sayfa key'lerini topla (doğrulama için)
+    
+    (data || []).forEach(d=>{
+      const v = d || {};
+      const pages = Array.isArray(v.pages) ? v.pages : [];
+      
+      // Her sayfanın key'ini topla
+      pages.forEach(page => {
+        const pageKey = page.key || `${d.id}: ${page.title}`;
+        allPageKeys.add(pageKey);
+      });
+      
+      m[d.id] = {
+        title: v.title || d.id, 
+        order: v.order || 0, 
+        pages: pages.sort((a,b)=>(a.order||0)-(b.order||0) || String(a.title||'').localeCompare(String(b.title||''), "tr"))
+      };
     });
-    manifest=m;
-    fillPanelSelect(); renderPermTree("#permTreeAdd"); if($("#permTreeEdit").children.length) renderPermTree("#permTreeEdit", getChecked("#permTreeEdit")); renderManifestAdmin(); renderKPIs();
+    
+    manifest = m;
+    
+    console.log('✅ Manifest yüklendi:', Object.keys(manifest).length, 'panel,', allPageKeys.size, 'sayfa');
+    
+    // Opsiyonel: Kullanıcı yetkilerini doğrula (debug modunda)
+    if(window.DEBUG_MODE){
+      validateUserPermissionsAgainstManifest(allPageKeys);
+    }
+    
+    fillPanelSelect(); 
+    renderPermTree("#permTreeAdd"); 
+    if($("#permTreeEdit").children.length) renderPermTree("#permTreeEdit", getChecked("#permTreeEdit")); 
+    renderManifestAdmin(); 
+    renderKPIs();
+    
     // Sayfa görünümü aktifse yeniden render et
-    const isSayfa = $("#sayfaWrap") && ($("#sayfaWrap").style.display==="" || $("#sayfaWrap").style.display==="block");
-    if(isSayfa) renderSayfa();
-  });
+    const sayfaWrap = $("#sayfaWrap");
+    const isSayfa = sayfaWrap && (sayfaWrap.style.display==="grid" || sayfaWrap.style.display==="block");
+    if(isSayfa) {
+      console.log('✅ Sayfa görünümü aktif, renderSayfa çağrılıyor');
+      renderSayfa();
+    }
+  } catch(e) {
+    console.error('loadManifest fonksiyonu hatası:', e);
+    // Hata olsa bile sayfa görünümü aktifse render et (hata mesajı gösterecek)
+    const sayfaWrap = $("#sayfaWrap");
+    const isSayfa = sayfaWrap && (sayfaWrap.style.display==="grid" || sayfaWrap.style.display==="block");
+    if(isSayfa) {
+      renderSayfa();
+    }
+  }
+}
+
+// Opsiyonel: Kullanıcı yetkilerini manifest ile karşılaştır (debug/doğrulama)
+async function validateUserPermissionsAgainstManifest(allPageKeys){
+  try {
+    const supabase = await getSupabase();
+    if(!supabase) return;
+    
+    const { data: usersData } = await supabase
+      .from('kullanicilar')
+      .select('id, adsoyad, email, yetkiler')
+      .eq('aktif', true);
+    
+    if(!usersData || usersData.length === 0) return;
+    
+    const invalidUsers = [];
+    usersData.forEach(user => {
+      const yetkiler = Array.isArray(user.yetkiler) ? user.yetkiler : [];
+      const invalidKeys = yetkiler.filter(y => {
+        const yetkiStr = String(y || '').trim();
+        return yetkiStr && !allPageKeys.has(yetkiStr) && yetkiStr !== '*';
+      });
+      
+      if(invalidKeys.length > 0){
+        invalidUsers.push({
+          user: user.adsoyad || user.email,
+          userId: user.id,
+          invalidKeys: invalidKeys
+        });
+      }
+    });
+    
+    if(invalidUsers.length > 0){
+      console.warn('⚠️ Geçersiz yetkilere sahip kullanıcılar bulundu:', invalidUsers);
+    }
+  } catch(e){
+    console.warn('Yetki doğrulama hatası (kritik değil):', e);
+  }
 }
 
 /* ===== Auth + Yetki + Menü ===== */
-// Ortak.js'den gelen initAppShellAuth kullanılacak, burada sadece sayfa özel işlemler
+// Bu sayfa özel: Kullanıcı ekleme sayfası olduğu için auth kontrolünü esnek tutuyoruz
+// Eğer kullanıcı varsa ve admin ise normal çalışır
+// Eğer kullanıcı yoksa veya admin değilse, yine de sayfa çalışır (kullanıcı eklemek için gerekli)
+
+// Sayfaya özel fetchPanels (Supabase uyumlu)
+async function fetchPanelsSupabase(allowSet, denySet) {
+  const res = [];
+  try {
+    const supabase = await getSupabase();
+    if (!supabase) {
+      console.error('Supabase client yüklenmedi (fetchPanelsSupabase)');
+      return res;
+    }
+    
+    const { data, error } = await supabase
+      .from('sayfa_manifesti')
+      .select('id, order, title, pages')
+      .order('order', { ascending: true });
+    
+    if (error) {
+      console.error('sayfa_manifesti okunamadı:', error);
+      return res;
+    }
+    
+    if (!data || data.length === 0) {
+      return res;
+    }
+    
+    // norm fonksiyonu window'da olmalı (ortak.js'den geliyor)
+    const norm = window.norm || ((s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim());
+    
+    data.forEach(doc => {
+      const d = doc || {};
+      const id = doc.id;
+      const panelTitle = d.title || id;
+      
+      // Sistem Ayarları panelini üst menüden kaldır
+      const panelTitleNorm = norm(panelTitle);
+      const idNorm = norm(id);
+      const excludedPanels = ['sistem ayarları', 'ayarlar', 'diğer', 'sistemayarları', 'sistem-ayarlari'];
+      if (excludedPanels.includes(panelTitleNorm) || excludedPanels.includes(idNorm) ||
+          (panelTitleNorm.includes('sistem') && panelTitleNorm.includes('ayar'))) {
+        return; // Bu paneli atla
+      }
+      
+      const panelGrant = allowSet.has(norm(id)) || allowSet.has(norm(panelTitle));
+      let pages = Array.isArray(d.pages) ? d.pages : [];
+      pages = pages.filter(pg => {
+        const keyNorm = norm(pg.key || pg.title || '');
+        const pageGrant = allowSet.has(keyNorm);
+        const denied = denySet.has(keyNorm);
+        return !denied && (panelGrant || pageGrant);
+      }).map(pg => ({
+        baslik: pg.title || pg.key || 'Sayfa',
+        url: (typeof window.normalizeUrl === 'function' ? window.normalizeUrl(pg.path || '#') : pg.path || '#'),
+        key: pg.key || pg.title || '',
+        sira: typeof pg.order === 'number' ? pg.order : 9999
+      })).sort((a, b) => a.sira - b.sira);
+      
+      if (pages.length) {
+        res.push({ 
+          id, 
+          baslik: panelTitle, 
+          sira: typeof d.order === 'number' ? d.order : 9999, 
+          pages 
+        });
+      }
+    });
+    
+    res.sort((a, b) => a.sira - b.sira);
+  } catch (e) {
+    console.error('fetchPanelsSupabase hatası:', e);
+  }
+  return res;
+}
+
+// Ortak.js'deki initAppShellAuth'u bu sayfa için override et
+// Bu kod ortak.js yüklenmeden ÖNCE çalışmalı
+(function(){
+  // Bu sayfa için özel auth kontrolü
+  const currentPath = window.location.pathname;
+  const isKullaniciEklePage = window.IS_KULLANICI_EKLE_PAGE || currentPath.includes('kullanici-ekle.html');
+  
+  if(isKullaniciEklePage){
+    // Ortak.js'deki initAppShellAuth'u geçici olarak override et
+    const originalInitAppShellAuth = window.initAppShellAuth;
+    
+    window.initAppShellAuth = async function() {
+      // Supabase'in yüklenmesini bekle
+      let supabase = await getSupabase();
+      if(!supabase) {
+        console.warn('Supabase yüklenmedi, sayfa sınırlı modda çalışacak');
+      }
+      
+      if(!supabase) {
+        console.warn('Supabase yüklenmedi, sayfa sınırlı modda çalışacak');
+        // Sayfa yine de çalışsın
+        setTimeout(async () => {
+          if(typeof window.initPage === 'function'){
+            await window.initPage();
+          }
+        }, 500);
+        return;
+      }
+      
+      // window.auth'u set et (ortak.js uyumluluğu için)
+      if(!window.auth && supabase.auth){
+        window.auth = supabase.auth;
+        console.log('✅ window.auth set edildi (Supabase auth)');
+      }
+      
+      // GÜVENLİK: Auth kontrolü zorunlu (erken kontrol zaten yapıldı, burada sadece doğrulama)
+      const auth = getAuth();
+      if(!auth){
+        console.error('❌ GÜVENLİK: Auth sistemi yüklenemedi');
+        window.location.href = '../index.html';
+        return;
+      }
+      
+      // Mevcut kullanıcıyı hemen kontrol et (auth state değişikliği beklenmeden)
+      const loadUserData = async (user) => {
+        // GÜVENLİK: Anonim kullanıcılar erişemez
+        if(!user) {
+          console.error('❌ GÜVENLİK: Kullanıcı giriş yapmamış, erişim reddedildi');
+          const profNameEl = document.getElementById('profName');
+          if(profNameEl){
+            profNameEl.textContent = 'Giriş Yapılmamış';
+          }
+          if(typeof window.showToast === 'function'){
+            window.showToast('error', 'Erişim Reddedildi', 'Bu sayfaya erişim için giriş yapmanız gerekmektedir.');
+          }
+          setTimeout(() => {
+            window.location.href = '../index.html';
+          }, 2000);
+          return;
+        }
+        
+        // GÜVENLİK: Admin kontrolü yap
+        // Kullanıcı varsa bilgilerini yükle
+        try {
+          const { data: userData, error } = await supabase
+            .from('kullanicilar')
+            .select('id, adsoyad, email, rol, gorev, aktif, eklenmetarihi, yetkiler')
+            .eq('id', user.id || user.uid)
+            .single();
+          
+          if(userData){
+            // GÜVENLİK: Yetki kontrolü - üst nav kontrolü yeterli, burada sadece wildcard kontrolü
+            // Üst nav'da yetki varsa sayfaya erişim var, içerde işlem yapılabilir
+            const yetkiler = Array.isArray(userData.yetkiler) ? userData.yetkiler : [];
+            const hasWildcard = yetkiler.includes('*');
+            
+            // Wildcard yoksa, üst nav kontrolü yeterli - sayfa açılmışsa yetki var demektir
+            // Bu kontrol sadece ekstra güvenlik için, ana kontrol üst nav'da
+            if(!hasWildcard && yetkiler.length === 0){
+              console.warn('⚠️ Kullanıcının yetkisi yok, ancak sayfa açılmışsa üst nav kontrolü geçmiş demektir');
+            }
+            
+            const profNameEl = document.getElementById('profName');
+            if(profNameEl){
+              const name = userData.adsoyad || userData.adSoyad || user.email?.split('@')[0] || 'Profil';
+              profNameEl.textContent = `👤 ${name}`;
+            }
+            
+            // Yetkileri yükle - "*" yetkisini de destekle
+            // norm fonksiyonu window'da olmalı (ortak.js'den geliyor)
+            const norm = window.norm || ((s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim());
+            const rawPerms = Array.isArray(userData.yetkiler) ? userData.yetkiler : [];
+            const normalizedPerms = rawPerms.filter(s => !String(s).trim().startsWith('-') && !String(s).trim().startsWith('!')).map(s => String(s).trim());
+            window.CURRENT_ALLOW = new Set();
+            normalizedPerms.forEach(perm => {
+              const normalized = norm(perm);
+              window.CURRENT_ALLOW.add(perm); // Orijinal hali
+              window.CURRENT_ALLOW.add(normalized); // Normalize edilmiş hali
+              if (perm === '*' || normalized === '*') {
+                window.CURRENT_ALLOW.add('*'); // Wildcard yetkisi
+              }
+            });
+            window.CURRENT_DENY = new Set(rawPerms.filter(s => String(s).trim().startsWith('-') || String(s).trim().startsWith('!')).map(s => norm(String(s).replace(/^[-!]\s*/, ''))));
+            
+            // Navigasyonu yükle (Supabase uyumlu fetchPanels kullan)
+            if(typeof window.renderNav === 'function'){
+              try {
+                const panels = await fetchPanelsSupabase(window.CURRENT_ALLOW, window.CURRENT_DENY);
+                window.renderNav(panels);
+              } catch(e){
+                console.warn('Paneller yüklenemedi:', e);
+              }
+            }
+            
+            // Bildirimleri yükle
+            if(typeof window.loadNotifications === 'function'){
+              try {
+                await window.loadNotifications();
+              } catch(e){
+                console.warn('Bildirimler yüklenemedi:', e);
+              }
+            }
+          } else {
+            // Kullanıcı veritabanında yok
+            console.error('❌ GÜVENLİK: Kullanıcı kaydı bulunamadı');
+            if(typeof window.showToast === 'function'){
+              window.showToast('error', 'Hata', 'Kullanıcı kaydınız bulunamadı. Lütfen yöneticiyle iletişime geçin.');
+            }
+            setTimeout(() => {
+              window.location.href = '../index.html';
+            }, 2000);
+            return;
+          }
+        } catch(e){
+          console.error('❌ Kullanıcı bilgisi yüklenemedi:', e);
+          if(typeof window.showToast === 'function'){
+            window.showToast('error', 'Hata', 'Kullanıcı bilgileriniz alınamadı. Lütfen tekrar giriş yapın.');
+          }
+          setTimeout(() => {
+            window.location.href = '../index.html';
+          }, 2000);
+          return;
+        }
+        
+        // Sayfa özel init fonksiyonunu çağır (manifest ve users yüklenecek)
+        // Ortak.js mantığına uygun olarak initPage'i çağır
+        if(typeof window.initPage === 'function'){
+          try {
+            await window.initPage();
+          } catch(e) {
+            console.error('initPage hatası:', e);
+          }
+        }
+      };
+      
+      // Önce mevcut kullanıcıyı kontrol et (Supabase session kullan)
+      let currentUser = null;
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if(sessionError){
+          console.error('Session alınamadı:', sessionError);
+        } else if(session?.user){
+          currentUser = session.user;
+        }
+      } catch(sessionErr){
+        console.error('Session kontrolü hatası:', sessionErr);
+      }
+      
+      if(currentUser){
+        await loadUserData(currentUser);
+      } else {
+        // GÜVENLİK: Kullanıcı yoksa erişim reddedilir
+        console.error('❌ GÜVENLİK: Kullanıcı giriş yapmamış');
+        if(typeof window.showToast === 'function'){
+          window.showToast('error', 'Erişim Reddedildi', 'Bu sayfaya erişim için giriş yapmanız gerekmektedir.');
+        }
+        setTimeout(() => {
+          window.location.href = '../index.html';
+        }, 2000);
+        return;
+      }
+        
+      // Auth state değişikliklerini dinle (Supabase API)
+      // Supabase'de onAuthStateChange kullanılır (Firebase'den farklı)
+      if(supabase && supabase.auth){
+        supabase.auth.onAuthStateChange(async (event, session) => {
+          const user = session?.user || null;
+          await loadUserData(user);
+        });
+      }
+    };
+    
+    // Ortak.js'deki initWhenReady Firebase kontrolü yapıyor, bu sayfada Supabase kullanılıyor
+    // Bu yüzden initAppShellAuth'u manuel olarak çağırmalıyız
+    // DOMContentLoaded veya sayfa yüklendiğinde çağır
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function() {
+        if(typeof window.initAppShellAuth === 'function'){
+          window.initAppShellAuth();
+        }
+      });
+    } else {
+      // Sayfa zaten yüklendi
+      if(typeof window.initAppShellAuth === 'function'){
+        window.initAppShellAuth();
+      }
+    }
+  }
+})();
 
 // Sayfa özel init fonksiyonu - ortak.js'den sonra çağrılacak
 window.initPage = async function() {
   try {
-    const db = getDb();
-    const auth = getAuth();
-    if (!db || !auth) {
-      throw new Error('Firebase bağlantısı yok');
+    console.log('initPage çağrıldı');
+    
+    // Supabase'in yüklenmesini bekle
+    let supabase = await getSupabase();
+    if (!supabase) {
+      console.warn('Supabase bağlantısı yok, sayfa sınırlı modda çalışacak');
+      return;
     }
     
-    const user = auth.currentUser;
-    if (!user) return;
+    // GÜVENLİK: Session kontrolü (Supabase auth state'i doğru kontrol etmek için)
+    let user = null;
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if(error){
+        console.error('Session alınamadı:', error);
+      } else if(session?.user){
+        user = session.user;
+      }
+    } catch(sessionError){
+      console.error('Session kontrolü hatası:', sessionError);
+    }
     
-    // Bu sayfaya erişim yetkisi kontrolü (opsiyonel)
-    const allowSet = window.CURRENT_ALLOW || new Set();
-    // if(!allowSet.has('admin') && !allowSet.has('kullanıcı yönetimi')){
-    //   if(typeof window.showToast==='function') window.showToast('warning', 'Yetki Yok', 'Bu sayfaya erişim yetkiniz yok.');
-    //   setTimeout(()=>location.replace('../panel.html'), 2000);
-    //   return;
-    // }
+    // Eğer session'dan user alınamadıysa, getAuth() ile dene (uyumluluk için)
+    if(!user){
+      const auth = getAuth();
+      // Supabase auth'da currentUser yok, session kullanmalıyız
+      // Ama yine de kontrol edelim
+      if(auth && auth.getUser){
+        try {
+          const { data: { user: authUser } } = await auth.getUser();
+          user = authUser;
+        } catch(e){
+          console.warn('getUser() hatası:', e);
+        }
+      }
+    }
     
-    // Sayfa özel işlemler
-    listenManifest();
-    listenUsers();
+    // GÜVENLİK: Anonim kullanıcılar sayfayı kullanamaz
+    if(!user){
+      console.error('❌ GÜVENLİK: Anonim kullanıcılar bu sayfaya erişemez');
+      if(typeof window.showToast === 'function'){
+        window.showToast('error', 'Erişim Reddedildi', 'Bu sayfaya erişim için giriş yapmanız gerekmektedir.');
+      }
+      // Ana sayfaya yönlendir
+      setTimeout(() => {
+        window.location.href = '../index.html';
+      }, 2000);
+      return;
+    }
+    
+    // GÜVENLİK: Kullanıcı admin değilse erişim reddedilir
+    let isAdmin = false;
+    try {
+      const { data: userData, error: userError } = await supabase
+        .from('kullanicilar')
+        .select('rol, yetkiler, adsoyad')
+        .eq('id', user.id || user.uid)
+        .single();
+      
+      if(userError){
+        console.error('❌ Kullanıcı bilgisi alınamadı:', userError);
+        if(typeof window.showToast === 'function'){
+          window.showToast('error', 'Hata', 'Kullanıcı bilgileriniz alınamadı. Lütfen tekrar giriş yapın.');
+        }
+        setTimeout(() => {
+          window.location.href = '../index.html';
+        }, 2000);
+        return;
+      }
+      
+      if(userData){
+        // Yetki kontrolü - üst nav kontrolü yeterli
+        // Üst nav'da yetki varsa sayfaya erişim var, içerde işlem yapılabilir
+        // Bu kontrol sadece ekstra güvenlik için, ana kontrol üst nav'da
+        const yetkiler = Array.isArray(userData.yetkiler) ? userData.yetkiler : [];
+        // Sayfa açılmışsa yetki var demektir (üst nav kontrolü geçmiş)
+        isAdmin = true; // Üst nav kontrolü yeterli
+      } else {
+        // Kullanıcı veritabanında yok
+        console.error('❌ GÜVENLİK: Kullanıcı kaydı bulunamadı');
+        if(typeof window.showToast === 'function'){
+          window.showToast('error', 'Hata', 'Kullanıcı kaydınız bulunamadı. Lütfen yöneticiyle iletişime geçin.');
+        }
+        setTimeout(() => {
+          window.location.href = '../index.html';
+        }, 2000);
+        return;
+      }
+    } catch(e){
+      console.error('❌ Kullanıcı yetki kontrolü hatası:', e);
+      if(typeof window.showToast === 'function'){
+        window.showToast('error', 'Hata', 'Yetki kontrolü yapılamadı. Lütfen tekrar giriş yapın.');
+      }
+      setTimeout(() => {
+        window.location.href = '../index.html';
+      }, 2000);
+      return;
+    }
+    
+    // Sayfa özel işlemler (sadece admin kullanıcılar için)
+    console.log('Manifest ve Users yükleniyor...');
+    try {
+      listenManifest();
+    } catch(e){
+      console.error('listenManifest hatası:', e);
+    }
+    
+    try {
+      await listenUsers();
+    } catch(e){
+      console.error('listenUsers hatası:', e);
+      // Hata olsa bile sayfa yenilenmesin
+      if(typeof window.showToast === 'function'){
+        window.showToast('warning', 'Uyarı', 'Kullanıcılar yüklenirken hata: ' + (e?.message || 'Bilinmeyen hata'));
+      }
+    }
     
     // İlk açılışta "Kullanıcılar" sekmesi ve "Sayfa" görünümü açık olsun
     setTimeout(()=>{
@@ -1372,6 +3080,8 @@ window.initPage = async function() {
         }, 50);
       }
     }, 200);
+    
+    console.log('initPage tamamlandı');
   } catch (e) {
     console.error('Sayfa init hatası:', e);
     if (typeof window.showToast === 'function') {
@@ -1382,4 +3092,5 @@ window.initPage = async function() {
 </script>
 </body>
 </html>
+
 

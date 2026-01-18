@@ -6,11 +6,10 @@
   <title>Kişi Bazlı Alacak Raporu - Yazdır</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- Firebase compat -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-  <script src="../../js/firebase/firebase-init.js"></script>
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="../../src/supabase.js"></script>
+  <script src="../../src/supabase-auth-wrapper.js"></script>
 
   <!-- Flutter'daki _printReport HTML tasarımına birebir yakın CSS -->
   <style>
@@ -471,8 +470,8 @@
     };
     const AYRILANLAR = ['burak serin'];
 
-    const db = window.db;
-    const auth = firebase.auth();
+    // Supabase client helper
+    const getSupabase = () => window.supabase;
 
     const qs = sel => document.querySelector(sel);
     const money = n =>
@@ -502,14 +501,16 @@
       return titleTR(name);
     }
 
-    // Tarihi güvenli şekilde YYYY-MM-DD'e çevir
+    // Tarihi güvenli şekilde YYYY-MM-DD'e çevir (Supabase için)
     function toDateKey(v) {
       if (!v) return '';
       if (typeof v === 'string') return v.slice(0, 10);
       if (v instanceof Date) return v.toISOString().slice(0, 10);
-      if (typeof v === 'object' && typeof v.toDate === 'function') {
+      // Supabase'den gelen timestamp string'leri için
+      if (typeof v === 'object' && v.toString) {
         try {
-          return v.toDate().toISOString().slice(0, 10);
+          const d = new Date(v);
+          if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
         } catch (e) {
           return '';
         }
@@ -544,56 +545,120 @@
       return '%' + oran.toFixed(1).replace('.', ',');
     }
 
-    // URL parametreleri (Flutter'daki _printReport ile uyumlu: personel + yil)
+    // URL parametreleri (personel, yil, hideZero, sortCol, sortDir, rankSortCol, rankSortDir)
     const urlParams = new URLSearchParams(window.location.search);
     const paramPerson = urlParams.get('personel') || 'ALL';
     const paramYil = urlParams.get('yil') || String(new Date().getFullYear());
+    const paramHideZero = urlParams.get('hideZero') === '1';
+    let paramSortCol = urlParams.get('sortCol') || null;
+    const paramSortDir = urlParams.get('sortDir') || 'asc';
+    const paramRankSortCol = urlParams.get('rankSortCol') || null;
+    const paramRankSortDir = urlParams.get('rankSortDir') || 'desc';
+    
+    // Alan adı dönüşümü: rapor-personel.html'deki alan adları -> rapor-yazdir.html'deki alan adları
+    const fieldNameMap = {
+      'tah': 'tahakkuk',
+      'tsl': 'tahsilat',
+      'kal': 'kalan'
+    };
+    if (paramSortCol && fieldNameMap[paramSortCol]) {
+      paramSortCol = fieldNameMap[paramSortCol];
+    }
 
     let allTahakkuk = [];
     let allTahsilat = [];
 
-    auth.onAuthStateChanged(async (user) => {
-      if (!user) {
-        showError('Oturum açmanız gerekiyor.');
-        return;
-      }
+    // Supabase session kontrolü
+    (async function init() {
       try {
+        // Supabase client'ın yüklenmesini bekle (auth özelliği de hazır olmalı)
+        let supabase = getSupabase();
+        let retries = 0;
+        const maxRetries = 50; // 5 saniye bekle
+        
+        while ((!supabase || !supabase.auth || typeof supabase.auth.getSession !== 'function') && retries < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          supabase = getSupabase();
+          retries++;
+        }
+        
+        if (!supabase) {
+          showError('Supabase client yüklenemedi. Sayfayı yenileyin.');
+          return;
+        }
+        
+        if (!supabase.auth || typeof supabase.auth.getSession !== 'function') {
+          showError('Supabase Auth hazır değil. Sayfayı yenileyin.');
+          console.error('Supabase durumu:', {
+            hasSupabase: !!supabase,
+            hasAuth: !!supabase.auth,
+            hasGetSession: supabase.auth ? typeof supabase.auth.getSession : 'N/A'
+          });
+          return;
+        }
+
+        // Supabase auth session kontrolü
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError || !sessionData?.session?.user) {
+          showError('Oturum açmanız gerekiyor.');
+          return;
+        }
+
         await loadData();
         renderReport();
         // Flutter tarafındaki gibi: sayfa yüklenince otomatik yazdır
         setTimeout(() => window.print(), 300);
       } catch (e) {
-        console.error(e);
-        showError('Veri yüklenirken bir hata oluştu: ' + e.message);
+        console.error('Yazdırma sayfası hatası:', e);
+        showError('Veri yüklenirken bir hata oluştu: ' + (e.message || e));
       }
-    });
+    })();
 
     async function loadData() {
       qs('#loading').style.display = 'block';
       qs('#error').style.display = 'none';
       qs('#content').style.display = 'none';
 
-      const tSnap = await db.collection('tahakkuklar').get();
-      allTahakkuk = tSnap.docs.map(d => {
-        const x = d.data();
+      const supabase = getSupabase();
+      if (!supabase) {
+        throw new Error('Supabase client hazır değil');
+      }
+
+      // Tahakkuklar
+      const { data: tahakkukData, error: tahakkukError } = await supabase
+        .from('tahakkuklar')
+        .select('*');
+      
+      if (tahakkukError) {
+        throw new Error('Tahakkuklar yüklenemedi: ' + tahakkukError.message);
+      }
+
+      allTahakkuk = (tahakkukData || []).map(d => {
         return {
           id: d.id,
-          ...x,
-          personel: resolveName(x.personel),
-          borclu: resolveName(x.borclu),
-          faaliyet: titleTR(x.faaliyet)
+          ...d,
+          personel: resolveName(d.personel),
+          borclu: resolveName(d.borclu),
+          faaliyet: titleTR(d.faaliyet)
         };
       });
 
-      const sSnap = await db.collection('tahsilatlar').get();
-      allTahsilat = sSnap.docs.map(d => {
-        const x = d.data();
+      // Tahsilatlar
+      const { data: tahsilatData, error: tahsilatError } = await supabase
+        .from('tahsilatlar')
+        .select('*');
+      
+      if (tahsilatError) {
+        throw new Error('Tahsilatlar yüklenemedi: ' + tahsilatError.message);
+      }
+
+      allTahsilat = (tahsilatData || []).map(d => {
         return {
           id: d.id,
-          ...x,
-          personel: resolveName(x.personel),
-          borclu: resolveName(x.borclu),
-          faaliyet: titleTR(x.faaliyet)
+          ...d,
+          personel: resolveName(d.personel),
+          borclu: resolveName(d.borclu),
+          faaliyet: titleTR(d.faaliyet)
         };
       });
     }
@@ -628,7 +693,7 @@
 
       // Satırları oluştur (Flutter RaporRow yapısına paralel)
       const usedTahsilatIds = new Set();
-      const rows = [];
+      let rows = [];
 
       tList.forEach(t => {
         const related = getRelatedTahsilat(t, sList);
@@ -684,14 +749,32 @@
         });
       });
 
-      // Basit sıralama: yıl, faaliyet, borçlu
-      rows.sort((a, b) => {
-        const ya = String(a.yil || ''), yb = String(b.yil || '');
-        if (ya !== yb) return ya.localeCompare(yb, 'tr');
-        const fa = a.faaliyet || '', fb = b.faaliyet || '';
-        if (fa !== fb) return fa.localeCompare(fb, 'tr');
-        return (a.borclu || '').localeCompare(b.borclu || '', 'tr');
-      });
+      // Kalan sıfır olanları gizle (URL parametresinden) - ÖNCE gizle, SONRA sırala
+      if (paramHideZero) {
+        rows = rows.filter(r => Math.abs(r.kalan) > 0.001);
+      }
+
+      // Sıralama: URL parametrelerinden gelen sıralama ayarlarını uygula
+      if (paramSortCol && paramSortCol !== '') {
+        rows.sort((a, b) => {
+          let va = a[paramSortCol], vb = b[paramSortCol];
+          if (va === undefined || va === null) va = '';
+          if (vb === undefined || vb === null) vb = '';
+          if (typeof va === 'string') {
+            return paramSortDir === 'asc' ? va.localeCompare(vb, 'tr') : vb.localeCompare(va, 'tr');
+          }
+          return paramSortDir === 'asc' ? va - vb : vb - va;
+        });
+      } else {
+        // Varsayılan sıralama: yıl, faaliyet, borçlu
+        rows.sort((a, b) => {
+          const ya = String(a.yil || ''), yb = String(b.yil || '');
+          if (ya !== yb) return ya.localeCompare(yb, 'tr');
+          const fa = a.faaliyet || '', fb = b.faaliyet || '';
+          if (fa !== fb) return fa.localeCompare(fb, 'tr');
+          return (a.borclu || '').localeCompare(b.borclu || '', 'tr');
+        });
+      }
 
       // Toplamlar
       let sumTah = 0, sumTsl = 0, sumYeni = 0, sumKal = 0;
@@ -742,6 +825,7 @@
 
       rows.forEach(r => {
         const isZero = Math.abs(r.kalan) < 0.001;
+        // Kalan sıfır olanlar yeşil arka plan ve yeşil kenarlık
         const rowStyle = isZero ? 'background-color: #ecfdf5; border-left: 3px solid #22c55e;' : '';
         const tr = document.createElement('tr');
         tr.setAttribute('style', rowStyle);
@@ -813,7 +897,21 @@
       const ayrilanList = list.filter(r => r.isAyrilan);
       const aktifList = list.filter(r => !r.isAyrilan);
 
-      aktifList.sort((a, b) => b.n - a.n);
+      // Personel sıralaması: URL parametrelerinden gelen sıralama ayarlarını uygula
+      if (paramRankSortCol && paramRankSortCol !== '') {
+        aktifList.sort((a, b) => {
+          let va = a[paramRankSortCol], vb = b[paramRankSortCol];
+          if (va === undefined || va === null) va = '';
+          if (vb === undefined || vb === null) vb = '';
+          if (typeof va === 'string') {
+            return paramRankSortDir === 'asc' ? va.localeCompare(vb, 'tr') : vb.localeCompare(va, 'tr');
+          }
+          return paramRankSortDir === 'asc' ? va - vb : vb - va;
+        });
+      } else {
+        // Varsayılan sıralama: Tahsilat nispetine göre azalan
+        aktifList.sort((a, b) => b.n - a.n);
+      }
 
       aktifList.forEach((r, idx) => {
         const tr = document.createElement('tr');

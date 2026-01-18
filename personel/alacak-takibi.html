@@ -6,114 +6,131 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
   <link rel="icon" type="image/png" href="../img/logo.png" />
 
-  <!-- Firebase compat -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-  <script src="../../js/firebase/firebase-init.js"></script>
+  <!-- Supabase (Auth + Database için) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="../../src/supabase.js"></script>
+  <script src="../../src/supabase-auth-wrapper.js"></script>
+  <script src="../../src/supabase-db-wrapper.js"></script>
+  
+  <!-- Ortak CSS (App Shell Tasarım Sistemi) -->
+  <link rel="stylesheet" href="../../css/app-shell.css">
+  
+  <!-- Ortak JS (navigation, toast, vs) -->
+  <script src="../../js/ortak.js"></script>
 
   <!-- html2pdf -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
 
   <style>
-    :root{
-      --appbar-h:56px;
-      --bg:#f4f6f9; --card:#ffffff; --ink:#2c3e50; --muted:#6c7a89;
-      --accent:#324960; --good:#2d6a4f; --warn:#d35400; --bad:#c0392b;
-      --border:#e6ebf2; --stroke:rgba(15,23,42,.12); --text:#0b1220;
-      --surface:#f1f5ff; --surface2:#f6f8ff; --shadow:0 12px 28px rgba(0,0,0,.12);
+    /* Sayfa özel stilleri - app-shell.css'den sonra yüklenir */
+    /* Arka plan, appbar, drawer, toast, modal, card, button vb. app-shell.css'den geliyor */
+    
+    /* Modal iyileştirmeleri - modern ve temiz tasarım */
+    .modal{
+      backdrop-filter:blur(6px);
+      -webkit-backdrop-filter:blur(6px);
     }
-    *{box-sizing:border-box}
-    body{margin:0;font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;background:var(--bg);color:var(--ink)}
-    img{max-width:100%;height:auto;display:block}
+    .modal .sheet{
+      max-width:760px;
+      width:min(760px, 96vw);
+      border-radius:18px;
+      box-shadow:0 24px 48px rgba(15,23,42,.2), 0 1px 0 rgba(255,255,255,.05) inset;
+    }
+    .modal .sheet .body{
+      padding:24px;
+    }
+    .modal .sheet .body h3{
+      margin:0 0 24px 0;
+      font-size:22px;
+      font-weight:700;
+      color:var(--text);
+      padding-bottom:16px;
+      border-bottom:2px solid var(--stroke);
+    }
+    .modal .sheet footer{
+      gap:12px;
+      padding:20px 24px;
+      border-top:1px solid var(--stroke);
+    }
+    .modal .sheet footer .btn{
+      min-width:120px;
+      padding:12px 24px;
+      font-weight:600;
+      font-size:15px;
+      border-radius:10px;
+    }
+    .modal .sheet footer .btn-success{
+      box-shadow:0 4px 12px rgba(16,185,129,.25);
+    }
+    .modal .sheet footer .btn-success:hover{
+      transform:translateY(-2px);
+      box-shadow:0 6px 16px rgba(16,185,129,.35);
+    }
+    .modal .sheet footer .btn-ghost:hover{
+      transform:translateY(-1px);
+      background:var(--surface);
+    }
 
-    /* APPBAR (üst panel) */
-    .appbar{
-      position:sticky; top:0; z-index:60; height:var(--appbar-h);
-      background:var(--card); backdrop-filter:blur(10px);
-      border-bottom:1px solid var(--stroke);
-      display:flex; align-items:center; gap:10px; padding:0 12px;
+    /* Sayfa header kaldırıldı - başlık #tools kartı içinde */
+    .wrap{
+      max-width:1400px;
+      margin:0 auto;
+      padding:16px;
     }
-    .brand{display:flex; align-items:center; gap:10px; cursor:pointer}
-    .brand img{width:24px; height:24px}
-    .brand span{font-weight:900; letter-spacing:.02em; color:var(--text)}
-    .nav-center{margin:0 auto; height:100%}
-    .nav-list{display:flex; gap:22px; align-items:center; height:100%; list-style:none; margin:0; padding:0}
-    .nav-item{position:relative; height:100%}
-    .nav-btn{height:100%; display:flex; align-items:center; gap:6px; font-weight:800; cursor:pointer; color:var(--text)}
-    .nav-btn:hover{color:var(--accent)}
-    .caret{font-size:12px; opacity:.6}
-    .dropdown{
-      position:absolute; top:100%; left:0; min-width:240px;
-      background:var(--card); border:1px solid var(--stroke);
-      border-radius:12px; box-shadow:var(--shadow); padding:8px; display:none;
+    @media (max-width:640px){
+      .wrap{padding:12px}
     }
-    .dropdown a{
-      display:flex; align-items:center; gap:8px;
-      padding:10px 12px; border-radius:10px;
-      color:var(--text); text-decoration:none;
-    }
-    .dropdown a:hover{background:var(--surface2)}
-    .nav-item.open .dropdown{display:block}
-    .nav-right{display:flex; gap:8px; align-items:center}
-    .btn{border:1px solid var(--stroke); background:var(--surface2); color:var(--text); border-radius:999px; padding:8px 14px; cursor:pointer; white-space:nowrap; font-weight:700}
-    .hamb{display:none}
-    .iconbtn{position:relative; border:1px solid var(--stroke); background:var(--card); color:var(--text); border-radius:999px; padding:8px 12px; cursor:pointer; display:flex; align-items:center; gap:8px}
-    .drop-right{left:auto; right:0}
-    .avatar{width:22px;height:22px;border-radius:999px;background:linear-gradient(180deg,#94a3b8,#64748b)}
-    .badge{position:absolute;top:-6px;right:-6px;background:var(--bad);color:#fff;font-size:11px;padding:2px 6px;border-radius:999px;border:2px solid var(--card);min-width:18px;text-align:center}
-    @media (max-width: 960px){ .nav-center{display:none} .hamb{display:inline-flex} }
-
-    /* Drawer */
-    .drawer{position:fixed; top:var(--appbar-h); right:0; bottom:0; left:34%; transform:translateX(100%); transition:.25s; background:var(--card); border-left:1px solid var(--stroke); z-index:70; overflow:auto; padding:16px}
-    .drawer.open{transform:translateX(0)}
-    .drawer .panel-title{margin:14px 4px 6px; font-weight:800; color:var(--muted); font-size:13px}
-    .drawer a{display:block; padding:12px; border-radius:12px; border:1px solid var(--stroke); margin:8px 0; color:var(--text); background:var(--surface2); text-decoration:none}
-    .drawer a:hover{background:var(--surface)}
-
-    header{position:sticky;top:var(--appbar-h);z-index:5;background:var(--card);border-bottom:1px solid var(--border);box-shadow:0 2px 4px rgba(0,0,0,.05)}
-    .wrap{max-width:100%;margin:0 auto;padding:12px 16px}
     .row{display:grid;gap:12px}
     .row.cols-4{grid-template-columns:repeat(4,1fr)}
     @media (max-width:900px){.row.cols-4{grid-template-columns:1fr 1fr}}
     @media (max-width:640px){.row.cols-4{grid-template-columns:1fr}}
 
-    .toolbar{display:flex;gap:10px;flex-wrap:nowrap;align-items:center;overflow:auto;padding-bottom:6px}
-    .toolbar::-webkit-scrollbar{height:6px}
-    .toolbar::-webkit-scrollbar-thumb{background:#d7dde6;border-radius:999px}
-    select,input,button{
-      height:36px;
-      border:1px solid var(--border);
-      background:#ffffff;
-      border-radius:8px;
-      padding:0 10px;
-      font:inherit;
-      color:var(--ink);
-      white-space:nowrap;
+    /* Toolbar - filter kartı (başlık ve filtreler birlikte) */
+    #tools{
+      margin-top:20px;
+      margin-bottom:0;
+      padding:24px;
     }
-    input{min-width:220px}
-    input::placeholder{color:#9ca3af}
-    button{
-      background:var(--accent);
-      color:#ffffff;
-      border:none;
-      cursor:pointer;
-      white-space:nowrap;
-      border-radius:999px;
-      padding:0 14px;
-      font-weight:500;
-      box-shadow:0 8px 18px rgba(37,99,235,.22);
-      transition:transform .12s ease,box-shadow .12s ease,background .12s ease;
+    #tools > div:first-child{
+      /* Başlık ve açıklama container'ı */
+      margin-bottom:20px;
+      padding-bottom:16px;
+      border-bottom:1px solid var(--stroke);
     }
-    button:hover{transform:translateY(-1px);box-shadow:0 14px 28px rgba(37,99,235,.3);}
-    button.secondary{
-      background:#ffffff;
-      color:var(--ink);
-      border:1px solid var(--border);
-      box-shadow:none;
+    #tools > div:last-child,
+    #tools > div:nth-child(2){
+      /* Filtre container'ı */
+      display:flex;
+      gap:16px;
+      flex-wrap:wrap;
+      align-items:flex-end;
+      padding:0;
     }
-    button.good{background:var(--good)}
-    button.bad{background:var(--bad)}
+    @media (max-width:640px){
+      #tools{
+        padding:20px 16px;
+      }
+      #tools > div:last-child,
+      #tools > div:nth-child(2){
+        gap:12px;
+      }
+    }
+    /* Field container */
+    .field{
+      display:flex;
+      flex-direction:column;
+      gap:0;
+    }
+    /* Form elemanları app-shell.css'den geliyor, özel ayarlar */
+    select, input[type="text"], input[type="number"], input[type="date"]{
+      min-width:180px;
+    }
+    @media (max-width:640px){
+      select, input[type="text"], input[type="number"], input[type="date"]{
+        min-width:140px;
+        width:100%;
+      }
+    }
     .chip{
       padding:8px 10px;
       border-radius:999px;
@@ -123,13 +140,7 @@
       font-size:12px;
       white-space:nowrap;
     }
-    .card{
-      background:#ffffff;
-      border:1px solid var(--border);
-      border-radius:14px;
-      padding:14px 16px;
-      box-shadow:0 10px 25px rgba(15,23,42,.05);
-    }
+    /* Card app-shell.css'den geliyor */
     .kpi{display:flex;flex-direction:column;gap:4px}
     .kpi .label{color:var(--muted);font-size:12px}
     .kpi .value{font-size:20px;font-weight:600}
@@ -139,17 +150,9 @@
     .muted{color:var(--muted)}
     .line{height:1px;background:var(--border);margin:8px 0}
 
+    /* Modal ve Sheet app-shell.css'den geliyor */
+    /* Modal stilleri app-shell.css'den geliyor */
     body.modal-open{overflow:hidden}
-    .modal{position:fixed;inset:0;background:rgba(0,0,0,.28);display:none;align-items:center;justify-content:center;padding:16px;z-index:9999}
-    .modal.show{display:flex}
-    .sheet{
-      max-width:760px;width:100%;
-      background:#ffffff;
-      border-radius:14px;
-      padding:18px;
-      border:1px solid var(--border);
-      box-shadow:0 18px 40px rgba(15,23,42,.15);
-    }
 
     .table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px;background:#ffffff}
     table{width:100%;border-collapse:collapse;background:transparent;min-width:1000px}
@@ -179,17 +182,69 @@
 
     .avoid-break{page-break-inside:avoid;break-inside:avoid}
     @media print{
-      header{position:static;border:none}
       .toolbar{display:none!important}
       .wrap{max-width:100%;padding:0}
       .card{border:none;padding:0}
       .table-wrap{border:none}
     }
 
-    .modal .sheet .grid{display:grid;gap:10px}
-    .modal .sheet label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
-    .modal .sheet input, .modal .sheet select{width:100%;height:38px;border:1px solid var(--border);border-radius:10px;padding:0 10px}
-    .modal .sheet .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}
+    /* Modal içi form elemanları - app-shell.css ile uyumlu */
+    .modal .sheet .body .grid{
+      display:grid;
+      grid-template-columns:repeat(3, 1fr);
+      gap:16px;
+    }
+    @media (max-width:768px){
+      .modal .sheet .body .grid{
+        grid-template-columns:1fr;
+      }
+    }
+    .modal .sheet .body label{
+      display:block;
+      font-size:13px;
+      font-weight:600;
+      color:var(--muted);
+      margin-bottom:8px;
+    }
+    .modal .sheet .body input,
+    .modal .sheet .body select,
+    .modal .sheet .body textarea{
+      width:100%;
+      min-height:44px;
+      padding:10px 14px;
+      border:1px solid var(--stroke);
+      border-radius:10px;
+      background:var(--card);
+      color:var(--text);
+      font-size:14px;
+      font-family:inherit;
+      transition:all .2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .modal .sheet .body input:focus,
+    .modal .sheet .body select:focus,
+    .modal .sheet .body textarea:focus{
+      border-color:var(--brand);
+      background:var(--surface);
+      box-shadow:0 0 0 3px rgba(59,130,246,.12);
+      outline:none;
+    }
+    .modal .sheet .body input:hover,
+    .modal .sheet .body select:hover,
+    .modal .sheet .body textarea:hover{
+      border-color:var(--border);
+    }
+    .modal .sheet .body textarea{
+      height:auto;
+      min-height:140px;
+      resize:vertical;
+      line-height:1.6;
+      padding:12px 14px;
+    }
+    .modal .sheet .body input[readonly]{
+      background:var(--surface2);
+      cursor:not-allowed;
+      opacity:0.8;
+    }
 
     header strong{font-size:clamp(22px,4.4vw,28px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60vw}
 
@@ -208,20 +263,19 @@
     .mini-hl{font-weight:600}
     .switcher{display:flex;gap:6px;align-items:center;white-space:nowrap}
 
-    .btn-ghost{
-      background:transparent;
-      border-radius:999px;
-      border:1px solid transparent;
-      color:var(--muted);
-      height:30px;
-      padding:0 8px;
-      font-size:12px;
-      display:inline-flex;
-      align-items:center;
-      gap:4px;
+    /* Button stilleri app-shell.css'den geliyor */
+    /* Sayfa özel button stilleri */
+    .btn-small{
+      height:32px;
+      font-size:13px;
+      padding:0 12px;
+      border-radius:8px;
+      font-weight:600;
     }
-    .btn-ghost:hover{border-color:var(--border);background:#f5f7fb}
-    .btn-small{height:30px;font-size:12px;padding:0 10px;border-radius:999px}
+    button.btn-ghost.btn-small,
+    .btn-small.btn-ghost{
+      padding:0 10px;
+    }
 
     td.action-col{width:160px;white-space:nowrap}
     td.action-col .action-cell{display:flex;justify-content:flex-end;gap:6px}
@@ -229,101 +283,9 @@
     .yeni-filter{display:flex;flex-direction:column;gap:4px;min-width:220px}
     .yeni-range{display:flex;gap:6px;align-items:center}
 
-    #tools{
-      background:#ffffff;
-      border-radius:12px;
-      padding:10px 12px;
-      box-shadow:0 6px 18px rgba(15,23,42,.06);
-      margin-top:4px;
-    }
+    /* #tools stilleri yukarıda tanımlandı */
 
-    /* Toasts */
-    .toast-container{
-      position:fixed;
-      top:72px;
-      right:16px;
-      z-index:12000;
-      display:flex;
-      flex-direction:column;
-      gap:8px;
-      pointer-events:none;
-    }
-    .toast{
-      min-width:260px;
-      max-width:360px;
-      background:rgba(15,23,42,.96);
-      color:#f9fafb;
-      border-radius:12px;
-      padding:10px 12px;
-      display:flex;
-      align-items:flex-start;
-      gap:8px;
-      box-shadow:0 18px 40px rgba(15,23,42,.35);
-      transform:translateY(-8px) translateX(8px);
-      opacity:0;
-      transition:all .25s ease;
-      pointer-events:auto;
-      border:1px solid rgba(148,163,184,.35);
-      backdrop-filter:blur(14px);
-      -webkit-backdrop-filter:blur(14px);
-      font-size:13px;
-    }
-    .toast.show{
-      opacity:1;
-      transform:translateY(0) translateX(0);
-    }
-    .toast-icon{
-      font-size:18px;
-      margin-top:2px;
-    }
-    .toast-content{
-      flex:1;
-      display:flex;
-      flex-direction:column;
-      gap:2px;
-    }
-    .toast-title{
-      font-weight:600;
-      letter-spacing:.01em;
-    }
-    .toast-message{
-      font-size:12px;
-      color:#e5e7eb;
-    }
-    .toast-close{
-      background:transparent;
-      border:none;
-      color:#94a3b8;
-      font-size:16px;
-      cursor:pointer;
-      padding:0 0 0 4px;
-      line-height:1;
-    }
-    .toast-close:hover{
-      color:#e5e7eb;
-    }
-    .toast.success{
-      border-left:3px solid #22c55e;
-    }
-    .toast.error{
-      border-left:3px solid #ef4444;
-    }
-    .toast.warning{
-      border-left:3px solid #f59e0b;
-    }
-    .toast.info{
-      border-left:3px solid #3b82f6;
-    }
-    @media (max-width:640px){
-      .toast-container{
-        left:12px;
-        right:12px;
-      }
-      .toast{
-        width:100%;
-        max-width:none;
-      }
-    }
+    /* Toast sistemi app-shell.css'den geliyor */
 
     @media (max-width:540px){
       .table-wrap{display:none}
@@ -333,7 +295,7 @@
   </style>
 </head>
 <body>
-  <!-- ÜST APPBAR (diğer sayfalarla uyumlu) -->
+  <!-- ÜST APPBAR (app-shell.css ile uyumlu) -->
   <div class="appbar">
     <div class="brand" onclick="location.href='../panel.html'">
       <img src="../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
@@ -348,16 +310,15 @@
           <span class="badge" id="notifBadge" style="display:none">0</span>
         </button>
         <div class="dropdown drop-right" id="notifDropdown" aria-label="Bildirim listesi">
-          <div class="muted" style="padding:6px 8px">Son bildirimler</div>
-          <div id="notifList" class="list" style="max-height:300px;overflow:auto"></div>
-          <a href="../diger/bildirim.html">Tüm bildirimleri gör →</a>
+          <div class="muted" style="padding:10px 12px 8px">Son bildirimler</div>
+          <div id="notifList" class="list"></div>
         </div>
       </div>
 
       <!-- Profil -->
       <div class="nav-item">
         <button class="iconbtn" id="btnProfile" title="Profil">
-          <span class="avatar"></span> <span id="profName" class="muted">Profil</span>
+          <span id="profName" class="muted">Profil</span>
         </button>
         <div class="dropdown drop-right" id="profDropdown" aria-label="Profil menüsü">
           <a href="../diger/kullanici-yonetimi.html">👤 Profil</a>
@@ -369,29 +330,26 @@
   </div>
   <aside class="drawer" id="drawer"></aside>
 
-  <!-- Toast & Progress (altyapı hazır, istersek kullanırız) -->
+  <!-- Toast Container (ortak.js tarafından kullanılır) -->
   <div class="toast-container" id="toastContainer"></div>
   <!-- basit sayfa yükleme ilerleme çubuğu istersen buradan kontrol edebilirsin -->
 
-  <header>
-    <div class="wrap">
-      <h1 style="margin:12px 0 4px 0;font-size:28px;font-weight:800;color:var(--text)">Personel Alacak Takibi ve Yönetimi</h1>
-      <p class="muted" style="margin:0 0 12px 0;font-size:13px">Yıl ve faaliyet bazında tahakkuk, tahsilat ve kalan bakiyeleri tek ekranda yönetin.</p>
-    </div>
-  </header>
-
   <main class="wrap" id="pdf-root">
-    <div class="card" id="tools">
+    <div class="card" id="tools" style="margin-top:20px">
+      <div style="margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--stroke)">
+        <h1 style="margin:0 0 8px 0;font-size:28px;font-weight:800;color:var(--text)">Personel Alacak Takibi ve Yönetimi</h1>
+        <p class="muted" style="margin:0;font-size:13px">Yıl ve faaliyet bazında tahakkuk, tahsilat ve kalan bakiyeleri tek ekranda yönetin.</p>
+      </div>
       <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
-        <div style="display:flex;gap:6px;align-items:center">
-          <label class="muted" style="font-size:12px">Yıl</label>
+        <div class="field">
+          <label class="muted" style="font-size:12px;font-weight:600;margin-bottom:6px;display:block">Yıl</label>
           <select id="filtreYil">
             <option value="tum">Tümü</option>
             <option>2023</option><option>2024</option><option selected>2025</option>
           </select>
         </div>
-        <div style="display:flex;gap:6px;align-items:center">
-          <label class="muted" style="font-size:12px">Faaliyet</label>
+        <div class="field">
+          <label class="muted" style="font-size:12px;font-weight:600;margin-bottom:6px;display:block">Faaliyet</label>
           <select id="filtreFaaliyet">
             <option value="tum">Tümü</option>
             <option>İftar</option><option>Sahur</option><option>İhvan Taahhüt</option>
@@ -399,30 +357,30 @@
             <option>Büyükbaş Kurban</option><option>Veli Teberrusu</option>
           </select>
         </div>
-        <div style="flex:1;min-width:220px">
-          <label class="muted" style="font-size:12px;display:block;margin-bottom:4px">Arama</label>
-          <input id="ara" placeholder="Personel / Borçlu / Ödeyen ara..." style="width:100%">
+        <div style="flex:1;min-width:240px">
+          <label class="muted" style="font-size:12px;display:block;margin-bottom:6px;font-weight:600">Arama</label>
+          <input id="ara" type="text" placeholder="Personel / Borçlu / Ödeyen ara..." class="search-input">
         </div>
-        <div class="yeni-filter">
-          <span class="muted" style="font-size:12px">Yeni Tahsilat Görünümü</span>
+        <div class="field yeni-filter">
+          <label class="muted" style="font-size:12px;font-weight:600;margin-bottom:6px;display:block">Yeni Tahsilat Görünümü</label>
           <select id="yeniMode">
             <option value="7g">Son 7 Gün</option>
             <option value="range">Tarih Aralığı</option>
           </select>
-          <div id="yeniRange" class="yeni-range" style="display:none">
-            <input id="yeniBaslangic" type="date" />
-            <span class="muted" style="font-size:12px">-</span>
-            <input id="yeniBitis" type="date" />
+          <div id="yeniRange" class="yeni-range" style="display:none;margin-top:8px;gap:8px;display:flex;align-items:center">
+            <input id="yeniBaslangic" type="date" style="flex:1" />
+            <span class="muted" style="font-size:12px;align-self:center">-</span>
+            <input id="yeniBitis" type="date" style="flex:1" />
           </div>
         </div>
         <div style="flex:1"></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <button id="btnExport" class="secondary">CSV</button>
-          <button id="btnOrphan" class="btn-ghost" title="Tahsilat kaydı olup eşleşen tahakkuk bulunamayanlar">⚠</button>
-          <button id="btnTahakkuk">Tahakkuk Ekle</button>
-          <button id="btnTahsilat" class="secondary">Tahsilat Ekle</button>
-          <button id="btnPDF" class="good">PDF</button>
-          <button id="btnAyarlar" class="secondary">Ayarlar</button>
+          <button id="btnExport" class="btn btn-ghost">CSV</button>
+          <button id="btnOrphan" class="btn btn-ghost" title="Tahsilat kaydı olup eşleşen tahakkuk bulunamayanlar">⚠</button>
+          <button id="btnTahakkuk" class="btn btn-primary">Tahakkuk Ekle</button>
+          <button id="btnTahsilat" class="btn btn-ghost">Tahsilat Ekle</button>
+          <button id="btnPDF" class="btn btn-success">PDF</button>
+          <button id="btnAyarlar" class="btn btn-ghost">Ayarlar</button>
         </div>
       </div>
     </div>
@@ -438,7 +396,7 @@
       <div class="card" style="margin-top:14px">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
         <h3 style="margin:0">Detaylı Liste | Seçime Göre</h3>
-        <span class="muted">Veri Firestore'dan gelir; Yeni Tahsilat = son 7 gün.</span>
+        <span class="muted">Yeni Tahsilat = son 7 gün (varsayılan).</span>
       </div>
 
       <div class="table-wrap" id="tableWrap">
@@ -479,40 +437,43 @@
   <!-- MODAL: Tahakkuk -->
 <div class="modal" id="mTahakkuk">
   <div class="sheet">
-    <h3>Tahakkuk Ekle</h3>
-    <div class="grid" style="grid-template-columns:1fr 1fr 1fr">
-      <div><label>Yıl</label>
-        <select id="t_yil">
-          <option>2023</option><option>2024</option><option selected>2025</option>
-        </select>
+    <div class="body">
+      <h3>Tahakkuk Ekle</h3>
+      <div class="grid">
+        <div><label>Yıl</label>
+          <select id="t_yil">
+            <option>2023</option><option>2024</option><option selected>2025</option>
+          </select>
+        </div>
+        <div><label>Faaliyet</label>
+          <select id="t_faaliyet">
+            <option>İftar</option><option>Sahur</option><option>İhvan Taahhüt</option>
+            <option>Muhibban Taahhüt</option><option>Bağış Kurban</option>
+            <option>Büyükbaş Kurban</option><option>Veli Teberrusu</option>
+          </select>
+        </div>
+        <div><label>Tutar (₺)</label><input id="t_tutar" type="number" step="0.01" inputmode="decimal"></div>
+        <div><label>Personel</label><input id="t_personel" placeholder="Ad Soyad"></div>
+        <div><label>Borçlu</label><input id="t_borclu" placeholder="Ad Soyad"></div>
+        <div><label>Ödeyen (opsiyonel)</label><input id="t_odeyen" placeholder="Ad Soyad"></div>
+        <div><label>Açıklama</label><input id="t_aciklama" placeholder="(opsiyonel)"></div>
       </div>
-      <div><label>Faaliyet</label>
-        <select id="t_faaliyet">
-          <option>İftar</option><option>Sahur</option><option>İhvan Taahhüt</option>
-          <option>Muhibban Taahhüt</option><option>Bağış Kurban</option>
-          <option>Büyükbaş Kurban</option><option>Veli Teberrusu</option>
-        </select>
-      </div>
-      <div><label>Tutar (₺)</label><input id="t_tutar" type="number" step="0.01" inputmode="decimal"></div>
-      <div><label>Personel</label><input id="t_personel" placeholder="Ad Soyad"></div>
-      <div><label>Borçlu</label><input id="t_borclu" placeholder="Ad Soyad"></div>
-      <div><label>Ödeyen (opsiyonel)</label><input id="t_odeyen" placeholder="Ad Soyad"></div>
-      <div><label>Açıklama</label><input id="t_aciklama" placeholder="(opsiyonel)"></div>
     </div>
-    <div class="actions">
-      <button class="secondary" onclick="closeModal('mTahakkuk')">Kapat</button>
-      <button class="good" onclick="saveTahakkuk()">Kaydet</button>
-    </div>
+    <footer>
+      <button class="btn btn-ghost" onclick="closeModal('mTahakkuk')">Kapat</button>
+      <button class="btn btn-success" onclick="saveTahakkuk()">Kaydet</button>
+    </footer>
   </div>
 </div>
 
 <!-- MODAL: Tahsilat -->
 <div class="modal" id="mTahsilat">
   <div class="sheet">
-    <h3>Tahsilat Ekle</h3>
-    <div class="grid" style="grid-template-columns:1fr 1fr 1fr">
+    <div class="body">
+      <h3>Tahsilat Ekle</h3>
+      <div class="grid">
       <!-- Satıra tıklayınca burası JS ile dolduruluyor -->
-      <div><label>Tahakkuk (satıra tıkla → oto dolar)</label>
+      <div style="grid-column:span 3"><label>Tahakkuk (satıra tıkla → oto dolar)</label>
         <input id="s_tahakkukRef" placeholder="Satıra tıklayın ya da elle seçin" readonly>
       </div>
       <div><label>Tarih</label><input id="s_tarih" type="date"></div>
@@ -536,22 +497,24 @@
               <th style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:left">Yöntem</th>
             </tr>
           </thead>
-          <tbody id="s_historyBody"></tbody>
+          <tbody id="s_historyBody">          </tbody>
         </table>
       </div>
     </div>
-    <div class="actions">
-      <button class="secondary" onclick="closeModal('mTahsilat')">Kapat</button>
-      <button class="good" onclick="saveTahsilat()">Kaydet</button>
     </div>
+    <footer>
+      <button class="btn btn-ghost" onclick="closeModal('mTahsilat')">Kapat</button>
+      <button class="btn btn-success" onclick="saveTahsilat()">Kaydet</button>
+    </footer>
   </div>
 </div>
 
 <!-- MODAL: CSV İçe Aktar -->
 <div class="modal" id="mImport">
   <div class="sheet">
-    <h3>Veri İçe Aktar (CSV)</h3>
-    <p class="muted" style="margin:6px 0 12px">
+    <div class="body">
+      <h3>Veri İçe Aktar (CSV)</h3>
+      <p class="muted" style="margin:6px 0 12px">
       <b>1)</b> <u>tahakkuklar.csv</u>: <code>yil,faaliyet,personel,borclu,tahakkuk,aciklama</code><br>
       <b>2)</b> <u>tahsilatlar.csv</u>: <code>yil,faaliyet,personel,borclu,tutar,tarih,odeyen,yontem</code><br>
       Eşleştirme: <code>yil+faaliyet+personel+borclu</code>
@@ -566,42 +529,47 @@
         <input id="csvTahsilat" type="file" accept=".csv" />
       </div>
     </div>
-    <div class="actions">
-      <button class="secondary" onclick="closeModal('mImport')">Kapat</button>
-      <button class="good" onclick="window.runImport && window.runImport()">İçe Aktar</button>
     </div>
+    <footer>
+      <button class="btn btn-ghost" onclick="closeModal('mImport')">Kapat</button>
+      <button class="btn btn-success" onclick="window.runImport && window.runImport()">İçe Aktar</button>
+    </footer>
   </div>
 </div>
 
 <!-- MODAL: Ayarlar (Yıl & Faaliyet Yönetimi) -->
 <div class="modal" id="mAyarlar">
   <div class="sheet">
-    <h3>Ayarlar • Yıl ve Faaliyetler</h3>
-    <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px">
+    <div class="body">
+      <h3>Ayarlar • Yıl ve Faaliyetler</h3>
+      <div class="grid" style="grid-template-columns:1fr 1fr;gap:16px">
       <div>
         <label>Yıllar (her satıra bir yıl)</label>
-        <textarea id="ayarYillar" style="width:100%;min-height:120px;border:1px solid var(--border);border-radius:10px;padding:8px;font-family:inherit;font-size:13px;resize:vertical"></textarea>
+        <textarea id="ayarYillar"></textarea>
       </div>
       <div>
         <label>Faaliyetler (her satıra bir faaliyet)</label>
-        <textarea id="ayarFaaliyetler" style="width:100%;min-height:120px;border:1px solid var(--border);border-radius:10px;padding:8px;font-family:inherit;font-size:13px;resize:vertical"></textarea>
+        <textarea id="ayarFaaliyetler"></textarea>
       </div>
     </div>
-    <p class="muted" style="font-size:12px;margin-top:8px">
-      Bu listeler hem filtrelerde hem de "Tahakkuk Ekle" formunda kullanılır. Değişiklikler Firestore üzerinde <code>alacak_ayar / meta</code> dokümanına kaydedilir.
-    </p>
-    <div class="actions">
-      <button class="secondary" onclick="closeModal('mAyarlar')">Vazgeç</button>
-      <button class="good" onclick="saveAyarlar()">Kaydet</button>
+      <p class="muted" style="font-size:12px;margin-top:8px">
+        Bu listeler hem filtrelerde hem de "Tahakkuk Ekle" formunda kullanılır. Değişiklikler Supabase üzerinde <code>alacak_ayar / meta</code> kaydına kaydedilir.
+      </p>
     </div>
+    </div>
+    <footer>
+      <button class="btn btn-ghost" onclick="closeModal('mAyarlar')">Vazgeç</button>
+      <button class="btn btn-success" onclick="saveAyarlar()">Kaydet</button>
+    </footer>
   </div>
 </div>
 
 <!-- MODAL: Eşleşmeyen Tahsilatlar -->
 <div class="modal" id="mOrphan">
   <div class="sheet">
-    <h3>Tahakkuku Bulunamayan Tahsilatlar</h3>
-    <p class="muted" style="font-size:12px;margin:4px 0 10px">
+    <div class="body">
+      <h3>Tahakkuku Bulunamayan Tahsilatlar</h3>
+      <p class="muted" style="font-size:12px;margin:4px 0 10px">
       Bu listede, <b>tahsilatlar</b> koleksiyonunda kayıtlı olup, yıl / faaliyet / personel / borçlu bilgilerinden bir tahakkuk kaydıyla eşleşmeyen satırlar gösterilir.
       İsterseniz ilgili tahakkuku sonradan oluşturup bu tahsilatları elle bağlayabilirsiniz.
     </p>
@@ -619,12 +587,13 @@
             <th>Yöntem</th>
           </tr>
         </thead>
-        <tbody id="tbodyOrphan"></tbody>
+        <tbody id="tbodyOrphan">        </tbody>
       </table>
     </div>
-    <div class="actions">
-      <button class="secondary" onclick="closeModal('mOrphan')">Kapat</button>
     </div>
+    <footer>
+      <button class="btn btn-ghost" onclick="closeModal('mOrphan')">Kapat</button>
+    </footer>
   </div>
 </div>
 
@@ -636,7 +605,23 @@
     const qs = s => document.querySelector(s);
     const money = n => new Intl.NumberFormat('tr-TR',{style:'currency',currency:'TRY',maximumFractionDigits:2}).format(n||0);
     const todayStr = ()=> new Date().toISOString().slice(0,10);
-    const db = window.db;
+    
+    // Supabase client
+    const getSupabase = () => window.supabase;
+    const getAuth = () => window.getSupabaseAuth ? window.getSupabaseAuth() : null;
+
+    // UUID oluşturucu (Supabase id alanları için)
+    function generateUUID() {
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+      }
+      // Fallback: basit UUID v4 oluşturucu
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    }
 
     // Normalize yardımcıları (TR duyarlı)
     // ==== TR title-case: boşluk, tire, apostrof, nokta vb. ayırıcıları korur
@@ -652,7 +637,7 @@ function titleTR(s){
   }).join('');
 }
 
-// Firestore Timestamp / Date / string için güvenli tarih-anahtarı (YYYY-MM-DD)
+// Date / string için güvenli tarih-anahtarı (YYYY-MM-DD)
 function toDateKey(v){
   if (!v) return '';
   if (typeof v === 'string') return v.slice(0,10);
@@ -671,22 +656,28 @@ function toDateKey(v){
     let editingTahakkukId = null;
     let sortState = { key:null, dir:'asc' };
 
-    // Modal davranışları
-    function closeModal(id){ qs('#'+id).classList.remove('show'); if(!document.querySelector('.modal.show')) document.body.classList.remove('modal-open'); }
+    // Modal davranışları (app-shell.css ile uyumlu: .modal.open)
+    function closeModal(id){ 
+      const modal = qs('#'+id);
+      if(modal) {
+        modal.classList.remove('open');
+        if(!document.querySelector('.modal.open')) document.body.classList.remove('modal-open');
+      }
+    }
     document.addEventListener('click', (e)=>{ if(e.target.classList?.contains('modal')) closeModal(e.target.id); });
-    document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') document.querySelectorAll('.modal.show').forEach(m=>m.classList.remove('show')); });
+    document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') document.querySelectorAll('.modal.open').forEach(m=>m.classList.remove('open')); });
     ['#mTahakkuk','#mTahsilat'].forEach(mid=>{
       const m = qs(mid);
       m?.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ if(mid==='#mTahakkuk') saveTahakkuk(); else saveTahsilat(); } });
     });
 
     function openModal(id){
-  const el = document.getElementById(id);
-  if(!el){ console.warn('Modal bulunamadı:', id); return; }
-  el.classList.add('show');
-  document.body.classList.add('modal-open');
-  setTimeout(()=> el.querySelector('input,select')?.focus(), 50);
-}
+      const el = document.getElementById(id);
+      if(!el){ console.warn('Modal bulunamadı:', id); return; }
+      el.classList.add('open'); // app-shell.css ile uyumlu: .modal.open
+      document.body.classList.add('modal-open');
+      setTimeout(()=> el.querySelector('input,select')?.focus(), 50);
+    }
 
     function ensureMobileDefaults(){
       toggleView();
@@ -705,11 +696,28 @@ function toDateKey(v){
 
     async function loadMetaOptions(){
       try{
-        const doc = await db.collection('alacak_ayar').doc('meta').get();
-        if (doc.exists){
-          const d = doc.data() || {};
-          if (Array.isArray(d.yillar) && d.yillar.length) yilOptions = d.yillar.map(String);
-          if (Array.isArray(d.faaliyetler) && d.faaliyetler.length) faaliyetOptions = d.faaliyetler.map(String);
+        const supabase = getSupabase();
+        if (!supabase) {
+          console.warn('Supabase client henüz hazır değil');
+          applyOptionLists();
+          return;
+        }
+        
+        const { data, error } = await supabase
+          .from('alacak_ayar')
+          .select('id, yillar, faaliyetler')
+          .eq('id', 'meta')
+          .single();
+          
+        if (error) {
+          console.error('Meta ayarlar yüklenemedi:', error);
+          applyOptionLists();
+          return;
+        }
+        
+        if (data) {
+          if (Array.isArray(data.yillar) && data.yillar.length) yilOptions = data.yillar.map(String);
+          if (Array.isArray(data.faaliyetler) && data.faaliyetler.length) faaliyetOptions = data.faaliyetler.map(String);
         }
       }catch(e){ console.error('Meta ayarlar yüklenemedi', e); }
       applyOptionLists();
@@ -748,32 +756,61 @@ function toDateKey(v){
       const yRaw = (yilEl?.value||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
       const fRaw = (faEl?.value||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
       if (!yRaw.length || !fRaw.length){
-        showToast('warning','Eksik Ayar','En az bir yıl ve bir faaliyet girmelisiniz.');
+        if(typeof window.showToast==='function') window.showToast('warning','Eksik Ayar','En az bir yıl ve bir faaliyet girmelisiniz.');
         return;
       }
       yilOptions = Array.from(new Set(yRaw.map(String)));
       faaliyetOptions = Array.from(new Set(fRaw.map(titleTR)));
       applyOptionLists();
       try{
-        await db.collection('alacak_ayar').doc('meta').set(
-          { yillar: yilOptions, faaliyetler: faaliyetOptions },
-          { merge:true }
-        );
-        showToast('success','Ayarlar kaydedildi','Yıl ve faaliyet listeleri güncellendi.');
+        const supabase = getSupabase();
+        if (!supabase) throw new Error('Supabase client hazır değil');
+        
+        const { error } = await supabase
+          .from('alacak_ayar')
+          .upsert(
+            { id: 'meta', yillar: yilOptions, faaliyetler: faaliyetOptions },
+            { onConflict: 'id' }
+          );
+          
+        if (error) throw error;
+        
+        if(typeof window.showToast==='function') window.showToast('success','Ayarlar kaydedildi','Yıl ve faaliyet listeleri güncellendi.');
         closeModal('mAyarlar');
       }catch(e){
         console.error('Ayarlar kaydedilemedi', e);
-        showToast('error','Hata','Ayarlar kaydedilirken bir hata oluştu.');
+        if(typeof window.showToast==='function') window.showToast('error','Hata','Ayarlar kaydedilirken bir hata oluştu.');
       }
     }
 
-    // Firestore yükle
+    // Supabase yükle
     async function loadAll(){
-      const tSnap = await db.collection('tahakkuklar').get();
-      tahakkukDocs = tSnap.docs.map(d=>({ id:d.id, ...d.data() }));
+      const supabase = getSupabase();
+      if (!supabase) {
+        console.error('Supabase client hazır değil');
+        return;
+      }
+      
+      try {
+        // Tahakkuklar
+        const { data: tahakkukData, error: tahakkukError } = await supabase
+          .from('tahakkuklar')
+          .select('id, yil, faaliyet, personel, borclu, tahakkuk, aciklama, createdat');
+          
+        if (tahakkukError) throw tahakkukError;
+        tahakkukDocs = (tahakkukData || []).map(d=>({ id: d.id, ...d }));
 
-      const sSnap = await db.collection('tahsilatlar').get();
-      tahsilatDocs = sSnap.docs.map(d=>({ id:d.id, ...d.data() }));
+        // Tahsilatlar
+        const { data: tahsilatData, error: tahsilatError } = await supabase
+          .from('tahsilatlar')
+          .select('id, yil, faaliyet, personel, borclu, tahakkukid, tutar, tarih, odeyen, yontem, createdat');
+          
+        if (tahsilatError) throw tahsilatError;
+        tahsilatDocs = (tahsilatData || []).map(d=>({ id: d.id, ...d }));
+      } catch (error) {
+        console.error('Veri yükleme hatası:', error);
+        throw error;
+      }
 
       // Tahakkuk haritası ve anahtar kümeleri (eşleştirme + yetim tahsilatlar için)
       const tahById = new Map();
@@ -787,8 +824,8 @@ function toDateKey(v){
       // Tahsilatlardan, hiçbir tahakkuka eşleşmeyenleri topla
       orphanPayments = [];
       tahsilatDocs.forEach(s=>{
-        if (s.tahakkukId){
-          if (!tahById.has(s.tahakkukId)){
+        if (s.tahakkukid){
+          if (!tahById.has(s.tahakkukid)){
             orphanPayments.push(s);
           }
         } else {
@@ -800,11 +837,11 @@ function toDateKey(v){
       });
 
       tableRows = tahakkukDocs.map(t=>{
-        // EŞLEŞTİRME: varsa sadece tahakkukId ile, yoksa TR‑locale anahtar
+        // EŞLEŞTİRME: varsa sadece tahakkukid ile, yoksa TR‑locale anahtar
         const key = `${t.yil}||${normTR(t.faaliyet)}||${normTR(t.personel)}||${normTR(t.borclu)}`;
         const related = tahsilatDocs.filter(s=>{
-          if (s.tahakkukId){
-            return s.tahakkukId === t.id;
+          if (s.tahakkukid){
+            return s.tahakkukid === t.id;
           }
           const sKey = `${s.yil}||${normTR(s.faaliyet)}||${normTR(s.personel)}||${normTR(s.borclu)}`;
           return sKey === key;
@@ -834,78 +871,509 @@ function toDateKey(v){
       render();
     }
 
-    // Kaydet (tahakkuk)
-    async function saveTahakkuk(){
-      const base = {
-        yil: Number(qs('#t_yil').value),
-        faaliyet: titleTR(qs('#t_faaliyet').value),
-        personel: titleTR(qs('#t_personel').value),
-        borclu:   titleTR(qs('#t_borclu').value),
-        odeyen:   tidy(qs('#t_odeyen').value),
-        tahakkuk: Number(qs('#t_tutar').value||0),
-        aciklama: tidy(qs('#t_aciklama').value),
-      };
-      if(!base.yil || !base.faaliyet || !base.personel || !base.borclu || !base.tahakkuk){
-        alert('Zorunlu alanlar boş.');
+    // Tablo satırlarını yeniden oluştur (tahakkuk ve tahsilat verilerinden)
+    function rebuildTableRows(){
+      const tahById = new Map();
+      const tahKeys = new Set();
+      tahakkukDocs.forEach(t=>{
+        tahById.set(t.id, t);
+        const key = `${t.yil}||${normTR(t.faaliyet)}||${normTR(t.personel)}||${normTR(t.borclu)}`;
+        tahKeys.add(key);
+      });
+
+      // Yetim tahsilatları güncelle
+      orphanPayments = [];
+      tahsilatDocs.forEach(s=>{
+        if (s.tahakkukid){
+          if (!tahById.has(s.tahakkukid)){
+            orphanPayments.push(s);
+          }
+        } else {
+          const sKey = `${s.yil}||${normTR(s.faaliyet)}||${normTR(s.personel)}||${normTR(s.borclu)}`;
+          if (!tahKeys.has(sKey)){
+            orphanPayments.push(s);
+          }
+        }
+      });
+
+      tableRows = tahakkukDocs.map(t=>{
+        const key = `${t.yil}||${normTR(t.faaliyet)}||${normTR(t.personel)}||${normTR(t.borclu)}`;
+        const related = tahsilatDocs.filter(s=>{
+          if (s.tahakkukid){
+            return s.tahakkukid === t.id;
+          }
+          const sKey = `${s.yil}||${normTR(s.faaliyet)}||${normTR(s.personel)}||${normTR(s.borclu)}`;
+          return sKey === key;
+        });
+
+        const seen = new Set(); const uniq = [];
+        related.forEach(x=>{ if(!seen.has(x.id)){ seen.add(x.id); uniq.push(x); } });
+
+        return {
+          id:t.id,
+          yil:Number(t.yil),
+          faaliyet: titleTR(t.faaliyet),
+          personel: titleTR(t.personel),
+          borclu:   titleTR(t.borclu),
+          faaliyetKey: normTR(t.faaliyet),
+          personelKey: normTR(t.personel),
+          borcluKey:   normTR(t.borclu),
+          personelRaw: tidy(t.personel),
+          tahakkuk: Number(t.tahakkuk||0),
+          aciklama: tidy(t.aciklama),
+          odeyenKayit: tidy(t.odeyen),
+          payments: uniq.slice(),
+        };
+      });
+    }
+
+    // Belirli bir satırı tabloda güncelle veya ekle
+    function refreshRowInTable(rowId){
+      const row = tableRows.find(r=>r.id===rowId);
+      if (!row) {
+        // Satır bulunamadıysa DOM'dan kaldır
+        const useCards = qs('#cardList').style.display==='grid';
+        if (!useCards){
+          const tbody = qs('#tbody');
+          Array.from(tbody.children).forEach(tr=>{
+            if (tr.dataset.rowId === rowId) tr.remove();
+          });
+        } else {
+          const list = qs('#cardList');
+          Array.from(list.children).forEach(card=>{
+            if (card.dataset.rowId === rowId) card.remove();
+          });
+        }
         return;
       }
 
-      if (editingTahakkukId){
-        const existing = tahakkukDocs.find(x=>x.id===editingTahakkukId) || {};
-        const payload = { ...base };
-        await db.collection('tahakkuklar').doc(editingTahakkukId).update(payload);
-        Object.assign(existing, payload);
-      } else {
-        const r = { ...base, createdAt: todayStr() };
-        const docRef = await db.collection('tahakkuklar').add(r);
-        tahakkukDocs.push({id:docRef.id, ...r});
+      const computed = computeRowView(row);
+      const useCards = qs('#cardList').style.display==='grid';
+      const yil = qs('#filtreYil').value;
+      const faaliyet = qs('#filtreFaaliyet').value;
+      const q = (qs('#ara').value||'').trim().toLocaleLowerCase('tr-TR');
+
+      // Filtre kontrolü - uymuyorsa DOM'dan kaldır
+      const passesFilter = 
+        (yil === 'tum' || String(computed.yil) === yil) &&
+        (faaliyet === 'tum' || computed.faaliyetKey === normTR(faaliyet)) &&
+        (!q || [computed.personel,computed.borclu,computed.odeyen,computed.faaliyet,(computed.aciklama||'')].join(' ').toLocaleLowerCase('tr-TR').includes(q));
+
+      if (!passesFilter) {
+        // Filtrelere uymuyorsa DOM'dan kaldır
+        if (!useCards){
+          const tbody = qs('#tbody');
+          Array.from(tbody.children).forEach(tr=>{
+            if (tr.dataset.rowId === rowId) tr.remove();
+          });
+        } else {
+          const list = qs('#cardList');
+          Array.from(list.children).forEach(card=>{
+            if (card.dataset.rowId === rowId) card.remove();
+          });
+        }
+        return;
       }
 
-      editingTahakkukId = null;
-      closeModal('mTahakkuk');
-      await loadAll();
+      if (!useCards){
+        // Tablo görünümü - Önce mevcut satırı kaldır (duplicate önlemek için)
+        const tbody = qs('#tbody');
+        let existingTr = null;
+        Array.from(tbody.children).forEach(tr=>{
+          if (tr.dataset.rowId === rowId) {
+            existingTr = tr;
+            tr.remove(); // Mevcut satırı kaldır (duplicate önlemek için)
+          }
+        });
+
+        const personParam = encodeURIComponent(computed.personelRaw || computed.personel);
+        const yilParam = (yil==='tum') ? 'tum' : computed.yil;
+
+        const tr = document.createElement('tr');
+        tr.dataset.rowId = rowId;
+        if (Math.abs(computed.kalan) < 0.001) tr.classList.add('zero');
+        else tr.classList.remove('zero');
+
+        tr.innerHTML = `
+          <td>${computed.yil}</td>
+          <td>${computed.faaliyet}</td>
+          <td><a class="person-link" href="rapor-personel.html?personel=${personParam}&yil=${yilParam}" title="Kişi Raporu">${computed.personel||''}</a></td>
+          <td>${computed.borclu||''}</td>
+          <td>${computed.odeyen||computed.odeyenKayit||''}</td>
+          <td>${computed.aciklama||''}</td>
+          <td class="right">${money(computed.tahakkuk)}</td>
+          <td class="right">${money(computed.tahsilat)}</td>
+          <td class="right">${money(computed.yeni)}</td>
+          <td class="right">${money(computed.kalan)}</td>
+          <td class="right action-col">
+            <div class="action-cell">
+              <button class="btn-small btn-ghost" data-act="edit">Düzenle</button>
+              <button class="btn-small btn-danger" data-act="delete">Sil</button>
+            </div>
+          </td>
+        `;
+
+        tr.addEventListener('click', (ev)=>{
+          if (ev.target && (ev.target.classList.contains('person-link') || ev.target.closest('button'))) return;
+          openTahsilatModalForRow(computed);
+        });
+        tr.querySelector('[data-act="edit"]').onclick = (ev)=>{
+          ev.stopPropagation();
+          openTahakkukEdit(computed.id);
+        };
+        tr.querySelector('[data-act="delete"]').onclick = async (ev)=>{
+          ev.stopPropagation();
+          await deleteTahakkuk(computed.id);
+        };
+
+        // Sıralama durumuna göre doğru konuma ekle
+        if (sortState.key) {
+          // Sıralama varsa, doğru konuma ekle
+          const base = getFilteredBase();
+          const sorted = base.slice().sort((a,b)=>{
+            const key = sortState.key;
+            const av = a[key] ?? '';
+            const bv = b[key] ?? '';
+            if (typeof av === 'number' && typeof bv === 'number') {
+              return sortState.dir === 'desc' ? bv - av : av - bv;
+            }
+            const cmp = String(av).localeCompare(String(bv), 'tr-TR');
+            return sortState.dir === 'desc' ? -cmp : cmp;
+          });
+          
+          const currentIndex = sorted.findIndex(r => r.id === rowId);
+          if (currentIndex >= 0 && currentIndex < sorted.length - 1) {
+            // Sonraki satırı bul ve ondan önce ekle
+            const nextRowId = sorted[currentIndex + 1].id;
+            const nextTr = Array.from(tbody.children).find(tr => tr.dataset.rowId === nextRowId);
+            if (nextTr) {
+              tbody.insertBefore(tr, nextTr);
+            } else {
+              tbody.appendChild(tr);
+            }
+          } else {
+            tbody.appendChild(tr);
+          }
+        } else {
+          // Sıralama yoksa en sona ekle
+          tbody.appendChild(tr);
+        }
+      } else {
+        // Kart görünümü - Önce mevcut kartı kaldır (duplicate önlemek için)
+        const list = qs('#cardList');
+        let existingCard = null;
+        Array.from(list.children).forEach(card=>{
+          if (card.dataset.rowId === rowId) {
+            existingCard = card;
+            card.remove(); // Mevcut kartı kaldır (duplicate önlemek için)
+          }
+        });
+
+        const personParam = encodeURIComponent(computed.personel||'');
+        const yilParam = (yil==='tum') ? 'tum' : computed.yil;
+
+        const div = document.createElement('div');
+        div.className='mini-card';
+        div.dataset.rowId = rowId;
+        div.innerHTML = `
+          <div class="mini-line"><span class="mini-hl">${computed.personel||''}</span> <a class="person-link" href="rapor-personel.html?personel=${personParam}&yil=${yilParam}">Kişi Raporu →</a></div>
+          <div class="mini-line"><span>${computed.yil} • ${computed.faaliyet}</span><span>${computed.borclu||''}</span></div>
+          <div class="mini-line"><span>Ödeyen</span><span>${computed.odeyen||'-'}</span></div>
+          <div class="mini-line"><span>Tahakkuk</span><span>${money(computed.tahakkuk)}</span></div>
+          <div class="mini-line"><span>Eski Tahsilat</span><span>${money(computed.tahsilat)}</span></div>
+          <div class="mini-line"><span>Yeni</span><span>${money(computed.yeni)}</span></div>
+          <div class="mini-line"><span>Kalan</span><span style="font-weight:600">${money(computed.kalan)}</span></div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+            <button class="btn btn-ghost btn-small" data-act="tahsilat">Tahsilat Ekle</button>
+            <button class="btn btn-small btn-ghost" data-act="edit">Düzenle</button>
+            <button class="btn btn-small btn-danger" data-act="delete">Sil</button>
+          </div>
+        `;
+
+        div.querySelector('[data-act="tahsilat"]').onclick = (ev)=>{
+          ev.preventDefault(); ev.stopPropagation();
+          openTahsilatModalForRow(computed);
+        };
+        div.querySelector('[data-act="edit"]').onclick = (ev)=>{
+          ev.preventDefault(); ev.stopPropagation();
+          openTahakkukEdit(computed.id);
+        };
+        div.querySelector('[data-act="delete"]').onclick = async (ev)=>{
+          ev.preventDefault(); ev.stopPropagation();
+          await deleteTahakkuk(computed.id);
+        };
+
+        // Sıralama durumuna göre doğru konuma ekle
+        if (sortState.key) {
+          const base = getFilteredBase();
+          const sorted = base.slice().sort((a,b)=>{
+            const key = sortState.key;
+            const av = a[key] ?? '';
+            const bv = b[key] ?? '';
+            if (typeof av === 'number' && typeof bv === 'number') {
+              return sortState.dir === 'desc' ? bv - av : av - bv;
+            }
+            const cmp = String(av).localeCompare(String(bv), 'tr-TR');
+            return sortState.dir === 'desc' ? -cmp : cmp;
+          });
+          
+          const currentIndex = sorted.findIndex(r => r.id === rowId);
+          if (currentIndex >= 0 && currentIndex < sorted.length - 1) {
+            const nextRowId = sorted[currentIndex + 1].id;
+            const nextCard = Array.from(list.children).find(card => card.dataset.rowId === nextRowId);
+            if (nextCard) {
+              list.insertBefore(div, nextCard);
+            } else {
+              list.appendChild(div);
+            }
+          } else {
+            list.appendChild(div);
+          }
+        } else {
+          list.appendChild(div);
+        }
+      }
+    }
+
+    // KPI'ları ve toplamları güncelle
+    function updateKPIs(){
+      const base = getFilteredBase();
+      const yil = qs('#filtreYil').value;
+
+      const sumTahakkuk = base.reduce((a,b)=>a+(b.tahakkuk||0),0);
+      const sumTahsilat = base.reduce((a,b)=>a+((b.tahsilat||0)),0);
+      const sumYeni     = base.reduce((a,b)=>a+((b.yeni||0)),0);
+      const sumKalan    = base.reduce((a,b)=>a+((b.kalan||0)),0);
+
+      const yilFilter = (yil==='tum') ? tableRows.map(r=>computeRowView(r)) : tableRows.filter(r=>String(r.yil)===yil).map(r=>computeRowView(r));
+      const tTahakkuk = yilFilter.reduce((a,b)=>a+(b.tahakkuk||0),0);
+      const tTsl      = yilFilter.reduce((a,b)=>a+((b.tahsilat||0)+(b.yeni||0)),0);
+      const tKalan    = tTahakkuk - tTsl;
+      const oran      = tTahakkuk>0 ? (tTsl/tTahakkuk*100) : 0;
+
+      qs('#sumTahakkuk').textContent = money(sumTahakkuk);
+      qs('#sumTahsilat').textContent = money(sumTahsilat);
+      qs('#sumYeni').textContent     = money(sumYeni);
+      qs('#sumKalan').textContent    = money(sumKalan);
+      qs('#kpiToplam').textContent   = money(tTahakkuk);
+      qs('#kpiTahsilat').textContent = money(tTsl);
+      qs('#kpiKalan').textContent    = money(tKalan);
+      qs('#kpiOran').textContent     = `${oran.toFixed(1)}%`;
+
+      // Faaliyet bazlı KPI kartları
+      const faMap = new Map();
+      base.forEach(r=>{
+        const key = r.faaliyetKey || normTR(r.faaliyet||'');
+        if (!key) return;
+        if (!faMap.has(key)){
+          faMap.set(key,{
+            ad:r.faaliyet,
+            tahakkuk:0,
+            tahsilat:0,
+            yeni:0,
+            kalan:0
+          });
+        }
+        const obj = faMap.get(key);
+        obj.tahakkuk += r.tahakkuk||0;
+        obj.tahsilat += r.tahsilat||0;
+        obj.yeni     += r.yeni||0;
+        obj.kalan    += r.kalan||0;
+      });
+      const faWrap = document.getElementById('kpiFaaliyetRow');
+      if (faWrap){
+        faWrap.innerHTML='';
+        Array.from(faMap.values()).forEach(f=>{
+          const totalT = f.tahsilat + f.yeni;
+          const oranF = f.tahakkuk>0 ? (totalT/f.tahakkuk*100) : 0;
+          const div = document.createElement('div');
+          div.className='card kpi avoid-break';
+          div.innerHTML = `
+            <span class="label">${f.ad}</span>
+            <span class="value">${money(f.tahakkuk)}</span>
+            <span class="muted" style="font-size:12px">Tahsilat: ${money(totalT)} • Kalan: ${money(f.kalan)} • Oran: ${oranF.toFixed(1)}%</span>
+          `;
+          faWrap.appendChild(div);
+        });
+      }
+    }
+
+    // Kaydet (tahakkuk)
+    async function saveTahakkuk(){
+      try {
+        const base = {
+          yil: Number(qs('#t_yil').value),
+          faaliyet: titleTR(qs('#t_faaliyet').value),
+          personel: titleTR(qs('#t_personel').value),
+          borclu:   titleTR(qs('#t_borclu').value),
+          // odeyen alanı tahakkuklar tablosunda yok, sadece tahsilatlar tablosunda var
+          tahakkuk: Number(qs('#t_tutar').value||0),
+          aciklama: tidy(qs('#t_aciklama').value) || null,
+        };
+        if(!base.yil || !base.faaliyet || !base.personel || !base.borclu || !base.tahakkuk){
+          if(typeof window.showToast==='function') window.showToast('warning','Eksik Bilgi','Zorunlu alanlar boş.');
+          return;
+        }
+
+        const supabase = getSupabase();
+        if (!supabase) throw new Error('Supabase client hazır değil');
+        
+        if (editingTahakkukId){
+          const existing = tahakkukDocs.find(x=>x.id===editingTahakkukId) || {};
+          // id alanını payload'dan çıkar (id güncellenemez)
+          const { id, ...payload } = { ...base };
+          
+          console.log('Tahakkuk güncelleniyor:', editingTahakkukId, payload);
+          
+          const { data, error } = await supabase
+            .from('tahakkuklar')
+            .update(payload)
+            .eq('id', editingTahakkukId)
+            .select()
+            .single();
+            
+          if (error) {
+            console.error('Tahakkuk güncelleme hatası:', error);
+            console.error('Hata detayları:', JSON.stringify(error, null, 2));
+            throw error;
+          }
+          
+          console.log('Tahakkuk başarıyla güncellendi:', data);
+          
+          // Mevcut kaydı güncelle
+          const index = tahakkukDocs.findIndex(x=>x.id===editingTahakkukId);
+          if (index !== -1) {
+            tahakkukDocs[index] = { ...tahakkukDocs[index], ...payload };
+          }
+          
+          // Tablo satırlarını yeniden oluştur ve ilgili satırı güncelle
+          rebuildTableRows();
+          refreshRowInTable(editingTahakkukId);
+          updateKPIs();
+          
+          if(typeof window.showToast==='function') window.showToast('success','Başarılı','Tahakkuk güncellendi.');
+        } else {
+          const r = { 
+            id: generateUUID(), // Supabase id alanı için UUID
+            ...base, 
+            createdat: new Date().toISOString() 
+          };
+          
+          console.log('Tahakkuk ekleniyor:', r);
+          
+          const { data, error } = await supabase
+            .from('tahakkuklar')
+            .insert(r)
+            .select()
+            .single();
+            
+          if (error) {
+            console.error('Tahakkuk ekleme hatası:', error);
+            throw error;
+          }
+          console.log('Tahakkuk başarıyla eklendi:', data);
+          tahakkukDocs.push({id: data.id, ...data});
+          
+          // Tablo satırlarını yeniden oluştur ve yeni satırı ekle
+          rebuildTableRows();
+          refreshRowInTable(data.id);
+          updateKPIs();
+          
+          if(typeof window.showToast==='function') window.showToast('success','Başarılı','Tahakkuk kaydı eklendi.');
+        }
+
+        editingTahakkukId = null;
+        closeModal('mTahakkuk');
+      } catch (error) {
+        console.error('saveTahakkuk hatası:', error);
+        const errorMsg = error?.message || error?.details || 'Bilinmeyen bir hata oluştu.';
+        if(typeof window.showToast==='function') {
+          window.showToast('error','Kayıt Hatası',`Tahakkuk kaydedilemedi: ${errorMsg}`);
+        }
+      }
     }
 
     // Kaydet (tahsilat)
     async function saveTahsilat(){
-      const ref = qs('#s_tahakkukRef').dataset.tahakkukId || '';
-      const tutar = Number(qs('#s_tutar').value||0);
-      const tarih = qs('#s_tarih').value || todayStr();
-      if(!ref || !tutar){
-        alert('Tahakkuk seç ve tutar yaz.');
-        return;
-      }
-      const tah = tahakkukDocs.find(x=>x.id===ref);
-      if(!tah){
-        alert('Eşleşen tahakkuk bulunamadı.');
-        return;
-      }
+      try {
+        const ref = qs('#s_tahakkukRef').dataset.tahakkukId || '';
+        const tutar = Number(qs('#s_tutar').value||0);
+        const tarihStr = qs('#s_tarih').value || todayStr();
+        
+        if(!ref || !tutar){
+          if(typeof window.showToast==='function') window.showToast('warning','Eksik Bilgi','Tahakkuk seç ve tutar yaz.');
+          return;
+        }
+        
+        const tah = tahakkukDocs.find(x=>x.id===ref);
+        if(!tah){
+          if(typeof window.showToast==='function') window.showToast('error','Hata','Eşleşen tahakkuk bulunamadı.');
+          return;
+        }
 
-      // Mevcut tahsilat toplamı (ilgili tahakkuk için)
-      const mevcut = tahsilatDocs
-        .filter(x=>x.tahakkukId===ref)
-        .reduce((a,b)=>a+Number(b.tutar||0),0);
-      if (mevcut + tutar > Number(tah.tahakkuk||0) + 0.0001){
-        alert('Toplam tahsilat, tahakkuk tutarını geçemez.');
-        return;
-      }
+        // Mevcut tahsilat toplamı (ilgili tahakkuk için)
+        const mevcut = tahsilatDocs
+          .filter(x=>x.tahakkukid===ref)
+          .reduce((a,b)=>a+Number(b.tutar||0),0);
+        if (mevcut + tutar > Number(tah.tahakkuk||0) + 0.0001){
+          if(typeof window.showToast==='function') window.showToast('warning','Tutar Aşımı','Toplam tahsilat, tahakkuk tutarını geçemez.');
+          return;
+        }
 
-      const sDoc = {
-        tahakkukId: ref,
-        yil: tah.yil,
-        faaliyet: normTR(tah.faaliyet),
-        personel: normTR(tah.personel),
-        borclu: normTR(tah.borclu),
-        tutar,
-        tarih,
-        odeyen: tidy(qs('#s_odeyen').value),
-        yontem: tidy(qs('#s_yontem').value),
-        createdAt: todayStr()
-      };
-      const added = await db.collection('tahsilatlar').add(sDoc);
-      tahsilatDocs.push({ id:added.id, ...sDoc });
-      closeModal('mTahsilat');
-      await loadAll();
+        const supabase = getSupabase();
+        if (!supabase) {
+          throw new Error('Supabase client hazır değil');
+        }
+        
+        // Tarih formatını ISO string'e çevir (Supabase timestamp için)
+        const tarihISO = tarihStr ? new Date(tarihStr + 'T00:00:00').toISOString() : new Date().toISOString();
+        const createdAtISO = new Date().toISOString();
+        
+        const sDoc = {
+          id: generateUUID(), // Supabase id alanı için UUID
+          tahakkukid: ref,
+          yil: Number(tah.yil),
+          faaliyet: normTR(tah.faaliyet),
+          personel: normTR(tah.personel),
+          borclu: normTR(tah.borclu),
+          tutar: Number(tutar),
+          tarih: tarihISO,
+          odeyen: tidy(qs('#s_odeyen').value) || null,
+          yontem: tidy(qs('#s_yontem').value) || null,
+          createdat: createdAtISO
+        };
+        
+        console.log('Tahsilat kaydediliyor:', sDoc);
+        
+        const { data, error } = await supabase
+          .from('tahsilatlar')
+          .insert(sDoc)
+          .select()
+          .single();
+          
+        if (error) {
+          console.error('Tahsilat kaydetme hatası:', error);
+          throw error;
+        }
+        
+        console.log('Tahsilat başarıyla kaydedildi:', data);
+        tahsilatDocs.push({ id: data.id, ...data });
+        
+        // Tablo satırlarını yeniden oluştur ve ilgili tahakkuk satırını güncelle
+        rebuildTableRows();
+        refreshRowInTable(ref);
+        updateKPIs();
+        
+        if(typeof window.showToast==='function') window.showToast('success','Başarılı','Tahsilat kaydı eklendi.');
+        
+        closeModal('mTahsilat');
+      } catch (error) {
+        console.error('saveTahsilat hatası:', error);
+        const errorMsg = error?.message || error?.details || 'Bilinmeyen bir hata oluştu.';
+        if(typeof window.showToast==='function') {
+          window.showToast('error','Kayıt Hatası',`Tahsilat kaydedilemedi: ${errorMsg}`);
+        }
+      }
     }
 
     function computeRowView(row){
@@ -950,7 +1418,7 @@ function toDateKey(v){
         yeni,
         kalan,
         odeyen: titleTR(lastPayment?.odeyen || ''),
-        tarih: toDateKey(lastPayment?.tarih) || (row.createdAt || '')
+        tarih: toDateKey(lastPayment?.tarih) || (row.createdat || '')
       };
     }
 
@@ -1054,8 +1522,8 @@ function toDateKey(v){
             <td class="right">${money(r.yeni)}</td>
             <td class="right">${money(r.kalan)}</td>
             <td class="right action-col">
-              <button class="btn-small secondary" data-act="edit">Düzenle</button>
-              <button class="btn-small bad" data-act="delete">Sil</button>
+              <button class="btn btn-small btn-ghost" data-act="edit">Düzenle</button>
+              <button class="btn btn-small btn-danger" data-act="delete">Sil</button>
             </td>
           `;
           tr.addEventListener('click', (ev)=>{
@@ -1089,9 +1557,9 @@ function toDateKey(v){
             <div class="mini-line"><span>Yeni (7g)</span><span>${money(r.yeni)}</span></div>
             <div class="mini-line"><span>Kalan</span><span style="font-weight:600">${money(r.kalan)}</span></div>
             <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
-              <button class="secondary btn-small" data-act="tahsilat">Tahsilat Ekle</button>
-              <button class="btn-small secondary" data-act="edit">Düzenle</button>
-              <button class="btn-small bad" data-act="delete">Sil</button>
+              <button class="btn btn-ghost btn-small" data-act="tahsilat">Tahsilat Ekle</button>
+              <button class="btn btn-small btn-ghost" data-act="edit">Düzenle</button>
+              <button class="btn btn-small btn-danger" data-act="delete">Sil</button>
             </div>
           `;
           div.querySelector('[data-act="tahsilat"]').onclick = (ev)=>{
@@ -1214,8 +1682,8 @@ function toDateKey(v){
             <td class="right">${money(r.kalan)}</td>
             <td class="right action-col">
               <div class="action-cell">
-                <button class="btn-small secondary" data-act="edit">Düzenle</button>
-                <button class="btn-small bad" data-act="delete">Sil</button>
+                <button class="btn-small btn-ghost" data-act="edit">Düzenle</button>
+                <button class="btn-small btn-danger" data-act="delete">Sil</button>
               </div>
             </td>
           `;
@@ -1249,9 +1717,9 @@ function toDateKey(v){
             <div class="mini-line"><span>Yeni</span><span>${money(r.yeni)}</span></div>
             <div class="mini-line"><span>Kalan</span><span style="font-weight:600">${money(r.kalan)}</span></div>
             <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
-              <button class="secondary btn-small" data-act="tahsilat">Tahsilat Ekle</button>
-              <button class="btn-small secondary" data-act="edit">Düzenle</button>
-              <button class="btn-small bad" data-act="delete">Sil</button>
+              <button class="btn btn-ghost btn-small" data-act="tahsilat">Tahsilat Ekle</button>
+              <button class="btn btn-small btn-ghost" data-act="edit">Düzenle</button>
+              <button class="btn btn-small btn-danger" data-act="delete">Sil</button>
             </div>
           `;
           div.querySelector('[data-act="tahsilat"]').onclick = (ev)=>{
@@ -1309,13 +1777,32 @@ function toDateKey(v){
 
     function openTahakkukEdit(id){
       const t = tahakkukDocs.find(x=>x.id===id);
-      if (!t) return;
+      if (!t) {
+        console.warn('Tahakkuk bulunamadı:', id);
+        return;
+      }
       editingTahakkukId = id;
+      
+      // Faaliyet değerini select'teki title-case değerle eşleştir
+      const faaliyetValue = titleTR(t.faaliyet || '');
+      const faaliyetSelect = qs('#t_faaliyet');
+      if (faaliyetSelect) {
+        // Select'teki option'ları kontrol et ve eşleşeni bul
+        const options = Array.from(faaliyetSelect.options);
+        const matchingOption = options.find(opt => titleTR(opt.value) === faaliyetValue || opt.value === faaliyetValue);
+        if (matchingOption) {
+          faaliyetSelect.value = matchingOption.value;
+        } else {
+          faaliyetSelect.value = faaliyetValue; // Fallback: direkt değeri kullan
+        }
+      }
+      
       qs('#t_yil').value = t.yil || '';
-      qs('#t_faaliyet').value = t.faaliyet || '';
       qs('#t_personel').value = t.personel || '';
       qs('#t_borclu').value = t.borclu || '';
       qs('#t_tutar').value = t.tahakkuk || '';
+      // odeyen alanı tahakkuklar tablosunda yok, sadece tahsilatlar tablosunda var
+      qs('#t_odeyen').value = '';
       qs('#t_aciklama').value = t.aciklama || '';
       qs('#mTahakkuk h3').textContent = 'Tahakkuk Düzenle';
       openModal('mTahakkuk');
@@ -1325,14 +1812,54 @@ function toDateKey(v){
       const t = tahakkukDocs.find(x=>x.id===id);
       const ok = confirm((t?.personel ? (t.personel + ' - ') : '') + 'Tahakkuk ve bağlı tahsilatlar silinsin mi?');
       if (!ok) return;
-      await db.collection('tahakkuklar').doc(id).delete();
-      const related = tahsilatDocs.filter(x=>x.tahakkukId===id);
-      for (const s of related){
-        await db.collection('tahsilatlar').doc(s.id).delete();
+      
+      const supabase = getSupabase();
+      if (!supabase) throw new Error('Supabase client hazır değil');
+      
+      // Önce tahsilatları sil
+      const related = tahsilatDocs.filter(x=>x.tahakkukid===id);
+      if (related.length > 0) {
+        const relatedIds = related.map(s => s.id);
+        const { error: deleteTahsilatError } = await supabase
+          .from('tahsilatlar')
+          .delete()
+          .in('id', relatedIds);
+          
+        if (deleteTahsilatError) throw deleteTahsilatError;
       }
+      
+      // Sonra tahakkuku sil
+      const { error: deleteTahakkukError } = await supabase
+        .from('tahakkuklar')
+        .delete()
+        .eq('id', id);
+        
+      if (deleteTahakkukError) throw deleteTahakkukError;
+      
       tahakkukDocs = tahakkukDocs.filter(x=>x.id!==id);
-      tahsilatDocs = tahsilatDocs.filter(x=>x.tahakkukId!==id);
-      await loadAll();
+      tahsilatDocs = tahsilatDocs.filter(x=>x.tahakkukid!==id);
+      
+      // Tablo satırlarını yeniden oluştur
+      rebuildTableRows();
+      
+      // DOM'dan satırı kaldır
+      const useCards = qs('#cardList').style.display==='grid';
+      if (!useCards){
+        const tbody = qs('#tbody');
+        Array.from(tbody.children).forEach(tr=>{
+          if (tr.dataset.rowId === id) tr.remove();
+        });
+      } else {
+        const list = qs('#cardList');
+        Array.from(list.children).forEach(card=>{
+          if (card.dataset.rowId === id) card.remove();
+        });
+      }
+      
+      // KPI'ları güncelle
+      updateKPIs();
+      
+      if(typeof window.showToast==='function') window.showToast('success','Başarılı','Tahakkuk ve bağlı tahsilatlar silindi.');
     }
 
     // CSV dışa aktar
@@ -1359,36 +1886,17 @@ function toDateKey(v){
       a.href = URL.createObjectURL(blob); a.download = 'alacaklar-filtreli.csv'; document.body.appendChild(a); a.click(); a.remove();
     }
 
-    // Basit toast bildirimi
-    function showToast(type, title, message){
-      const cont = document.getElementById('toastContainer');
-      if(!cont) return;
-      const div = document.createElement('div');
-      div.className = `toast ${type||'info'}`;
-      div.innerHTML = `
-        <div class="toast-icon">${type==='success'?'✅':type==='error'?'⚠️':type==='warning'?'⚠️':'ℹ️'}</div>
-        <div class="toast-content">
-          <div class="toast-title">${title||''}</div>
-          <div class="toast-message">${message||''}</div>
-        </div>
-        <button class="toast-close" type="button">&times;</button>
-      `;
-      cont.appendChild(div);
-      requestAnimationFrame(()=> div.classList.add('show'));
-      const close = ()=>{ div.classList.remove('show'); setTimeout(()=>div.remove(),200); };
-      div.querySelector('.toast-close')?.addEventListener('click', close);
-      setTimeout(close, 4000);
-    }
+    // Toast bildirimi - ortak.js'den kullan (window.showToast)
 
     // Basit CSV içe aktar (yer tutucu)
     window.runImport = async function runImport(){
       const tahFile = document.getElementById('csvTahakkuk')?.files?.[0];
       const tslFile = document.getElementById('csvTahsilat')?.files?.[0];
       if(!tahFile && !tslFile){
-        showToast('warning','Eksik Dosya','Lütfen en az bir CSV dosyası seçin.');
+        if(typeof window.showToast==='function') window.showToast('warning','Eksik Dosya','Lütfen en az bir CSV dosyası seçin.');
         return;
       }
-      showToast('info','CSV İçe Aktarma','CSV içe aktarma modülü bu sürümde örnek amaçlıdır. Gerçek aktarım mantığı daha sonra eklenecektir.');
+      if(typeof window.showToast==='function') window.showToast('info','CSV İçe Aktarma','CSV içe aktarma modülü bu sürümde örnek amaçlıdır. Gerçek aktarım mantığı daha sonra eklenecektir.');
     };
 
     // PDF
@@ -1508,166 +2016,20 @@ function toDateKey(v){
     async function initPage(){
       await loadMetaOptions();
       loadAll().then(ensureMobileDefaults).catch(e=>{
-        console.error('Firestore yüklenemedi', e);
-        alert('Veri yüklenirken bir hata oluştu.\n\nDetay: ' + (e && e.message ? e.message : e));
+        console.error('Veri yüklenemedi', e);
+        const errorMsg = e && e.message ? e.message : String(e);
+        if(typeof window.showToast==='function') {
+          window.showToast('error','Veri Yükleme Hatası',`Veri yüklenirken bir hata oluştu: ${errorMsg}`);
+        }
         tableRows=[]; render(); ensureMobileDefaults();
       });
     }
 
-    /* ===== Navigation Bar (iftar-sahur paneli ile uyumlu) ===== */
-    let CURRENT_ALLOW=new Set(), CURRENT_DENY=new Set();
-    const norm=(s)=> String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
-    function normalizeUrl(u){
-      if(!u || u === '#') return '#';
-      if(/^https?:\/\//i.test(u)) return u;
-      if(u.startsWith('//')) return u;
-      if(u.startsWith('../') || u.startsWith('./')) return u;
-      const currentPath = location.pathname;
-      const currentDir = currentPath.substring(0, currentPath.lastIndexOf('/'));
-      const currentDepth = currentDir.split('/').filter(x => x).length;
-      const upLevels = currentDepth > 0 ? '../'.repeat(currentDepth) : '';
-      const targetPath = u.startsWith('/') ? u.substring(1) : u;
-      return upLevels + targetPath;
-    }
-
-    async function fetchPanels(allowSet, denySet){
-      const res=[]; try{
-        const snap=await db.collection('sayfa_manifesti').get();
-        snap.forEach(doc=>{
-          const d=doc.data()||{}, id=doc.id, panelTitle=d.title||id;
-          const panelGrant = allowSet.has(norm(id)) || allowSet.has(norm(panelTitle));
-          let pages = Array.isArray(d.pages)? d.pages : [];
-          pages = pages.filter(pg=>{
-            const keyNorm=norm(pg.key||pg.title||'');
-            const pageGrant=allowSet.has(keyNorm), denied=denySet.has(keyNorm);
-            return !denied && (panelGrant || pageGrant);
-          }).map(pg=>({
-            baslik: pg.title||pg.key||'Sayfa',
-            url: normalizeUrl(pg.path||'#'),
-            key: pg.key||pg.title||'',
-            sira: typeof pg.order==='number'? pg.order:9999
-          })).sort((a,b)=>a.sira-b.sira);
-          if(pages.length) res.push({ id, baslik:panelTitle, sira: typeof d.order==='number'? d.order:9999, pages });
-        });
-        res.sort((a,b)=>a.sira-b.sira);
-      }catch(e){ console.error(e); }
-      return res;
-    }
-
-    function renderNav(panels){
-      const ul=document.getElementById('navMain'), drawer=document.getElementById('drawer');
-      if(!ul || !drawer) return;
-      ul.innerHTML=''; drawer.innerHTML='';
-      if(!panels.length){
-        ul.innerHTML='<li class="nav-item"><div class="nav-btn">Panel yok</div></li>';
-        drawer.innerHTML='<div class="muted" style="padding:8px">Menü bulunamadı</div>'; return;
-      }
-      panels.forEach(p=>{
-        const li=document.createElement('li'); li.className='nav-item';
-        li.innerHTML=`<div class="nav-btn">${p.baslik} <span class="caret">▾</span></div>`;
-        const dd=document.createElement('div'); dd.className='dropdown';
-        (p.pages||[]).forEach(pg=>{
-          const a=document.createElement('a');
-          a.href=normalizeUrl(pg.url || pg.path || '#'); a.textContent=pg.baslik;
-          a.dataset.key=pg.key||pg.baslik; a.dataset.panel=p.id; a.dataset.panelTitle=p.baslik;
-          dd.appendChild(a);
-        });
-        li.appendChild(dd);
-        li.querySelector('.nav-btn').addEventListener('click',(e)=>{
-          e.stopPropagation();
-          ul.querySelectorAll('.nav-item').forEach(x=>{ if(x!==li) x.classList.remove('open'); });
-          li.classList.toggle('open');
-        });
-        ul.appendChild(li);
-
-        const h=document.createElement('div'); h.className='panel-title'; h.textContent=p.baslik; drawer.appendChild(h);
-        (p.pages||[]).forEach(pg=>{
-          const a=document.createElement('a');
-          a.href=normalizeUrl(pg.url || pg.path || '#'); a.textContent=pg.baslik;
-          a.dataset.key=pg.key||pg.baslik; a.dataset.panel=p.id; a.dataset.panelTitle=p.baslik;
-          drawer.appendChild(a);
-        });
-      });
-      document.addEventListener('click',(e)=>{ if(!ul.contains(e.target)) ul.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('open')); });
-    }
-
-    (function(){ const hamb=document.getElementById('hamburger'), drawer=document.getElementById('drawer'); if(!hamb || !drawer) return; hamb.addEventListener('click',()=>drawer.classList.toggle('open')); document.addEventListener('click',(e)=>{ if(!drawer.contains(e.target) && !hamb.contains(e.target)) drawer.classList.remove('open'); }); })();
-
-    document.addEventListener('click',(e)=>{
-      const a=e.target.closest('a[data-key]'); if(!a) return;
-      const key=norm(a.dataset.key), pnl=norm(a.dataset.panel||''), pnlTitle=norm(a.dataset.panelTitle||'');
-      if(CURRENT_DENY.has(key)){ e.preventDefault(); return; }
-      const allowed = CURRENT_ALLOW.has(key) || CURRENT_ALLOW.has(pnl) || CURRENT_ALLOW.has(pnlTitle);
-      if(!allowed){ e.preventDefault(); }
-    });
-
-    // Bildirim yükleme
-    async function loadNotifications(){
-      const badge = document.getElementById('notifBadge');
-      const list = document.getElementById('notifList');
-      if(!badge || !list) return;
-      list.innerHTML='';
-      try{
-        const snap = await db.collection('duyurular').orderBy('createdAt','desc').limit(5).get();
-        const n = snap.size;
-        if(n>0){ badge.style.display='block'; badge.textContent = n>99 ? '99+' : String(n); } else { badge.style.display='none'; }
-        if(n===0){
-          const empty=document.createElement('div'); empty.className='muted'; empty.style.padding='6px 8px'; empty.textContent='Yeni bildirim yok.'; list.appendChild(empty);
-        }else{
-          snap.forEach(doc=>{ const d=doc.data()||{}; const baslik=d.baslik||d.title||'Duyuru'; const detay=d.detay||d.desc||''; const row=document.createElement('a'); row.href='../diger/bildirim.html'; row.innerHTML=`<strong>${baslik}</strong><div class="muted">${detay}</div>`; list.appendChild(row); });
-        }
-      }catch(e){ console.error(e); if(badge) badge.style.display='none'; if(list){ const err=document.createElement('div'); err.className='muted'; err.style.padding='6px 8px'; err.textContent='Bildirimler yüklenemedi.'; list.appendChild(err); } }
-    }
-
-    // Bildirim & Profil dropdown
-    (function(){
-      const notifBtn = document.getElementById('btnNotif');
-      const notifDD = document.getElementById('notifDropdown');
-      const profBtn=document.getElementById('btnProfile'), profDD=document.getElementById('profDropdown');
-      function closeAll(e){
-        if(!notifDD.contains(e.target) && e.target!==notifBtn) notifDD.parentElement.classList.remove('open');
-        if(!profDD.contains(e.target)  && e.target!==profBtn)  profDD.parentElement.classList.remove('open');
-      }
-      document.addEventListener('click', closeAll);
-      notifBtn?.addEventListener('click', (e)=>{ e.stopPropagation(); notifDD.parentElement.classList.toggle('open'); profDD.parentElement.classList.remove('open'); });
-      profBtn?.addEventListener('click',(e)=>{ e.stopPropagation(); profDD.parentElement.classList.toggle('open'); notifDD.parentElement.classList.remove('open'); });
-      document.getElementById('btnLogout')?.addEventListener('click', async (e) => {
-        e.preventDefault();
-        try { await auth.signOut(); location.assign('../../index.html'); }
-        catch(err){ console.error(err); }
-      });
-    })();
-
-    // Auth + nav + sayfa başlatma
-    auth.onAuthStateChanged(async (user) => {
-      if (!user) {
-        window.location.href = '../../index.html';
-        return;
-      }
-      try {
-        const userDoc = await db.collection('kullanicilar').doc(user.uid).get();
-        if (userDoc.exists) {
-          const data = userDoc.data();
-          const profNameEl = document.getElementById('profName');
-          if (profNameEl) profNameEl.textContent = data.adSoyad || user.email?.split('@')[0] || 'Profil';
-
-          const rawPerms = Array.isArray(data.yetkiler) ? data.yetkiler : [];
-          CURRENT_ALLOW = new Set(rawPerms.filter(s=>!String(s).trim().startsWith('-') && !String(s).trim().startsWith('!')).map(norm));
-          CURRENT_DENY = new Set(rawPerms.filter(s=>String(s).trim().startsWith('-') || String(s).trim().startsWith('!')).map(s=>norm(String(s).replace(/^[-!]\s*/,''))));
-
-          const panels = await fetchPanels(CURRENT_ALLOW, CURRENT_DENY);
-          renderNav(panels);
-          
-          // Bildirimleri yükle
-          await loadNotifications();
-        }
-      } catch (e) {
-        console.error('Kullanıcı bilgisi alınamadı:', e);
-      }
-
-      // Yetkiler yüklendikten sonra sayfa verilerini çek
-      await initPage();
-    });
+    // Navigation, Auth, Bildirimler ve Toast ortak.js'den geliyor
+    // Sayfa özel verilerini yüklemek için initPage() fonksiyonu ortak.js tarafından çağrılacak
+    
+    // Sayfa özel init fonksiyonu - ortak.js tarafından çağrılacak
+    window.initPage = initPage;
   </script>
 </body>
 </html>

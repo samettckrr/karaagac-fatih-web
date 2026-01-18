@@ -11,10 +11,11 @@ const firebaseConfig = {
 // Uygulamayı başlat
 firebase.initializeApp(firebaseConfig);
 
-// Firestore, Auth, Storage değişkenleri
+// Auth değişkeni (Firestore artık kullanılmıyor, Supabase kullanılıyor)
 // firebase-init.js
-window.db      = window.db      || firebase.firestore();
 window.auth    = window.auth    || firebase.auth();
+// window.db artık kullanılmıyor - Supabase kullanılıyor
+
 // Storage sadece yüklüyse kullanılır (opsiyonel)
 try {
   if (firebase.storage && typeof firebase.storage === 'function') {

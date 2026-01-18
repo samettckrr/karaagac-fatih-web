@@ -341,19 +341,83 @@
   </div>
 </div>
 
-<!-- Firebase compat -->
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-<script src="../js/firebase/firebase-init.js"></script>
-<!-- ORTAK APP SHELL JS -->
-<script src="../js/ortak.js"></script>
+<!-- Supabase CDN - async olmadan yükle ki ortak.js'den önce hazır olsun -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" onload="initSupabaseClient()"></script>
+<!-- Supabase Client Init -->
+<script>
+    const SUPABASE_URL = 'https://lmwfibippjvqctccxiwb.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxtd2ZpYmlwcGp2cWN0Y2N4aXdiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NjE2NzA1NCwiZXhwIjoyMDgxNzQzMDU0fQ.lzoudrJx_V4RdCCxPRfgLA1riWNKZ3HyFzeqRynYHeQ';
+    
+  function initSupabaseClient() {
+      // UMD formatında yüklenen Supabase genellikle window.supabase veya global supabase olarak gelir
+      if (typeof window.supabase !== 'undefined' && typeof window.supabase.createClient === 'function') {
+        window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        console.log('✅ Supabase client oluşturuldu');
+      // Supabase hazır olduğunda ortak.js'i yükle (eğer henüz yüklenmediyse)
+      if (!window.ortakJsLoaded) {
+        loadOrtakJs();
+      }
+        return true;
+      }
+      // Alternatif: global supabase
+      if (typeof supabase !== 'undefined' && typeof supabase.createClient === 'function') {
+        window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        console.log('✅ Supabase client oluşturuldu (global)');
+      // Supabase hazır olduğunda ortak.js'i yükle (eğer henüz yüklenmediyse)
+      if (!window.ortakJsLoaded) {
+        loadOrtakJs();
+      }
+        return true;
+      }
+      return false;
+    }
+    
+  function loadOrtakJs() {
+    if (window.ortakJsLoaded) return;
+    window.ortakJsLoaded = true;
+    
+    const script = document.createElement('script');
+    script.src = '../js/ortak.js';
+    script.onload = function() {
+      console.log('✅ ortak.js yüklendi');
+    };
+    script.onerror = function() {
+      console.error('❌ ortak.js yüklenemedi');
+    };
+    document.body.appendChild(script);
+  }
+  
+  // Eğer Supabase zaten yüklüyse (sayfa yeniden yüklendiğinde)
+  if (typeof supabase !== 'undefined' || typeof window.supabase !== 'undefined') {
+    // Biraz bekle ve dene (script henüz tam yüklenmemiş olabilir)
+    setTimeout(function() {
+      if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+        initSupabaseClient();
+      }
+      // Supabase hazırsa ortak.js'i yükle
+      if (window.supabase && !window.ortakJsLoaded) {
+        loadOrtakJs();
+        }
+      }, 100);
+    }
+</script>
 
 <script>
-  // Global değişkenler - ortak.js'den gelen db ve auth'u kullan (zaten tanımlı, sadece referans al)
-  // db ve auth ortak.js'de zaten tanımlı, burada sadece kullanıyoruz
-  const getDb = () => window.db || (typeof firebase !== 'undefined' ? firebase.firestore() : null);
-  const getAuth = () => window.auth || (typeof firebase !== 'undefined' ? firebase.auth() : null);
+  // Supabase client - window.supabase modülden yüklenecek
+  const getSupabase = () => window.supabase;
+  
+  // Auth için - Firebase auth kullanılıyor (ortak.js'den geliyor)
+  const getCurrentUser = async () => {
+    // Firebase auth'dan kullanıcı bilgisini al
+    if (window.auth && window.auth.currentUser) {
+      return window.auth.currentUser;
+    }
+    // Eğer window.auth yoksa, firebase.auth() kullan
+    if (typeof firebase !== 'undefined' && firebase.auth) {
+      return firebase.auth().currentUser;
+    }
+    return null;
+  };
 
   const modal = document.getElementById("bildirimModal");
   const hedefRolDiv = document.getElementById("kimeToplu");
@@ -432,17 +496,23 @@
   // Kullanıcı arama fonksiyonu
   let kullaniciAramaTimeout;
   window.kullaniciAra = async function(arama) {
-    const db = getDb();
-    if (!db || !arama || arama.length < 2) {
+    const supabase = getSupabase();
+    if (!supabase || !arama || arama.length < 2) {
       const sonuclar = document.getElementById("kullaniciSonuclari");
       if (sonuclar) sonuclar.style.display = "none";
       return;
     }
 
     try {
-      const kullanicilar = await db.collection("kullanicilar")
-        .where("aktif", "==", true)
-        .get();
+      const { data: kullanicilar, error } = await supabase
+        .from("kullanicilar")
+        .select("*")
+        .eq("aktif", true);
+
+      if (error) {
+        console.error("Kullanıcı arama hatası:", error);
+        return;
+      }
 
       const sonuclar = document.getElementById("kullaniciSonuclari");
       if (!sonuclar) return;
@@ -450,14 +520,13 @@
       const aramaLower = arama.toLowerCase();
       const eslesenler = [];
 
-      kullanicilar.forEach(doc => {
-        const d = doc.data();
+      (kullanicilar || []).forEach(d => {
         const adSoyad = (d.adSoyad || "").toLowerCase();
         const email = (d.email || "").toLowerCase();
         
         if (adSoyad.includes(aramaLower) || email.includes(aramaLower)) {
           eslesenler.push({
-            uid: doc.id,
+            uid: d.id || d.uid,
             adSoyad: d.adSoyad || "İsimsiz",
             email: d.email || "",
             rol: d.rol || "personel"
@@ -510,9 +579,8 @@
   };
 
   window.bildirimGonder = async function() {
-    const db = getDb();
-    const auth = getAuth();
-    if (!db || !auth) {
+    const supabase = getSupabase();
+    if (!supabase) {
       if (typeof window.showToast === 'function') {
         window.showToast('error', 'Hata', 'Veritabanı bağlantısı yok.');
       } else {
@@ -533,7 +601,8 @@
       return;
     }
 
-    const gondericiUID = auth.currentUser?.uid;
+    const user = await getCurrentUser();
+    const gondericiUID = user?.id || user?.uid;
     if (!gondericiUID) {
       if (typeof window.showToast === 'function') {
         window.showToast('error', 'Hata', 'Oturum açık değil.');
@@ -544,57 +613,55 @@
     // Düzenleme modu
     if (window.duzenlenenBildirimId) {
       try {
-        const bildirimRef = db.collection("bildirimler").doc(window.duzenlenenBildirimId);
-        const bildirimDoc = await bildirimRef.get();
-        
-        if (!bildirimDoc.exists) {
-          if (typeof window.showToast === 'function') {
-            window.showToast('error', 'Hata', 'Bildirim bulunamadı.');
-          }
-          return;
-        }
-
-        const eskiVeri = bildirimDoc.data();
-        const eskiBildirimId = window.duzenlenenBildirimId;
-
         // Ana bildirim kaydını güncelle
-        await bildirimRef.update({
-          baslik,
-          icerik,
-          guncellemeZamani: firebase.firestore.FieldValue.serverTimestamp(),
-          guncellendi: true
-        });
+        const { error: updateError } = await supabase
+          .from("bildirimler")
+          .update({
+            baslik,
+            icerik,
+            guncelleme_zamani: new Date().toISOString(),
+            guncellendi: true
+          })
+          .eq("id", window.duzenlenenBildirimId);
+
+        if (updateError) {
+          throw updateError;
+        }
 
         // Tüm kullanıcı bildirimlerini güncelle
-        const kullanicilarSnap = await db.collection("kullanici_bildirimleri").get();
-        const batch = db.batch();
-        let guncellenenSayisi = 0;
+        const { data: kullaniciBildirimleri, error: fetchError } = await supabase
+          .from("kullanici_bildirimleri")
+          .select("id")
+          .eq("bildirim_id", window.duzenlenenBildirimId);
 
-        for (const kullaniciDoc of kullanicilarSnap.docs) {
-          const kullaniciBildirimRef = kullaniciDoc.ref
-            .collection("bildirimler")
-            .doc(eskiBildirimId);
-          
-          const kullaniciBildirimDoc = await kullaniciBildirimRef.get();
-          if (kullaniciBildirimDoc.exists) {
-            batch.update(kullaniciBildirimRef, {
-              baslik,
-              icerik,
-              guncellemeZamani: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            guncellenenSayisi++;
-          }
+        if (fetchError) {
+          throw fetchError;
         }
 
-        await batch.commit();
+        let guncellenenSayisi = 0;
+        if (kullaniciBildirimleri && kullaniciBildirimleri.length > 0) {
+          const { error: bulkUpdateError } = await supabase
+            .from("kullanici_bildirimleri")
+            .update({
+              baslik,
+              icerik,
+              guncelleme_zamani: new Date().toISOString()
+            })
+            .eq("bildirim_id", window.duzenlenenBildirimId);
+
+          if (bulkUpdateError) {
+            throw bulkUpdateError;
+          }
+          guncellenenSayisi = kullaniciBildirimleri.length;
+        }
 
         // İşlem logu
-        await db.collection("islem_log").add({
+        // zaman için default now() kullanılacak
+        await supabase.from("islem_log").insert({
           islem: `Bildirim güncellendi - ${guncellenenSayisi} kullanıcıya`,
           uid: gondericiUID,
-          zaman: new Date(),
           detay: {
-            bildirimId: eskiBildirimId,
+            bildirimId: window.duzenlenenBildirimId,
             baslik,
             hedefSayisi: guncellenenSayisi
           }
@@ -614,7 +681,7 @@
       } catch (error) {
         console.error('Bildirim güncelleme hatası:', error);
         if (typeof window.showToast === 'function') {
-          window.showToast('error', 'Hata', 'Bildirim güncellenemedi: ' + error.message);
+          window.showToast('error', 'Hata', 'Bildirim güncellenemedi: ' + (error.message || error));
         }
         return;
       }
@@ -636,18 +703,26 @@
         }
 
         // Hedef kullanıcıları bul
-        let query = db.collection("kullanicilar").where("aktif", "==", true);
+        let query = supabase
+          .from("kullanicilar")
+          .select("*")
+          .eq("aktif", true);
         
         if (hedefRol !== "tum") {
-          query = query.where("rol", "==", hedefRol);
+          query = query.eq("rol", hedefRol);
         }
 
-        const kullanicilarSnap = await query.get();
-        kullanicilarSnap.forEach(doc => {
+        const { data: kullanicilar, error: kullaniciError } = await query;
+        
+        if (kullaniciError) {
+          throw kullaniciError;
+        }
+
+        (kullanicilar || []).forEach(doc => {
           hedefKullanicilar.push({
-            uid: doc.id,
-            email: doc.data().email || "",
-            adSoyad: doc.data().adSoyad || "İsimsiz"
+            uid: doc.id || doc.uid,
+            email: doc.email || "",
+            adSoyad: doc.adSoyad || "İsimsiz"
           });
         });
       } else {
@@ -662,20 +737,24 @@
         }
 
         // Kullanıcı bilgisini al
-        const kullaniciDoc = await db.collection("kullanicilar").doc(hedefUID).get();
-        if (kullaniciDoc.exists) {
-          const data = kullaniciDoc.data();
-          hedefKullanicilar.push({
-            uid: hedefUID,
-            email: data.email || "",
-            adSoyad: data.adSoyad || "İsimsiz"
-          });
-        } else {
+        const { data: kullaniciData, error: kullaniciError } = await supabase
+          .from("kullanicilar")
+          .select("*")
+          .eq("id", hedefUID)
+          .single();
+
+        if (kullaniciError || !kullaniciData) {
           if (typeof window.showToast === 'function') {
             window.showToast('error', 'Hata', 'Seçilen kullanıcı bulunamadı.');
           }
           return;
         }
+
+        hedefKullanicilar.push({
+          uid: hedefUID,
+          email: kullaniciData.email || "",
+          adSoyad: kullaniciData.adSoyad || "İsimsiz"
+        });
       }
 
       if (hedefKullanicilar.length === 0) {
@@ -686,59 +765,85 @@
       }
 
       // Ana bildirim kaydı oluştur
+      // zaman ve created_at için default now() kullanılacak, manuel set etmeye gerek yok
       const bildirimVeri = {
         baslik,
         icerik,
         tip: window.aktifTip,
-        gondericiUID,
-        hedefRol: window.aktifTip === "toplu" ? document.getElementById("hedefRol").value : null,
-        hedefUID: window.aktifTip === "kisisel" ? hedefKullanicilar[0].uid : null,
-        hedefKullaniciSayisi: hedefKullanicilar.length,
-        zaman: firebase.firestore.FieldValue.serverTimestamp(),
-        createdAt: new Date()
+        gonderici_uid: gondericiUID,
+        hedef_rol: window.aktifTip === "toplu" ? document.getElementById("hedefRol").value : null,
+        hedef_uid: window.aktifTip === "kisisel" ? hedefKullanicilar[0].uid : null,
+        hedef_kullanici_sayisi: hedefKullanicilar.length
       };
 
-      const bildirimRef = await db.collection("bildirimler").add(bildirimVeri);
-      const bildirimId = bildirimRef.id;
+      const { data: bildirimData, error: bildirimError } = await supabase
+        .from("bildirimler")
+        .insert(bildirimVeri)
+        .select()
+        .single();
+
+      if (bildirimError) {
+        throw bildirimError;
+      }
+
+      const bildirimId = bildirimData.id;
 
       // Her kullanıcı için bildirim kaydı oluştur
-      const batch = db.batch();
-      const kullaniciBildirimleriRef = db.collection("kullanici_bildirimleri");
+      // zaman ve created_at için default now() kullanılacak, okundu_mu default false
+      const kullaniciBildirimleri = hedefKullanicilar.map(kullanici => ({
+        kullanici_uid: kullanici.uid,
+        bildirim_id: bildirimId,
+        baslik,
+        icerik,
+        tip: window.aktifTip,
+        gonderici_uid: gondericiUID
+      }));
 
-      hedefKullanicilar.forEach(kullanici => {
-        const kullaniciBildirimRef = kullaniciBildirimleriRef
-          .doc(kullanici.uid)
-          .collection("bildirimler")
-          .doc(bildirimId);
+      const { error: kullaniciBildirimError } = await supabase
+        .from("kullanici_bildirimleri")
+        .insert(kullaniciBildirimleri);
 
-        batch.set(kullaniciBildirimRef, {
-          bildirimId,
-          baslik,
-          icerik,
-          tip: window.aktifTip,
-          gondericiUID,
-          okunduMu: false,
-          okunmaZamani: null,
-          zaman: firebase.firestore.FieldValue.serverTimestamp(),
-          createdAt: new Date()
-        });
+      if (kullaniciBildirimError) {
+        throw kullaniciBildirimError;
+      }
 
-        // Kullanıcının bildirim sayacını güncelle
-        const kullaniciRef = kullaniciBildirimleriRef.doc(kullanici.uid);
-        batch.set(kullaniciRef, {
-          sonGuncelleme: firebase.firestore.FieldValue.serverTimestamp(),
-          toplamBildirim: firebase.firestore.FieldValue.increment(1),
-          okunmamisBildirim: firebase.firestore.FieldValue.increment(1)
-        }, { merge: true });
-      });
+      // Kullanıcı bildirim sayaçlarını güncelle (her kullanıcı için)
+      for (const kullanici of hedefKullanicilar) {
+        // Önce mevcut değerleri al
+        const { data: mevcutData } = await supabase
+          .from("kullanici_bildirim_sayac")
+          .select("*")
+          .eq("kullanici_uid", kullanici.uid)
+          .single();
 
-      await batch.commit();
+        if (mevcutData) {
+          // Güncelle
+          await supabase
+            .from("kullanici_bildirim_sayac")
+            .update({
+              son_guncelleme: new Date().toISOString(),
+              toplam_bildirim: (mevcutData.toplam_bildirim || 0) + 1,
+              okunmamis_bildirim: (mevcutData.okunmamis_bildirim || 0) + 1
+            })
+            .eq("kullanici_uid", kullanici.uid);
+        } else {
+          // Yeni kayıt oluştur
+          // son_guncelleme için default now() kullanılacak
+          await supabase
+            .from("kullanici_bildirim_sayac")
+            .insert({
+              kullanici_uid: kullanici.uid,
+              toplam_bildirim: 1,
+              okunmamis_bildirim: 1
+            });
+        }
+      }
 
       // İşlem logu
-      await db.collection("islem_log").add({
+      // zaman için default now() kullanılacak
+      await supabase.from("islem_log").insert({
         islem: `Bildirim gönderildi (${window.aktifTip}) - ${hedefKullanicilar.length} kullanıcıya`,
         uid: gondericiUID,
-        zaman: new Date(),
         detay: {
           baslik,
           hedefSayisi: hedefKullanicilar.length
@@ -760,16 +865,16 @@
     } catch (error) {
       console.error('Bildirim gönderme hatası:', error);
       if (typeof window.showToast === 'function') {
-        window.showToast('error', 'Hata', 'Bildirim gönderilemedi: ' + error.message);
+        window.showToast('error', 'Hata', 'Bildirim gönderilemedi: ' + (error.message || error));
       } else {
-        alert('Bildirim gönderilemedi: ' + error.message);
+        alert('Bildirim gönderilemedi: ' + (error.message || error));
       }
     }
   };
 
   window.bildirimleriListele = async function() {
-    const db = getDb();
-    if (!db) {
+    const supabase = getSupabase();
+    if (!supabase) {
       if (typeof window.showToast === 'function') {
         window.showToast('error', 'Hata', 'Veritabanı bağlantısı yok.');
       } else {
@@ -784,20 +889,24 @@
     liste.innerHTML = "<h3 style='margin-bottom: 16px; font-size: 20px; font-weight: 700; color: var(--text);'>📃 Gönderilen Bildirimler</h3>";
 
     try {
-      const snap = await db.collection("bildirimler")
-        .orderBy("createdAt", "desc")
-        .limit(50)
-        .get();
+      const { data: bildirimler, error } = await supabase
+        .from("bildirimler")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(50);
       
-      if (snap.empty) {
+      if (error) {
+        throw error;
+      }
+
+      if (!bildirimler || bildirimler.length === 0) {
         liste.innerHTML += "<div class='bildirim-item'><span>Henüz bildirim gönderilmemiş.</span></div>";
         return;
       }
 
-      snap.forEach(doc => {
-        const d = doc.data();
-        const z = d.createdAt ? new Date(d.createdAt).toLocaleString('tr-TR') : 
-                  (d.zaman?.toDate ? d.zaman.toDate().toLocaleString('tr-TR') : "-");
+      bildirimler.forEach(d => {
+        const z = d.created_at ? new Date(d.created_at).toLocaleString('tr-TR') : 
+                  (d.zaman ? new Date(d.zaman).toLocaleString('tr-TR') : "-");
         
         const div = document.createElement("div");
         div.className = "bildirim-item";
@@ -817,17 +926,17 @@
         zamanSpan.innerHTML = '<b>Zaman:</b> ' + z;
         detayEl.appendChild(zamanSpan);
         
-        if (d.hedefKullaniciSayisi) {
+        if (d.hedef_kullanici_sayisi) {
           const sayiSpan = document.createElement("span");
           sayiSpan.style.marginLeft = "12px";
-          sayiSpan.innerHTML = '<b>Hedef:</b> ' + d.hedefKullaniciSayisi + ' kullanıcı';
+          sayiSpan.innerHTML = '<b>Hedef:</b> ' + d.hedef_kullanici_sayisi + ' kullanıcı';
           detayEl.appendChild(sayiSpan);
         }
         
-        if (d.hedefRol && d.tip === "toplu") {
+        if (d.hedef_rol && d.tip === "toplu") {
           const rolSpan = document.createElement("span");
           rolSpan.style.marginLeft = "12px";
-          rolSpan.innerHTML = '<b>Rol:</b> ' + d.hedefRol;
+          rolSpan.innerHTML = '<b>Rol:</b> ' + d.hedef_rol;
           detayEl.appendChild(rolSpan);
         }
         
@@ -838,17 +947,17 @@
         const editBtn = document.createElement("button");
         editBtn.className = "btn-edit";
         editBtn.innerHTML = "✏️ Düzenle";
-        editBtn.onclick = () => window.bildirimDuzenle(doc.id, d);
+        editBtn.onclick = () => window.bildirimDuzenle(d.id, d);
         
         const resendBtn = document.createElement("button");
         resendBtn.className = "btn-resend";
         resendBtn.innerHTML = "🔄 Yeniden Gönder";
-        resendBtn.onclick = () => window.bildirimYenidenGonder(doc.id, d);
+        resendBtn.onclick = () => window.bildirimYenidenGonder(d.id, d);
         
         const deleteBtn = document.createElement("button");
         deleteBtn.className = "btn-delete";
         deleteBtn.innerHTML = "🗑️ Sil";
-        deleteBtn.onclick = () => window.bildirimSil(doc.id);
+        deleteBtn.onclick = () => window.bildirimSil(d.id);
         
         actionsDiv.appendChild(editBtn);
         actionsDiv.appendChild(resendBtn);
@@ -864,9 +973,9 @@
     } catch (error) {
       console.error('Bildirim listeleme hatası:', error);
       if (typeof window.showToast === 'function') {
-        window.showToast('error', 'Hata', 'Bildirimler yüklenemedi: ' + error.message);
+        window.showToast('error', 'Hata', 'Bildirimler yüklenemedi: ' + (error.message || error));
       } else {
-        alert('Bildirimler yüklenemedi: ' + error.message);
+        alert('Bildirimler yüklenemedi: ' + (error.message || error));
       }
     }
   };
@@ -930,9 +1039,8 @@
       return;
     }
 
-    const db = getDb();
-    const auth = getAuth();
-    if (!db || !auth) {
+    const supabase = getSupabase();
+    if (!supabase) {
       if (typeof window.showToast === 'function') {
         window.showToast('error', 'Hata', 'Veritabanı bağlantısı yok.');
       }
@@ -940,48 +1048,91 @@
     }
 
     try {
-      const bildirimDoc = await db.collection("bildirimler").doc(bildirimId).get();
-      if (!bildirimDoc.exists) {
+      // Bildirimin varlığını kontrol et
+      const { data: bildirimData, error: bildirimError } = await supabase
+        .from("bildirimler")
+        .select("id")
+        .eq("id", bildirimId)
+        .single();
+
+      if (bildirimError || !bildirimData) {
         if (typeof window.showToast === 'function') {
           window.showToast('error', 'Hata', 'Bildirim bulunamadı.');
         }
         return;
       }
 
-      // Tüm kullanıcı bildirimlerini sil
-      const kullanicilarSnap = await db.collection("kullanici_bildirimleri").get();
-      const batch = db.batch();
-      let silinenSayisi = 0;
+      // Tüm kullanıcı bildirimlerini bul ve sil
+      const { data: kullaniciBildirimleri, error: fetchError } = await supabase
+        .from("kullanici_bildirimleri")
+        .select("kullanici_uid, okundu_mu")
+        .eq("bildirim_id", bildirimId);
 
-      for (const kullaniciDoc of kullanicilarSnap.docs) {
-        const kullaniciBildirimRef = kullaniciDoc.ref
-          .collection("bildirimler")
-          .doc(bildirimId);
-        
-        const kullaniciBildirimDoc = await kullaniciBildirimRef.get();
-        if (kullaniciBildirimDoc.exists) {
-          const bildirimData = kullaniciBildirimDoc.data();
-          // Eğer okunmamışsa sayacı azalt
-          if (!bildirimData.okunduMu) {
-            const kullaniciRef = kullaniciDoc.ref;
-            batch.update(kullaniciRef, {
-              okunmamisBildirim: firebase.firestore.FieldValue.increment(-1)
-            });
+      if (fetchError) {
+        throw fetchError;
+      }
+
+      let silinenSayisi = 0;
+      const kullaniciUIDs = new Set();
+
+      if (kullaniciBildirimleri && kullaniciBildirimleri.length > 0) {
+        // Okunmamış bildirimleri sayacı azaltmak için topla
+        kullaniciBildirimleri.forEach(kb => {
+          kullaniciUIDs.add(kb.kullanici_uid);
+          if (!kb.okundu_mu) {
+            // Sayacı azaltmak için kullanıcıyı işaretle
           }
-          batch.delete(kullaniciBildirimRef);
-          silinenSayisi++;
+        });
+
+        // Kullanıcı bildirimlerini sil
+        const { error: deleteError } = await supabase
+          .from("kullanici_bildirimleri")
+          .delete()
+          .eq("bildirim_id", bildirimId);
+
+        if (deleteError) {
+          throw deleteError;
+        }
+
+        silinenSayisi = kullaniciBildirimleri.length;
+
+        // Okunmamış bildirimler için sayacı azalt
+        for (const kb of kullaniciBildirimleri) {
+          if (!kb.okundu_mu) {
+            const { data: mevcutData } = await supabase
+              .from("kullanici_bildirim_sayac")
+              .select("okunmamis_bildirim")
+              .eq("kullanici_uid", kb.kullanici_uid)
+              .single();
+
+            if (mevcutData && mevcutData.okunmamis_bildirim > 0) {
+              await supabase
+                .from("kullanici_bildirim_sayac")
+                .update({
+                  okunmamis_bildirim: mevcutData.okunmamis_bildirim - 1
+                })
+                .eq("kullanici_uid", kb.kullanici_uid);
+            }
+          }
         }
       }
 
       // Ana bildirim kaydını sil
-      batch.delete(db.collection("bildirimler").doc(bildirimId));
-      await batch.commit();
+      const { error: deleteBildirimError } = await supabase
+        .from("bildirimler")
+        .delete()
+        .eq("id", bildirimId);
+
+      if (deleteBildirimError) {
+        throw deleteBildirimError;
+      }
 
       // İşlem logu
-      await db.collection("islem_log").add({
+      // zaman için default now() kullanılacak
+      const user = await getCurrentUser();
+      await supabase.from("islem_log").insert({
         islem: `Bildirim silindi - ${silinenSayisi} kullanıcıdan`,
-        uid: auth.currentUser?.uid,
-        zaman: new Date(),
+        uid: user?.id || user?.uid,
         detay: {
           bildirimId,
           silinenSayisi
@@ -998,15 +1149,15 @@
     } catch (error) {
       console.error('Bildirim silme hatası:', error);
       if (typeof window.showToast === 'function') {
-        window.showToast('error', 'Hata', 'Bildirim silinemedi: ' + error.message);
+        window.showToast('error', 'Hata', 'Bildirim silinemedi: ' + (error.message || error));
       }
     }
   };
 
   // Bildirim düzenleme fonksiyonu
   window.bildirimDuzenle = async function(bildirimId, bildirimData) {
-    const db = getDb();
-    if (!db) {
+    const supabase = getSupabase();
+    if (!supabase) {
       if (typeof window.showToast === 'function') {
         window.showToast('error', 'Hata', 'Veritabanı bağlantısı yok.');
       }
@@ -1024,16 +1175,20 @@
 
       // Hedef bilgilerini doldur
       if (tip === "toplu") {
-        if (bildirimData.hedefRol) {
-          document.getElementById("hedefRol").value = bildirimData.hedefRol;
+        if (bildirimData.hedef_rol) {
+          document.getElementById("hedefRol").value = bildirimData.hedef_rol;
         }
       } else {
-        if (bildirimData.hedefUID) {
+        if (bildirimData.hedef_uid) {
           // Kullanıcı bilgisini al ve göster
-          const kullaniciDoc = await db.collection("kullanicilar").doc(bildirimData.hedefUID).get();
-          if (kullaniciDoc.exists) {
-            const kullaniciData = kullaniciDoc.data();
-            document.getElementById("hedefUID").value = bildirimData.hedefUID;
+          const { data: kullaniciData, error: kullaniciError } = await supabase
+            .from("kullanicilar")
+            .select("*")
+            .eq("id", bildirimData.hedef_uid)
+            .single();
+
+          if (!kullaniciError && kullaniciData) {
+            document.getElementById("hedefUID").value = bildirimData.hedef_uid;
             const seciliDiv = document.getElementById("seciliKullanici");
             const seciliAd = document.getElementById("seciliKullaniciAd");
             if (seciliDiv && seciliAd) {
@@ -1046,7 +1201,7 @@
     } catch (error) {
       console.error('Bildirim düzenleme hatası:', error);
       if (typeof window.showToast === 'function') {
-        window.showToast('error', 'Hata', 'Bildirim yüklenemedi: ' + error.message);
+        window.showToast('error', 'Hata', 'Bildirim yüklenemedi: ' + (error.message || error));
       }
     }
   };
@@ -1057,9 +1212,8 @@
       return;
     }
 
-    const db = getDb();
-    const auth = getAuth();
-    if (!db || !auth) {
+    const supabase = getSupabase();
+    if (!supabase) {
       if (typeof window.showToast === 'function') {
         window.showToast('error', 'Hata', 'Veritabanı bağlantısı yok.');
       }
@@ -1067,7 +1221,8 @@
     }
 
     try {
-      const gondericiUID = auth.currentUser?.uid;
+      const user = await getCurrentUser();
+      const gondericiUID = user?.id || user?.uid;
       if (!gondericiUID) {
         if (typeof window.showToast === 'function') {
           window.showToast('error', 'Hata', 'Oturum açık değil.');
@@ -1079,29 +1234,41 @@
 
       // Hedef kullanıcıları bul
       if (bildirimData.tip === "toplu") {
-        let query = db.collection("kullanicilar").where("aktif", "==", true);
+        let query = supabase
+          .from("kullanicilar")
+          .select("*")
+          .eq("aktif", true);
         
-        if (bildirimData.hedefRol && bildirimData.hedefRol !== "tum") {
-          query = query.where("rol", "==", bildirimData.hedefRol);
+        if (bildirimData.hedef_rol && bildirimData.hedef_rol !== "tum") {
+          query = query.eq("rol", bildirimData.hedef_rol);
         }
 
-        const kullanicilarSnap = await query.get();
-        kullanicilarSnap.forEach(doc => {
+        const { data: kullanicilar, error: kullaniciError } = await query;
+        
+        if (kullaniciError) {
+          throw kullaniciError;
+        }
+
+        (kullanicilar || []).forEach(doc => {
           hedefKullanicilar.push({
-            uid: doc.id,
-            email: doc.data().email || "",
-            adSoyad: doc.data().adSoyad || "İsimsiz"
+            uid: doc.id || doc.uid,
+            email: doc.email || "",
+            adSoyad: doc.adSoyad || "İsimsiz"
           });
         });
       } else {
-        if (bildirimData.hedefUID) {
-          const kullaniciDoc = await db.collection("kullanicilar").doc(bildirimData.hedefUID).get();
-          if (kullaniciDoc.exists) {
-            const data = kullaniciDoc.data();
+        if (bildirimData.hedef_uid) {
+          const { data: kullaniciData, error: kullaniciError } = await supabase
+            .from("kullanicilar")
+            .select("*")
+            .eq("id", bildirimData.hedef_uid)
+            .single();
+
+          if (!kullaniciError && kullaniciData) {
             hedefKullanicilar.push({
-              uid: bildirimData.hedefUID,
-              email: data.email || "",
-              adSoyad: data.adSoyad || "İsimsiz"
+              uid: bildirimData.hedef_uid,
+              email: kullaniciData.email || "",
+              adSoyad: kullaniciData.adSoyad || "İsimsiz"
             });
           }
         }
@@ -1115,61 +1282,84 @@
       }
 
       // Yeni bildirim kaydı oluştur
+      // zaman ve created_at için default now() kullanılacak
       const bildirimVeri = {
         baslik: bildirimData.baslik,
         icerik: bildirimData.icerik,
         tip: bildirimData.tip,
-        gondericiUID,
-        hedefRol: bildirimData.hedefRol || null,
-        hedefUID: bildirimData.hedefUID || null,
-        hedefKullaniciSayisi: hedefKullanicilar.length,
-        yenidenGonderildi: true,
-        orijinalBildirimId: bildirimId,
-        zaman: firebase.firestore.FieldValue.serverTimestamp(),
-        createdAt: new Date()
+        gonderici_uid: gondericiUID,
+        hedef_rol: bildirimData.hedef_rol || null,
+        hedef_uid: bildirimData.hedef_uid || null,
+        hedef_kullanici_sayisi: hedefKullanicilar.length,
+        yeniden_gonderildi: true,
+        orijinal_bildirim_id: bildirimId
       };
 
-      const bildirimRef = await db.collection("bildirimler").add(bildirimVeri);
-      const yeniBildirimId = bildirimRef.id;
+      const { data: yeniBildirimData, error: bildirimError } = await supabase
+        .from("bildirimler")
+        .insert(bildirimVeri)
+        .select()
+        .single();
+
+      if (bildirimError) {
+        throw bildirimError;
+      }
+
+      const yeniBildirimId = yeniBildirimData.id;
 
       // Her kullanıcı için bildirim kaydı oluştur
-      const batch = db.batch();
-      const kullaniciBildirimleriRef = db.collection("kullanici_bildirimleri");
+      // zaman ve created_at için default now() kullanılacak, okundu_mu default false
+      const kullaniciBildirimleri = hedefKullanicilar.map(kullanici => ({
+        kullanici_uid: kullanici.uid,
+        bildirim_id: yeniBildirimId,
+        baslik: bildirimData.baslik,
+        icerik: bildirimData.icerik,
+        tip: bildirimData.tip,
+        gonderici_uid: gondericiUID
+      }));
 
-      hedefKullanicilar.forEach(kullanici => {
-        const kullaniciBildirimRef = kullaniciBildirimleriRef
-          .doc(kullanici.uid)
-          .collection("bildirimler")
-          .doc(yeniBildirimId);
+      const { error: kullaniciBildirimError } = await supabase
+        .from("kullanici_bildirimleri")
+        .insert(kullaniciBildirimleri);
 
-        batch.set(kullaniciBildirimRef, {
-          bildirimId: yeniBildirimId,
-          baslik: bildirimData.baslik,
-          icerik: bildirimData.icerik,
-          tip: bildirimData.tip,
-          gondericiUID,
-          okunduMu: false,
-          okunmaZamani: null,
-          zaman: firebase.firestore.FieldValue.serverTimestamp(),
-          createdAt: new Date()
-        });
+      if (kullaniciBildirimError) {
+        throw kullaniciBildirimError;
+      }
 
-        // Kullanıcının bildirim sayacını güncelle
-        const kullaniciRef = kullaniciBildirimleriRef.doc(kullanici.uid);
-        batch.set(kullaniciRef, {
-          sonGuncelleme: firebase.firestore.FieldValue.serverTimestamp(),
-          toplamBildirim: firebase.firestore.FieldValue.increment(1),
-          okunmamisBildirim: firebase.firestore.FieldValue.increment(1)
-        }, { merge: true });
-      });
+      // Kullanıcı bildirim sayaçlarını güncelle
+      for (const kullanici of hedefKullanicilar) {
+        const { data: mevcutData } = await supabase
+          .from("kullanici_bildirim_sayac")
+          .select("*")
+          .eq("kullanici_uid", kullanici.uid)
+          .single();
 
-      await batch.commit();
+        if (mevcutData) {
+          await supabase
+            .from("kullanici_bildirim_sayac")
+            .update({
+              son_guncelleme: new Date().toISOString(), // Update'te manuel set etmek iyi
+              toplam_bildirim: (mevcutData.toplam_bildirim || 0) + 1,
+              okunmamis_bildirim: (mevcutData.okunmamis_bildirim || 0) + 1
+            })
+            .eq("kullanici_uid", kullanici.uid);
+        } else {
+          // Yeni kayıt için default now() kullanılacak
+          await supabase
+            .from("kullanici_bildirim_sayac")
+            .insert({
+              kullanici_uid: kullanici.uid,
+              toplam_bildirim: 1,
+              okunmamis_bildirim: 1
+            });
+        }
+      }
 
       // İşlem logu
-      await db.collection("islem_log").add({
+      // zaman için default now() kullanılacak
+      await supabase.from("islem_log").insert({
         islem: `Bildirim yeniden gönderildi (${bildirimData.tip}) - ${hedefKullanicilar.length} kullanıcıya`,
         uid: gondericiUID,
-        zaman: new Date(),
         detay: {
           orijinalBildirimId: bildirimId,
           yeniBildirimId,
@@ -1188,7 +1378,7 @@
     } catch (error) {
       console.error('Bildirim yeniden gönderme hatası:', error);
       if (typeof window.showToast === 'function') {
-        window.showToast('error', 'Hata', 'Bildirim yeniden gönderilemedi: ' + error.message);
+        window.showToast('error', 'Hata', 'Bildirim yeniden gönderilemedi: ' + (error.message || error));
       }
     }
   };

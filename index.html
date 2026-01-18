@@ -239,16 +239,20 @@
       <!-- FORM -->
       <form id="loginForm" autocomplete="on">
         <div class="field">
-          <input type="email" id="email" placeholder="E-posta adresiniz" required inputmode="email" />
+          <input type="email" id="email" placeholder="E-posta adresiniz" required inputmode="email" autocomplete="email" />
         </div>
         <div class="field">
-          <input type="password" id="password" placeholder="Şifreniz" required />
+          <input type="password" id="password" placeholder="Şifreniz" required autocomplete="current-password" />
           <button type="button" class="toggle-pass" id="togglePass" aria-label="Şifreyi göster/gizle">👁</button>
         </div>
         <button type="submit" class="submit" id="loginBtn">Giriş Yap</button>
         <div class="login-options">
           <a href="#" id="forgotPassword">Şifremi Unuttum</a>
           <span></span>
+        </div>
+        <div style="margin-top: 16px; padding: 12px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; font-size: 13px; color: var(--text); text-align: center; line-height: 1.5;">
+          <strong>⚠️ Sistem Güncellemesi</strong><br>
+          Veritabanı sistemi güncellendi. Eğer eski sistemden geliyorsanız, lütfen <a href="#" id="sistemGuncellemeSifreLink" style="color: var(--brand-500); text-decoration: underline; cursor: pointer; font-weight: 600;">"Şifremi Unuttum"</a> linkini kullanarak yeni şifrenizi belirleyin.
         </div>
       </form>
 
@@ -262,11 +266,45 @@
   <!-- Toast -->
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-  <script src="js/firebase/firebase-init.js"></script>
+  <!-- Supabase (Auth + Database için) - ÖNCE YÜKLENMELİ -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script>
+    // Supabase client'ın yüklendiğinden emin ol
+    (function() {
+      const SUPABASE_URL = 'https://lmwfibippjvqctccxiwb.supabase.co';
+      const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxtd2ZpYmlwcGp2cWN0Y2N4aXdiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NjE2NzA1NCwiZXhwIjoyMDgxNzQzMDU0fQ.lzoudrJx_V4RdCCxPRfgLA1riWNKZ3HyFzeqRynYHeQ';
+      
+      function initSupabase() {
+        if (typeof supabase !== 'undefined' && typeof supabase.createClient === 'function') {
+          window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+          return true;
+        }
+        return false;
+      }
+      
+      // Hemen dene
+      if (!initSupabase()) {
+        // Biraz bekle ve tekrar dene
+        let retries = 0;
+        const maxRetries = 30;
+        const retryInterval = setInterval(function() {
+          retries++;
+          if (initSupabase() || retries >= maxRetries) {
+            clearInterval(retryInterval);
+            if (window.supabase) {
+              console.log('✅ Supabase client hazır');
+            }
+          }
+        }, 100);
+      } else {
+        console.log('✅ Supabase client hazır');
+      }
+    })();
+  </script>
+  <script src="src/supabase-auth-wrapper.js"></script>
+  
+  <!-- Firebase Auth KALDIRILDI - Artık sadece Supabase kullanılıyor -->
+  
   <script src="js/ortak.js"></script>
 
   <!-- UI + Kalıcı oturum/yönlendirme -->
@@ -287,38 +325,94 @@
       const toast = document.getElementById('toast');
       const forgot = document.getElementById('forgotPassword');
 
-      /* ====== Firebase Auth: kalıcı oturum + yönlendirme ====== */
-      const auth = firebase.auth();
-      const db   = firebase.firestore();
+      // Supabase client (Auth + Database için)
+      const getSupabase = () => window.supabase;
 
-      // LOG kaydetme fonksiyonu
+      // LOG kaydetme fonksiyonu (Supabase)
       async function logKaydet({uid=null,email, durum, mesaj}) {
         try {
-          await db.collection("kullanici_log").add({
+          const supabase = getSupabase();
+          if (!supabase) {
+            console.warn("⚠️ Supabase client henüz yüklenmedi, log kaydedilemedi");
+            return;
+          }
+          
+          const { data, error } = await supabase.from("kullanici_log").insert({
             uid: uid || null,
             email: email || null,
             durum,
             mesaj,
-            zaman: firebase.firestore.FieldValue.serverTimestamp(),
-            userAgent: navigator.userAgent
+            zaman: new Date().toISOString(),
+            user_agent: navigator.userAgent
           });
-        } catch(err){ console.error("Log kaydedilemedi:", err); }
+          
+          if (error) {
+            console.error("❌ Log kaydetme hatası:", error);
+            console.error("Hata detayları:", {
+              message: error.message,
+              code: error.code,
+              details: error.details,
+              hint: error.hint
+            });
+          } else {
+            console.log("✅ Log başarıyla kaydedildi:", data);
+          }
+        } catch(err){ 
+          console.error("❌ Log kaydetme exception:", err);
+        }
       }
 
-      // Uygulama kapansa da oturum kalsın
-      auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(console.error);
-
-      // Açılışta: eğer kullanıcı zaten girişliyse, login'i gösterme → panel'e git
-      auth.onAuthStateChanged((user)=>{
-        if(user){
-          // login sayfasındayız → panel.html'e gönder
-          location.replace('panel.html');
+      // Açılışta: eğer kullanıcı zaten Supabase'de girişliyse, panel'e git
+      (function() {
+        const redirectFlag = sessionStorage.getItem('kf_auth_redirect_done');
+        if (redirectFlag === 'true') {
+          sessionStorage.removeItem('kf_auth_redirect_done');
         }
-      });
+        
+        // URL'den email parametresini al ve input'a set et
+        const urlParams = new URLSearchParams(window.location.search);
+        const emailParam = urlParams.get('email');
+        if (emailParam) {
+          const emailInput = document.getElementById('email');
+          if (emailInput) {
+            emailInput.value = decodeURIComponent(emailParam);
+          }
+        }
+        
+        let kontrolYapildi = false;
+        
+        async function checkSupabaseSession() {
+          if (kontrolYapildi) return;
+          kontrolYapildi = true;
+          
+          const supabase = getSupabase();
+          if (!supabase) {
+            // Supabase yüklenmediyse biraz bekle
+            setTimeout(checkSupabaseSession, 500);
+            return;
+          }
+          
+          // Supabase session kontrolü
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          if (session && session.user) {
+            const path = window.location.pathname;
+            const isIndexPage = path.endsWith('index.html') || path === '/' || path.endsWith('/');
+            
+            if (isIndexPage) {
+              sessionStorage.setItem('kf_auth_redirect_done', 'true');
+              window.location.replace('panel.html');
+            }
+          }
+        }
+        
+        // Hemen kontrol et
+        setTimeout(checkSupabaseSession, 500);
+      })();
 
-      /* ====== Form submit: Firebase ile giriş ====== */
+      /* ====== Form submit: Supabase ile giriş ====== */
       form.addEventListener('submit', async (e) => {
-        e.preventDefault(); // sayfa yenilenmesin
+        e.preventDefault();
         btn.disabled = true;
         const original = btn.textContent;
         btn.innerHTML = '<span class="spinner"></span> Giriş yapılıyor…';
@@ -326,38 +420,183 @@
         const email = (document.getElementById('email').value || '').trim();
         const password = document.getElementById('password').value;
 
-        try{
-          const result = await auth.signInWithEmailAndPassword(email, password);
-          await logKaydet({
-            uid: result.user.uid,
+        try {
+          const supabase = getSupabase();
+          
+          if (!supabase) {
+            throw new Error('Veritabanı bağlantısı kurulamadı. Lütfen sayfayı yenileyin.');
+          }
+
+          // Şifre yenileme flag'i kontrol et
+          const passwordResetEmail = sessionStorage.getItem('kf_password_reset_done');
+          const urlParams = new URLSearchParams(window.location.search);
+          const passwordResetParam = urlParams.get('passwordReset');
+          const newPasswordParam = urlParams.get('newPassword');
+          const emailConfirmationParam = urlParams.get('emailConfirmation');
+          
+          // Eğer email confirmation gerekiyorsa, kullanıcıyı bilgilendir
+          if (emailConfirmationParam === 'true') {
+            showToast('⚠️ E-posta onayı gerekiyor! Lütfen e-postanızı kontrol edin ve hesabınızı aktifleştirin.', 'error');
+            const cleanUrl = window.location.pathname + '?email=' + encodeURIComponent(email) + '&passwordReset=true';
+            window.history.replaceState({}, '', cleanUrl);
+          }
+          // Eğer yeni şifre ile geliyorsa, kullanıcıyı bilgilendir
+          else if (newPasswordParam === 'true') {
+            showToast('Şifreniz başarıyla kaydedildi. Şimdi yeni şifrenizle giriş yapabilirsiniz.', 'success');
+            // URL'den newPassword parametresini kaldır (temiz URL için)
+            const cleanUrl = window.location.pathname + '?email=' + encodeURIComponent(email) + '&passwordReset=true';
+            window.history.replaceState({}, '', cleanUrl);
+          }
+          
+          // Önce Supabase ile giriş dene
+          const { data: supabaseData, error: supabaseError } = await supabase.auth.signInWithPassword({
+            email: email,
+            password: password
+          });
+
+          if (!supabaseError && supabaseData.user) {
+            // Supabase giriş başarılı - flag'leri temizle
+            sessionStorage.removeItem('kf_password_reset_done');
+            sessionStorage.removeItem('kf_password_reset_time');
+            
+            await logKaydet({
+              uid: supabaseData.user.id,
             email,
             durum: "basarili",
-            mesaj: "Giriş başarılı"
-          });
-         }catch(err){
-          showToast(err?.message || 'Giriş başarısız.');
+              mesaj: "Giriş başarılı (Supabase)"
+            }).catch(err => console.error("Log kaydetme hatası:", err));
+          
+            sessionStorage.setItem('kf_auth_redirect_done', 'true');
+            window.location.replace('panel.html');
+            return;
+          }
+
+          // Supabase giriş başarısız
+          const errorMessage = supabaseError?.message || '';
+          
+          // Basit hata mesajı
+          let friendlyMessage = 'E-posta veya şifre hatalı.';
+          
+          if (errorMessage.includes('Invalid login credentials') || errorMessage.includes('Invalid email or password')) {
+            friendlyMessage = 'E-posta veya şifre hatalı. Lütfen "Şifremi Unuttum" linkini kullanarak yeni şifrenizi belirleyin.';
+          } else if (errorMessage.includes('Email not confirmed')) {
+            friendlyMessage = 'E-posta adresiniz onaylanmamış. Lütfen e-postanızı kontrol edin ve onaylayın.';
+          } else {
+            friendlyMessage = errorMessage || 'Giriş başarısız.';
+          }
+          
+          throw new Error(friendlyMessage);
+          
+        } catch (err) {
+          console.error('Giriş hatası:', err);
+          showToast(err.message || 'Giriş başarısız.');
           await logKaydet({
             email,
             durum: "basarisiz",
-            mesaj: err?.message || "Hata"
-          });
+            mesaj: err.message || "Giriş başarısız"
+          }).catch(logErr => console.error("Log kaydetme hatası:", logErr));
           btn.disabled = false;
           btn.textContent = original;
         }
       });
 
+      /* ====== Sistem Güncellemesi uyarısındaki "Şifremi Unuttum" linki ====== */
+      const sistemGuncellemeLink = document.getElementById('sistemGuncellemeSifreLink');
+      if (sistemGuncellemeLink) {
+        sistemGuncellemeLink.addEventListener('click', (e) => {
+          e.preventDefault();
+          const email = (document.getElementById('email').value || '').trim();
+          // Email varsa parametre olarak gönder, yoksa direkt şifre yenileme sayfasına git
+          if (email) {
+            window.location.href = `sifre-yenile.html?email=${encodeURIComponent(email)}`;
+          } else {
+            window.location.href = 'sifre-yenile.html';
+          }
+        });
+      }
+
       /* ====== Şifre sıfırlama ====== */
       forgot.addEventListener('click', async (e) => {
         e.preventDefault();
         const email = (document.getElementById('email').value || '').trim();
-        if(!email) return showToast('Şifre sıfırlama için önce e-posta yazın.');
-        try{
-          await firebase.auth().sendPasswordResetEmail(email);
-          showToast('Sıfırlama bağlantısı e-postanıza gönderildi (kayıtlı ise).');
-          await logKaydet({email, durum:"sifre_isteme", mesaj:"Şifre sıfırlama istendi"});
-        }catch(err){
-          showToast(err?.message || 'İşlem başarısız.');
-          await logKaydet({email, durum:"sifre_isteme", mesaj:"Hata: "+(err?.message||"")});
+        if(!email) {
+          showToast('Şifre sıfırlama için önce e-posta adresinizi yazın.');
+          return;
+        }
+        
+        try {
+          const supabase = getSupabase();
+          
+          if (!supabase) {
+            throw new Error('Veritabanı bağlantısı kurulamadı. Lütfen sayfayı yenileyin.');
+          }
+
+          // Supabase şifre sıfırlama email'i gönder
+          console.log('📧 Şifre sıfırlama email\'i gönderiliyor:', email);
+          
+          const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: `${window.location.origin}/sifre-yenile.html?email=${encodeURIComponent(email)}`
+          });
+
+          console.log('📧 Email gönderim sonucu:', { data, error });
+
+          if (error) {
+            console.error('❌ Şifre sıfırlama hatası:', error);
+            console.error('❌ Hata detayları:', {
+              message: error.message,
+              status: error.status,
+              name: error.name
+            });
+            
+            // 500 hatası = SMTP ayarları eksik/hatalı
+            if (error.status === 500 || error.message?.includes('Error sending recovery email')) {
+              const detailedMsg = 'SMTP ayarları eksik! Supabase Dashboard > Authentication > Settings > SMTP Settings bölümünden SendGrid SMTP ayarlarını yapın.';
+              console.error('🚨 ' + detailedMsg);
+              showToast('SMTP ayarları eksik! Detaylar için console\'a bakın (F12). Rehber: SMTP_HATASI_COZUM.md', 'error');
+              
+              // Kullanıcıyı bilgilendir
+              setTimeout(() => {
+                alert('❌ SMTP AYARLARI EKSİK!\n\n' +
+                      'Supabase\'de SMTP ayarları yapılmamış.\n\n' +
+                      'Yapılacaklar:\n' +
+                      '1. Supabase Dashboard > Authentication > Settings > SMTP Settings\n' +
+                      '2. "Enable Custom SMTP" seçeneğini açın\n' +
+                      '3. SendGrid bilgilerini girin\n\n' +
+                      'Detaylı rehber: SMTP_HATASI_COZUM.md');
+              }, 1000);
+              
+            } else if (error.message && error.message.includes('For security purposes')) {
+              showToast('Çok fazla şifre sıfırlama isteği gönderildi. Lütfen bir süre bekleyin.');
+            } else if (error.message && error.message.includes('email') || error.status === 400) {
+              showToast('Bu e-posta adresi ile kayıtlı kullanıcı bulunamadı. Lütfen e-posta adresinizi kontrol edin.');
+            } else {
+              const errorMsg = error.message || 'Şifre sıfırlama bağlantısı gönderilemedi.';
+              console.error('Detaylı hata:', errorMsg);
+              showToast(`${errorMsg} (Hata kodu: ${error.status || 'bilinmiyor'})`, 'error');
+            }
+          } else {
+            console.log('✅ Email gönderim isteği başarılı (SMTP ayarlarını kontrol edin)');
+            showToast('Şifre sıfırlama bağlantısı e-postanıza gönderildi. Lütfen e-postanızı (ve spam klasörünü) kontrol edin.', 'success');
+            
+            // SMTP ayarları yapılmamışsa uyarı göster
+            setTimeout(() => {
+              console.warn('⚠️ Eğer email gelmiyorsa, Supabase Dashboard > Authentication > Settings > SMTP Settings bölümünden SMTP ayarlarını yapın.');
+            }, 2000);
+          }
+          
+          await logKaydet({
+            email,
+            durum: "sifre_isteme",
+            mesaj: "Şifre sıfırlama istendi"
+          }).catch(logErr => console.error("Log kaydetme hatası:", logErr));
+          
+        } catch(err) {
+          showToast(err.message || 'İşlem başarısız.');
+          await logKaydet({
+            email,
+            durum: "sifre_isteme",
+            mesaj: "Hata: " + (err.message || "")
+          }).catch(logErr => console.error("Log kaydetme hatası:", logErr));
         }
       });
 

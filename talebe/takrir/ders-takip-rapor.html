@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ders Takip Raporları | Karaağaç Fatih</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <link rel="icon" type="image/png" href="../../img/logo.png" />
+  
+  <!-- Ortak CSS -->
+  <link rel="stylesheet" href="../../css/app-shell.css" />
+  
+  <!-- Supabase (Auth + Database için) - ÖNCE YÜKLENMELİ -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script>
+    // Supabase client'ın yüklendiğinden emin ol
+    (function() {
+      const SUPABASE_URL = 'https://lmwfibippjvqctccxiwb.supabase.co';
+      const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxtd2ZpYmlwcGp2cWN0Y2N4aXdiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NjE2NzA1NCwiZXhwIjoyMDgxNzQzMDU0fQ.lzoudrJx_V4RdCCxPRfgLA1riWNKZ3HyFzeqRynYHeQ';
+      
+      function initSupabase() {
+        if (typeof supabase !== 'undefined' && typeof supabase.createClient === 'function') {
+          window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+          return true;
+        }
+        return false;
+      }
+      
+      // Hemen dene
+      if (!initSupabase()) {
+        // Eğer yüklenmediyse, biraz bekle ve tekrar dene
+        let retries = 0;
+        const maxRetries = 10;
+        const checkInterval = setInterval(() => {
+          retries++;
+          if (initSupabase() || retries >= maxRetries) {
+            clearInterval(checkInterval);
+            if (window.supabase) {
+              console.log('✅ Supabase client hazır');
+            } else {
+              console.error('❌ Supabase client yüklenemedi');
+            }
+          }
+        }, 100);
+      } else {
+        console.log('✅ Supabase client hazır');
+      }
+    })();
+  </script>
+  
+  <style>
+    /* Sayfa-özel stiller */
+    body {
+      padding-top: var(--appbar-h) !important;
+    }
+
+    .header-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin: 16px 0;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(147, 51, 234, 0.1));
+      border: 2px solid var(--brand);
+      border-radius: 16px;
+      padding: 20px;
+    }
+    .header-left h2 {
+      margin: 0 0 6px;
+      font-size: 22px;
+      color: var(--text);
+      font-weight: 900;
+    }
+    .header-right {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    
+    /* Rapor Tipi Seçimi */
+    .rapor-tipleri {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .rapor-tip-kart {
+      border: 2px solid var(--stroke);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--card);
+    }
+    .rapor-tip-kart:hover {
+      border-color: var(--brand);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+    }
+    .rapor-tip-kart.active {
+      border-color: var(--brand);
+      background: rgba(59, 130, 246, 0.1);
+    }
+    .rapor-tip-icon {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+    .rapor-tip-baslik {
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+    .rapor-tip-aciklama {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    
+    /* Filtreleme */
+    .filtre-panel {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .filtre-grup {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .filtre-grup label {
+      font-size: 12.5px;
+      color: var(--muted);
+      font-weight: 800;
+    }
+    .filtre-grup select,
+    .filtre-grup input {
+      padding: 10px 12px;
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      background: var(--card);
+      color: var(--text);
+      font-size: 14px;
+      width: 100%;
+    }
+    
+    /* Butonlar */
+    .btn-primary {
+      background: linear-gradient(180deg, var(--brand), var(--brand2));
+      color: #fff;
+      border: none;
+      border-radius: 999px;
+      padding: 10px 20px;
+      cursor: pointer;
+      font-weight: 800;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+    .btn-secondary {
+      border: 1px solid var(--stroke);
+      background: var(--pill);
+      border-radius: 999px;
+      padding: 10px 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-secondary:hover {
+      background: var(--stroke);
+    }
+    
+    /* İstatistikler */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: linear-gradient(135deg, var(--card), rgba(255, 255, 255, 0.05));
+      border: 2px solid var(--stroke);
+      border-radius: 16px;
+      padding: 20px;
+      text-align: center;
+      transition: all 0.3s;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    .stat-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+      border-color: var(--brand);
+    }
+    .stat-value {
+      font-size: 32px;
+      font-weight: 900;
+      margin-bottom: 6px;
+      line-height: 1;
+    }
+    .stat-label {
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    /* Tablo */
+    .table-container {
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--card);
+    }
+    .table-header {
+      background: var(--pill);
+      padding: 12px 16px;
+      font-weight: 900;
+      display: grid;
+      grid-template-columns: 2fr 1.5fr 1fr 1fr 1fr;
+      gap: 12px;
+      border-bottom: 2px solid var(--stroke);
+    }
+    .table-row {
+      padding: 12px 16px;
+      display: grid;
+      grid-template-columns: 2fr 1.5fr 1fr 1fr 1fr;
+      gap: 12px;
+      border-bottom: 1px dashed var(--stroke);
+      align-items: center;
+    }
+    .table-row:hover {
+      background: var(--pill);
+    }
+    .table-row:last-child {
+      border-bottom: none;
+    }
+    
+    /* Durum Badge */
+    .durum-badge {
+      font-size: 12px;
+      border: 1px solid var(--stroke);
+      border-radius: 999px;
+      padding: 5px 12px;
+      display: inline-block;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+    }
+    .durum-none {
+      background: rgba(148, 163, 184, 0.12);
+      color: #64748b;
+      border-color: rgba(148, 163, 184, 0.3);
+    }
+    .durum-verdi {
+      background: rgba(34, 197, 94, 0.15);
+      color: #16a34a;
+      border-color: rgba(34, 197, 94, 0.4);
+    }
+    .durum-veremedi {
+      background: rgba(239, 68, 68, 0.15);
+      color: #dc2626;
+      border-color: rgba(239, 68, 68, 0.4);
+    }
+    .durum-yarim {
+      background: rgba(250, 204, 21, 0.2);
+      color: #ca8a04;
+      border-color: rgba(250, 204, 21, 0.4);
+    }
+    .durum-henuz {
+      background: rgba(99, 102, 241, 0.15);
+      color: #6366f1;
+      border-color: rgba(99, 102, 241, 0.4);
+    }
+    
+    /* Grafik Container */
+    .chart-container {
+      background: var(--card);
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    
+    /* Boş Durum */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    
+    /* Kitap Gruplama */
+    .kitap-grup {
+      margin-bottom: 24px;
+      border: 2px solid var(--stroke);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      transition: all 0.3s;
+    }
+    .kitap-grup:hover {
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    }
+    .kitap-grup-header {
+      background: linear-gradient(135deg, var(--pill), rgba(59, 130, 246, 0.1));
+      padding: 16px 20px;
+      font-weight: 900;
+      font-size: 16px;
+      border-bottom: 3px solid var(--brand);
+      color: var(--text);
+    }
+    .kitap-grup-body {
+      padding: 20px;
+    }
+    
+    /* Loading */
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: var(--muted);
+    }
+    .loading::after {
+      content: '...';
+      animation: dots 1.5s steps(4, end) infinite;
+    }
+    @keyframes dots {
+      0%, 20% { content: '.'; }
+      40% { content: '..'; }
+      60%, 100% { content: '...'; }
+    }
+
+    /* Rapor başlıkları */
+    .rapor-baslik {
+      font-size: 24px;
+      font-weight: 900;
+      margin: 0 0 24px 0;
+      padding-bottom: 16px;
+      border-bottom: 3px solid var(--brand);
+      color: var(--text);
+    }
+
+    /* Yazdırma için özel stiller */
+    @media print {
+      .appbar,
+      .header-card .header-right,
+      .btn-primary,
+      .btn-secondary,
+      #filtreSection {
+        display: none !important;
+      }
+      .container {
+        max-width: 100%;
+        padding: 0;
+      }
+      .card {
+        page-break-inside: avoid;
+        margin-bottom: 20px;
+      }
+      .kitap-grup {
+        page-break-inside: avoid;
+      }
+      body {
+        padding-top: 0 !important;
+      }
+    }
+
+    /* Mobil uyumluluk */
+    @media (max-width: 768px) {
+      .header-card {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .header-right {
+        width: 100%;
+      }
+      .rapor-tipleri {
+        grid-template-columns: 1fr;
+      }
+      .filtre-panel {
+        grid-template-columns: 1fr;
+      }
+      .table-header,
+      .table-row {
+        grid-template-columns: 1fr;
+      }
+      .table-row > div {
+        padding: 4px 0;
+      }
+    }
+  </style>
+  
+  <!-- Ortak JavaScript -->
+  <script src="../../js/ortak.js"></script>
+  <script src="../../js/ders-takip.js"></script>
+</head>
+<body>
+
+<!-- APPBAR -->
+<div class="appbar">
+  <div class="brand" onclick="location.href='../../panel.html'">
+    <img src="../../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
+  </div>
+  <nav class="nav-center"><ul class="nav-list" id="navMain"></ul></nav>
+  <div class="nav-right">
+    <button class="btn hamb" id="hamburger" title="Menü">☰</button>
+
+    <!-- Bildirim -->
+    <div class="nav-item">
+      <button class="iconbtn" id="btnNotif" title="Bildirimler">🔔
+        <span class="badge" id="notifBadge" style="display:none">0</span>
+      </button>
+      <div class="dropdown drop-right" id="notifDropdown" aria-label="Bildirim listesi">
+        <div class="muted" style="padding:6px 8px">Son bildirimler</div>
+        <div id="notifList" class="list" style="max-height:300px;overflow:auto"></div>
+      </div>
+    </div>
+
+    <!-- Profil -->
+    <div class="nav-item">
+      <button class="iconbtn" id="btnProfile" title="Profil">
+        <span class="avatar"></span> <span id="profName" class="muted">Profil</span>
+      </button>
+      <div class="dropdown drop-right" id="profDropdown" aria-label="Profil menüsü">
+        <a href="../../diger/kullanici-yonetimi.html">👤 Profil</a>
+        <a href="../../diger/sistem-ayarlari.html">⚙️ Sistem Ayarları</a>
+        <a href="#" id="btnLogout">🚪 Çıkış Yap</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<aside class="drawer" id="drawer"></aside>
+
+<main class="container">
+  <!-- HEADER -->
+  <section class="card header-card">
+    <div class="header-left">
+      <h2>Ders Takip Raporları</h2>
+      <div class="muted">Detaylı analiz ve raporlama</div>
+    </div>
+  </section>
+
+  <!-- RAPOR TİPİ SEÇİMİ -->
+  <section class="card">
+    <h3 style="margin: 0 0 16px 0">Rapor Tipi Seçin</h3>
+    <div class="rapor-tipleri">
+      <div class="rapor-tip-kart active" data-tip="talebe" onclick="selectRaporTip('talebe')">
+        <div class="rapor-tip-icon">👤</div>
+        <div class="rapor-tip-baslik">Talebe Bazlı</div>
+        <div class="rapor-tip-aciklama">Talebe seçerek tüm derslerini görüntüleyin</div>
+      </div>
+      <div class="rapor-tip-kart" data-tip="kitap" onclick="selectRaporTip('kitap')">
+        <div class="rapor-tip-icon">📚</div>
+        <div class="rapor-tip-baslik">Kitap Bazlı</div>
+        <div class="rapor-tip-aciklama">Kitap seçerek tüm talebe ve dersleri görüntüleyin</div>
+      </div>
+      <div class="rapor-tip-kart" data-tip="tarih" onclick="selectRaporTip('tarih')">
+        <div class="rapor-tip-icon">📅</div>
+        <div class="rapor-tip-baslik">Tarih Bazlı</div>
+        <div class="rapor-tip-aciklama">Tarih seçerek o gün ders verenleri görüntüleyin</div>
+      </div>
+      <div class="rapor-tip-kart" data-tip="personel" onclick="selectRaporTip('personel')">
+        <div class="rapor-tip-icon">👥</div>
+        <div class="rapor-tip-baslik">Personel Bazlı</div>
+        <div class="rapor-tip-aciklama">Personel seçerek kayıt/verme istatistiklerini görüntüleyin</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FİLTRELEME PANELİ -->
+  <section class="card" id="filtreSection">
+    <h3 style="margin: 0 0 16px 0">Filtreleme</h3>
+    <div class="filtre-panel" id="filtrePanel">
+      <!-- Dinamik olarak doldurulacak -->
+    </div>
+    <div style="display: flex; gap: 10px; margin-top: 16px;">
+      <button id="btnRaporGetir" class="btn-primary">📊 Raporu Getir</button>
+      <button id="btnTemizle" class="btn-secondary">🔄 Temizle</button>
+    </div>
+  </section>
+
+  <!-- SONUÇLAR -->
+  <section class="card" id="resultsSection" style="display: none;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <h3 style="margin: 0; font-size: 20px; font-weight: 900;">📊 Rapor Sonuçları</h3>
+      <button onclick="window.print()" class="btn-secondary" style="display: flex; align-items: center; gap: 6px;">
+        🖨️ Yazdır
+      </button>
+    </div>
+    <div id="resultsArea"></div>
+  </section>
+</main>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+
+  let currentRaporTip = 'talebe';
+  let currentRaporData = null;
+
+  // Sayfa yüklendiğinde
+  document.addEventListener('DOMContentLoaded', async () => {
+    if (typeof initAppShellAuth === 'function') {
+      await initAppShellAuth();
+    }
+
+    document.getElementById('btnRaporGetir').addEventListener('click', handleRaporGetir);
+    document.getElementById('btnTemizle').addEventListener('click', handleTemizle);
+
+    // Çıkış yap butonu
+    const btnLogout = document.getElementById('btnLogout');
+    if (btnLogout) {
+      btnLogout.addEventListener('click', async (e) => {
+        e.preventDefault();
+        if (typeof window.supabase !== 'undefined' && window.supabase.auth) {
+          await window.supabase.auth.signOut();
+          window.location.href = '../../index.html';
+        }
+      });
+    }
+
+    updateFiltrePanel();
+  });
+
+  // Rapor tipi seç
+  function selectRaporTip(tip) {
+    currentRaporTip = tip;
+    document.querySelectorAll('.rapor-tip-kart').forEach(kart => {
+      kart.classList.remove('active');
+    });
+    document.querySelector(`[data-tip="${tip}"]`).classList.add('active');
+    updateFiltrePanel();
+  }
+
+  // Filtre panelini güncelle
+  function updateFiltrePanel() {
+    const panel = document.getElementById('filtrePanel');
+    const resultsSection = document.getElementById('resultsSection');
+    
+    // Sonuçları gizle
+    if (resultsSection) {
+      resultsSection.style.display = 'none';
+    }
+    
+    let html = '';
+
+    if (currentRaporTip === 'talebe') {
+      html = `
+        <div class="filtre-grup">
+          <label>Devre</label>
+          <select id="filtreDevre">
+            <option value="">Tüm Devreler</option>
+            <option value="6.Devre" selected>6.Devre</option>
+            <option value="7.Devre">7.Devre</option>
+            <option value="8.Devre">8.Devre</option>
+          </select>
+        </div>
+        <div class="filtre-grup">
+          <label>Talebe</label>
+          <select id="filtreTalebeUid">
+            <option value="">Talebe seçiniz</option>
+          </select>
+        </div>
+      `;
+    } else if (currentRaporTip === 'kitap') {
+      html = `
+        <div class="filtre-grup">
+          <label>Devre</label>
+          <select id="filtreDevre">
+            <option value="">Tüm Devreler</option>
+            <option value="6.Devre" selected>6.Devre</option>
+            <option value="7.Devre">7.Devre</option>
+            <option value="8.Devre">8.Devre</option>
+          </select>
+        </div>
+        <div class="filtre-grup">
+          <label>Kitap</label>
+          <select id="filtreKitap">
+            <option value="">Kitap seçiniz</option>
+          </select>
+        </div>
+      `;
+    } else if (currentRaporTip === 'tarih') {
+      html = `
+        <div class="filtre-grup">
+          <label>Tarih</label>
+          <input type="date" id="filtreTarih" />
+        </div>
+      `;
+    } else if (currentRaporTip === 'personel') {
+      html = `
+        <div class="filtre-grup">
+          <label>Personel</label>
+          <select id="filtrePersonelUid">
+            <option value="">Personel seçiniz</option>
+          </select>
+        </div>
+        <div class="filtre-grup">
+          <label>Tip</label>
+          <select id="filtrePersonelTip">
+            <option value="kaydeden">Kaydeden</option>
+            <option value="veren">Veren</option>
+          </select>
+        </div>
+      `;
+    }
+
+    panel.innerHTML = html;
+
+    // Event listener'ları ekle ve ilk yükleme
+    Promise.resolve().then(async () => {
+      try {
+        const filtreDevre = document.getElementById('filtreDevre');
+        if (filtreDevre) {
+          filtreDevre.addEventListener('change', async () => {
+            if (currentRaporTip === 'talebe') {
+              await loadRaporTalebeler();
+            } else if (currentRaporTip === 'kitap') {
+              await loadRaporKitaplar();
+            }
+          });
+
+          // İlk yükleme
+          if (filtreDevre.value) {
+            if (currentRaporTip === 'talebe') {
+              await loadRaporTalebeler();
+            } else if (currentRaporTip === 'kitap') {
+              await loadRaporKitaplar();
+            }
+          }
+        }
+
+        // Personel listesini yükle
+        if (currentRaporTip === 'personel') {
+          await loadRaporPersoneller();
+        }
+      } catch (error) {
+        console.error('Filtre paneli yükleme hatası:', error);
+        // Hata durumunda select'leri temizle
+        const talebeSelect = document.getElementById('filtreTalebeUid');
+        const kitapSelect = document.getElementById('filtreKitap');
+        const personelSelect = document.getElementById('filtrePersonelUid');
+        if (talebeSelect) talebeSelect.innerHTML = '<option value="">Talebe seçiniz</option>';
+        if (kitapSelect) kitapSelect.innerHTML = '<option value="">Kitap seçiniz</option>';
+        if (personelSelect) personelSelect.innerHTML = '<option value="">Personel seçiniz</option>';
+      }
+    });
+  }
+
+  // Talebeleri yükle (rapor için)
+  async function loadRaporTalebeler() {
+    const devreEl = document.getElementById('filtreDevre');
+    const talebeSelect = document.getElementById('filtreTalebeUid');
+    if (!devreEl || !talebeSelect) return;
+    
+    const devre = devreEl.value;
+    if (!devre) {
+      talebeSelect.innerHTML = '<option value="">Talebe seçiniz</option>';
+      return;
+    }
+
+    talebeSelect.innerHTML = '<option value="">Yükleniyor...</option>';
+
+    try {
+      const sb = window.supabase;
+      const { data, error } = await sb
+        .from('talebeler')
+        .select('id, talebe_adi')
+        .eq('devre', devre)
+        .order('talebe_adi', { ascending: true });
+
+      if (error) throw error;
+
+      talebeSelect.innerHTML = '<option value="">Talebe seçiniz</option>';
+      
+      if (data && data.length > 0) {
+        data.forEach(talebe => {
+          const option = document.createElement('option');
+          option.value = talebe.id;
+          option.textContent = talebe.talebe_adi || talebe.id;
+          talebeSelect.appendChild(option);
+        });
+      } else {
+        // Fallback: ders_kayitlari tablosundan çek
+        const { data: kayitData, error: kayitError } = await sb
+          .from('ders_kayitlari')
+          .select('talebe_uid, talebe_adi')
+          .eq('devre', devre);
+
+        if (!kayitError && kayitData) {
+          const uniqueTalebeler = new Map();
+          kayitData.forEach(k => {
+            if (k.talebe_uid && !uniqueTalebeler.has(k.talebe_uid)) {
+              uniqueTalebeler.set(k.talebe_uid, k.talebe_adi || k.talebe_uid);
+            }
+          });
+
+          const sortedTalebeler = Array.from(uniqueTalebeler.entries())
+            .sort((a, b) => (a[1] || '').localeCompare(b[1] || '', 'tr'));
+
+          sortedTalebeler.forEach(([uid, ad]) => {
+            const option = document.createElement('option');
+            option.value = uid;
+            option.textContent = ad || uid;
+            talebeSelect.appendChild(option);
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Talebeler yüklenemedi:', error);
+      talebeSelect.innerHTML = '<option value="">Hata oluştu</option>';
+      if (typeof showToast === 'function') {
+        showToast('error', 'Hata', 'Talebeler yüklenemedi');
+      }
+    }
+  }
+
+  // Kitapları yükle (rapor için)
+  async function loadRaporKitaplar() {
+    const devreEl = document.getElementById('filtreDevre');
+    const kitapSelect = document.getElementById('filtreKitap');
+    if (!devreEl || !kitapSelect) return;
+    
+    const devre = devreEl.value;
+    if (!devre) {
+      kitapSelect.innerHTML = '<option value="">Kitap seçiniz</option>';
+      return;
+    }
+
+    kitapSelect.innerHTML = '<option value="">Yükleniyor...</option>';
+
+    try {
+      const kitaplar = await window.dersTakipAPI.takrirKitaplarGetir(devre);
+      kitapSelect.innerHTML = '<option value="">Kitap seçiniz</option>';
+      
+      if (kitaplar && kitaplar.length > 0) {
+        kitaplar.forEach(kitap => {
+          const option = document.createElement('option');
+          option.value = kitap;
+          option.textContent = kitap;
+          kitapSelect.appendChild(option);
+        });
+      }
+    } catch (error) {
+      console.error('Kitaplar yüklenemedi:', error);
+      kitapSelect.innerHTML = '<option value="">Hata oluştu</option>';
+      if (typeof showToast === 'function') {
+        showToast('error', 'Hata', 'Kitaplar yüklenemedi');
+      }
+    }
+  }
+
+  // Personelleri yükle (rapor için)
+  async function loadRaporPersoneller() {
+    const personelSelect = document.getElementById('filtrePersonelUid');
+    if (!personelSelect) return;
+
+    personelSelect.innerHTML = '<option value="">Yükleniyor...</option>';
+
+    try {
+      const sb = window.supabase;
+      const { data, error } = await sb
+        .from('kullanicilar')
+        .select('id, adsoyad')
+        .order('adsoyad', { ascending: true });
+
+      if (error) throw error;
+
+      personelSelect.innerHTML = '<option value="">Personel seçiniz</option>';
+      
+      if (data && data.length > 0) {
+        data.forEach(personel => {
+          const option = document.createElement('option');
+          option.value = personel.id;
+          option.textContent = personel.adsoyad || personel.id;
+          personelSelect.appendChild(option);
+        });
+      }
+    } catch (error) {
+      console.error('Personeller yüklenemedi:', error);
+      personelSelect.innerHTML = '<option value="">Hata oluştu</option>';
+      if (typeof showToast === 'function') {
+        showToast('error', 'Hata', 'Personeller yüklenemedi');
+      }
+    }
+  }
+
+  // Rapor getir
+  async function handleRaporGetir() {
+    try {
+      let rapor = null;
+
+      if (currentRaporTip === 'talebe') {
+        const devre = document.getElementById('filtreDevre')?.value;
+        const talebeUid = document.getElementById('filtreTalebeUid')?.value;
+        if (!talebeUid) {
+          if (typeof showToast === 'function') {
+            showToast('warning', 'Uyarı', 'Lütfen talebe seçiniz');
+          }
+          return;
+        }
+        rapor = await window.dersTakipAPI.talebeDersRaporu(talebeUid, devre || null);
+      } else if (currentRaporTip === 'kitap') {
+        const devre = document.getElementById('filtreDevre')?.value;
+        const kitap = document.getElementById('filtreKitap')?.value;
+        if (!devre || !kitap) {
+          if (typeof showToast === 'function') {
+            showToast('warning', 'Uyarı', 'Lütfen devre ve kitap girin');
+          }
+          return;
+        }
+        rapor = await window.dersTakipAPI.kitapAnalizi(devre, kitap);
+      } else if (currentRaporTip === 'tarih') {
+        const tarih = document.getElementById('filtreTarih')?.value;
+        if (!tarih) {
+          if (typeof showToast === 'function') {
+            showToast('warning', 'Uyarı', 'Lütfen tarih seçin');
+          }
+          return;
+        }
+        const kayitlar = await window.dersTakipAPI.tarihBazliRapor(tarih);
+        rapor = { kayitlar, tarih };
+      } else if (currentRaporTip === 'personel') {
+        const personelUid = document.getElementById('filtrePersonelUid')?.value;
+        const tip = document.getElementById('filtrePersonelTip')?.value || 'kaydeden';
+        if (!personelUid) {
+          if (typeof showToast === 'function') {
+            showToast('warning', 'Uyarı', 'Lütfen personel seçiniz');
+          }
+          return;
+        }
+        rapor = await window.dersTakipAPI.personelBazliRapor(personelUid, tip);
+      }
+
+      currentRaporData = rapor;
+      renderRapor(rapor);
+    } catch (error) {
+      console.error('Rapor hatası:', error);
+      if (typeof showToast === 'function') {
+        showToast('error', 'Hata', 'Rapor yüklenemedi: ' + (error.message || error));
+      }
+    }
+  }
+
+  // Raporu render et
+  function renderRapor(rapor) {
+    const area = document.getElementById('resultsArea');
+    let html = '';
+
+    if (currentRaporTip === 'talebe') {
+      html = renderTalebeRaporu(rapor);
+    } else if (currentRaporTip === 'kitap') {
+      html = renderKitapRaporu(rapor);
+    } else if (currentRaporTip === 'tarih') {
+      html = renderTarihRaporu(rapor);
+    } else if (currentRaporTip === 'personel') {
+      html = renderPersonelRaporu(rapor);
+    }
+
+    area.innerHTML = html;
+    document.getElementById('resultsSection').style.display = 'block';
+  }
+
+  // Talebe raporu
+  function renderTalebeRaporu(rapor) {
+    const { talebe_adi, devre, kayitlar, kitapGruplari, istatistikler } = rapor;
+
+    let html = `
+      <h3 class="rapor-baslik">👤 ${escapeHtml(talebe_adi || 'Bilinmeyen')} - Ders Raporu ${devre ? `(${escapeHtml(devre)})` : ''}</h3>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value">${istatistikler.toplam}</div>
+          <div class="stat-label">Toplam Ders</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color: var(--good)">${istatistikler.verdi}</div>
+          <div class="stat-label">Verdi</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color: var(--bad)">${istatistikler.veremedi}</div>
+          <div class="stat-label">Veremedi</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color: var(--warn)">${istatistikler.yarim}</div>
+          <div class="stat-label">Yarım</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color: var(--muted)">${istatistikler.islem_yapilmadi}</div>
+          <div class="stat-label">İşlem Yapılmadı</div>
+        </div>
+      </div>
+    `;
+
+    // Kitap bazlı gruplama
+    Object.keys(kitapGruplari).forEach(kitap => {
+      html += `
+        <div class="kitap-grup">
+          <div class="kitap-grup-header">📚 ${escapeHtml(kitap)}</div>
+          <div class="kitap-grup-body">
+            <div class="table-container">
+              <div class="table-header">
+                <div>Ders Adı</div>
+                <div>Ders Günü</div>
+                <div>Durum</div>
+                <div>Verme Tarihi</div>
+                <div>Personel</div>
+              </div>
+              ${kitapGruplari[kitap].map(kayit => {
+                const durum = kayit.ders_verme_durumu || 'islem_yapilmadi';
+                const durumClass = durum === 'islem_yapilmadi' ? 'durum-none' : `durum-${durum}`;
+                const durumText = {
+                  'islem_yapilmadi': 'İşlem Yapılmadı',
+                  'henuz_verilmedi': 'Henüz Verilmedi',
+                  'verdi': 'Verdi',
+                  'veremedi': 'Veremedi',
+                  'yarim': 'Yarım'
+                }[durum] || durum;
+
+                return `
+                  <div class="table-row">
+                    <div>${escapeHtml(kayit.ders_adi)}</div>
+                    <div>${kayit.ders_gunu ? new Date(kayit.ders_gunu).toLocaleDateString('tr-TR') : '—'}</div>
+                    <div><span class="durum-badge ${durumClass}">${durumText}</span></div>
+                    <div>${kayit.ders_verme_tarihi ? new Date(kayit.ders_verme_tarihi).toLocaleDateString('tr-TR') : '—'}</div>
+                    <div>${escapeHtml(kayit.ders_veren_personel || '—')}</div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    return html;
+  }
+
+  // Kitap raporu
+  function renderKitapRaporu(rapor) {
+    const { devre, kitap, kayitlar, dersGruplari, istatistikler } = rapor;
+
+    let html = `
+      <h3 class="rapor-baslik">📚 ${escapeHtml(kitap)} - Kitap Analizi (${escapeHtml(devre)})</h3>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value">${istatistikler.toplam_talebe}</div>
+          <div class="stat-label">Toplam Talebe</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${istatistikler.toplam_ders}</div>
+          <div class="stat-label">Toplam Ders</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color: var(--good)">${istatistikler.verdi}</div>
+          <div class="stat-label">Verdi</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color: var(--bad)">${istatistikler.veremedi}</div>
+          <div class="stat-label">Veremedi</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color: var(--warn)">${istatistikler.yarim}</div>
+          <div class="stat-label">Yarım</div>
+        </div>
+      </div>
+    `;
+
+    // Ders bazlı gruplama
+    Object.keys(dersGruplari).forEach(ders => {
+      html += `
+        <div class="kitap-grup">
+          <div class="kitap-grup-header">📖 ${escapeHtml(ders)} (${dersGruplari[ders].length} talebe)</div>
+          <div class="kitap-grup-body">
+            <div class="table-container">
+              <div class="table-header">
+                <div>Talebe</div>
+                <div>Ders Günü</div>
+                <div>Durum</div>
+                <div>Verme Tarihi</div>
+                <div>Personel</div>
+              </div>
+              ${dersGruplari[ders].map(kayit => {
+                const durum = kayit.ders_verme_durumu || 'islem_yapilmadi';
+                const durumClass = durum === 'islem_yapilmadi' ? 'durum-none' : `durum-${durum}`;
+                const durumText = {
+                  'islem_yapilmadi': 'İşlem Yapılmadı',
+                  'henuz_verilmedi': 'Henüz Verilmedi',
+                  'verdi': 'Verdi',
+                  'veremedi': 'Veremedi',
+                  'yarim': 'Yarım'
+                }[durum] || durum;
+
+                return `
+                  <div class="table-row">
+                    <div>${escapeHtml(kayit.talebe_adi || kayit.talebe_uid)}</div>
+                    <div>${kayit.ders_gunu ? new Date(kayit.ders_gunu).toLocaleDateString('tr-TR') : '—'}</div>
+                    <div><span class="durum-badge ${durumClass}">${durumText}</span></div>
+                    <div>${kayit.ders_verme_tarihi ? new Date(kayit.ders_verme_tarihi).toLocaleDateString('tr-TR') : '—'}</div>
+                    <div>${escapeHtml(kayit.ders_veren_personel || '—')}</div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    return html;
+  }
+
+  // Tarih raporu
+  function renderTarihRaporu(rapor) {
+    const { kayitlar, tarih } = rapor;
+
+    let html = `
+      <h3 style="margin: 0 0 20px 0">${tarih ? new Date(tarih).toLocaleDateString('tr-TR') : 'Tarih'} - Ders Verenler</h3>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value">${kayitlar.length}</div>
+          <div class="stat-label">Toplam Kayıt</div>
+        </div>
+      </div>
+      <div class="table-container">
+        <div class="table-header">
+          <div>Talebe</div>
+          <div>Kitap / Ders</div>
+          <div>Durum</div>
+          <div>Verme Zamanı</div>
+          <div>Veren Personel</div>
+        </div>
+        ${kayitlar.map(kayit => {
+          const durum = kayit.ders_verme_durumu || 'islem_yapilmadi';
+          const durumClass = durum === 'islem_yapilmadi' ? 'durum-none' : `durum-${durum}`;
+          const durumText = {
+            'islem_yapilmadi': 'İşlem Yapılmadı',
+            'henuz_verilmedi': 'Henüz Verilmedi',
+            'verdi': 'Verdi',
+            'veremedi': 'Veremedi',
+            'yarim': 'Yarım'
+          }[durum] || durum;
+
+          return `
+            <div class="table-row">
+              <div>${escapeHtml(kayit.talebe_adi || kayit.talebe_uid)}</div>
+              <div>
+                <strong>${escapeHtml(kayit.kitap)}</strong><br>
+                <small class="muted">${escapeHtml(kayit.ders_adi)}</small>
+              </div>
+              <div><span class="durum-badge ${durumClass}">${durumText}</span></div>
+              <div>${kayit.ders_verme_tarihi ? new Date(kayit.ders_verme_tarihi).toLocaleString('tr-TR') : '—'}</div>
+              <div>${escapeHtml(kayit.ders_veren_personel || '—')}</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+
+    return html;
+  }
+
+  // Personel raporu
+  function renderPersonelRaporu(rapor) {
+    const { personel_uid, tip, kayitlar, istatistikler } = rapor;
+
+    let html = `
+      <h3 class="rapor-baslik">👥 Personel Raporu (${tip === 'kaydeden' ? '📝 Kaydeden' : '✅ Veren'})</h3>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value">${istatistikler.toplam}</div>
+          <div class="stat-label">Toplam Kayıt</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color: var(--good)">${istatistikler.verdi}</div>
+          <div class="stat-label">Verdi</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color: var(--bad)">${istatistikler.veremedi}</div>
+          <div class="stat-label">Veremedi</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color: var(--warn)">${istatistikler.yarim}</div>
+          <div class="stat-label">Yarım</div>
+        </div>
+      </div>
+      <div class="table-container">
+        <div class="table-header">
+          <div>Talebe</div>
+          <div>Kitap / Ders</div>
+          <div>Durum</div>
+          <div>Tarih</div>
+          <div>${tip === 'kaydeden' ? 'Kayıt Tarihi' : 'Verme Tarihi'}</div>
+        </div>
+        ${kayitlar.map(kayit => {
+          const durum = kayit.ders_verme_durumu || 'islem_yapilmadi';
+          const durumClass = durum === 'islem_yapilmadi' ? 'durum-none' : `durum-${durum}`;
+          const durumText = {
+            'islem_yapilmadi': 'İşlem Yapılmadı',
+            'henuz_verilmedi': 'Henüz Verilmedi',
+            'verdi': 'Verdi',
+            'veremedi': 'Veremedi',
+            'yarim': 'Yarım'
+          }[durum] || durum;
+
+          const tarih = tip === 'kaydeden' 
+            ? (kayit.created_at ? new Date(kayit.created_at).toLocaleDateString('tr-TR') : '—')
+            : (kayit.ders_verme_tarihi ? new Date(kayit.ders_verme_tarihi).toLocaleDateString('tr-TR') : '—');
+
+          return `
+            <div class="table-row">
+              <div>${escapeHtml(kayit.talebe_adi || kayit.talebe_uid)}</div>
+              <div>
+                <strong>${escapeHtml(kayit.kitap)}</strong><br>
+                <small class="muted">${escapeHtml(kayit.ders_adi)}</small>
+              </div>
+              <div><span class="durum-badge ${durumClass}">${durumText}</span></div>
+              <div>${kayit.ders_gunu ? new Date(kayit.ders_gunu).toLocaleDateString('tr-TR') : '—'}</div>
+              <div>${tarih}</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+
+    return html;
+  }
+
+  // Temizle
+  function handleTemizle() {
+    document.getElementById('filtrePanel').innerHTML = '';
+    updateFiltrePanel();
+    document.getElementById('resultsSection').style.display = 'none';
+    currentRaporData = null;
+  }
+
+  // HTML escape fonksiyonu
+  function escapeHtml(text) {
+    if (text == null) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  // Global fonksiyonlar
+  window.selectRaporTip = selectRaporTip;
+</script>
+
+</body>
+</html>

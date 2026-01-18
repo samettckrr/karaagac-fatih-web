@@ -230,12 +230,13 @@
 .devre-dd .active{ background:var(--surface); }
   </style>
 
-  <!-- Firebase (compat) -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-  <script src="./js/firebase/firebase-init.js"></script>
-  <script defer src="./js/ortak.js"></script>
+  <!-- Supabase (Auth + Database için) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="src/supabase.js"></script>
+  <script src="src/supabase-auth-wrapper.js"></script>
+  <script src="src/supabase-db-wrapper.js"></script>
+  
+  <!-- NOT: ortak.js kaldırıldı - panel.html kendi kodunu kullanıyor, ortak.js sadece çakışma yaratıyordu -->
 </head>
 <body>
 
@@ -418,8 +419,13 @@
       }
     })();
 
-    /* Helpers & Firebase */
-    const db=firebase.firestore(), auth=firebase.auth();
+    /* Helpers & Supabase Auth */
+    const auth = window.getSupabaseAuth ? window.getSupabaseAuth() : null;
+    if (!auth) {
+      console.error('Supabase Auth yüklenemedi');
+    }
+    // Supabase client (direkt erişim için)
+    const getSupabase = () => window.supabase;
     
     // XSS koruması - HTML escape
     function escapeHtml(text) {
@@ -429,7 +435,15 @@
     }
     
     function setToday(){const d=new Date(); const days=['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi']; document.getElementById('todayText').textContent=`${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()} • ${days[d.getDay()]}`;}
-    const norm = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+    // norm fonksiyonu - string normalizasyonu (Türkçe karakterleri kaldırır, küçük harfe çevirir)
+    // NOT: ortak.js kaldırıldı, burada direkt tanımlıyoruz
+    function norm(s) {
+      return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+    }
+    // window.norm'u da tanımla (diğer sayfalar için)
+    if (typeof window.norm === 'undefined') {
+      window.norm = norm;
+    }
     
     // Kart loading state yönetimi
     function setCardLoading(elementId, isLoading){
@@ -494,13 +508,94 @@
       return upLevels + u;
     }
     
+    // Global yetki kontrolü
+    function hasGlobalAllow(allowSet) {
+      return allowSet.has('*') || allowSet.has('all') || allowSet.has('full') || allowSet.has('admin');
+    }
+    
+    // Sayfa yetki kontrolü (wildcard desteği ile)
+    function pageAllowed(panelTitle, pageKey, allowSet, denySet) {
+      // Global yetki varsa tüm sayfalar erişilebilir
+      if (hasGlobalAllow(allowSet)) return true;
+      
+      const k = norm(pageKey || '');
+      const p = norm(panelTitle || '');
+      
+      // Reddedilen sayfa kontrolü
+      if (k && denySet.has(k)) return false;
+      if (p && denySet.has(p)) return false;
+      
+      // Direkt yetki kontrolü
+      if (k && allowSet.has(k)) return true;
+      if (p && allowSet.has(p)) return true;
+      
+      // Wildcard yetki kontrolü (örn: "personel:*" -> "personel:temizlik" erişimi)
+      for (const perm of allowSet) {
+        if (perm.endsWith(':*')) {
+          const prefix = perm.slice(0, -2);
+          if (k.startsWith(prefix + ':') || p.startsWith(prefix + ':')) return true;
+        }
+      }
+      
+      return false;
+    }
+    
     async function fetchPanels(allowSet, denySet){
       const res=[];
-      try{
-        const snap=await db.collection('sayfa_manifesti').get();
-        snap.forEach(doc=>{
-          const d=doc.data()||{}, id=doc.id;
-          const panelTitle=d.title||id;
+    try{
+      const supabase = getSupabase();
+      if (!supabase) {
+        console.error('❌ Supabase client yüklenmedi');
+        throw new Error('Supabase client yüklenmedi');
+      }
+      
+      // Supabase client kontrolü
+      if (!supabase.from) {
+        console.error('❌ Supabase client eksik: from() metodu bulunamadı');
+        throw new Error('Supabase client düzgün yüklenmedi');
+      }
+      
+      console.log('✅ Supabase client hazır');
+        
+        // Sayfa manifestini yükle (kullanicilar ve sayfa_manifesti tablolarından)
+        const { data: panels, error } = await supabase
+          .from('sayfa_manifesti')
+          .select('id, order, title, pages')
+          .order('order', { ascending: true, nullsFirst: false });
+        
+        if (error) {
+          console.error('❌ sayfa_manifesti okunamadı:', {
+            code: error.code,
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            error: error
+          });
+          
+          // RLS hatası kontrolü
+          if (error.code === '42501' || error.message?.includes('permission denied') || error.message?.includes('RLS')) {
+            console.error('🔒 RLS (Row Level Security) hatası: sayfa_manifesti tablosu için RLS politikası gerekli!');
+            console.error('💡 Çözüm: Supabase Dashboard > Authentication > Policies > sayfa_manifesti tablosuna politika ekleyin');
+          }
+          
+          throw error;
+        }
+        
+        if (!panels || panels.length === 0) {
+          console.warn('⚠️ sayfa_manifesti boş veya bulunamadı');
+          console.warn('💡 Kontrol edin: RLS politikaları, tablo adı, veri varlığı');
+          return res;
+        }
+        
+        console.log('✅ sayfa_manifesti yüklendi:', panels.length, 'panel bulundu');
+        
+        // Global yetki kontrolü
+        const hasGlobal = hasGlobalAllow(allowSet);
+        
+        panels.forEach(doc=>{
+          const d = doc || {};
+          const id = d.id || doc.id;
+          const panelTitle = d.title || id;
           
           // Sistem Ayarları panelini üst menüden kaldır (sadece profil dropdown'unda kalacak)
           const panelTitleNorm = norm(panelTitle);
@@ -511,25 +606,72 @@
             return; // Bu paneli atla
           }
           
-          const panelGrant = allowSet.has(norm(id)) || allowSet.has(norm(panelTitle));
-          let pages = Array.isArray(d.pages)? d.pages : [];
-          pages = pages.filter(pg=>{
-            const keyNorm = norm(pg.key || pg.title || '');
-            const pageGrant = allowSet.has(keyNorm);
-            const denied    = denySet.has(keyNorm);
-            return !denied && (panelGrant || pageGrant);
-          }).map(pg=>({ baslik: pg.title || pg.key || 'Sayfa', url: normalizeUrl(pg.path || '#'), key: pg.key || pg.title || '', sira: typeof pg.order==='number'? pg.order : 9999 })).sort((a,b)=>a.sira-b.sira);
-          if (pages.length===0) return;
-          res.push({ id, baslik:panelTitle, sira: typeof d.order==='number'? d.order : 9999, pages });
+          // Panel yetki kontrolü
+          const panelGrant = hasGlobal || allowSet.has(idNorm) || allowSet.has(panelTitleNorm);
+          
+          // Supabase'de pages JSONB olarak gelir
+          let pages = Array.isArray(d.pages) ? d.pages : 
+                     (typeof d.pages === 'object' && d.pages !== null ? Object.values(d.pages) : []);
+          
+          // Sayfaları yetkiye göre filtrele
+          const originalPageCount = pages.length;
+          pages = pages
+            .filter(pg => {
+              const pageKey = pg.key || pg.title || '';
+              const allowed = pageAllowed(panelTitle, pageKey, allowSet, denySet);
+              if (!allowed) {
+                console.log(`   ❌ Sayfa reddedildi: "${pageKey}" (Panel: "${panelTitle}")`);
+              }
+              return allowed;
+            })
+            .map(pg => ({
+              baslik: pg.title || pg.key || 'Sayfa',
+              url: normalizeUrl(pg.path || '#'),
+              key: pg.key || pg.title || '',
+              sira: typeof pg.order === 'number' ? pg.order : 9999
+            }))
+            .sort((a, b) => a.sira - b.sira);
+          
+          console.log(`   📋 Panel: "${panelTitle}" - ${originalPageCount} sayfa, ${pages.length} yetkili sayfa`);
+          
+          // Panel altında yetkili sayfa yoksa paneli gösterme
+          if (pages.length === 0 && !hasGlobal) {
+            console.log(`   ⚠️ Panel atlandı: "${panelTitle}" - Yetkili sayfa yok`);
+            return;
+          }
+          
+          res.push({
+            id,
+            baslik: panelTitle,
+            sira: typeof d.order === 'number' ? d.order : 9999,
+            pages
+          });
         });
-        res.sort((a,b)=>a.sira-b.sira);
-      }catch(e){ console.error('sayfa_manifesti okunamadı:', e); }
+        
+        res.sort((a, b) => a.sira - b.sira);
+      } catch(e) {
+        console.error('❌ sayfa_manifesti okunamadı:', e);
+        
+        // Detaylı hata mesajı
+        let errorMsg = 'Menü manifesti yüklenemedi.';
+        if (e.code === '42501') {
+          errorMsg = 'RLS politikası hatası: sayfa_manifesti tablosuna erişim izni yok.';
+        } else if (e.message) {
+          errorMsg = `Hata: ${e.message}`;
+        }
+        
+        showToast('error', 'Hata', errorMsg);
+      }
       return res;
     }
     function renderNav(panels){
       const ul=document.getElementById('navMain'), drawer=document.getElementById('drawer');
-      if (!ul || !drawer) return;
+      if (!ul || !drawer) {
+        console.error('❌ renderNav: navMain veya drawer bulunamadı');
+        return;
+      }
       ul.innerHTML=''; drawer.innerHTML='';
+      console.log('🔍 renderNav: Paneller render ediliyor, sayı:', panels.length);
       if(!panels.length){
         const li = document.createElement('li');
         li.className = 'nav-item';
@@ -545,7 +687,8 @@
         drawer.appendChild(emptyMsg);
         return;
       }
-      panels.forEach(p=>{
+      panels.forEach((p, index)=>{
+        console.log(`🔍 renderNav: Panel ${index + 1}/${panels.length} - "${p.baslik}" (${p.pages?.length || 0} sayfa)`);
         const li=document.createElement('li'); li.className='nav-item';
         // Güvenli DOM oluşturma - innerHTML yerine
         const btn = document.createElement('div');
@@ -561,8 +704,10 @@
         
         // Sayfa yoksa dropdown oluşturma
         if (!p.pages || p.pages.length === 0) {
+          console.log(`   ⚠️ Panel "${p.baslik}" - Sayfa yok, dropdown oluşturulmadı`);
           btn.style.cursor = 'default';
         } else {
+          console.log(`   ✅ Panel "${p.baslik}" - ${p.pages.length} sayfa eklendi`);
           (p.pages||[]).forEach(pg=>{
             const a=document.createElement('a');
             a.href=normalizeUrl(pg.url || pg.path || '#'); 
@@ -670,30 +815,49 @@
         });
       }
 
-      // Link guard - yetki kontrolü
+      // Link guard - yetki kontrolü (sayfa manifesti ve kullanıcı yetkilerine göre)
       document.addEventListener('click', (e) => {
         const a = e.target.closest('a[data-key]');
         if (!a) return;
-        const key = norm(a.dataset.key || '');
-        const pnl = norm(a.dataset.panel || '');
-        const pnlTitle = norm(a.dataset.panelTitle || '');
         
         const allowSet = window.CURRENT_ALLOW || new Set();
         const denySet = window.CURRENT_DENY || new Set();
         
+        // Global yetki kontrolü
+        if (hasGlobalAllow(allowSet)) {
+          return; // Global yetki varsa tüm sayfalara erişim
+        }
+        
+        const key = norm(a.dataset.key || '');
+        const pnl = norm(a.dataset.panel || '');
+        const pnlTitle = norm(a.dataset.panelTitle || '');
+        
+        // Panel seviyesinde kontrol (sayfa key yoksa)
         if (!key && (pnl || pnlTitle)) {
-          if (allowSet.has(pnl) || allowSet.has(pnlTitle)) {
+          if (pageAllowed(pnlTitle || pnl, '', allowSet, denySet)) {
             return;
           }
         }
         
+        // Reddedilen sayfa kontrolü
         if (key && denySet.has(key)) { 
           e.preventDefault(); 
           showToast('warning', 'Yetki Yok', 'Bu sayfa için yetkiniz yok.');
           return; 
         }
+        if (pnl && denySet.has(pnl)) {
+          e.preventDefault();
+          showToast('warning', 'Yetki Yok', 'Bu panel için yetkiniz yok.');
+          return;
+        }
+        if (pnlTitle && denySet.has(pnlTitle)) {
+          e.preventDefault();
+          showToast('warning', 'Yetki Yok', 'Bu panel için yetkiniz yok.');
+          return;
+        }
         
-        const allowed = !key || allowSet.has(key) || allowSet.has(pnl) || allowSet.has(pnlTitle);
+        // Sayfa yetki kontrolü (wildcard desteği ile)
+        const allowed = pageAllowed(pnlTitle || pnl, key, allowSet, denySet);
         if (!allowed) { 
           e.preventDefault(); 
           showToast('warning', 'Yetki Yok', 'Bu sayfa için yetkiniz yok.');
@@ -747,94 +911,39 @@
     function avg(nums){ if(!nums.length) return 0; const s=nums.reduce((a,b)=>a+(+b||0),0); return Math.round((s/nums.length)*10)/10; }
 
     // Kattaki toplam mahal sayısını getir (temizlik_listesi > temizlik_katlari fallback)
+    // TODO: Supabase tabloları hazır olunca bu fonksiyon güncellenecek
     async function getToplamMahaller(kat){
-      try{
-        const snap = await db.collection('temizlik_listesi').doc(kat).collection('mahaller').get();
-        if(!snap.empty) return snap.size;
-      }catch(_){}
-      try{
-        const ds = await db.collection('temizlik_katlari').doc(kat).get();
-        if(ds.exists){
-          const d = ds.data()||{};
-          if (Array.isArray(d.mahaller)) return d.mahaller.length;
-          if (d.mahaller && typeof d.mahaller==='object') return Object.keys(d.mahaller).length;
-        }
-      }catch(_){}
+      console.warn('getToplamMahaller: temizlik_listesi ve temizlik_katlari tabloları henüz Supabase\'de yok');
       return 0;
     }
 /* ===== Talebe İstatistiği — devreli (yeni/eski şema uyumlu) ===== */
 
 /** Yeni şemada alt koleksiyon adı (öğrenciler | ogrenciler) */
+// TODO: talebeler tablosu Supabase'de hazır olunca güncellenecek
 async function resolveSubcolName(devre){
-  const base = db.collection('talebeler').doc(devre);
-  for (const name of ['öğrenciler','ogrenciler']){
-    try{
-      const s = await base.collection(name).limit(1).get();
-      if(!s.empty) return name;
-    }catch(_){}
-  }
+  console.warn('resolveSubcolName: talebeler tablosu henüz Supabase\'de yok');
   return null;
 }
 
 /** Yeni şema sayımı: talebeler/{devre}/{öğrenciler|ogrenciler} */
+// TODO: talebeler tablosu Supabase'de hazır olunca güncellenecek
 async function countNewSchema(devre){
-  const base = db.collection('talebeler').doc(devre);
-  const sub  = await resolveSubcolName(devre);
-  if(!sub) return null;
-
-  const snap = await base.collection(sub).get();
-  let toplam = 0, ensar = 0, muhacir = 0;
-
-  snap.forEach(doc=>{
-    const d = doc.data() || {};
-    toplam++;
-    const durum = String(d.durum || d.profil?.durum || '').toLowerCase();
-    if(durum==='ensar') ensar++;
-    else if(durum==='muhacir') muhacir++;
-  });
-
-  return { toplam, ensar, muhacir };
+  console.warn('countNewSchema: talebeler tablosu henüz Supabase\'de yok');
+  return null;
 }
 
 /** Eski şema sayımı: devre alanına göre (birkaç olası koleksiyonda) */
+// TODO: talebe tabloları Supabase'de hazır olunca güncellenecek
 async function countOldSchema(devre){
-  const CANDS = ['talebe_index','talebe_kayitlari','talebe_kayit','talebeKayit','talebeler'];
-  let toplam=0, ensar=0, muhacir=0, found=false;
-
-  // devre alanı olan belgeleri sorgulamayı dene
-  for(const col of CANDS){
-    try{
-      const q = await db.collection(col).where('devre','==',devre).get();
-      if(!q.empty){
-        found = true;
-        q.forEach(doc=>{
-          const d = doc.data() || {};
-          toplam++;
-          const durum = String(d.durum || d.profil?.durum || '').toLowerCase();
-          if(durum==='ensar') ensar++;
-          else if(durum==='muhacir') muhacir++;
-        });
-      }
-    }catch(_){}
-  }
-  if(!found) return null;
-  return { toplam, ensar, muhacir };
+  console.warn('countOldSchema: talebe tabloları henüz Supabase\'de yok');
+  return null;
 }
 
-/** Devre listesi: yeni şemada talebeler/{devre} ID’leri; yoksa varsayılanlar */
+/** Devre listesi: yeni şemada talebeler/{devre} ID'leri; yoksa varsayılanlar */
+// TODO: talebeler tablosu Supabase'de hazır olunca güncellenecek
 async function getDevreList(){
-  try{
-    const snap = await db.collection('talebeler').get();
-    const ids = [];
-    snap.forEach(d=> ids.push(d.id));
-    // Sadece 5/6/7.devre gibi olanları öne al, diğerlerini sona ekle
-    const pref = ['5.Devre','6.Devre','7.Devre'];
-    const ordered = [
-      ...pref.filter(x=>ids.includes(x)),
-      ...ids.filter(x=>!pref.includes(x))
-    ];
-    return ordered.length ? ordered : pref;
-  }catch(e){ return ['5.Devre','6.Devre','7.Devre']; }
+  console.warn('getDevreList: talebeler tablosu henüz Supabase\'de yok, varsayılan devreler kullanılıyor');
+  return ['5.Devre','6.Devre','7.Devre'];
 }
 
 /** UI: başlıktaki devre menüsünü kur */
@@ -912,78 +1021,31 @@ async function loadTalebeStatsByDevre(devre){
 }
 
     // 1) TEMİZLİK KONTROLÜ — tek kat, tek gün
+    // TODO: temizlik_kontrol tablosu Supabase'de hazır olunca güncellenecek
     async function fetchTemizlikKontrolKatGun(kat, dateStr){
-      const col = db.collection('temizlik_kontrol').doc(kat).collection(dateStr);
-      const snap = await col.get();
-      const puanlar = [], zeroes = [];
-      snap.forEach(doc=>{
-        const v = doc.data()||{};
-        const p = Number(v.puan)||0;
-        puanlar.push(p);
-        if(p===0) zeroes.push(1);
-      });
-      const kayitli = snap.size;
-      const toplam = await getToplamMahaller(kat);
-      const kapsama = toplam>0? kayitli/toplam : null;
-      const ortalama = avg(puanlar);
-      const eksikMah = toplam>0? Math.max(0, toplam-kayitli): 0;
-      const uyari = eksikMah + zeroes.length; // 0 puan + eksik giriş
-      return { kat, kayitli, toplam, kapsama, ortalama, uyari };
+      console.warn('fetchTemizlikKontrolKatGun: temizlik_kontrol tablosu henüz Supabase\'de yok');
+      return { kat, kayitli: 0, toplam: 0, kapsama: null, ortalama: 0, uyari: 0 };
     }
 
     // 2) GENEL TEMİZLİK — _summary varsa onu kullan
+    // TODO: genel_temizlik_kontrol tablosu Supabase'de hazır olunca güncellenecek
     async function fetchGenelSummaryKatGun(kat, dateStr){
-      const root = db.collection('genel_temizlik_kontrol').doc(kat).collection(dateStr);
-      const sum = await root.doc('_summary').get();
-      if(sum.exists){
-        const d = sum.data()||{};
-        return { kat, submissions: d.submissions||0, avgPuan100: d.avgPuan100 ?? Math.round((d.avgPuan10||0)*10), eksikAny: !!d.eksik_var_any };
-      }
-      const snap = await root.get();
-      let s=0, n=0, eksik=false;
-      snap.forEach(doc=>{
-        if(doc.id==='_summary') return;
-        const v=doc.data()||{};
-        if(typeof v.puan10==='number'){ s+=v.puan10; n++; }
-        if(v.eksik_var) eksik = true;
-      });
-      const avg100 = n? Math.round((s/n)*10): 0;
-      return { kat, submissions:n, avgPuan100: avg100, eksikAny: eksik };
+      console.warn('fetchGenelSummaryKatGun: genel_temizlik_kontrol tablosu henüz Supabase\'de yok');
+      return { kat, submissions: 0, avgPuan100: 0, eksikAny: false };
     }
 
     // 3) DETAYLI — _summary / fallback
+    // TODO: genel_temizlik_detay tablosu Supabase'de hazır olunca güncellenecek
     async function fetchDetaySummaryKatGun(kat, dateStr){
-      const root = db.collection('genel_temizlik_detay').doc(kat).collection(dateStr);
-      const sum = await root.doc('_summary').get();
-      if(sum.exists){
-        const d = sum.data()||{};
-        return { kat, submissions: d.submissions||0, avgPuan100: d.avgPuan100 ?? 0, eksikAny: !!d.eksik_var_any };
-      }
-      const snap = await root.get();
-      let s=0, n=0, eksik=false;
-      snap.forEach(doc=>{
-        if(doc.id==='_summary') return;
-        const v=doc.data()||{};
-        if(typeof v.puan100==='number'){ s+=v.puan100; n++; }
-        if(v.eksik_var) eksik = true;
-      });
-      const avg100 = n? Math.round(s/n): 0;
-      return { kat, submissions:n, avgPuan100: avg100, eksikAny: eksik };
+      console.warn('fetchDetaySummaryKatGun: genel_temizlik_detay tablosu henüz Supabase\'de yok');
+      return { kat, submissions: 0, avgPuan100: 0, eksikAny: false };
     }
 
     // 4) EKSİKLER — açık kayıtlar
+    // TODO: eksik_bildirim tablosu Supabase'de hazır olunca güncellenecek
     async function fetchEksikler({dateStr=null, kat=null, status='acik'}={}){
-      let q = db.collection('eksik_bildirim').where('status','==', status);
-      if(dateStr) q = q.where('tarih','==', dateStr);
-      if(kat)     q = q.where('kat','==', kat);
-      const snap = await q.get();
-      const list = [];
-      snap.forEach(doc=>{
-        const v=doc.data()||{};
-        const parcalar = String(v.aciklama||'').split('/').map(s=>s.trim()).filter(Boolean);
-        list.push({ id: doc.id, kat: v.kat||'—', tarih: v.tarih||'—', uid: v.uid||'', email: v.email||'', aciklama: v.aciklama||'', parcalar, createdAt: v.createdAt||null, status: v.status||'acik' });
-      });
-      return { count: snap.size, list };
+      console.warn('fetchEksikler: eksik_bildirim tablosu henüz Supabase\'de yok');
+      return { count: 0, list: [] };
     }
 
     // Ortalama hesaplama helper (kod tekrarını önlemek için)
@@ -1105,11 +1167,20 @@ async function loadTalebeStatsByDevre(devre){
 async function loadAlacak(){
   const years = [2024, 2025];
 
-  // Verileri al
-  const [tSnap, sSnap] = await Promise.all([
-    db.collection('tahakkuklar').get(),
-    db.collection('tahsilatlar').get()
+  // Verileri al (Supabase)
+  const supabase = getSupabase();
+  if (!supabase) { console.error('Supabase client yüklenmedi'); return; }
+  
+  const [tahakkukResult, tahsilatResult] = await Promise.all([
+    supabase.from('tahakkuklar').select('*'),
+    supabase.from('tahsilatlar').select('*')
   ]);
+
+  if (tahakkukResult.error) { console.error('Tahakkuklar okunamadı:', tahakkukResult.error); return; }
+  if (tahsilatResult.error) { console.error('Tahsilatlar okunamadı:', tahsilatResult.error); return; }
+
+  const tSnap = tahakkukResult.data || [];
+  const sSnap = tahsilatResult.data || [];
 
   // Tahakkuk indeksleri
   const tahById   = new Map();                     // id -> tahakkuk doc
@@ -1118,18 +1189,18 @@ async function loadAlacak(){
   const yearThs   = Object.fromEntries(years.map(y=>[y,0]));
 
   tSnap.forEach(doc=>{
-    const v = doc.data()||{};
+    const v = doc || {};
     const y = Number(v.yil);
     const tahakkuk = Number(v.tahakkuk||0);
-    tahById.set(doc.id, v);
+    tahById.set(v.id || doc.id, v);
     const key = `${y}||${normTR(v.faaliyet)}||${normTR(v.personel)}||${normTR(v.borclu)}`;
-    keyToId.set(key, doc.id);
+    keyToId.set(key, v.id || doc.id);
     if (years.includes(y)) yearTah[y] += tahakkuk;
   });
 
   // Tahsilatı sadece eşleşirse say: önce id, yoksa composite key
   sSnap.forEach(doc=>{
-    const v = doc.data()||{};
+    const v = doc || {};
     let tahYear = null;
 
     if (v.tahakkukId && tahById.has(v.tahakkukId)) {
@@ -1168,12 +1239,44 @@ async function loadAylik(){
   document.getElementById('ayTop3Tutar').textContent= monthsTR[now.getMonth()]+' Ayı'; // 🆕
   document.getElementById('ayZero').textContent     = monthsTR[now.getMonth()]+' Ayı';
 
-  // Veriler
-  const [tSnapYear, tSnapAll, sSnap] = await Promise.all([
-    db.collection('tahakkuklar').where('yil','==',yil).get().catch(_=>db.collection('tahakkuklar').get()),
-    db.collection('tahakkuklar').get(),   // tüm yıllar
-    db.collection('tahsilatlar').get()
+  // Veriler (Supabase)
+  const supabase = getSupabase();
+  if (!supabase) { console.error('Supabase client yüklenmedi'); return; }
+  
+  // Supabase sorguları - catch Promise.all içinde çalışmaz, ayrı ayrı yapıyoruz
+  let tahakkukYearResult, tahakkukAllResult, tahsilatResult;
+  
+  try {
+    tahakkukYearResult = await supabase.from('tahakkuklar').select('*').eq('yil', yil);
+    // Eğer hata varsa tüm tahakkukları al
+    if (tahakkukYearResult.error) {
+      tahakkukYearResult = await supabase.from('tahakkuklar').select('*');
+    }
+  } catch (e) {
+    tahakkukYearResult = await supabase.from('tahakkuklar').select('*');
+  }
+  
+  [tahakkukAllResult, tahsilatResult] = await Promise.all([
+    supabase.from('tahakkuklar').select('*'),   // tüm yıllar
+    supabase.from('tahsilatlar').select('*')
   ]);
+
+  // Hata kontrolü
+  if (tahakkukYearResult.error && tahakkukYearResult.error.code !== 'PGRST116') {
+    console.error('Tahakkuklar (yıl) okunamadı:', tahakkukYearResult.error);
+  }
+  if (tahakkukAllResult.error) {
+    console.error('Tahakkuklar (tüm) okunamadı:', tahakkukAllResult.error);
+    return;
+  }
+  if (tahsilatResult.error) {
+    console.error('Tahsilatlar okunamadı:', tahsilatResult.error);
+    return;
+  }
+
+  const tSnapYear = tahakkukYearResult.data || [];
+  const tSnapAll = tahakkukAllResult.data || [];
+  const sSnap = tahsilatResult.data || [];
 
   // Haritalar
   const tahById = new Map();      // id -> tahakkuk doc (sadece bu yıl)
@@ -1184,11 +1287,11 @@ async function loadAylik(){
 
       // BU YIL tahakkukları
   tSnapYear.forEach(doc=>{
-    const t = doc.data()||{};
+    const t = doc || {};
     if (Number(t.yil) !== yil) return;
-    tahById.set(doc.id, t);
+    tahById.set(t.id || doc.id, t);
     const k = `${yil}||${normTR(t.faaliyet)}||${normTR(t.personel||t.personelAd||t.sorumlu||'')}||${normTR(t.borclu)}`;
-    keyToId.set(k, doc.id);
+    keyToId.set(k, t.id || doc.id);
     const pName = coalesceName(t);
     const pk    = nameKey(pName);
     annualTah.set(pk, (annualTah.get(pk)||0) + Number(t.tahakkuk||0));
@@ -1197,7 +1300,7 @@ async function loadAylik(){
 
   // TÜM YILLAR tahakkukları
   tSnapAll.forEach(doc=>{
-    const t = doc.data()||{};
+    const t = doc || {};
     const pName = coalesceName(t);
     const pk    = nameKey(pName);
     overallTah.set(pk, (overallTah.get(pk)||0) + Number(t.tahakkuk||0));
@@ -1207,7 +1310,7 @@ async function loadAylik(){
   // Bu ayki tahsilatlar (sadece eşleşenler, ve eşleştiği tahakkukun PERSONEL'ine yaz)
   const monthlyTh = new Map();           // personKey -> bu ay tahsilat
   sSnap.forEach(doc=>{
-    const v = doc.data()||{};
+    const v = doc || {};
     const dt = toDate(v.tarih);
     if (!dt || dt < start || dt > end) return;
 
@@ -1325,9 +1428,15 @@ async function loadAylik(){
     const gunKey=bas.toISOString().slice(0,10);
     const haftaKey=isoWeekKey(bas);
     try{
-      const doc=await db.collection("nobet_planlari").doc(haftaKey).get();
-      if(doc.exists){
-        const rows=(doc.data()||{}).rows||[];
+      const supabase = getSupabase();
+      if (!supabase) throw new Error('Supabase client yüklenmedi');
+      
+      const { data: doc, error } = await supabase.from('nobet_planlari').select('*').eq('id', haftaKey).single();
+      if(error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows returned
+      
+      if(doc){
+        // Supabase'de rows JSONB olarak gelir
+        const rows = Array.isArray(doc.rows) ? doc.rows : (typeof doc.rows === 'object' && doc.rows !== null ? Object.values(doc.rows) : []);
         const r=rows.find(x=> String(x.tarihISO)===gunKey);
         if(r){
           document.getElementById("nobetEvli").textContent = r.evli || '—';
@@ -1338,7 +1447,7 @@ async function loadAylik(){
       // bulunamazsa boş bırak
       document.getElementById("nobetEvli").textContent = '—';
       document.getElementById("nobetBekar").textContent= '—';
-    }catch(e){ console.error(e); }
+    }catch(e){ console.error('Nöbet yükleme hatası:', e); }
   }
     /* ===== Teknik Eksikler ===== */
   async function loadEksikler(){
@@ -1380,20 +1489,39 @@ async function loadAylik(){
     if (!badge || !list) return;
     list.innerHTML='';
     try{
-      const snap = await db.collection('duyurular').orderBy('createdAt','desc').limit(5).get();
-      const n = snap.size;
+      // TODO: duyurular tablosu henüz oluşturulmadı, geçici olarak skip ediyoruz
+      console.warn('duyurular tablosu henüz oluşturulmadı, bildirimler gösterilemiyor');
+      badge.style.display='none';
+      const empty=document.createElement('div'); 
+      empty.className='muted'; 
+      empty.style.padding='6px 8px'; 
+      empty.textContent='Bildirim sistemi hazırlanıyor...'; 
+      list.appendChild(empty);
+      return;
+      
+      /* Supabase versiyonu (tablo hazır olunca kullanılacak):
+      const supabase = getSupabase();
+      if (!supabase) throw new Error('Supabase client yüklenmedi');
+      
+      const { data: duyurular, error } = await supabase
+        .from('duyurular')
+        .select('*')
+        .order('createdAt', { ascending: false })
+        .limit(5);
+      
+      if (error) throw error;
+      const n = duyurular?.length || 0;
       if(n>0){ badge.style.display='block'; badge.textContent = n>99 ? '99+' : String(n); } else { badge.style.display='none'; }
       if(n===0){
         const empty=document.createElement('div'); empty.className='muted'; empty.style.padding='6px 8px'; empty.textContent='Yeni bildirim yok.'; list.appendChild(empty);
       }else{
-        snap.forEach(doc=>{ 
-          const d=doc.data()||{}; 
+        duyurular.forEach(doc=>{ 
+          const d=doc || {}; 
           const baslik=d.baslik||d.title||'Duyuru'; 
           const detay=d.detay||d.desc||''; 
           const row=document.createElement('a'); 
           const bildirimPath = normalizeUrl('diger/bildirim.html');
           row.href=bildirimPath; 
-          // Güvenlik: innerHTML yerine textContent kullan
           const strong = document.createElement('strong');
           strong.textContent = escapeHtml(baslik);
           const muted = document.createElement('div');
@@ -1404,6 +1532,7 @@ async function loadAylik(){
           list.appendChild(row); 
         });
       }
+      */
     }catch(e){ 
       console.error('Bildirimler yüklenemedi:', e); 
       if (badge) badge.style.display='none'; 
@@ -1472,41 +1601,284 @@ async function loadAylik(){
   window.showToast = showToast;
 
   /* Auth akışı */
-  try{ firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL); }catch(e){}
+  // Supabase otomatik olarak session'ı saklar, persistence ayarı gerekmez
   
   // App Shell'i başlat
   initAppShell();
   
+  // Döngüyü önlemek için flag kontrolü
+  let authCheckDone = false;
+  let redirectInProgress = false;
+  
   auth.onAuthStateChanged(async (user)=>{
-    if(!user){
-      setTimeout(()=>{ if(!auth.currentUser) {
-        const indexPath = normalizeUrl('index.html');
-        location.replace(indexPath);
-      }},150);
+    // Eğer yönlendirme zaten yapılıyorsa veya kontrol tamamlandıysa, tekrar yapma
+    if (redirectInProgress || (authCheckDone && !user)) {
       return;
     }
+    
+    if(!user){
+      authCheckDone = true;
+      // Bir kez daha kontrol et ve yönlendir
+      setTimeout(()=>{ 
+        // Supabase auth wrapper'da currentUser kontrolü
+        const currentUser = auth && auth.currentUser ? auth.currentUser : null;
+        if(!currentUser && !redirectInProgress) {
+          redirectInProgress = true;
+          // SessionStorage flag'ini temizle ki index.html tekrar kontrol edebilsin
+          sessionStorage.removeItem('kf_auth_redirect_done');
+          const indexPath = normalizeUrl('index.html');
+          location.replace(indexPath);
+        }
+      }, 300);
+      return;
+    }
+    
+    // Kullanıcı varsa, flag'i set et
+    authCheckDone = true;
+    redirectInProgress = false;
     try{
       setToday();
-      const uSnap = await db.collection('kullanicilar').doc(user.uid).get();
-      const data  = uSnap.exists ? uSnap.data() : {};
-      document.getElementById('username').textContent = data.adSoyad || user.email || 'Kullanıcı';
+      const supabase = getSupabase();
+      if (!supabase) {
+        console.error('❌ Supabase client yüklenmedi');
+        showToast('error', 'Bağlantı Hatası', 'Supabase bağlantısı kurulamadı. Lütfen sayfayı yenileyin.');
+        throw new Error('Supabase client yüklenmedi');
+      }
       
-      // Profil ismi: Emoji + Ad Soyad (ortak.js ile aynı format)
+      // Supabase bağlantı testi
+      console.log('🔍 Supabase bağlantı testi başlatılıyor...');
+      try {
+        const { data: testData, error: testError } = await supabase
+          .from('sayfa_manifesti')
+          .select('id')
+          .limit(1);
+        
+        if (testError) {
+          console.error('❌ Supabase bağlantı testi başarısız:', {
+            code: testError.code,
+            message: testError.message,
+            details: testError.details,
+            hint: testError.hint
+          });
+          
+          // RLS hatası ise özel mesaj
+          if (testError.code === '42501' || testError.message?.includes('permission denied') || testError.message?.includes('RLS')) {
+            console.error('🔒 RLS (Row Level Security) Politikası Hatası!');
+            console.error('💡 Çözüm: Supabase Dashboard > Authentication > Policies bölümünden RLS politikalarını ekleyin');
+            console.error('📋 Gerekli politikalar:');
+            console.error('   1. sayfa_manifesti tablosu için SELECT izni');
+            console.error('   2. kullanicilar tablosu için SELECT izni (kendi kaydına erişim)');
+            showToast('error', 'RLS Politikası Hatası', 'Tablolara erişim için RLS politikası gerekli. Console\'u kontrol edin.');
+          } else {
+            showToast('error', 'Bağlantı Hatası', `Supabase bağlantı hatası: ${testError.message || 'Bilinmeyen hata'}`);
+          }
+        } else {
+          console.log('✅ Supabase bağlantı testi başarılı');
+        }
+      } catch (testErr) {
+        console.error('❌ Supabase bağlantı testi exception:', testErr);
+      }
+      
+      // Kullanıcı bilgilerini kullanicilar tablosundan yükle (tablo yapısına göre)
+      // NOT: user.uid UUID formatında, id alanı text formatında - string'e çevir
+      const userId = String(user.uid || '').trim();
+      
+      console.log('🔍 Kullanıcı ID:', userId);
+      console.log('🔍 Kullanıcı ID tipi:', typeof userId, userId.length);
+      
+      // Supabase session'ını kontrol et
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      console.log('🔍 Supabase Session:', {
+        hasSession: !!session,
+        userId: session?.user?.id,
+        sessionError: sessionError
+      });
+      
+      // RLS politikasını test et - auth.uid() değerini kontrol et
+      // SQL Editor'de şunu çalıştırabilirsiniz: SELECT auth.uid();
+      console.log('🔍 RLS Test: auth.uid() değeri session\'dan:', session?.user?.id);
+      console.log('🔍 RLS Test: Sorgu ID ile eşleşiyor mu?', session?.user?.id === userId);
+      
+      // Önce kullanıcının tabloda olup olmadığını kontrol et
+      // RLS politikası nedeniyle direkt sorgu yapamıyorsak, alternatif yöntem dene
+      let userData = null;
+      let userError = null;
+      
+      try {
+        // İlk deneme: Normal sorgu
+        const result = await supabase
+          .from('kullanicilar')
+          .select('id, adsoyad, email, rol, gorev, aktif, eklenmetarihi, yetkiler')
+          .eq('id', userId)
+          .maybeSingle();
+        
+        userData = result.data;
+        userError = result.error;
+        
+        console.log('🔍 Sorgu sonucu (1. deneme):', { 
+          hasData: !!userData, 
+          dataKeys: userData ? Object.keys(userData) : [],
+          error: userError 
+        });
+        
+        // Eğer veri yoksa ve hata da yoksa, RLS politikası sorunu olabilir
+        if (!userData && !userError) {
+          console.warn('⚠️ Veri yok ve hata da yok - RLS politikası sorunu olabilir');
+          console.warn('💡 RLS politikasını test edin:');
+          console.warn('   SQL Editor\'de: SELECT * FROM kullanicilar WHERE id = auth.uid()::text;');
+        }
+        
+        // Alternatif: Tüm kayıtları çek (RLS politikası varsa sadece kendi kaydını görecek)
+        if (!userData && !userError) {
+          console.log('🔍 Alternatif sorgu deneniyor: Tüm kayıtlar (RLS filtrelenecek)');
+          const altResult = await supabase
+            .from('kullanicilar')
+            .select('id, adsoyad, email, rol, gorev, aktif, eklenmetarihi, yetkiler')
+            .limit(10);
+          
+          console.log('🔍 Alternatif sorgu sonucu:', {
+            count: altResult.data?.length || 0,
+            data: altResult.data,
+            error: altResult.error
+          });
+          
+          // Eğer alternatif sorguda veri varsa ama kendi kaydı yoksa, ID formatı sorunu olabilir
+          if (altResult.data && altResult.data.length > 0) {
+            const found = altResult.data.find(u => u.id === userId);
+            if (!found) {
+              console.warn('⚠️ Alternatif sorguda veri var ama kullanıcı ID eşleşmiyor!');
+              console.warn('💡 ID formatı sorunu olabilir. Tablodaki ID formatını kontrol edin.');
+              console.warn('   Tablodaki ID örnekleri:', altResult.data.map(u => ({ id: u.id, type: typeof u.id })));
+            } else {
+              console.log('✅ Alternatif sorguda kullanıcı bulundu!');
+              userData = found;
+            }
+          }
+        }
+      } catch (err) {
+        console.error('❌ Sorgu exception:', err);
+        userError = err;
+      }
+      
+      if (userError) {
+        console.error('❌ Kullanıcı bilgisi alınamadı:', {
+          code: userError.code,
+          message: userError.message,
+          details: userError.details,
+          hint: userError.hint,
+          error: userError
+        });
+        
+        // 406 hatası kontrolü (Not Acceptable - genellikle Accept header sorunu)
+        if (userError.code === 'PGRST116' || userError.message?.includes('406') || userError.message?.includes('Not Acceptable')) {
+          console.warn('⚠️ 406 hatası: Accept header veya API versiyonu sorunu olabilir');
+          console.warn('💡 Kontrol: Supabase client ayarları ve API key doğru mu?');
+        }
+        
+        // RLS hatası kontrolü
+        if (userError.code === '42501' || userError.message?.includes('permission denied') || userError.message?.includes('RLS')) {
+          console.error('🔒 RLS hatası tespit edildi!');
+          console.error('💡 Çözüm: supabase-rls-policies.sql dosyasını çalıştırdınız mı?');
+          showToast('error', 'Yetki Hatası', 'Kullanıcı bilgilerine erişim için RLS politikası gerekli. Lütfen yönetici ile iletişime geçin.');
+        } else if (userError.code !== 'PGRST116') {
+          // PGRST116 = no rows returned (kayıt bulunamadı) - bu normal olabilir
+          showToast('error', 'Hata', `Kullanıcı bilgileri yüklenemedi: ${userError.message || 'Bilinmeyen hata'}`);
+        }
+      }
+      
+      const data = userData || {};
+      
+      // Eğer kullanıcı verisi yoksa uyar ve debug bilgisi ver
+      if (!userData || Object.keys(userData).length === 0) {
+        console.warn('⚠️ Kullanıcı verisi boş. Kullanıcı ID:', user.uid);
+        console.warn('💡 Kontrol edin:');
+        console.warn('   1. kullanicilar tablosunda bu ID ile kayıt var mı?');
+        console.warn('   2. RLS politikası doğru mu? (kullanicilar_select_own)');
+        console.warn('   3. Kullanıcı ID formatı doğru mu? (UUID string)');
+        
+        // Supabase Dashboard'da kontrol için SQL sorgusu öner
+        console.warn('💡 Test için SQL Editor\'de şunu çalıştırın:');
+        console.warn(`   SELECT * FROM kullanicilar WHERE id = '${userId}';`);
+        
+        showToast('warning', 'Uyarı', 'Kullanıcı bilgileri bulunamadı. Console\'u kontrol edin.');
+      }
+      
+      // Kullanıcı aktif mi kontrolü
+      if (data.aktif === false) {
+        showToast('error', 'Hesap Pasif', 'Hesabınız pasif durumda. Lütfen yönetici ile iletişime geçin.');
+        setTimeout(() => {
+          auth.signOut();
+          location.replace(normalizeUrl('index.html'));
+        }, 2000);
+        return;
+      }
+      
+      // Kullanıcı adını göster (sadece adSoyad - mail değil)
+      const usernameEl = document.getElementById('username');
+      if (usernameEl) {
+        if (!data.adsoyad || data.adsoyad.trim() === '') {
+          console.warn('Kullanıcı adSoyad bilgisi bulunamadı');
+          usernameEl.textContent = 'Kullanıcı';
+        } else {
+          usernameEl.textContent = data.adsoyad;
+        }
+      }
+      
+      // Profil ismi: Emoji + Ad Soyad
       const profNameEl = document.getElementById('profName');
       if (profNameEl) {
-        const name = data.adSoyad || user.email?.split('@')[0] || 'Profil';
-        profNameEl.textContent = `👤 ${name}`;
+        if (!data.adsoyad || data.adsoyad.trim() === '') {
+          profNameEl.textContent = '👤 Profil';
+        } else {
+          profNameEl.textContent = `👤 ${data.adsoyad}`;
+        }
       }
 
-      // yetkiler
+      // Yetkiler (Supabase'de text[] olarak gelir)
       const rawPerms = Array.isArray(data.yetkiler) ? data.yetkiler : [];
-      const allowSet = new Set(rawPerms.filter(s=>!String(s).trim().startsWith('-') && !String(s).trim().startsWith('!')).map(norm));
-      const denySet  = new Set(rawPerms.filter(s=> String(s).trim().startsWith('-') || String(s).trim().startsWith('!')).map(s=>norm(String(s).replace(/^[-!]\s*/,''))));
+      console.log('🔍 Ham yetkiler (rawPerms):', rawPerms);
+      console.log('🔍 Yetki sayısı:', rawPerms.length);
+      
+      const allowSet = new Set(
+        rawPerms
+          .filter(s => {
+            const str = String(s || '').trim();
+            return str && !str.startsWith('-') && !str.startsWith('!');
+          })
+          .map(norm)
+      );
+      const denySet = new Set(
+        rawPerms
+          .filter(s => {
+            const str = String(s || '').trim();
+            return str && (str.startsWith('-') || str.startsWith('!'));
+          })
+          .map(s => norm(String(s).replace(/^[-!]\s*/, '')))
+      );
+      
+      console.log('🔍 İşlenmiş yetkiler (allowSet):', Array.from(allowSet));
+      console.log('🔍 İşlenmiş reddedilenler (denySet):', Array.from(denySet));
+      console.log('🔍 Global yetki var mı?', hasGlobalAllow(allowSet));
+      
       // Window'a kopyala (ortak.js ve diğer sayfalar için)
       window.CURRENT_ALLOW = allowSet;
       window.CURRENT_DENY = denySet;
 
+      // Sayfa manifesti ve yetkilere göre panelleri yükle
+      console.log('🔍 Paneller yükleniyor...');
       const panels = await fetchPanels(allowSet, denySet);
+      console.log('🔍 Yüklenen panel sayısı:', panels.length);
+      console.log('🔍 Paneller:', panels.map(p => ({ id: p.id, baslik: p.baslik, sayfaSayisi: p.pages?.length || 0 })));
+      
+      if (panels.length === 0 && !hasGlobalAllow(allowSet)) {
+        console.warn('⚠️ Kullanıcının erişebileceği panel bulunamadı');
+        console.warn('💡 Kontrol edin:');
+        console.warn('   1. sayfa_manifesti tablosunda paneller var mı?');
+        console.warn('   2. Yetkiler sayfa key\'leri ile eşleşiyor mu?');
+        console.warn('   3. sayfa_manifesti RLS politikası doğru mu?');
+        showToast('warning', 'Yetki Yok', 'Erişebileceğiniz panel bulunamadı. Console\'u kontrol edin.');
+      }
+      
       renderNav(panels);
       
       // Optimize yükleme stratejisi: Paralel yükleme + cache

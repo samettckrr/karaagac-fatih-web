@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>UID Eşleştirme</title>
+<link rel="icon" type="image/png" href="../img/logo.png" />
+<link rel="stylesheet" href="../css/app-shell.css" />
+
+<!-- ====== TEMA ====== -->
+<style>
+  :root{
+    --appbar-h:56px;
+    --radius:14px; --shadow:0 12px 28px rgba(0,0,0,.14);
+    --bg:#f5f5f0; --bg2:#fafaf5;
+    --grad1:#e5e5e022; --grad2:#d4d4d022;
+    --card:rgba(255,255,255,.95); --stroke:rgba(15,23,42,.12);
+    --text:#0b1220; --muted:#4b5563;
+    --brand:#0ea5e9; --brand2:#0284c7;
+    --pill:#f5f5f0; --pill-hover:#e9e9e4;
+    --link:#0b5ea8; --surface:#f0f0eb;
+    --ok:#33c27f; --danger:#ff4255;
+    --warning:#f59e0b;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; 
+    padding:0;
+    padding-top:var(--appbar-h) !important;
+    color:var(--text);
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Arial;
+    background:
+      radial-gradient(900px 680px at 12% 8%, var(--grad1), transparent 45%),
+      radial-gradient(800px 640px at 88% 92%, var(--grad2), transparent 50%),
+      linear-gradient(140deg, var(--bg), var(--bg2) 60%);
+    overflow-x:hidden;
+  }
+
+  .appbar{
+    position:fixed !important; 
+    top:0 !important; 
+    left:0 !important;
+    right:0 !important;
+    z-index:60 !important;
+  }
+
+  .container{width:100%; max-width:1400px; margin:0 auto; padding:16px; box-sizing:border-box}
+  .card{background:var(--card); border:1px solid var(--stroke); border-radius:var(--radius); box-shadow:var(--shadow); padding:20px; margin-bottom:16px}
+  .card h3{margin:0 0 16px; font-size:18px; font-weight:700}
+  
+  .stats{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-bottom:20px}
+  .stat-card{background:var(--pill); border:1px solid var(--stroke); border-radius:12px; padding:16px; text-align:center}
+  .stat-card .val{font-size:32px; font-weight:800; color:var(--brand2); margin-bottom:4px}
+  .stat-card .label{font-size:12px; color:var(--muted); text-transform:uppercase}
+  
+  .filter-bar{display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px; align-items:flex-end}
+  .filter-bar input, .filter-bar select{flex:1; min-width:200px; padding:10px 12px; border:1px solid var(--stroke); border-radius:12px; background:var(--pill); font-size:14px}
+  
+  .table-wrapper{overflow-x:auto; margin-top:16px}
+  .table{width:100%; border-collapse:collapse; min-width:1000px}
+  .table th{background:var(--surface); padding:12px; text-align:left; font-size:12px; font-weight:700; text-transform:uppercase; color:var(--muted); border-bottom:2px solid var(--stroke)}
+  .table td{padding:12px; border-bottom:1px solid var(--pill); font-size:14px}
+  .table tr:hover{background:var(--pill)}
+  
+  .btn{padding:10px 16px; border:none; border-radius:12px; font-size:14px; font-weight:600; cursor:pointer; transition:all .15s ease; background:var(--brand); color:#fff}
+  .btn:hover{background:var(--brand2); transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,.1)}
+  .btn-secondary{background:var(--muted)}
+  .btn-success{background:var(--ok)}
+  .btn-warning{background:var(--warning)}
+  .btn:disabled{opacity:.5; cursor:not-allowed; transform:none}
+  
+  .badge{padding:4px 8px; border-radius:6px; font-size:11px; font-weight:600; text-transform:uppercase}
+  .badge-success{background:var(--ok); color:#fff}
+  .badge-warning{background:var(--warning); color:#fff}
+  .badge-danger{background:var(--danger); color:#fff}
+  
+  .select-user{width:100%; padding:8px; border:1px solid var(--stroke); border-radius:8px; background:var(--pill); font-size:14px}
+  
+  .empty-state{text-align:center; padding:60px 20px; color:var(--muted)}
+  .empty-state-icon{font-size:64px; margin-bottom:16px; opacity:.3}
+  
+  .modal{display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.5); z-index:1000; align-items:center; justify-content:center}
+  .modal.open{display:flex}
+  .modal-content{background:var(--card); border-radius:var(--radius); padding:24px; max-width:500px; width:90%; max-height:90vh; overflow-y:auto}
+  .modal-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:20px}
+  .modal-header h3{margin:0}
+  .modal-close{background:none; border:none; font-size:24px; cursor:pointer; color:var(--muted); padding:0; width:32px; height:32px; display:flex; align-items:center; justify-content:center}
+  
+  @media (max-width: 768px){
+    .container{padding:12px}
+    .card{padding:16px}
+    .stats{grid-template-columns:1fr}
+    .filter-bar{flex-direction:column}
+    .filter-bar input, .filter-bar select{min-width:100%}
+  }
+</style>
+
+<!-- Firebase Auth -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="../js/firebase/firebase-init.js"></script>
+
+<!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+  (function() {
+    const SUPABASE_URL = 'https://lmwfibippjvqctccxiwb.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxtd2ZpYmlwcGp2cWN0Y2N4aXdiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NjE2NzA1NCwiZXhwIjoyMDgxNzQzMDU0fQ.lzoudrJx_V4RdCCxPRfgLA1riWNKZ3HyFzeqRynYHeQ';
+    
+    function initSupabase() {
+      if (typeof window.supabase !== 'undefined' && typeof window.supabase.createClient === 'function') {
+        window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        return true;
+      }
+      if (typeof supabase !== 'undefined' && typeof supabase.createClient === 'function') {
+        window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        return true;
+      }
+      return false;
+    }
+    
+    if (!initSupabase()) {
+      let retries = 0;
+      const retryInterval = setInterval(function() {
+        retries++;
+        if (initSupabase() || retries >= 20) {
+          clearInterval(retryInterval);
+        }
+      }, 100);
+    }
+  })();
+</script>
+
+<script src="../js/ortak.js"></script>
+</head>
+<body>
+
+<!-- APPBAR -->
+<div class="appbar">
+  <div class="brand" onclick="location.href='../panel.html'">
+    <img src="../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
+  </div>
+  <nav class="nav-center"><ul class="nav-list" id="navMain"></ul></nav>
+  <div class="nav-right">
+    <button class="btn hamb" id="hamburger" title="Menü">☰</button>
+    <div class="nav-item">
+      <button class="iconbtn" id="btnProfile" title="Profil">
+        <span id="profName" class="muted">Profil</span>
+      </button>
+      <div class="dropdown drop-right" id="profDropdown">
+        <a href="../diger/kullanici-yonetimi.html">👤 Profil</a>
+        <a href="../diger/sistem-ayarlari.html">⚙️ Sistem Ayarları</a>
+        <a href="#" id="btnLogout">🚪 Çıkış Yap</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<aside class="drawer" id="drawer"></aside>
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- CONTENT -->
+<main class="container">
+  <div class="card">
+    <h3>🔗 UID Eşleştirme Yönetimi</h3>
+    <p style="color:var(--muted); margin-bottom:20px">Eski kullanıcı UID'lerini yeni kullanıcılarla eşleştirin</p>
+    
+    <!-- İstatistikler -->
+    <div class="stats" id="stats">
+      <div class="stat-card">
+        <div class="val" id="statTotal">-</div>
+        <div class="label">Toplam Eşleştirme</div>
+      </div>
+      <div class="stat-card">
+        <div class="val" id="statAuto">-</div>
+        <div class="label">Otomatik</div>
+      </div>
+      <div class="stat-card">
+        <div class="val" id="statManual">-</div>
+        <div class="label">Manuel</div>
+      </div>
+      <div class="stat-card">
+        <div class="val" id="statUnmapped">-</div>
+        <div class="label">Eşleştirilmemiş</div>
+      </div>
+    </div>
+    
+    <!-- Filtreler -->
+    <div class="filter-bar">
+      <input type="text" id="searchInput" placeholder="🔍 Email, Ad Soyad veya UID ara...">
+      <select id="filterType">
+        <option value="all">Tümü</option>
+        <option value="mapped">Eşleştirilmiş</option>
+        <option value="unmapped">Eşleştirilmemiş</option>
+      </select>
+      <button class="btn" id="btnRefresh">🔄 Yenile</button>
+      <button class="btn btn-secondary" id="btnRunAuto">⚡ Otomatik Eşleştirme Çalıştır</button>
+    </div>
+    
+    <!-- Tablo -->
+    <div class="table-wrapper">
+      <table class="table" id="mappingTable">
+        <thead>
+          <tr>
+            <th>Eski UID</th>
+            <th>Email</th>
+            <th>Ad Soyad</th>
+            <th>Yeni UID</th>
+            <th>Yeni Kullanıcı</th>
+            <th>Tip</th>
+            <th>Tarih</th>
+            <th>İşlemler</th>
+          </tr>
+        </thead>
+        <tbody id="mappingTableBody">
+          <tr>
+            <td colspan="8" class="empty-state">
+              <div class="empty-state-icon">⏳</div>
+              <div>Yükleniyor...</div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<!-- Manuel Eşleştirme Modal -->
+<div class="modal" id="mapModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Manuel Eşleştirme</h3>
+      <button class="modal-close" id="closeModal">×</button>
+    </div>
+    <div id="modalBody">
+      <p><strong>Eski UID:</strong> <span id="modalOldUid"></span></p>
+      <p><strong>Email:</strong> <span id="modalEmail"></span></p>
+      <p><strong>Ad Soyad:</strong> <span id="modalAdSoyad"></span></p>
+      <label style="margin-top:16px; display:block"><strong>Yeni Kullanıcı Seç:</strong></label>
+      <select class="select-user" id="modalNewUser">
+        <option value="">Seçiniz...</option>
+      </select>
+      <div style="margin-top:20px; display:flex; gap:12px; justify-content:flex-end">
+        <button class="btn btn-secondary" id="cancelMap">İptal</button>
+        <button class="btn btn-success" id="saveMap">Eşleştir</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+
+const getSupabase = () => window.supabase;
+const getAuth = () => window.auth || (typeof firebase !== 'undefined' ? firebase.auth() : null);
+
+let currentMappingData = [];
+let allUsers = [];
+
+// İstatistikleri yükle
+async function loadStats() {
+  const supabase = getSupabase();
+  if (!supabase) return;
+  
+  try {
+    // Toplam eşleştirme
+    const { count: total } = await supabase
+      .from('uid_eslestirme')
+      .select('*', { count: 'exact', head: true });
+    
+    // Otomatik eşleştirme
+    const { count: auto } = await supabase
+      .from('uid_eslestirme')
+      .select('*', { count: 'exact', head: true })
+      .eq('eslestirme_tipi', 'otomatik');
+    
+    // Manuel eşleştirme
+    const { count: manual } = await supabase
+      .from('uid_eslestirme')
+      .select('*', { count: 'exact', head: true })
+      .eq('eslestirme_tipi', 'manuel');
+    
+    // Eşleştirilmemiş (yaklaşık - tüm tablolardan unique UID sayısı)
+    // Bu kısım için özel bir sorgu gerekebilir
+    
+    $('#statTotal').textContent = total || 0;
+    $('#statAuto').textContent = auto || 0;
+    $('#statManual').textContent = manual || 0;
+    $('#statUnmapped').textContent = '-'; // Hesaplanacak
+  } catch (e) {
+    console.error('İstatistik yükleme hatası:', e);
+  }
+}
+
+// Kullanıcıları yükle
+async function loadUsers() {
+  const supabase = getSupabase();
+  if (!supabase) return;
+  
+  try {
+    const { data, error } = await supabase
+      .from('kullanicilar')
+      .select('id, adSoyad, email')
+      .eq('aktif', true)
+      .order('adSoyad');
+    
+    if (error) throw error;
+    
+    allUsers = data || [];
+  } catch (e) {
+    console.error('Kullanıcı yükleme hatası:', e);
+    allUsers = [];
+  }
+}
+
+// Eşleştirme verilerini yükle
+async function loadMappings() {
+  const supabase = getSupabase();
+  if (!supabase) return;
+  
+  const tbody = $('#mappingTableBody');
+  tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><div class="empty-state-icon">⏳</div><div>Yükleniyor...</div></td></tr>';
+  
+  try {
+    const { data, error } = await supabase
+      .from('uid_eslestirme')
+      .select('*')
+      .order('eslestirme_tarihi', { ascending: false });
+    
+    if (error) throw error;
+    
+    currentMappingData = data || [];
+    renderMappings(currentMappingData);
+    loadStats();
+  } catch (e) {
+    console.error('Eşleştirme yükleme hatası:', e);
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><div class="empty-state-icon">❌</div><div>Hata: ' + (e.message || 'Bilinmeyen hata') + '</div></td></tr>';
+  }
+}
+
+// Eşleştirmeleri render et
+function renderMappings(data) {
+  const tbody = $('#mappingTableBody');
+  const search = $('#searchInput').value.toLowerCase();
+  const filter = $('#filterType').value;
+  
+  let filtered = data;
+  
+  // Arama filtresi
+  if (search) {
+    filtered = filtered.filter(m => 
+      (m.email || '').toLowerCase().includes(search) ||
+      (m.ad_soyad || '').toLowerCase().includes(search) ||
+      (m.eski_uid || '').toLowerCase().includes(search) ||
+      (m.yeni_uid || '').toLowerCase().includes(search)
+    );
+  }
+  
+  // Tip filtresi
+  if (filter === 'mapped') {
+    filtered = filtered.filter(m => m.yeni_uid);
+  } else if (filter === 'unmapped') {
+    filtered = filtered.filter(m => !m.yeni_uid);
+  }
+  
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><div class="empty-state-icon">📭</div><div>Kayıt bulunamadı</div></td></tr>';
+    return;
+  }
+  
+  tbody.innerHTML = filtered.map(m => {
+    const user = allUsers.find(u => u.id === m.yeni_uid);
+    const userDisplay = user ? `${user.adSoyad} (${user.email})` : '-';
+    const badgeClass = m.eslestirme_tipi === 'otomatik' ? 'badge-success' : 'badge-warning';
+    const date = m.eslestirme_tarihi ? new Date(m.eslestirme_tarihi).toLocaleDateString('tr-TR') : '-';
+    
+    return `
+      <tr>
+        <td><code style="font-size:11px">${m.eski_uid || '-'}</code></td>
+        <td>${m.email || '-'}</td>
+        <td>${m.ad_soyad || '-'}</td>
+        <td><code style="font-size:11px">${m.yeni_uid || '-'}</code></td>
+        <td>${userDisplay}</td>
+        <td><span class="badge ${badgeClass}">${m.eslestirme_tipi || '-'}</span></td>
+        <td>${date}</td>
+        <td>
+          ${!m.yeni_uid ? `<button class="btn btn-success" style="padding:6px 12px; font-size:12px" onclick="openMapModal('${m.eski_uid}', '${m.email || ''}', '${m.ad_soyad || ''}')">Eşleştir</button>` : ''}
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// Modal aç
+function openMapModal(eskiUid, email, adSoyad) {
+  $('#modalOldUid').textContent = eskiUid;
+  $('#modalEmail').textContent = email || '-';
+  $('#modalAdSoyad').textContent = adSoyad || '-';
+  
+  // Kullanıcı dropdown'unu doldur
+  const select = $('#modalNewUser');
+  select.innerHTML = '<option value="">Seçiniz...</option>' + 
+    allUsers.map(u => `<option value="${u.id}">${u.adSoyad} (${u.email})</option>`).join('');
+  
+  $('#mapModal').classList.add('open');
+}
+
+// Modal kapat
+function closeMapModal() {
+  $('#mapModal').classList.remove('open');
+}
+
+// Eşleştirme kaydet
+async function saveMapping() {
+  const supabase = getSupabase();
+  if (!supabase) return;
+  
+  const eskiUid = $('#modalOldUid').textContent;
+  const yeniUid = $('#modalNewUser').value;
+  const email = $('#modalEmail').textContent;
+  
+  if (!yeniUid) {
+    if (typeof window.showToast === 'function') {
+      window.showToast('warning', 'Uyarı', 'Lütfen yeni kullanıcı seçin');
+    }
+    return;
+  }
+  
+  const auth = getAuth();
+  const currentUser = auth?.currentUser;
+  
+  try {
+    // SQL fonksiyonunu çağır (manuel_uid_eslestir)
+    const { data, error } = await supabase.rpc('manuel_uid_eslestir', {
+      p_eski_uid: eskiUid,
+      p_yeni_uid: yeniUid,
+      p_email: email,
+      p_eslestiren_uid: currentUser?.uid || null,
+      p_notlar: 'Manuel eşleştirme'
+    });
+    
+    if (error) throw error;
+    
+    closeMapModal();
+    loadMappings();
+    
+    if (typeof window.showToast === 'function') {
+      window.showToast('success', 'Başarılı', 'Eşleştirme kaydedildi');
+    }
+  } catch (e) {
+    console.error('Eşleştirme kaydetme hatası:', e);
+    if (typeof window.showToast === 'function') {
+      window.showToast('error', 'Hata', e.message || 'Bilinmeyen hata');
+    }
+  }
+}
+
+// Otomatik eşleştirme çalıştır
+async function runAutoMapping() {
+  if (!confirm('Otomatik eşleştirme çalıştırılsın mı? Bu işlem biraz zaman alabilir.')) {
+    return;
+  }
+  
+  if (typeof window.showToast === 'function') {
+    window.showToast('info', 'Bilgi', 'Otomatik eşleştirme başlatıldı...');
+  }
+  
+  // NOT: Otomatik eşleştirme SQL script'i ile yapılmalı
+  // Burada sadece bilgilendirme yapıyoruz
+  alert('Otomatik eşleştirme için scripts/uid-eslestirme.sql script\'ini Supabase SQL Editor\'de çalıştırın.');
+}
+
+// Event listeners
+$('#btnRefresh').onclick = () => {
+  loadMappings();
+  loadUsers();
+};
+
+$('#btnRunAuto').onclick = runAutoMapping;
+
+$('#searchInput').oninput = () => renderMappings(currentMappingData);
+$('#filterType').onchange = () => renderMappings(currentMappingData);
+
+$('#closeModal').onclick = closeMapModal;
+$('#cancelMap').onclick = closeMapModal;
+$('#saveMap').onclick = saveMapping;
+
+// Modal dışına tıklanınca kapat
+$('#mapModal').onclick = (e) => {
+  if (e.target === $('#mapModal')) {
+    closeMapModal();
+  }
+};
+
+// Global fonksiyon (onclick için)
+window.openMapModal = openMapModal;
+
+// Sayfa yüklendiğinde
+window.addEventListener('DOMContentLoaded', () => {
+  loadUsers().then(() => {
+    loadMappings();
+  });
+});
+</script>
+</body>
+</html>
+
+
+

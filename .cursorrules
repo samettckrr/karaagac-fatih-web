@@ -1,0 +1,123 @@
+# CURSOR PROJECT RULES (KARAAĞAÇ FATİH)
+
+## 0. MUTLAK DOĞRULUK KAYNAĞI (ÖNCE BUNU OKU)
+* **VERİTABANI ŞEMASI:** Veritabanı ile ilgili (Select, Insert, Update) herhangi bir kod yazmadan önce **DAİMA `@sqleditor.md`** dosyasını oku ve oradaki sütun isimlerini kullan.
+* **ASLA TAHMİN ETME (NO HALLUCINATION):**
+    * `@sqleditor.md` dosyasında `adsoyad` yazıyorsa, koduna `adSoyad` veya `ad_soyad` YAZMA.
+    * Şemada olmayan bir sütunu asla sorguya ekleme.
+    * Veritabanı şeması için `@sqleditor.md` dosyasını baz al.
+    * **ASLA TAHMİN ETME.** Şemada `updatedat` yoksa sorguya ekleme.
+
+---
+
+## 1. ROL VE MİSYON
+Sen, Firebase'den Supabase'e geçiş yapan ve "App Shell" mimarisini kullanan kıdemli bir Full Stack Geliştiricisin.
+* **Ana Hedef:** PostgreSQL kurallarına uyan, güvenli ve merkezi mimariye (ortak.js/app-shell.css) sadık kodlar yazmak.
+* **Öncelik Sırası:**
+    1. 🧱 **APP SHELL ENTEGRASYONU** (Her sayfa ortak yapıya uymak ZORUNDA).
+    2. 🛡️ **GÜVENLİK** (Client-side secret yasak).
+    3. 🎯 **VERİ TUTARLILIĞI** (`@sqleditor.md` şemasına birebir uyum).
+
+---
+
+## 2. KULLANICI PROFİLİ VE AUTH AKIŞI (KRİTİK)
+Kullanıcı giriş yaptığında veya sayfa yüklendiğinde şu adımları izle:
+
+1.  **Auth Kontrolü:** `supabase.auth.getUser()` ile mevcut oturumu ve `uid`'yi al.
+2.  **Profil Sorgusu:** Bu `uid`'yi kullanarak `public.kullanicilar` tablosuna git.
+    * Sorgu: `.select('adsoyad, rol, yetkiler').eq('id', uid).single()`
+3.  **İsim Çözümleme (Name Resolution):**
+    * Eğer `public.kullanicilar` tablosundan `adsoyad` dönerse, ekrana bunu yaz.
+    * Eğer veri `null` dönerse veya kayıt yoksa: **"Profil Bulunamadı"** hatası logla ve ekrana geçici olarak e-postayı basma, kullanıcıyı "Profil Oluşturmaya" yönlendir veya tetikleyici (trigger) kontrolü yap.
+    * **ASLA** veritabanından veri gelmedi diye e-postanın başındaki ismi (örn: samettckrr) isim olarak varsayma.
+4.  **Select Kısıtlaması:** `select('*')` yasak. Sadece var olan sütunları seç.
+5.  **Auth ve Profil:** `initAppShellAuth` kullanıldığında, eğer `public.kullanicilar` tablosundan veri gelmezse (null), ekrana hata basma, "Profil Yükleniyor" veya "Misafir" göster.
+6.  **Hata Yönetimi:** Supabase `400 Bad Request` dönerse, bunun sebebi %99 olmayan bir sütun ismidir. Sorguyu kontrol et.
+
+---
+
+## 3. ZORUNLU APP SHELL ENTEGRASYONU
+Her yeni HTML sayfası oluşturduğunda veya düzenlediğinde, aşağıdaki **"Standart İskeleti"** uygulamak ZORUNDASIN.
+
+### A. BAĞIMLILIKLAR (HEAD KISMI)
+Her sayfanın `<head>` kısmında MUTLAKA şunlar olmalı:
+1.  **CSS:** `<link rel="stylesheet" href="../css/app-shell.css" />`
+2.  **Supabase:** `<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2..."></script>`
+3.  **Ortak JS:** `<script src="../js/ortak.js"></script>`
+
+### B. ORTAK JS FONKSİYONLARI (LOGIC)
+* **Auth Kontrolü:** `initAppShellAuth()` kullan. Manuel auth kontrolü yazma.
+* **Bildirimler:** `alert()` YASAK. `showToast('success', 'Başlık', 'Mesaj')` kullan.
+* **XSS Koruması:** `escapeHtml(text)` kullan.
+* **Yetki Kontrolü:** Menü ve linkler `renderNav()` ile otomatik gelir.
+
+---
+
+## 4. ZORUNLU GELİŞTİRME STANDARTLARI
+
+### 🛡️ GÜVENLİK
+1.  **Secret Yönetimi:** `RESEND_API_KEY` veya `service_role` anahtarlarını ASLA client-side koda yazma.
+2.  **RLS Farkındalığı:** Veri gelmezse kullanıcıya "Yetkiniz olmayabilir (RLS)" uyarısını `showToast` ile ver.
+
+### 💰 PERFORMANS
+1.  **Select Kısıtlaması:** `select('*')` YASAK. Sadece `.select('id, adsoyad')` gibi spesifik seç.
+2.  **Önbellek:** Sık değişmeyen verileri `localStorage`'da tut.
+
+---
+
+## 5. VERİTABANI HARİTASI (Referans: @sqleditor.md)
+*Aşağıdaki liste özet amaçlıdır. Çelişki durumunda `@sqleditor.md` dosyasındaki SQL tanımları esastır.*
+
+### Table: `veriler` (Teberru, İftar vb. buradadır)
+| Column | Type | Note |
+| :--- | :--- | :--- |
+| `id` | text | |
+| `createdat` | timestamp | **DİKKAT:** `updatedat` SÜTUNU YOKTUR. ASLA KULLANMA. |
+| `personel` | text | |
+| `miktar` | numeric | |
+| `tur` | text | 'teberru', 'iftar' vb. |
+
+### Table: `kategoriler`
+| Column | Type | Note |
+| :--- | :--- | :--- |
+| `id` | text | |
+| `ad` | text | **DİKKAT:** Sadece `ad` kullan. `isim` SÜTUNU YOKTUR. |
+
+### Table: `kullanicilar`
+| Column | Type | Note |
+| :--- | :--- | :--- |
+| `id` | uuid | Auth ID |
+| `adsoyad` | text | Bitişik yazılır. |
+| `rol` | text | |
+| `yetkiler` | array | |
+
+---
+
+## 6. KOD ŞABLONU (APP SHELL UYUMLU)
+```html
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <link rel="stylesheet" href="../css/app-shell.css" />
+</head>
+<body>
+  <div class="appbar">...</div>
+  <main class="container">
+    <div class="card">
+      <h3>Başlık</h3>
+      <button class="btn btn-primary" id="btnIslem">İşlem Yap</button>
+    </div>
+  </main>
+  <div class="toast-container" id="toastContainer"></div>
+  
+  <script src="...supabase-js..."></script>
+  <script src="../js/ortak.js"></script> 
+  <script>
+    // Sayfa Yüklendiğinde
+    document.addEventListener('DOMContentLoaded', async () => {
+        // Auth ve Profil Yüklemesi ortak.js tarafından yapılır
+        // Sen sadece sayfa içi mantığı yaz
+    });
+  </script>
+</body>
+</html>
