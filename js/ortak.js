@@ -1,107 +1,140 @@
 // =========================
-// GİRİŞ - index.html
+// GİRİŞ - index.html (Supabase Versiyonu)
 // =========================
 
 document.addEventListener("DOMContentLoaded", () => {
   const loginForm = document.getElementById("loginForm");
   const forgotPasswordBtn = document.getElementById("forgotPassword");
 
+  // Supabase Client Kontrolü
+  const getSupabase = () => window.supabase;
+
   if (loginForm) {
-    loginForm.addEventListener("submit", (e) => {
+    loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const email = document.getElementById("email").value.trim();
       const password = document.getElementById("password").value.trim();
+      const btn = loginForm.querySelector("button");
+      
+      if(btn) { btn.disabled = true; btn.textContent = "Giriş Yapılıyor..."; }
 
-      window.auth.signInWithEmailAndPassword(email, password)
-        .then(() => {
-          window.location.href = "panel.html"; // Giriş başarılı
-        })
-        .catch((error) => {
-          alert("Hata: " + error.message);
+      try {
+        const sb = getSupabase();
+        if(!sb) throw new Error("Supabase bağlantısı kurulamadı.");
+
+        const { data, error } = await sb.auth.signInWithPassword({
+          email: email,
+          password: password,
         });
+
+        if (error) throw error;
+
+        // Başarılı giriş
+        window.location.href = "panel.html";
+
+      } catch (error) {
+        alert("Giriş Hatası: " + (error.message || error));
+        if(btn) { btn.disabled = false; btn.textContent = "Giriş Yap"; }
+      }
     });
   }
 
   if (forgotPasswordBtn) {
-    forgotPasswordBtn.addEventListener("click", () => {
+    forgotPasswordBtn.addEventListener("click", async () => {
       const email = document.getElementById("email").value.trim();
       if (!email) return alert("Lütfen önce e-posta adresinizi girin.");
 
-      window.auth.sendPasswordResetEmail(email)
-        .then(() => {
-          alert("Şifre sıfırlama bağlantısı e-posta adresinize gönderildi.");
-        })
-        .catch((error) => {
-          alert("Hata: " + error.message);
+      try {
+        const sb = getSupabase();
+        if(!sb) throw new Error("Supabase bağlantısı kurulamadı.");
+
+        const { error } = await sb.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin + '/sifre-yenile.html',
         });
+
+        if (error) throw error;
+        alert("Şifre sıfırlama bağlantısı e-posta adresinize gönderildi.");
+
+      } catch (error) {
+        alert("Hata: " + error.message);
+      }
     });
   }
 });
 
 
 // =========================
-// PANEL - panel.html
+// PANEL - panel.html (Supabase Versiyonu)
 // =========================
 
-function baslatPanel() {
-  firebase.auth().onAuthStateChanged(async (user) => {
-    if (!user) {
-      window.location.href = "index.html";
+async function baslatPanel() {
+  const sb = window.supabase;
+  if (!sb) { console.error("Supabase bulunamadı"); return; }
+
+  // Oturum Kontrolü - Optimize retry mekanizması ile
+  const { data: { session }, error: sessionError } = await getSessionWithRetry();
+  
+  if (sessionError || !session) {
+    window.location.href = "index.html";
+    return;
+  }
+
+  const user = session.user;
+
+  try {
+    // Firestore yerine Supabase Tablosu
+    const { data: veri, error } = await sb
+      .from('kullanicilar')
+      .select('yetkiler, adsoyad, rol')
+      .eq('id', user.id)
+      .single();
+
+    if (error || !veri) {
+      console.error("Veri çekme hatası:", error);
+      alert("Kullanıcı yetkileri alınamadı.");
+      logout();
       return;
     }
 
-    const uid = user.uid;
+    const yetkiler = veri.yetkiler || [];
 
-    try {
-      const doc = await firebase.firestore().collection("kullanicilar").doc(uid).get();
-      const veri
- = doc.data();
+    // Panel ID Eşleşmesi
+    const panelIdMap = {
+      "Talebe": "yanTalebe",
+      "Personel": "yanPersonel",
+      "Nehari": "yanNehari",
+      "Kermes": "yanKermes",
+      "Diğer": "yanAyarlar",
+      "Kontrol Paneli": "yanAdmin",
+      "Muhasebe": "yanMuhasebe",
+    };
 
-      if (!veri) {
-        alert("Kullanıcı bilgisi bulunamadı.");
-        logout();
-        return;
-      }
+    // Hepsini gizle
+    Object.values(panelIdMap).forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = "none";
+    });
 
-      const yetkiler = veri.yetkiler || [];
+    // Yetkisi olanları aç
+    yetkiler.forEach(yetki => {
+      const el = document.getElementById(panelIdMap[yetki]);
+      if (el) el.style.display = "block";
+    });
 
-      // Tüm panel id'lerini eşleştir
-      const panelIdMap = {
-        "Talebe": "yanTalebe",
-        "Personel": "yanPersonel",
-        "Nehari": "yanNehari",
-        "Kermes": "yanKermes",
-        "Diğer": "yanAyarlar",
-        "Kontrol Paneli": "yanAdmin",
-        "Muhasebe": "yanMuhasebe",
-      };
+    // Paneli görünür yap
+    const yanPanel = document.getElementById("yanPanel");
+    if (yanPanel) yanPanel.style.visibility = "visible";
 
-      // Önce tüm panelleri gizle
-      Object.values(panelIdMap).forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.style.display = "none";
-      });
-
-      // Yetkisi olanları göster
-      yetkiler.forEach(yetki => {
-        const el = document.getElementById(panelIdMap[yetki]);
-        if (el) el.style.display = "block";
-      });
-
-        // En sonda paneli görünür yap
-      document.getElementById("yanPanel").style.visibility = "visible";
-
-    } catch (err) {
-      console.error("Yetki kontrol hatası:", err.message);
-      logout();
-    }
-  });
+  } catch (err) {
+    console.error("Panel başlatma hatası:", err);
+    logout();
+  }
 }
 
-function logout() {
-  firebase.auth().signOut().then(() => {
-    window.location.href = "index.html";
-  });
+async function logout() {
+  const sb = window.supabase;
+  if(sb) await sb.auth.signOut();
+  window.location.href = "index.html";
 }
 
 function goTo(sayfa) {
@@ -288,16 +321,10 @@ if (!window.CURRENT_DENY) {
 // Mevcut değişkenleri kullan, yoksa window'dan al
 let CURRENT_ALLOW = window.CURRENT_ALLOW;
 let CURRENT_DENY = window.CURRENT_DENY;
-// db ve auth firebase-init.js'den geliyor, window.db ve window.auth olarak erişilebilir
-// window'a at (diğer sayfalar için)
-if(typeof window.db === 'undefined'){
-  window.db = typeof firebase !== 'undefined' ? firebase.firestore() : null;
-}
-if(typeof window.auth === 'undefined'){
-  window.auth = typeof firebase !== 'undefined' ? firebase.auth() : null;
-}
-// db ve auth tanımlamadan doğrudan window.db ve window.auth kullan
-// (diğer sayfalarda const db tanımlanabilir)
+// db ve auth artık Supabase kullanıyor
+// window.supabase Supabase client'ı içerir
+// window.getSupabaseAuth() auth wrapper'ı döndürür
+// Eski Firebase kodları kaldırıldı - artık Supabase kullanılıyor
 
 /* === YARDIMCI FONKSİYONLAR === */
 // norm fonksiyonu window'da tanımlı olmalı (diğer sayfalar için)
@@ -351,6 +378,65 @@ function normalizeUrl(u) {
 }
 // Global olarak erişilebilir yap
 window.normalizeUrl = normalizeUrl;
+
+/* === SESSION YÖNETİMİ - ÇOKLU SAYFA ÇAKIŞMASI ÖNLEME === */
+/**
+ * Akıllı Session Alma - Optimize edilmiş retry mekanizması
+ * - Tek sayfa açıkken: İlk deneme hemen (0ms) → Hızlı ✅
+ * - Çoklu sayfa açıkken: AbortError alırsa retry → Güvenli ✅
+ * 
+ * @param {number} retries - Maksimum retry sayısı (varsayılan: 3)
+ * @param {number} delay - İlk retry için gecikme ms (varsayılan: 100ms)
+ * @returns {Promise<{data: {session: any}, error: any}>}
+ */
+async function getSessionWithRetry(retries = 3, delay = 100) {
+  const sb = window.supabase;
+  if (!sb || !sb.auth) {
+    throw new Error('Supabase client bulunamadı');
+  }
+
+  for (let i = 0; i < retries; i++) {
+    try {
+      // İlk deneme hemen (0ms), sonrakiler delay ile
+      if (i > 0) {
+        // Exponential backoff: 100ms, 200ms, 400ms...
+        const waitTime = delay * Math.pow(2, i - 1);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+
+      const { data, error } = await sb.auth.getSession();
+      
+      // AbortError değilse direkt döndür (başarılı veya başka bir hata)
+      if (!error || (error.name !== 'AbortError' && !error.message?.includes('aborted'))) {
+        return { data, error };
+      }
+      
+      // AbortError ise ve son deneme değilse retry yap
+      if (i < retries - 1) {
+        console.warn(`Session çakışması algılandı, tekrar deneniyor... (${i + 1}/${retries})`);
+      }
+      
+    } catch (err) {
+      // AbortError değilse direkt hata döndür (gereksiz retry yapma)
+      if (err.name !== 'AbortError' && !err.message?.includes('aborted')) {
+        return { data: null, error: err };
+      }
+      
+      // AbortError ise retry yap (son deneme değilse)
+      if (i < retries - 1) {
+        console.warn(`Session çakışması algılandı, tekrar deneniyor... (${i + 1}/${retries})`);
+        // Delay zaten loop başında yapılıyor
+      } else {
+        // Son deneme de başarısız
+        return { data: null, error: err };
+      }
+    }
+  }
+  
+  return { data: null, error: new Error('Session alma işlemi başarısız oldu (çoklu sayfa çakışması)') };
+}
+// Global olarak erişilebilir yap (diğer sayfalar için)
+window.getSessionWithRetry = getSessionWithRetry;
 
 /* === TOAST BİLDİRİM SİSTEMİ === */
 function showToast(type, title, message) {
@@ -407,49 +493,42 @@ function showToast(type, title, message) {
 // Global olarak erişilebilir yap
 window.showToast = showToast;
 
-/* === BİLDİRİM YÜKLEME === */
-let notifListener = null; // Real-time listener referansı
-
+/* === BİLDİRİM YÜKLEME (SUPABASE) === */
 async function loadNotifications() {
   const badge = document.getElementById('notifBadge');
   const list = document.getElementById('notifList');
   if (!badge || !list) return;
-  
-  // Önceki listener'ı temizle
-  if (notifListener) {
-    notifListener();
-    notifListener = null;
+
+  const sb = window.supabase;
+  if (!sb) {
+    console.warn('Supabase client yüklenmedi, bildirimler yüklenemiyor');
+    if (badge) badge.style.display = 'none';
+    if (list) list.innerHTML = '';
+    return;
   }
 
-    const user = window.auth.currentUser;
+  const { data: { user } } = await sb.auth.getUser();
   if (!user) {
-    badge.style.display = 'none';
-    list.innerHTML = '';
+    if (badge) badge.style.display = 'none';
+    if (list) list.innerHTML = '';
     return;
   }
 
   try {
-    // Kullanıcının bildirimlerini real-time dinle
-    const kullaniciBildirimleriRef = window.db.collection('kullanici_bildirimleri')
-      .doc(user.uid)
-      .collection('bildirimler');
+    // Supabase'den bildirimleri çek
+    // Not: kullanici_bildirimleri tablosunda kullanici_uid sütunu text tipinde
+    const { data: bildirimler, error } = await sb
+      .from('kullanici_bildirimleri') 
+      .select('*')
+      .eq('kullanici_uid', user.id) // Kullanıcıya özel
+      .order('zaman', { ascending: false }) // Zaman sıralaması
+      .limit(50);
 
-    // Tüm bildirimleri çek (index hatası olmaması için where kullanmadan)
-    const tumSnap = await kullaniciBildirimleriRef
-      .orderBy('zaman', 'desc')
-      .limit(50)
-      .get();
+    if (error) throw error;
 
-    // Client-side'da okunmamış bildirimleri say
-    let okunmamisSayisi = 0;
-    tumSnap.forEach(doc => {
-      const d = doc.data() || {};
-      if (!d.okunduMu) {
-        okunmamisSayisi++;
-      }
-    });
-    
-    // Badge güncelle
+    // Okunmamış Sayısı (okundu_mu sütunu boolean)
+    const okunmamisSayisi = (bildirimler || []).filter(b => !b.okundu_mu).length;
+
     if (okunmamisSayisi > 0) {
       badge.style.display = 'block';
       badge.textContent = okunmamisSayisi > 99 ? '99+' : String(okunmamisSayisi);
@@ -457,30 +536,24 @@ async function loadNotifications() {
       badge.style.display = 'none';
     }
 
-    // Son 5 bildirimi göster (okunmuş/okunmamış fark etmez)
-    const son5Bildirim = [];
-    tumSnap.forEach(doc => {
-      if (son5Bildirim.length < 5) {
-        son5Bildirim.push(doc);
-      }
-    });
-
+    // Listeyi Temizle
     list.innerHTML = '';
 
-    if (son5Bildirim.length === 0) {
+    if (!bildirimler || bildirimler.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'muted';
       empty.style.padding = '6px 8px';
       empty.textContent = 'Yeni bildirim yok.';
       list.appendChild(empty);
     } else {
-      son5Bildirim.forEach(doc => {
-        const d = doc.data() || {};
+      // Sadece ilk 5'i göster
+      bildirimler.slice(0, 5).forEach(d => {
         const baslik = d.baslik || 'Bildirim';
         const icerik = d.icerik || '';
-        const okunduMu = d.okunduMu || false;
+        const okunduMu = d.okundu_mu || false;
         const tip = d.tip || 'toplu';
-        const zaman = d.zaman?.toDate ? d.zaman.toDate() : new Date();
+        // Supabase tarih formatını işle
+        const zaman = d.zaman ? new Date(d.zaman) : new Date(); 
         const zamanStr = zaman.toLocaleString('tr-TR', { 
           day: '2-digit', 
           month: '2-digit', 
@@ -527,7 +600,7 @@ async function loadNotifications() {
         row.onclick = (e) => {
           e.preventDefault();
           e.stopPropagation();
-          showBildirimModal(doc.id, baslik, icerik, okunduMu, tip, zamanStr);
+          showBildirimModal(d.id, baslik, icerik, okunduMu, tip, zamanStr);
         };
 
         list.appendChild(row);
@@ -537,46 +610,19 @@ async function loadNotifications() {
     // "Tüm bildirimleri gör →" linkini kaldır (dropdown içinde)
     const notifDropdown = document.getElementById('notifDropdown');
     if (notifDropdown) {
-      // Tüm linkleri kontrol et
       const tumLinkler = notifDropdown.querySelectorAll('a');
       tumLinkler.forEach(link => {
         const href = link.getAttribute('href') || '';
         const text = link.textContent || '';
-        // bildirim.html içeren veya "Tüm bildirimleri gör" yazan linkleri kaldır
         if (href.includes('bildirim.html') || text.includes('Tüm bildirimleri gör')) {
           link.remove();
         }
       });
     }
 
-    // Real-time listener - yeni bildirimler için (index hatası olmaması için where kullanmadan)
-    notifListener = kullaniciBildirimleriRef
-      .orderBy('zaman', 'desc')
-      .limit(50)
-      .onSnapshot((snapshot) => {
-        // Client-side'da okunmamış bildirimleri say
-        let yeniOkunmamisSayisi = 0;
-        snapshot.forEach(doc => {
-          const d = doc.data() || {};
-          if (!d.okunduMu) {
-            yeniOkunmamisSayisi++;
-          }
-        });
-        
-        // Badge güncelle
-        if (badge) {
-          if (yeniOkunmamisSayisi > 0) {
-            badge.style.display = 'block';
-            badge.textContent = yeniOkunmamisSayisi > 99 ? '99+' : String(yeniOkunmamisSayisi);
-          } else {
-            badge.style.display = 'none';
-          }
-        }
-        // Listeyi yeniden yükle
-        loadNotifications();
-      }, (error) => {
-        console.error('Bildirim listener hatası:', error);
-      });
+    // NOT: Real-time listener şimdilik kaldırıldı
+    // Supabase Realtime için channel yapısı kurulması gerekir
+    // Önce sistemin temelini çalıştıralım, sonra real-time eklenebilir
 
   } catch (e) {
     console.error('Bildirimler yüklenemedi:', e);
@@ -593,8 +639,12 @@ async function loadNotifications() {
 
 /* === BİLDİRİM MODAL === */
 async function showBildirimModal(bildirimId, baslik, icerik, okunduMu, tip, zamanStr) {
-    const user = window.auth.currentUser;
-  if (!user) return;
+    // Supabase kullanıcı bilgisi
+    const supabase = window.supabase;
+    if (!supabase) return;
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
   // Modal container'ı kontrol et, yoksa oluştur
   let modalContainer = document.getElementById('bildirimModalContainer');
@@ -698,20 +748,19 @@ async function showBildirimModal(bildirimId, baslik, icerik, okunduMu, tip, zama
     okunduBtn.onclick = async (e) => {
       e.stopPropagation();
       try {
-        const kullaniciBildirimleriRef = window.db.collection('kullanici_bildirimleri')
-          .doc(user.uid)
-          .collection('bildirimler');
+        const sb = window.supabase;
+        if (!sb) throw new Error('Supabase client yüklenmedi');
 
-        await kullaniciBildirimleriRef.doc(bildirimId).update({
-          okunduMu: true,
-          okunmaZamani: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        // Supabase'de bildirimi okundu olarak işaretle
+        const { error: updateError } = await sb
+          .from('kullanici_bildirimleri')
+          .update({ 
+            okundu_mu: true,
+            okunma_zamani: new Date().toISOString()
+          })
+          .eq('id', bildirimId);
 
-        // Sayacı güncelle
-        const kullaniciRef = window.db.collection('kullanici_bildirimleri').doc(user.uid);
-        await kullaniciRef.update({
-          okunmamisBildirim: firebase.firestore.FieldValue.increment(-1)
-        });
+        if (updateError) throw updateError;
 
         // Bildirimleri yeniden yükle
         await loadNotifications();
@@ -747,25 +796,36 @@ async function showBildirimModal(bildirimId, baslik, icerik, okunduMu, tip, zama
 // Global olarak erişilebilir yap
 window.showBildirimModal = showBildirimModal;
 
-/* === SAYFA MANİFESTİ YÜKLEME === */
+/* === SAYFA MANİFESTİ YÜKLEME (SUPABASE) === */
 async function fetchPanels(allowSet, denySet) {
   const res = [];
   try {
-    const snap = await window.db.collection('sayfa_manifesti').get();
-    snap.forEach(doc => {
-      const d = doc.data() || {}, id = doc.id, panelTitle = d.title || id;
+    if (!window.supabase) throw new Error("Supabase client yok");
+
+    // Supabase'den sayfa manifestini çek
+    const { data: snap, error } = await window.supabase
+      .from('sayfa_manifesti')
+      .select('*')
+      .order('order', { ascending: true, nullsFirst: false }); // Sıralama eklendi
+
+    if (error) throw error;
+
+    (snap || []).forEach(d => {
+      const id = d.id; // Supabase'de id sütunu vardır
+      const panelTitle = d.title || id;
       
-      // Sistem Ayarları panelini üst menüden kaldır (sadece profil dropdown'unda kalacak)
+      // Sistem Ayarları filtresi (Aynen korundu)
       const panelTitleNorm = window.norm(panelTitle);
       const idNorm = window.norm(id);
       const excludedPanels = ['sistem ayarları', 'ayarlar', 'diğer', 'sistemayarları', 'sistem-ayarlari'];
       if (excludedPanels.includes(panelTitleNorm) || excludedPanels.includes(idNorm) ||
           (panelTitleNorm.includes('sistem') && panelTitleNorm.includes('ayar'))) {
-        return; // Bu paneli atla
+        return; 
       }
       
       const panelGrant = allowSet.has(window.norm(id)) || allowSet.has(window.norm(panelTitle));
-      let pages = Array.isArray(d.pages) ? d.pages : [];
+      let pages = Array.isArray(d.pages) ? d.pages : []; // JSONB sütunu array döner
+      
       pages = pages.filter(pg => {
         const keyNorm = window.norm(pg.key || pg.title || '');
         const pageGrant = allowSet.has(keyNorm), denied = denySet.has(keyNorm);
@@ -776,11 +836,13 @@ async function fetchPanels(allowSet, denySet) {
         key: pg.key || pg.title || '',
         sira: typeof pg.order === 'number' ? pg.order : 9999
       })).sort((a, b) => a.sira - b.sira);
+
       if (pages.length) res.push({ id, baslik: panelTitle, sira: typeof d.order === 'number' ? d.order : 9999, pages });
     });
+    
     res.sort((a, b) => a.sira - b.sira);
   } catch (e) { 
-    console.error('sayfa_manifesti okunamadı:', e); 
+    console.error('Manifest yüklenemedi:', e); 
   }
   return res;
 }
@@ -947,8 +1009,16 @@ function initAppShell() {
   if (btnLogout) {
     btnLogout.addEventListener('click', async (e) => {
       e.preventDefault();
-      try { 
-        await window.auth.signOut(); 
+      try {
+        // window.auth wrapper'ını kullan veya direkt Supabase
+        const auth = window.auth || (window.getSupabaseAuth && window.getSupabaseAuth());
+        if (auth && typeof auth.signOut === 'function') {
+          await auth.signOut();
+        } else {
+          // Direkt Supabase kullan
+          const sb = window.supabase;
+          if (sb) await sb.auth.signOut();
+        }
         // Path'i normalize et
         const indexPath = normalizeUrl('index.html');
         location.assign(indexPath); 
@@ -991,86 +1061,180 @@ function initAppShell() {
   });
 }
 
-/* === AUTH + INIT (DÜZELTİLMİŞ HALİ) === */
+/* === AUTH + INIT === */
 function initAppShellAuth() {
-  window.auth.onAuthStateChanged(async (user) => {
+  // index.html sayfasında initAppShellAuth çalışmasın (login sayfası, app shell değil)
+  const currentPath = window.location.pathname;
+  const isIndexPage = currentPath.endsWith('index.html') || currentPath === '/' || currentPath.endsWith('/');
+  if (isIndexPage) {
+    // index.html'de kendi session kontrolü var, burada bir şey yapma
+    return;
+  }
+  
+  // window.auth wrapper'ını kullan (Firebase uyumluluğu için)
+  // Eğer window.auth yoksa, direkt Supabase kullan
+  const auth = window.auth || (window.getSupabaseAuth && window.getSupabaseAuth());
+  
+  if (!auth || typeof auth.onAuthStateChanged !== 'function') {
+    // Direkt Supabase kullan
+    const supabase = window.supabase;
+    if (!supabase) {
+      console.warn('Supabase client veya auth wrapper yüklenmedi');
+      return;
+    }
     
-    // --- DÜZELTME BAŞLANGICI ---
-    // Şu an hangi sayfadayız kontrol et
-    const path = window.location.pathname;
-    // Eğer dosya adı 'index.html' ise veya anasayfadaysak ('/'), yönlendirme yapma!
-    const isLoginPage = path.includes('index.html') || path === '/' || path.endsWith('/');
-
+    // Supabase auth state change listener
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT' || !session?.user) {
+        // Eğer zaten index.html sayfasındaysak, yönlendirme yapma (sonsuz döngüyü önle)
+        const currentPath = window.location.pathname;
+        const isIndexPage = currentPath.endsWith('index.html') || currentPath === '/' || currentPath.endsWith('/');
+        if (!isIndexPage) {
+          const indexPath = normalizeUrl('index.html');
+          window.location.href = indexPath;
+        }
+        return;
+      }
+      
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+        await loadUserDataAndInit(session.user);
+      }
+    });
+    
+    // Mevcut session'ı kontrol et - Optimize retry mekanizması ile
+    getSessionWithRetry().then(async ({ data: { session }, error: sessionError }) => {
+      if (sessionError) {
+        console.error('Session alma hatası:', sessionError);
+      }
+      if (session?.user) {
+        await loadUserDataAndInit(session.user);
+      } else {
+        // Eğer zaten index.html sayfasındaysak, yönlendirme yapma (sonsuz döngüyü önle)
+        const currentPath = window.location.pathname;
+        const isIndexPage = currentPath.endsWith('index.html') || currentPath === '/' || currentPath.endsWith('/');
+        if (!isIndexPage) {
+          const indexPath = normalizeUrl('index.html');
+          window.location.href = indexPath;
+        }
+        // index.html'deyse, sayfa zaten login formunu gösterecek
+      }
+    });
+    
+    return;
+  }
+  
+  // Firebase wrapper kullan
+  auth.onAuthStateChanged(async (user) => {
     if (!user) {
-      // Eğer kullanıcı yoksa VE biz zaten giriş sayfasında DEĞİLSEK yönlendir
-      if (!isLoginPage) {
+      // Eğer zaten index.html sayfasındaysak, yönlendirme yapma (sonsuz döngüyü önle)
+      const currentPath = window.location.pathname;
+      const isIndexPage = currentPath.endsWith('index.html') || currentPath === '/' || currentPath.endsWith('/');
+      if (!isIndexPage) {
         const indexPath = normalizeUrl('index.html');
         window.location.href = indexPath;
       }
-      // Giriş sayfasındaysak hiçbir şey yapma (kullanıcı form doldursun)
       return;
     }
-    // --- DÜZELTME BİTİŞİ ---
-
-    // Eğer kullanıcı zaten giriş yapmışsa ve şu an index.html'de ise panele at (İsteğe bağlı opsiyon)
-    if (user && isLoginPage) {
-        window.location.href = "panel.html";
-        return;
-    }
-
-    try {
-      const userDoc = await window.db.collection('kullanicilar').doc(user.uid).get();
-      if (userDoc.exists) {
-        const data = userDoc.data();
-        const profNameEl = document.getElementById('profName');
-        if (profNameEl) {
-          const name = data.adSoyad || user.email?.split('@')[0] || 'Profil';
-          profNameEl.textContent = `👤 ${name}`;
-        }
-
-        const rawPerms = Array.isArray(data.yetkiler) ? data.yetkiler : [];
-        CURRENT_ALLOW = new Set(rawPerms.filter(s => !String(s).trim().startsWith('-') && !String(s).trim().startsWith('!')).map(norm));
-        CURRENT_DENY = new Set(rawPerms.filter(s => String(s).trim().startsWith('-') || String(s).trim().startsWith('!')).map(s => window.norm(String(s).replace(/^[-!]\s*/, ''))));
-        
-        window.CURRENT_ALLOW = CURRENT_ALLOW;
-        window.CURRENT_DENY = CURRENT_DENY;
-
-        const panels = await fetchPanels(CURRENT_ALLOW, CURRENT_DENY);
-        renderNav(panels);
-
-        await loadNotifications();
-      }
-    } catch (e) {
-      console.error('Kullanıcı bilgisi alınamadı:', e);
-      showToast('error', 'Hata', 'Kullanıcı bilgisi yüklenemedi.');
-    }
-
-    if (typeof window.initPage === 'function') {
-      await window.initPage();
-    }
+    await loadUserDataAndInit(user);
   });
 }
 
+// Kullanıcı verilerini yükle ve init et (ortak fonksiyon)
+async function loadUserDataAndInit(user) {
+  try {
+    // Supabase client'ı kullan (direkt)
+    const supabase = window.supabase;
+    if (!supabase) {
+      console.error('Supabase client yüklenmedi');
+      // Supabase yüklenmediğinde de body'yi göster (kullanıcı hatayı görebilsin)
+      document.body.style.visibility = 'visible';
+      document.documentElement.style.visibility = 'visible';
+      return;
+    }
+
+    // Kullanıcı bilgisini direkt Supabase'den al
+    const userId = user.uid || user.id;
+    const { data: userData, error: userError } = await supabase
+      .from('kullanicilar')
+      .select('id, adsoyad, email, yetkiler, rol, aktif')
+      .eq('id', userId)
+      .single();
+
+    if (userError) {
+      console.error('Kullanıcı bilgisi alınamadı:', userError);
+      showToast('error', 'Hata', 'Kullanıcı bilgisi yüklenemedi.');
+      // Hata durumunda da body'yi göster (kullanıcı hatayı görebilsin)
+      document.body.style.visibility = 'visible';
+      document.documentElement.style.visibility = 'visible';
+      return;
+    }
+
+    if (userData) {
+      const data = userData;
+      const profNameEl = document.getElementById('profName');
+      if (profNameEl) {
+        // Ad Soyad'ın tamamını göster (tüm sayfalarda aynı) + emoji
+        const name = data.adsoyad || data.adSoyad || user.email?.split('@')[0] || 'Profil';
+        profNameEl.textContent = `👤 ${name}`;
+      }
+
+      // Yetkileri yükle (hem local hem window'a)
+      const rawPerms = Array.isArray(data.yetkiler) ? data.yetkiler : [];
+      CURRENT_ALLOW = new Set(rawPerms.filter(s => !String(s).trim().startsWith('-') && !String(s).trim().startsWith('!')).map(norm));
+      CURRENT_DENY = new Set(rawPerms.filter(s => String(s).trim().startsWith('-') || String(s).trim().startsWith('!')).map(s => window.norm(String(s).replace(/^[-!]\s*/, ''))));
+      // Window'a da kopyala (sayfalar için)
+      window.CURRENT_ALLOW = CURRENT_ALLOW;
+      window.CURRENT_DENY = CURRENT_DENY;
+
+      // Navigasyonu render et
+      const panels = await fetchPanels(CURRENT_ALLOW, CURRENT_DENY);
+      renderNav(panels);
+
+      // Bildirimleri yükle
+      await loadNotifications();
+    }
+    
+    // Body ve HTML'i görünür yap (auth başarılı oldu)
+    document.body.style.visibility = 'visible';
+    document.documentElement.style.visibility = 'visible';
+  } catch (e) {
+    console.error('Kullanıcı bilgisi alınamadı:', e);
+    showToast('error', 'Hata', 'Kullanıcı bilgisi yüklenemedi.');
+    // Hata durumunda da body'yi göster (kullanıcı hatayı görebilsin)
+    document.body.style.visibility = 'visible';
+    document.documentElement.style.visibility = 'visible';
+  }
+
+  // Sayfa özel init fonksiyonunu çağır (eğer varsa)
+  if (typeof window.initPage === 'function') {
+    await window.initPage();
+  }
+}
+
 /* === DOMContentLoaded'da başlat === */
-// Firebase yüklendikten sonra çalışacak şekilde ayarla
+// Supabase yüklendikten sonra çalışacak şekilde ayarla
 function initWhenReady() {
   initAppShell();
-  // Auth sadece Firebase yüklendikten sonra
-  if (typeof firebase !== 'undefined' && firebase.auth && db && auth) {
+  // Supabase client kontrolü
+  if (window.supabase && typeof window.initAppShellAuth === 'function') {
     initAppShellAuth();
   } else {
-    // Firebase henüz yüklenmediyse biraz bekle
-    setTimeout(() => {
-      if (typeof firebase !== 'undefined' && firebase.auth) {
-        const db2 = window.db || firebase.firestore();
-        const auth2 = window.auth || firebase.auth();
-        if (db2 && auth2) {
-          window.db = db2;
-          window.auth = auth2;
-          initAppShellAuth();
-        }
+    // Supabase henüz yüklenmediyse biraz bekle
+    let retryCount = 0;
+    const maxRetries = 20; // 10 saniye (20 * 500ms)
+    const retryInterval = setInterval(() => {
+      retryCount++;
+      if (window.supabase && typeof window.initAppShellAuth === 'function') {
+        clearInterval(retryInterval);
+        initAppShellAuth();
+      } else if (retryCount >= maxRetries) {
+        clearInterval(retryInterval);
+        console.warn('Supabase client veya initAppShellAuth yüklenmedi');
+        // Timeout durumunda da body'yi göster (kullanıcı hatayı görebilsin)
+        document.body.style.visibility = 'visible';
+        document.documentElement.style.visibility = 'visible';
       }
-    }, 100);
+    }, 500);
   }
 }
 
