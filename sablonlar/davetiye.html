@@ -638,37 +638,81 @@
         const imgData = canvas.toDataURL('image/png');
         
         // Dosya ismini oluştur
-        const link = document.createElement('a');
-        // İsimdeki Türkçe karakterleri ve boşlukları temizle
         const safeSahip = sahip.replace(/[^a-z0-9ğüşıöçĞÜŞİÖÇ\s]/gi, '').replace(/\s+/g, '-');
         const fileName = `davetiye-${safeSahip}-${tip}-${gregGun}-${gregAy.toLowerCase()}.png`;
-        
-        link.download = fileName;
-        link.href = imgData;
-        document.body.appendChild(link);
-        
-        // OTOMATİK İNDİRME TETİKLE (Mobilde de çalışır)
-        link.click();
-        document.body.removeChild(link);
-        
-        // İŞLEM BİTTİKTEN SONRA KAPATMA / GERİ GİTME
-        setTimeout(() => {
-          try {
-            // Önce pencereyi kapatmayı dene
-            window.close();
-          } catch (e) {
-            console.log('Pencere kapatılamadı');
-          }
+
+        // iOS Kontrolü
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+        const downloadAction = () => {
+          const link = document.createElement('a');
+          link.download = fileName;
+          link.href = imgData;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+          // İndirme işleminden sonra kapat
+          setTimeout(() => {
+            try { window.close(); } catch (e) {}
+            try { if (window.history.length > 1) window.history.back(); } catch (e) {}
+          }, 1000);
+        };
+
+        if (isIOS) {
+          // iOS İÇİN ÖZEL ÇÖZÜM: Tıklanabilir Buton Oluştur
+          // Mevcut içeriği temizle
+          document.body.innerHTML = '';
+          document.body.style.backgroundColor = 'rgba(0,0,0,0.8)';
+          document.body.style.display = 'flex';
+          document.body.style.flexDirection = 'column';
+          document.body.style.justifyContent = 'center';
+          document.body.style.alignItems = 'center';
+
+          // Bilgi Mesajı
+          const msg = document.createElement('div');
+          msg.innerHTML = "Davetiyeniz Hazırlandı!<br>İndirmek için aşağıdaki butona basınız.";
+          msg.style.color = '#fff';
+          msg.style.textAlign = 'center';
+          msg.style.fontFamily = 'sans-serif';
+          msg.style.fontSize = '18px';
+          msg.style.marginBottom = '20px';
+          document.body.appendChild(msg);
+
+          // Büyük İndirme Butonu
+          const btn = document.createElement('button');
+          btn.innerText = "DAVETİYEYİ İNDİR ⬇️";
+          btn.style.padding = '20px 40px';
+          btn.style.fontSize = '20px';
+          btn.style.fontWeight = 'bold';
+          btn.style.backgroundColor = '#d4af37'; // Altın rengi
+          btn.style.color = '#fff';
+          btn.style.border = 'none';
+          btn.style.borderRadius = '10px';
+          btn.style.cursor = 'pointer';
+          btn.style.boxShadow = '0 4px 15px rgba(0,0,0,0.3)';
           
-          try {
-            // Kapanmazsa (özellikle mobilde) bir önceki sayfaya geri dön
-            if (window.history.length > 1) {
-              window.history.back();
-            }
-          } catch (e) {
-            console.log('Geri gidilemedi');
-          }
-        }, 1000); // 1 saniye bekle ki indirme başlasın
+          btn.onclick = function() {
+            downloadAction();
+            btn.innerText = "İndiriliyor...";
+            btn.disabled = true;
+          };
+          
+          document.body.appendChild(btn);
+          
+          // Görsel önizlemesini de ekleyelim ki kullanıcı ne indirdiğini görsün
+          const previewImg = document.createElement('img');
+          previewImg.src = imgData;
+          previewImg.style.marginTop = '20px';
+          previewImg.style.maxWidth = '80%';
+          previewImg.style.borderRadius = '8px';
+          previewImg.style.boxShadow = '0 0 20px rgba(0,0,0,0.5)';
+          document.body.appendChild(previewImg);
+
+        } else {
+          // MASAÜSTÜ ve ANDROID İÇİN: Otomatik İndir
+          downloadAction();
+        }
 
       }).catch(function(error) {
         console.error('PNG oluşturma hatası:', error);
