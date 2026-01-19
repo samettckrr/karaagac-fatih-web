@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=620, user-scalable=no">
+  <meta name="viewport" content="width=650, user-scalable=no">
   <title>Davetiye Kartı</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -633,79 +633,47 @@
               });
             }
           }
+          
         }).then(function(canvas) {
-          const imgData = canvas.toDataURL('image/png');
-          
-          // Mobil cihaz kontrolü
-          const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-          const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-          
-          if (isMobile) {
-            // Mobil cihazlarda: Canvas'ı sayfada göster ve kullanıcının uzun basarak kaydetmesine izin ver
-            const img = document.createElement('img');
-            img.src = imgData;
-            img.style.width = '100%';
-            img.style.height = 'auto';
-            img.style.display = 'block';
-            img.style.margin = '0 auto';
-            img.style.maxWidth = '100%';
-            
-            // Mevcut içeriği temizle ve sadece görseli göster
-            document.body.innerHTML = '';
-            document.body.style.padding = '20px';
-            document.body.style.backgroundColor = '#f5f5f5';
-            document.body.style.textAlign = 'center';
-            
-            const info = document.createElement('div');
-            info.style.marginTop = '20px';
-            info.style.padding = '15px';
-            info.style.backgroundColor = '#fff';
-            info.style.borderRadius = '8px';
-            info.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
-            info.innerHTML = isIOS 
-              ? '<p style="margin:0; color:#333; font-size:16px;">📱 Görsele uzun basın ve "Fotoğrafı Kaydet" seçeneğini seçin</p>'
-              : '<p style="margin:0; color:#333; font-size:16px;">📱 Görsele uzun basın ve "Resmi Kaydet" veya "Görseli İndir" seçeneğini seçin</p>';
-            
-            document.body.appendChild(img);
-            document.body.appendChild(info);
-            
-            // iOS'ta sayfayı kapatma
-            if (!isIOS) {
-              setTimeout(() => {
-                try {
-                  window.close();
-                } catch (e) {
-                  // Sayfa kapatılamazsa sessizce devam et
-                }
-              }, 2000);
-            }
-          } else {
-            // Masaüstü: Otomatik indirme
-            const link = document.createElement('a');
-            const fileName = `davetiye-${sahip.replace(/\s+/g, '-')}-${tip}-${gregGun}-${gregAy.toLowerCase()}.png`;
-            link.download = fileName;
-            link.href = imgData;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            
-            // Sayfayı kapat
-            setTimeout(() => {
-              try {
-                window.close();
-              } catch (e) {
-                // Sayfa kapatılamazsa sessizce devam et
-              }
-            }, 500);
+        const imgData = canvas.toDataURL('image/png');
+        
+        // Dosya ismini oluştur
+        const link = document.createElement('a');
+        // İsimdeki Türkçe karakterleri ve boşlukları temizle
+        const safeSahip = sahip.replace(/[^a-z0-9ğüşıöçĞÜŞİÖÇ\s]/gi, '').replace(/\s+/g, '-');
+        const fileName = `davetiye-${safeSahip}-${tip}-${gregGun}-${gregAy.toLowerCase()}.png`;
+        
+        link.download = fileName;
+        link.href = imgData;
+        document.body.appendChild(link);
+        
+        // OTOMATİK İNDİRME TETİKLE (Mobilde de çalışır)
+        link.click();
+        document.body.removeChild(link);
+        
+        // İŞLEM BİTTİKTEN SONRA KAPATMA / GERİ GİTME
+        setTimeout(() => {
+          try {
+            // Önce pencereyi kapatmayı dene
+            window.close();
+          } catch (e) {
+            console.log('Pencere kapatılamadı');
           }
-        }).catch(function(error) {
-          console.error('PNG oluşturma hatası:', error);
-          const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-          const errorMsg = isMobile 
-            ? 'Davetiye görseli oluşturulamadı. Lütfen sayfaya uzun basıp "Görseli Kaydet" seçeneğini kullanın.'
-            : 'Davetiye görseli oluşturulamadı. Lütfen sayfaya sağ tıklayıp "Görseli farklı kaydet" seçeneğini kullanın.';
-          alert(errorMsg);
-        });
+          
+          try {
+            // Kapanmazsa (özellikle mobilde) bir önceki sayfaya geri dön
+            if (window.history.length > 1) {
+              window.history.back();
+            }
+          } catch (e) {
+            console.log('Geri gidilemedi');
+          }
+        }, 1000); // 1 saniye bekle ki indirme başlasın
+
+      }).catch(function(error) {
+        console.error('PNG oluşturma hatası:', error);
+        alert('Davetiye oluşturulurken bir hata oluştu.');
+      });
       }, 1500); // Sayfa yüklendikten 1.5 saniye sonra indir
     }
 
