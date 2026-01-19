@@ -3901,6 +3901,7 @@
           </div>
           <div style="display:flex; gap:8px; align-items:center; margin-top:12px; justify-content:flex-end; padding-top:12px; border-top:1px solid #f0f0f0;">
             <button onclick="editMyRecord('${k.id}')" style="background:var(--primary); color:white; border:none; padding:10px 16px; border-radius:8px; font-size:13px; cursor:pointer; font-weight:600; box-shadow:0 2px 6px rgba(0,0,0,0.1);">✏️ Düzenle</button>
+            <button onclick="generateDavetiye('${k.sahip}', '${k.tip}', '${kDate.toISOString()}', ${musafirAdedi})" style="background:#d4af37; color:white; border:none; padding:10px 16px; border-radius:8px; font-size:13px; cursor:pointer; font-weight:600; box-shadow:0 2px 6px rgba(0,0,0,0.1);">🎫 Davetiye</button>
           </div>
         `;
           container.appendChild(card);
@@ -5916,6 +5917,53 @@
     window.deleteMyRecord = deleteMyRecord;
     window.toggleEditRequestOptions = toggleEditRequestOptions;
     window.closeEditRequestModal = closeEditRequestModal;
+
+    // Davetiye oluşturma fonksiyonu
+    function generateDavetiye(sahip, tip, tarihISO, musafirAdedi) {
+      try {
+        const tarih = new Date(tarihISO);
+        if (isNaN(tarih.getTime())) {
+          alert('Geçersiz tarih!');
+          return;
+        }
+
+        // Haftanın günü (Türkçe)
+        const gunler = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+        const gun = gunler[tarih.getDay()];
+
+        // Gregoryen tarih bilgileri
+        const gregGun = tarih.getDate();
+        const gregAy = tarih.getMonth() + 1;
+        const gregYil = tarih.getFullYear();
+        
+        // Ay isimleri (Türkçe)
+        const aylar = ['OCAK', 'ŞUBAT', 'MART', 'NİSAN', 'MAYIS', 'HAZİRAN', 'TEMMUZ', 'AĞUSTOS', 'EYLÜL', 'EKİM', 'KASIM', 'ARALIK'];
+        const gregAyAdi = aylar[gregAy - 1];
+
+        // Aile bilgisi - her zaman true
+        const hasFamily = true;
+
+        // URL parametreleri
+        const params = new URLSearchParams({
+          sahip: sahip || '',
+          tip: tip || 'iftar',
+          tarih: tarihISO,
+          gun: gun,
+          gregGun: gregGun.toString(),
+          gregAy: gregAyAdi,
+          gregYil: gregYil.toString(),
+          hasFamily: hasFamily.toString()
+        });
+
+        // Yeni sekmede aç
+        const davetiyeUrl = `../sablonlar/davetiye.html?${params.toString()}`;
+        window.open(davetiyeUrl, '_blank');
+      } catch (error) {
+        console.error('Davetiye oluşturma hatası:', error);
+        alert('Davetiye oluşturulurken bir hata oluştu!');
+      }
+    }
+    window.generateDavetiye = generateDavetiye;
   </script>
 </body>
 
