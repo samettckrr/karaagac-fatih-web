@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Butçe İhvan CSV Aktarım | Karaağaç Fatih</title>
+  <link rel="icon" type="image/png" href="../img/logo.png" />
+  <link rel="stylesheet" href="../css/app-shell.css" />
+
+  <style>
+    body {
+      padding-top: var(--appbar-h) !important;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+
+    main.container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 16px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    @media (max-width: 900px) {
+      .grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--stroke);
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    .card h2 {
+      margin: 0 0 6px;
+      font-size: 18px;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 220px;
+      resize: vertical;
+      border-radius: 10px;
+      border: 1px solid var(--stroke);
+      padding: 10px 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 13px;
+      background: var(--surface);
+      color: var(--text);
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: var(--brand);
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, .3);
+      background: var(--card);
+    }
+
+    .field-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin: 8px 0 0;
+    }
+
+    .btn {
+      border-radius: 999px;
+      padding: 9px 14px;
+      border: 1px solid transparent;
+      background: var(--brand);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all .15s ease;
+    }
+
+    .btn.secondary {
+      background: transparent;
+      color: var(--text);
+      border-color: var(--stroke);
+    }
+
+    .btn:disabled {
+      opacity: .5;
+      cursor: default;
+    }
+
+    .btn:not(:disabled):hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 25px rgba(15, 23, 42, .18);
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      background: var(--pill);
+      border: 1px solid var(--stroke);
+      color: var(--muted);
+    }
+
+    .table-wrap {
+      max-height: 360px;
+      overflow: auto;
+      margin-top: 10px;
+      border-radius: 10px;
+      border: 1px solid var(--stroke);
+      background: var(--surface);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    thead {
+      position: sticky;
+      top: 0;
+      background: var(--surface2);
+      z-index: 1;
+    }
+
+    th, td {
+      padding: 6px 8px;
+      border-bottom: 1px solid var(--stroke);
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    tbody tr:nth-child(even) td {
+      background: rgba(148, 163, 184, .04);
+    }
+
+    td.tutar, th.tutar {
+      text-align: right;
+    }
+
+    td.status-ok {
+      color: #16a34a;
+    }
+
+    td.status-error {
+      color: #dc2626;
+      font-weight: 600;
+    }
+
+    .error-box {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(220, 38, 38, .3);
+      background: rgba(248, 113, 113, .08);
+      color: var(--text);
+      font-size: 12px;
+    }
+
+    .error-box ul {
+      margin: 6px 0 0;
+      padding-left: 18px;
+    }
+
+    .error-box li {
+      margin-bottom: 2px;
+    }
+  </style>
+
+  <!-- Supabase (Auth + Database) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="../src/supabase.js"></script>
+  <script src="../src/supabase-auth-wrapper.js"></script>
+  <script src="../src/supabase-db-wrapper.js"></script>
+
+  <script>
+    // Supabase Auth wrapper'ı hazırla ve app shell auth'u tetikle
+    (function () {
+      function initAuth() {
+        if (typeof window.getSupabaseAuth === 'function') {
+          window.auth = window.getSupabaseAuth();
+          return true;
+        }
+        return false;
+      }
+
+      function waitAndTriggerInit() {
+        if (typeof window.auth !== 'undefined' && window.auth && typeof window.initAppShellAuth === 'function') {
+          try {
+            window.initAppShellAuth();
+          } catch (e) {
+            console.error('initAppShellAuth hatası:', e);
+          }
+        } else if (typeof window.initAppShellAuth === 'function') {
+          setTimeout(waitAndTriggerInit, 300);
+        }
+      }
+
+      function bootstrap() {
+        if (!initAuth()) {
+          setTimeout(bootstrap, 200);
+        } else {
+          setTimeout(waitAndTriggerInit, 200);
+        }
+      }
+
+      bootstrap();
+    })();
+  </script>
+
+  <!-- Ortak JS (app shell, toast, nav, RLS bilinçli istekler) -->
+  <script src="../js/ortak.js"></script>
+</head>
+<body>
+
+  <!-- APP SHELL BAR -->
+  <div class="appbar">
+    <div class="brand" onclick="location.href='../panel.html'">
+      <img src="../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
+    </div>
+    <nav class="nav-center"><ul class="nav-list" id="navMain"></ul></nav>
+    <div class="nav-right">
+      <button class="btn hamb" id="hamburger" title="Menü">☰</button>
+      <div class="nav-item">
+        <button class="iconbtn" id="btnNotif" title="Bildirimler">🔔
+          <span class="badge" id="notifBadge" style="display:none">0</span>
+        </button>
+        <div class="dropdown drop-right" id="notifDropdown">
+          <div class="muted" style="padding:6px 8px">Son bildirimler</div>
+          <div id="notifList" style="max-height:300px;overflow:auto"></div>
+        </div>
+      </div>
+      <div class="nav-item">
+        <button class="iconbtn" id="btnProfile" title="Profil">
+          <span class="avatar"></span> <span id="profName" class="muted">Profil</span>
+        </button>
+        <div class="dropdown drop-right" id="profDropdown">
+          <a href="/diger/kullanici-yonetimi.html">👤 Profil</a>
+          <a href="/diger/sistem-ayarlari.html">⚙️ Sistem Ayarları</a>
+          <a href="#" id="btnLogout">🚪 Çıkış Yap</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST CONTAINER (ortak.js kullanır) -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <main class="container">
+    <section class="card">
+      <h2>📥 Butçe İhvan CSV / Metin Aktarımı</h2>
+      <p class="muted">
+        Her satıra bir kayıt gelecek şekilde, şu formata yakın verileri yapıştır:
+        <br/>
+        <code>2025-1 , Gider , Personel Hediye , 239.100₺</code>
+      </p>
+
+      <textarea id="rawInput" placeholder="Her satıra bir kayıt yazın veya CSV'den yapıştırın...&#10;2025-1 , Gider , Personel Hediye , 239.100₺&#10;2025-2 , Gider , Personel Hediye , 233.800₺&#10;2025-8 , Gelir , Teberru , 45.000₺"></textarea>
+
+      <div class="field-row">
+        <button class="btn" id="btnParse">
+          🔍 Satırları Önizle
+        </button>
+        <button class="btn secondary" id="btnClear">
+          Temizle
+        </button>
+        <span class="pill" id="parseInfo">Henüz önizleme yok.</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>🔎 Önizleme &amp; Kayıt</h2>
+      <p class="muted">
+        Geçerli satırlar Supabase üzerindeki <strong>public.butceihvan</strong> tablosuna kaydedilir.
+        <br/>ID alanı otomatik oluşturulur; yalnızca yıl, ay, tip, kategori ve tutarı göndereceğiz.
+      </p>
+
+      <div class="field-row" style="margin-bottom:6px">
+        <button class="btn" id="btnInsert" disabled>
+          💾 Geçerli Satırları Kaydet
+        </button>
+        <span class="pill" id="insertInfo">Kaydedilecek satır yok.</span>
+      </div>
+
+      <div id="errorBox" class="error-box" style="display:none"></div>
+
+      <div class="table-wrap" id="previewWrap" style="display:none">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Yıl</th>
+              <th>Ay</th>
+              <th>Tip</th>
+              <th>Kategori</th>
+              <th class="tutar">Tutar (₺)</th>
+              <th>Durum</th>
+            </tr>
+          </thead>
+          <tbody id="previewBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      const $ = (id) => document.getElementById(id);
+      const rawInput = $('rawInput');
+      const btnParse = $('btnParse');
+      const btnClear = $('btnClear');
+      const btnInsert = $('btnInsert');
+      const parseInfo = $('parseInfo');
+      const insertInfo = $('insertInfo');
+      const previewWrap = $('previewWrap');
+      const previewBody = $('previewBody');
+      const errorBox = $('errorBox');
+
+      let parsedRows = [];
+
+      function showToastSafe(type, title, message) {
+        if (typeof window.showToast === 'function') {
+          window.showToast(type, title, message);
+        } else {
+          console.log(type, title, message);
+        }
+      }
+
+      function parseLine(line, index) {
+        const original = line;
+        line = line.replace(/\s+/g, ' ').trim();
+        if (!line) return null;
+
+        // ; veya , ile ayrılmış olabilir
+        const parts = line.split(/[,;]+/).map(p => p.trim()).filter(Boolean);
+        if (parts.length < 4) {
+          return { error: `Satırdaki alan sayısı eksik (en az 4 olmalı).`, original };
+        }
+
+        const yilAyRaw = parts[0];
+        const tipRaw = parts[1];
+        const kategori = parts[2];
+        const tutarRaw = parts.slice(3).join(' '); // tutar alanında virgül vb. olabilir
+
+        // Yıl-Ay parse
+        const match = yilAyRaw.match(/(\d{4})\D?(\d{1,2})/);
+        if (!match) {
+          return { error: `Yıl/ay formatı okunamadı: "${yilAyRaw}"`, original };
+        }
+        const yil = Number(match[1]);
+        const ay = Number(match[2]);
+        if (!yil || !ay || ay < 1 || ay > 12) {
+          return { error: `Yıl veya ay geçersiz: "${yilAyRaw}"`, original };
+        }
+
+        // Tip
+        let tip = tipRaw.toString().toLowerCase();
+        if (tip.startsWith('gider')) tip = 'gider';
+        else if (tip.startsWith('gelir')) tip = 'gelir';
+        else {
+          return { error: `Tip (Gelir/Gider) anlaşılamadı: "${tipRaw}"`, original };
+        }
+
+        // Tutar
+        let t = tutarRaw.toString()
+          .replace(/₺/g, '')
+          .replace(/\s/g, '')
+          .replace(/\./g, '')    // binlik noktalar
+          .replace(/,/g, '.');   // ondalık virgül
+
+        const tutar = Number(t);
+        // Not: Ayın tutarı 0 olabilir; sadece negatif veya sayı olmayan değerleri reddediyoruz.
+        if (!isFinite(tutar) || tutar < 0) {
+          return { error: `Tutar sayıya çevrilemedi veya negatif: "${tutarRaw}"`, original };
+        }
+
+        return {
+          yil,
+          ay,
+          tip,
+          kategori,
+          tutar,
+          original,
+          error: null
+        };
+      }
+
+      function renderPreview() {
+        previewBody.innerHTML = '';
+        let okCount = 0;
+        let errCount = 0;
+
+        parsedRows.forEach((row, idx) => {
+          if (!row) return;
+          const tr = document.createElement('tr');
+          const cells = [];
+
+          cells.push(idx + 1);
+          cells.push(row.yil || '');
+          cells.push(row.ay || '');
+          cells.push(row.tip || '');
+          cells.push(row.kategori || '');
+          cells.push(row.tutar != null ? row.tutar.toLocaleString('tr-TR', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2
+          }) : '');
+
+          const statusTd = document.createElement('td');
+          if (row.error) {
+            statusTd.textContent = row.error;
+            statusTd.className = 'status-error';
+            errCount++;
+          } else {
+            statusTd.textContent = 'Hazır';
+            statusTd.className = 'status-ok';
+            okCount++;
+          }
+
+          cells.forEach((val, i) => {
+            const td = document.createElement('td');
+            td.textContent = val;
+            if (i === 5) td.classList.add('tutar');
+            tr.appendChild(td);
+          });
+          tr.appendChild(statusTd);
+          previewBody.appendChild(tr);
+        });
+
+        previewWrap.style.display = parsedRows.length ? 'block' : 'none';
+
+        parseInfo.textContent = `${parsedRows.length} satır • ${okCount} geçerli • ${errCount} hatalı`;
+        if (okCount > 0) {
+          btnInsert.disabled = false;
+          insertInfo.textContent = `${okCount} satır kaydedilmeye hazır.`;
+        } else {
+          btnInsert.disabled = true;
+          insertInfo.textContent = 'Kaydedilecek satır yok.';
+        }
+
+        if (errCount > 0) {
+          const lines = parsedRows
+            .map((r, i) => r && r.error ? `Satır ${i + 1}: ${r.error}` : null)
+            .filter(Boolean);
+          errorBox.style.display = 'block';
+          errorBox.innerHTML = `
+            <strong>⚠️ Hatalı satırlar var, bu satırlar kaydedilmeyecek.</strong>
+            <ul>${lines.map(l => `<li>${l}</li>`).join('')}</ul>
+          `;
+        } else {
+          errorBox.style.display = 'none';
+          errorBox.innerHTML = '';
+        }
+      }
+
+      btnParse.addEventListener('click', () => {
+        const lines = rawInput.value.split(/\r?\n/);
+        parsedRows = [];
+
+        lines.forEach((line, idx) => {
+          const row = parseLine(line, idx);
+          if (row) parsedRows.push(row);
+        });
+
+        if (!parsedRows.length) {
+          parseInfo.textContent = 'Geçerli satır bulunamadı.';
+          previewWrap.style.display = 'none';
+          btnInsert.disabled = true;
+          insertInfo.textContent = 'Kaydedilecek satır yok.';
+          errorBox.style.display = 'none';
+          errorBox.innerHTML = '';
+          return;
+        }
+
+        renderPreview();
+      });
+
+      btnClear.addEventListener('click', () => {
+        rawInput.value = '';
+        parsedRows = [];
+        previewBody.innerHTML = '';
+        previewWrap.style.display = 'none';
+        btnInsert.disabled = true;
+        parseInfo.textContent = 'Henüz önizleme yok.';
+        insertInfo.textContent = 'Kaydedilecek satır yok.';
+        errorBox.style.display = 'none';
+        errorBox.innerHTML = '';
+      });
+
+      btnInsert.addEventListener('click', async () => {
+        const supabase = window.supabase;
+        if (!supabase) {
+          showToastSafe('error', 'Veritabanı', 'Supabase client hazır değil.');
+          return;
+        }
+
+        const validRows = parsedRows.filter(r => r && !r.error);
+        if (!validRows.length) {
+          showToastSafe('warning', 'Kayıt', 'Kaydedilecek geçerli satır yok.');
+          return;
+        }
+
+        btnInsert.disabled = true;
+        btnParse.disabled = true;
+        btnClear.disabled = true;
+        btnInsert.textContent = 'Kaydediliyor...';
+
+        try {
+          // Çok satır varsa chunk'lara böl
+          const chunkSize = 100;
+          for (let i = 0; i < validRows.length; i += chunkSize) {
+            const chunk = validRows.slice(i, i + chunkSize).map(r => ({
+              id: crypto.randomUUID ? crypto.randomUUID() : `${r.yil}-${String(r.ay).padStart(2, '0')}-${r.tip}-${r.kategori.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              yil: r.yil,
+              ay: r.ay,
+              tip: r.tip,
+              kategori: r.kategori,
+              tutar: r.tutar
+            }));
+
+            const { error } = await supabase
+              .from('butceihvan')
+              .insert(chunk);
+
+            if (error) {
+              console.error('Supabase insert hatası:', error);
+              throw new Error(error.message || 'Supabase insert hatası');
+            }
+          }
+
+          showToastSafe('success', 'Kayıt tamamlandı', `${validRows.length} satır başarıyla kaydedildi.`);
+          insertInfo.textContent = `${validRows.length} satır kaydedildi.`;
+        } catch (e) {
+          console.error(e);
+          showToastSafe('error', 'Kayıt hatası', e.message || 'Kayıt sırasında hata oluştu.');
+        } finally {
+          btnInsert.disabled = false;
+          btnParse.disabled = false;
+          btnClear.disabled = false;
+          btnInsert.textContent = '💾 Geçerli Satırları Kaydet';
+        }
+      });
+
+      // App shell auth tamamlandıktan sonra çalışacak sayfa init hook'u
+      window.initPage = async function () {
+        // Şimdilik özel bir auth/rol kontrolü eklemiyoruz,
+        // sadece sayfa yüklendiğinde küçük bir log bırakalım.
+        console.log('📥 butcecsvaktarım initPage çalıştı');
+      };
+    })();
+  </script>
+</body>
+</html>
+
