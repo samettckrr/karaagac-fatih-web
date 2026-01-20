@@ -5,8 +5,8 @@
 --   id       : text        (PRIMARY KEY, DEFAULT gen_random_uuid())
 --   yil      : integer     (ör: 2025)
 --   ay       : integer     (1–12)
---   tip      : text        ('gider' / 'gelir')
---   kategori : text        (örn: 'Personel Hediye', 'Teberru')
+--   tip      : text        ('gider' / 'gelir' / 'yatırım')
+--   kategori : text        (örn: 'Personel Hediye', 'Teberru', 'Kütüphane')
 --   tutar    : numeric     (₺)
 --
 -- Notlar:
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS public.butceihvan (
   id       text    PRIMARY KEY DEFAULT (gen_random_uuid()::text),
   yil      integer NOT NULL,
   ay       integer NOT NULL CHECK (ay BETWEEN 1 AND 12),
-  tip      text    NOT NULL CHECK (LOWER(tip) = ANY (ARRAY['gider','gelir'])),
+  tip      text    NOT NULL CHECK (LOWER(tip) = ANY (ARRAY['gider','gelir','yatırım','yatirim'])),
   kategori text    NOT NULL,
   tutar    numeric NOT NULL
 );
@@ -67,14 +67,41 @@ CREATE POLICY butceihvan_delete
 --  "2025-1"  → yil = 2025 , ay = 1
 --  "Gider"   → tip = 'gider'
 --  "Gelir"   → tip = 'gelir'
+--  "Yatırım" → tip = 'yatırım'
 --  "kategori"→ kategori
 --  "tutar"   → tutar (₺ işareti, nokta/virgül temizlenmiş numeric)
 --
 -- ID otomatik üretilir (gen_random_uuid()), elle göndermen gerekmez.
 
-INSERT INTO public.butceihvan (yil, ay, tip, kategori, tutar)
+-- Eğer tablo zaten varsa, constraint'leri güncelle
+ALTER TABLE public.butceihvan 
+  ALTER COLUMN id SET DEFAULT (gen_random_uuid()::text);
+
+-- Eski tip constraint'ini kaldır ve yenisini ekle
+ALTER TABLE public.butceihvan 
+  DROP CONSTRAINT IF EXISTS butceihvan_tip_check;
+
+ALTER TABLE public.butceihvan 
+  ADD CONSTRAINT butceihvan_tip_check 
+  CHECK (LOWER(tip) = ANY (ARRAY['gider','gelir','yatırım','yatirim']));
+
+-- Örnek INSERT komutları (id otomatik oluşturulur)
+-- Not: Eğer hala hata alırsanız, aşağıdaki alternatif versiyonu kullanın
+INSERT INTO public.butceihvan (id, yil, ay, tip, kategori, tutar)
 VALUES
-  (2025, 1, 'gider', 'Personel Hediye', 239100),
-  (2025, 2, 'gider', 'Personel Hediye', 233800),
-  (2025, 8, 'gelir', 'Teberru',         45000);
+  (gen_random_uuid()::text, 2025, 1, 'gider', 'Personel Hediye', 239100),
+  (gen_random_uuid()::text, 2025, 2, 'gider', 'Personel Hediye', 233800),
+  (gen_random_uuid()::text, 2025, 8, 'gelir', 'Teberru',         45000),
+  (gen_random_uuid()::text, 2026, 1, 'yatırım', 'Kütüphane',     450000),
+  (gen_random_uuid()::text, 2025, 1, 'yatırım', 'Korkuluk',      10000)
+ON CONFLICT (id) DO NOTHING; -- Eğer id zaten varsa ekleme
+
+-- Alternatif: id alanını belirtmeden (DEFAULT kullanarak)
+-- INSERT INTO public.butceihvan (yil, ay, tip, kategori, tutar)
+-- VALUES
+--   (2025, 1, 'gider', 'Personel Hediye', 239100),
+--   (2025, 2, 'gider', 'Personel Hediye', 233800),
+--   (2025, 8, 'gelir', 'Teberru',         45000),
+--   (2026, 1, 'yatırım', 'Kütüphane',     450000),
+--   (2025, 1, 'yatırım', 'Korkuluk',      10000);
 

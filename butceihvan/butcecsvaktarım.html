@@ -275,10 +275,14 @@
       <p class="muted">
         Her satıra bir kayıt gelecek şekilde, şu formata yakın verileri yapıştır:
         <br/>
-        <code>2025-1 , Gider , Personel Hediye , 239.100₺</code>
+        <code>2025-1 , Gider , Personel Hediye , 239.100₺</code> (ay bazlı)
+        <br/>
+        <code>2026 , Gider , Personel Hediye , 2.500.000₺</code> (sadece yıl - planlama için)
+        <br/>
+        <code>2026 , Yatırım , Kütüphane , 450.000₺</code> (yatırım kayıtları)
       </p>
 
-      <textarea id="rawInput" placeholder="Her satıra bir kayıt yazın veya CSV'den yapıştırın...&#10;2025-1 , Gider , Personel Hediye , 239.100₺&#10;2025-2 , Gider , Personel Hediye , 233.800₺&#10;2025-8 , Gelir , Teberru , 45.000₺"></textarea>
+      <textarea id="rawInput" placeholder="Her satıra bir kayıt yazın veya CSV'den yapıştırın...&#10;2025-1 , Gider , Personel Hediye , 239.100₺&#10;2025-2 , Gider , Personel Hediye , 233.800₺&#10;2026 , Gelir , Teberru , 500.000₺&#10;2026 , Yatırım , Kütüphane , 450.000₺"></textarea>
 
       <div class="field-row">
         <button class="btn" id="btnParse">
@@ -365,23 +369,39 @@
         const kategori = parts[2];
         const tutarRaw = parts.slice(3).join(' '); // tutar alanında virgül vb. olabilir
 
-        // Yıl-Ay parse
-        const match = yilAyRaw.match(/(\d{4})\D?(\d{1,2})/);
-        if (!match) {
-          return { error: `Yıl/ay formatı okunamadı: "${yilAyRaw}"`, original };
-        }
-        const yil = Number(match[1]);
-        const ay = Number(match[2]);
-        if (!yil || !ay || ay < 1 || ay > 12) {
-          return { error: `Yıl veya ay geçersiz: "${yilAyRaw}"`, original };
+        // Yıl-Ay parse: hem "2026-1" hem de "2026" formatlarını destekle
+        let yil, ay;
+        
+        // Önce "2026-1" veya "2026.1" gibi formatı dene
+        const matchWithAy = yilAyRaw.match(/^(\d{4})[\s\-\.\/](\d{1,2})$/);
+        if (matchWithAy) {
+          yil = Number(matchWithAy[1]);
+          ay = Number(matchWithAy[2]);
+          if (!yil || !ay || ay < 1 || ay > 12) {
+            return { error: `Yıl veya ay geçersiz: "${yilAyRaw}" (ay 1-12 arası olmalı)`, original };
+          }
+        } else {
+          // Sadece yıl formatı: "2026", "2025", "2027" gibi
+          const matchYilOnly = yilAyRaw.match(/^(\d{4})$/);
+          if (matchYilOnly) {
+            yil = Number(matchYilOnly[1]);
+            if (!yil || yil < 2000 || yil > 2100) {
+              return { error: `Yıl geçersiz: "${yilAyRaw}" (2000-2100 arası olmalı)`, original };
+            }
+            // Ay bilgisi yoksa varsayılan olarak 1 kullan (planlama verileri için)
+            ay = 1;
+          } else {
+            return { error: `Yıl/ay formatı okunamadı: "${yilAyRaw}" (örnek: "2025-1" veya "2026")`, original };
+          }
         }
 
         // Tip
         let tip = tipRaw.toString().toLowerCase();
         if (tip.startsWith('gider')) tip = 'gider';
         else if (tip.startsWith('gelir')) tip = 'gelir';
+        else if (tip.startsWith('yatırım') || tip.startsWith('yatirim')) tip = 'yatırım';
         else {
-          return { error: `Tip (Gelir/Gider) anlaşılamadı: "${tipRaw}"`, original };
+          return { error: `Tip (Gelir/Gider/Yatırım) anlaşılamadı: "${tipRaw}"`, original };
         }
 
         // Tutar
