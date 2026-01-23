@@ -10,102 +10,222 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <!-- html2pdf.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<!-- App Shell CSS -->
+<link rel="stylesheet" href="../css/app-shell.css" />
 
 <style>
-  :root{
-    --appbar-h:56px;
-    --radius:14px; --shadow:0 4px 12px rgba(0,0,0,.08);
-    --bg:#f8fafc; --bg2:#f1f5f9;
-    --grad1:#3b82f622; --grad2:#06b6d422;
-    --card:#ffffff; --stroke:#e2e8f0;
-    --text:#1e293b; --muted:#64748b;
-    --brand:#3b82f6; --brand2:#2563eb;
-    --pill:#f1f5f9; --pill-hover:#e2e8f0; --surface:#f8fafc;
-    --danger:#ef4444; --success:#22c55e;
+  /* app-shell.css üst bar/arka plan/toast/yetki yapısını kullanır.
+     Burada sadece sayfa-özel küçük düzenlemeler var. */
+  body {
+    padding-top: var(--appbar-h) !important;
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 
-  *{box-sizing:border-box}
-  html,body{height:100%}
-  body{margin:0;padding:0;font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;background:var(--bg);color:var(--text)}
-  a{color:var(--brand); text-decoration:none}
-  a:hover{text-decoration:underline}
+  /* Drawer masaüstünde kapalı kalmalı */
+  @media (min-width: 1025px) {
+    .drawer {
+      transform: translateX(100%) !important;
+    }
 
-  /* APPBAR */
-  .appbar{
-    position:sticky; top:0; z-index:60; height:var(--appbar-h);
-    background:var(--card); backdrop-filter:blur(10px);
-    border-bottom:1px solid var(--stroke);
-    display:flex; align-items:center; gap:10px; padding:0 12px;
-  }
-  .brand{display:flex; align-items:center; gap:10px; cursor:pointer}
-  .brand img{width:24px; height:24px}
-  .brand span{font-weight:900; letter-spacing:.02em}
-  .nav-center{margin:0 auto; height:100%}
-  .nav-list{display:flex; gap:22px; align-items:center; height:100%; list-style:none; margin:0; padding:0}
-  .nav-item{position:relative; height:100%}
-  .nav-btn{height:100%; display:flex; align-items:center; gap:6px; font-weight:800; cursor:pointer}
-  .nav-btn:hover{color:var(--brand)}
-  .caret{font-size:12px; opacity:.6}
-  .dropdown{position:absolute; top:100%; left:0; min-width:240px; background:var(--card); border:1px solid var(--stroke); border-radius:10px; box-shadow:var(--shadow); padding:8px; display:none}
-  .dropdown a{display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px; color:var(--text); text-decoration:none}
-  .dropdown a:hover{background:var(--surface)}
-  .nav-item.open .dropdown{display:block}
-  .nav-right{display:flex; gap:8px; align-items:center}
-  .btn{border:1px solid var(--stroke); background:var(--card); color:var(--text); border-radius:999px; padding:8px 12px; cursor:pointer; white-space:nowrap}
-  .hamb{display:none}
-  .iconbtn{position:relative; border:1px solid var(--stroke); background:var(--card); color:var(--text); border-radius:999px; padding:8px 12px; cursor:pointer; display:flex; align-items:center; gap:8px}
-  .badge{position:absolute; top:-6px; right:-6px; background:var(--danger); color:#fff; font-size:11px; padding:2px 6px; border-radius:999px; border:2px solid var(--card)}
-  .drop-right{left:auto; right:0}
-  .avatar{width:22px;height:22px;border-radius:999px;background:linear-gradient(180deg,var(--brand),var(--brand2))}
-  @media (max-width: 960px){ .nav-center{display:none} .hamb{display:inline-flex} }
-
-  /* Drawer */
-  .drawer{position:fixed; top:var(--appbar-h); right:0; bottom:0; left:30%; transform:translateX(100%); transition:.25s; background:var(--card); border-left:1px solid var(--stroke); z-index:70; overflow:auto; padding:12px}
-  .drawer.open{transform:translateX(0)}
-  .drawer .panel-title{margin:14px 4px 6px; font-weight:800; color:var(--muted); font-size:13px}
-  .drawer a{display:block; padding:10px; border-radius:10px; border:1px solid var(--stroke); margin:6px 0; color:var(--text); background:var(--pill)}
-  .drawer a:hover{background:var(--pill-hover)}
-
-  /* CONTENT */
-  .container{max-width:100%; margin:0 auto; padding:16px}
-  .card{background:var(--card); border:1px solid var(--stroke); border-radius:14px; box-shadow:var(--shadow); padding:14px}
-  .muted{color:var(--muted)}
-
-  /* Header Card */
-  .header-card{display:flex; justify-content:space-between; align-items:center; gap:16px; margin:16px 0}
-  .header-left h2{margin:0 0 6px; font-size:18px}
-  .primary-actions{display:flex; gap:10px; flex-wrap:wrap}
-  .cta{border:1px solid var(--stroke); background:linear-gradient(180deg,var(--brand),var(--brand2)); color:#fff; border-radius:999px; padding:10px 16px; cursor:pointer; font-weight:800; white-space:nowrap}
-  .btn-ghost{border:1px solid var(--stroke); background:var(--pill); border-radius:999px; padding:10px 14px; cursor:pointer; white-space:nowrap}
-
-  /* Filters Card */
-  .filters-card{margin:10px 0 14px}
-  .controls-grid{
-    display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); gap:10px; align-items:center;
-  }
-  .ctrl{grid-column:span 3; display:flex; align-items:center; gap:10px; padding:6px 10px; border:1px solid var(--stroke); background:var(--pill); border-radius:999px; height:40px; min-width:0}
-  .ctrl span{white-space:nowrap}
-  .ctrl select{appearance:none; background:transparent; color:var(--text); border:none; outline:none; font-weight:700; height:26px; line-height:26px; width:100%}
-  .ctrl input{background:transparent; border:none; outline:none; color:var(--text); font-weight:600; width:100%}
-  .ctrl.wide{grid-column:span 6}
-
-  @media (max-width: 960px){
-    .nav-center{display:none}
-    .hamb{display:inline-flex}
-    .controls-grid{grid-template-columns:repeat(6,minmax(0,1fr))}
-    .ctrl{grid-column:span 3}
-    .ctrl.wide{grid-column:span 6}
+    .drawer.open {
+      transform: translateX(0) !important;
+    }
   }
 
-  /* Tables - Compact Single Screen Design */
-  .tablo-kart{
-    background:var(--card); 
-    border:1px solid var(--stroke); 
-    border-radius:12px; 
-    box-shadow:0 2px 8px rgba(0,0,0,.06); 
-    padding:16px; 
-    overflow:visible;
-    background:#fff;
+  .wrap {
+    max-width: 1750px;
+    margin: 0 auto;
+    padding: 16px
+  }
+
+  .toolbar {
+    display: flex;
+    gap: 10px;
+    flex-wrap: nowrap;
+    align-items: center;
+    overflow: auto;
+    padding-bottom: 6px
+  }
+
+  .toolbar select {
+    min-width: 100px;
+    max-width: 120px;
+  }
+
+  /* Mobil Sıralama Seçim Kutusu - Modern Tasarım */
+  .mobile-sort-select {
+    width: 100%;
+    min-width: 140px;
+    height: 44px;
+    padding: 0 16px;
+    padding-right: 40px;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    background: var(--card);
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  .mobile-sort-select:hover {
+    border-color: var(--brand);
+    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.1);
+  }
+
+  .mobile-sort-select:focus {
+    outline: none;
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  .mobile-sort-select option {
+    padding: 12px;
+    font-size: 14px;
+    background: var(--card);
+    color: var(--text);
+  }
+
+  .mobile-sort-select optgroup {
+    font-weight: 600;
+    color: var(--muted);
+    font-size: 13px;
+    padding: 8px 12px;
+  }
+
+  .mobile-sort-clear-btn {
+    white-space: nowrap;
+    padding: 0 16px;
+    height: 44px;
+    border-radius: 12px;
+    font-weight: 500;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    border: 2px solid var(--border);
+  }
+
+  .mobile-sort-clear-btn:hover {
+    background: var(--pill-hover);
+    border-color: var(--brand);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  }
+
+  .toolbar::-webkit-scrollbar {
+    height: 6px
+  }
+
+  .toolbar::-webkit-scrollbar-thumb {
+    background: #d7dde6;
+    border-radius: 999px
+  }
+
+  .line {
+    height: 1px;
+    background: var(--border);
+    margin: 8px 0
+  }
+
+  header strong {
+    font-size: clamp(16px, 3.8vw, 18px);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 40vw
+  }
+
+  .chip {
+    padding: 8px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--muted);
+    font-size: 12px;
+    white-space: nowrap
+  }
+
+  select,
+  input,
+  button {
+    height: 38px;
+    border: 1px solid var(--border);
+    background: #fff;
+    border-radius: 10px;
+    padding: 0 12px;
+    font: inherit;
+    color: var(--ink)
+  }
+
+  button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-weight: 500
+  }
+
+  button.secondary {
+    background: #fff;
+    color: var(--ink);
+    border: 1px solid var(--border)
+  }
+
+  button:hover {
+    opacity: 0.9
+  }
+
+  button.danger {
+    background: var(--bad);
+    color: #fff
+  }
+
+  /* Tablo */
+  .table-wrap {
+    overflow: auto;
+    border: 1px solid var(--border);
+    border-radius: 12px
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    min-width: 900px
+  }
+
+  thead th {
+    position: sticky;
+    top: 0;
+    background: #fafbfc;
+    border-bottom: 2px solid var(--border);
+    font-weight: 600;
+    text-align: left;
+    font-size: 13px;
+    color: var(--muted);
+    padding: 12px;
+    z-index: 1
+  }
+
+  tbody td {
+    border-bottom: 1px solid var(--border);
+    padding: 12px;
+    font-size: 14px
+  }
+
+  tbody tr:hover {
+    background: #f8f9fa
+  }
+
+  .right {
+    text-align: right
   }
   
   table{
@@ -289,11 +409,28 @@
     font-size:12px;
   }
 
+  /* Desktop/Mobile görünüm kontrolü */
+  .desktop-only {
+    display: block;
+  }
+  
+  .mobile-only {
+    display: none;
+  }
+
   /* Mobile Card View */
   .mobile-cards{display:none}
   .mobile-summary-cards{display:none}
   @media (max-width: 960px){
-    .tablo-kart table{display:none}
+    .desktop-only {
+      display: none !important;
+    }
+    
+    .mobile-only {
+      display: block;
+    }
+    
+    .table-wrap{display:none !important}
     .mobile-cards{display:block}
     .person-card{
       background:var(--card); border:1px solid var(--stroke); border-radius:12px;
@@ -310,7 +447,6 @@
     .person-card-total .person-card-value{font-size:18px; color:var(--brand)}
     
     /* Summary mobile */
-    #ozetTable{display:none}
     .mobile-summary-cards{display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:12px}
     .summary-card{
       background:var(--card); border:1px solid var(--stroke); border-radius:12px;
@@ -327,107 +463,168 @@
     .summary-card-total .summary-card-value{font-size:20px; color:var(--brand)}
   }
 
-  /* Modals & Toast */
-  .modal{
-    display:none; 
-    position:fixed; 
-    inset:0; 
-    background:rgba(30,41,59,.6); 
-    backdrop-filter:blur(4px); 
-    z-index:99; 
-    align-items:center; 
-    justify-content:center; 
-    padding:16px;
-    overflow-y:auto;
-    overflow-x:hidden;
+  /* Modal */
+  body.modal-open {
+    overflow: hidden
   }
-  .modal-content{
-    background:var(--card); 
-    border:1px solid var(--stroke); 
-    width:95%; 
-    max-width:640px; 
-    max-height:90vh;
-    border-radius:16px; 
-    box-shadow:var(--shadow); 
-    padding:16px;
-    margin:auto;
-    position:relative;
-    overflow-y:auto;
-    overflow-x:hidden;
+
+  .modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .4);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    z-index: 9999;
+    backdrop-filter: blur(4px);
+    pointer-events: none
   }
-  .modal-content h3{margin:0 0 10px; text-align:center}
-  .modal-content label{display:block; margin-top:8px; font-size:13px; color:var(--muted)}
-  .modal-content input{width:100%; padding:10px 12px; border:1px solid var(--stroke); border-radius:10px; background:var(--pill); color:var(--text); margin-top:4px}
-  
-  /* Modal açıldığında body scroll'unu engelle */
-  body.modal-open{
-    overflow:hidden;
-    position:fixed;
-    width:100%;
+
+  .modal.show {
+    display: flex !important;
+    pointer-events: auto !important
+  }
+
+  .modal.show .sheet {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: relative !important;
+    z-index: 10001 !important;
+    pointer-events: auto !important
+  }
+
+  .sheet {
+    max-width: 700px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    background: #fff;
+    border-radius: 16px;
+    padding: 20px;
+    border: 1px solid var(--border);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, .2);
+    pointer-events: auto
+  }
+
+  .sheet-visible {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: relative !important;
+    z-index: 10001 !important;
+    pointer-events: auto !important
+  }
+
+  .sheet button,
+  .sheet input,
+  .sheet select,
+  .sheet textarea,
+  .sheet form {
+    pointer-events: auto !important;
+    z-index: 10002 !important;
+    position: relative
+  }
+
+  .sheet h3 {
+    margin: 0 0 16px 0;
+    font-size: 20px;
+    color: var(--ink)
+  }
+
+  .form-grid {
+    display: grid;
+    gap: 14px
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px
+  }
+
+  .form-group label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted)
+  }
+
+  .form-group input,
+  .form-group select {
+    width: 100%;
+    height: 42px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0 12px;
+    font: inherit;
+    font-size: 14px
+  }
+
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border)
   }
   
   /* Ödeme modalı için özel stil - uzun içerik için */
-  #odemeModal .modal-content{
-    max-height:85vh;
-    display:flex;
-    flex-direction:column;
+  #odemeModal .sheet {
+    max-width: 800px;
+    max-height: 90vh;
   }
-  #odemeModal #odemeKategoriAlani{
-    max-height:400px;
-    overflow-y:auto;
-    overflow-x:hidden;
-    padding-right:4px;
+  
+  #odemeModal #odemeKategoriAlani {
+    max-height: 400px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 4px;
   }
-  #odemeModal #odemeTutarAlani{
-    max-height:300px;
-    overflow-y:auto;
-    overflow-x:hidden;
+  
+  #odemeModal #odemeTutarAlani {
+    max-height: 300px;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
   
   /* Scrollbar stilleri */
-  .modal-content::-webkit-scrollbar,
+  .sheet::-webkit-scrollbar,
   #odemeModal #odemeKategoriAlani::-webkit-scrollbar,
-  #odemeModal #odemeTutarAlani::-webkit-scrollbar{
-    width:8px;
+  #odemeModal #odemeTutarAlani::-webkit-scrollbar {
+    width: 8px;
   }
-  .modal-content::-webkit-scrollbar-track,
+  
+  .sheet::-webkit-scrollbar-track,
   #odemeModal #odemeKategoriAlani::-webkit-scrollbar-track,
-  #odemeModal #odemeTutarAlani::-webkit-scrollbar-track{
-    background:var(--pill);
-    border-radius:4px;
+  #odemeModal #odemeTutarAlani::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 4px;
   }
-  .modal-content::-webkit-scrollbar-thumb,
+  
+  .sheet::-webkit-scrollbar-thumb,
   #odemeModal #odemeKategoriAlani::-webkit-scrollbar-thumb,
-  #odemeModal #odemeTutarAlani::-webkit-scrollbar-thumb{
-    background:var(--muted);
-    border-radius:4px;
+  #odemeModal #odemeTutarAlani::-webkit-scrollbar-thumb {
+    background: var(--muted);
+    border-radius: 4px;
   }
-  .modal-content::-webkit-scrollbar-thumb:hover,
+  
+  .sheet::-webkit-scrollbar-thumb:hover,
   #odemeModal #odemeKategoriAlani::-webkit-scrollbar-thumb:hover,
-  #odemeModal #odemeTutarAlani::-webkit-scrollbar-thumb:hover{
-    background:var(--text);
+  #odemeModal #odemeTutarAlani::-webkit-scrollbar-thumb:hover {
+    background: var(--text);
   }
 
-  /* Modal ve Bulk içindeki selectler: sade beyaz */
-  .modal-content select{
-    width:100%;
-    border:1px solid #d1d5db;
-    border-radius:12px;
-    background:#fff url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 10px center;
-    background-size:16px;
-    padding:8px 36px 8px 12px;
-    color:#111827;
-    font-weight:600;
-    box-shadow:0 1px 2px rgba(0,0,0,.05) inset;
-    outline:none;
+  button.good {
+    background: var(--good);
+    color: #fff
   }
-  .modal-content select:hover{ border-color:#0ea5e9; }
-  .modal-content select:focus{ border-color:#0ea5e9; box-shadow:0 0 0 3px rgba(14,165,233,.25); }
 
-  .modal-buttons{display:flex; justify-content:flex-end; gap:8px; margin-top:14px}
-  .btn-danger{border:1px solid #ef444422; background:#ef4444; color:#fff; border-radius:10px; padding:8px 12px; cursor:pointer}
-  .toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:#1e293b; color:#fff; border:1px solid var(--stroke); border-radius:12px; padding:10px 12px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:200; box-shadow:var(--shadow)}
-  .toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+  button.danger {
+    background: var(--bad);
+    color: #fff
+  }
 
   /* === Toplu toolbar: beyaz kart + pastel butonlar === */
   .bulk-toolbar{
@@ -522,11 +719,14 @@
   }
 </style>
 
-<!-- Firebase (compat) -->
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-<script src="../js/firebase/firebase-init.js"></script>
+<!-- Supabase (Auth + Database için) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../src/supabase.js"></script>
+<script src="../src/supabase-auth-wrapper.js"></script>
+<script src="../src/supabase-db-wrapper.js"></script>
+
+<!-- Ortak JS (navigation, toast, vs) -->
+<script src="../js/ortak.js"></script>
 </head>
 <body>
 
@@ -567,24 +767,38 @@
 
 <aside class="drawer" id="drawer"></aside>
 
-<main class="container">
+<main class="wrap">
 
-  <!-- HEADER CARD -->
-  <section class="card header-card">
-    <div class="header-left">
-      <h2>Personel Ödeme Takibi</h2>
-      <div class="muted">Bugün: <span id="todayText">—</span></div>
+  <header>
+    <div class="bar">
+      <strong>Personel Ödeme Takibi</strong>
+      <div class="right">
+        <span class="chip" id="todayText">—</span>
+      </div>
     </div>
-  </section>
+  </header>
 
-  <!-- SUMMARY - Moved here -->
-  <section class="card" style="margin:0 0 16px">
-    <h3 style="margin:0 0 6px; font-size:16px">Kategori Toplamları</h3>
-    <div class="muted" style="margin-bottom:12px; font-size:13px" id="ozetTarihBilgisi">—</div>
-    <div class="tablo-kart" style="padding:0">
+  <div class="toolbar">
+    <select id="aySec"></select>
+    <select id="yilSec"></select>
+    <input id="searchInput" type="text" placeholder="İsim ara…" style="flex: 1; min-width: 200px" />
+    <button id="btnAdd">+ Personel Tahakkuk</button>
+    <button class="secondary" id="btnCopy">⟳ Kopyala</button>
+    <button class="secondary" id="btnBulkManage">⚙️ Toplu</button>
+    <button class="secondary" id="btnPersonelManage">👤 Personel</button>
+    <button class="secondary" id="btnAnaliz">📊 Analiz</button>
+  </div>
+
+  <div class="line"></div>
+
+  <!-- SUMMARY -->
+  <div class="card">
+    <h4 style="margin:0 0 12px; font-size:14px; color:var(--text)">Kategori Toplamları</h4>
+    <div class="chip" style="margin-bottom:12px" id="ozetTarihBilgisi">—</div>
+    <div class="table-wrap desktop-only">
       <table id="ozetTable">
         <thead>
-          <tr><th>Kategori</th><th>Toplam</th><th>Ödenen</th><th>Kalan</th></tr>
+          <tr><th>Kategori</th><th class="right">Toplam</th><th class="right">Ödenen</th><th class="right">Kalan</th></tr>
         </thead>
         <tbody id="ozetAlani"></tbody>
         <tfoot>
@@ -593,169 +807,278 @@
       </table>
     </div>
     <div class="mobile-summary-cards" id="mobileSummaryCards"></div>
-  </section>
+  </div>
 
-  <!-- FILTERS - 2. sıra -->
-  <section class="card filters-card">
-    <div class="controls-grid">
-      <div class="ctrl"><span>Ay</span><select id="aySec"></select></div>
-      <div class="ctrl"><span>Yıl</span><select id="yilSec"></select></div>
-      <div class="ctrl wide">🔎 <input id="searchInput" type="text" placeholder="İsim ara…"></div>
+  <!-- Mobil Sıralama Butonları -->
+  <div class="mobile-only" style="margin:12px 0">
+    <div class="card" style="padding:16px; border:1px solid var(--border); box-shadow:0 2px 8px rgba(0,0,0,0.04)">
+      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center">
+        <div style="position:relative; flex:1; min-width:0">
+          <select id="mobileSortSelect" class="mobile-sort-select">
+            <option value="">🔽 Sıralama seçin</option>
+            <option value="kalan_desc">📉 Toplam Borç (Yüksek → Düşük)</option>
+            <option value="kalan_asc">📈 Toplam Borç (Düşük → Yüksek)</option>
+            <optgroup label="Kategori Borçları">
+              <option value="hediye_desc">Hediye Borcu (Yüksek → Düşük)</option>
+              <option value="hediye_asc">Hediye Borcu (Düşük → Yüksek)</option>
+              <option value="kira_desc">Kira Borcu (Yüksek → Düşük)</option>
+              <option value="kira_asc">Kira Borcu (Düşük → Yüksek)</option>
+              <option value="cocuk_desc">Çocuk Borcu (Yüksek → Düşük)</option>
+              <option value="cocuk_asc">Çocuk Borcu (Düşük → Yüksek)</option>
+              <option value="yol_desc">Yol Borcu (Yüksek → Düşük)</option>
+              <option value="yol_asc">Yol Borcu (Düşük → Yüksek)</option>
+              <option value="haberlesme_desc">Haberleşme Borcu (Yüksek → Düşük)</option>
+              <option value="haberlesme_asc">Haberleşme Borcu (Düşük → Yüksek)</option>
+              <option value="ikramiye_desc">İkramiye Borcu (Yüksek → Düşük)</option>
+              <option value="ikramiye_asc">İkramiye Borcu (Düşük → Yüksek)</option>
+              <option value="yakacak_desc">Yakacak Borcu (Yüksek → Düşük)</option>
+              <option value="yakacak_asc">Yakacak Borcu (Düşük → Yüksek)</option>
+              <option value="elbise_desc">Elbise Borcu (Yüksek → Düşük)</option>
+              <option value="elbise_asc">Elbise Borcu (Düşük → Yüksek)</option>
+              <option value="ssk_desc">SSK Borcu (Yüksek → Düşük)</option>
+              <option value="ssk_asc">SSK Borcu (Düşük → Yüksek)</option>
+            </optgroup>
+            <option value="ad_asc">🔤 İsim (A → Z)</option>
+            <option value="ad_desc">🔤 İsim (Z → A)</option>
+          </select>
+        </div>
+        <button type="button" class="secondary mobile-sort-clear-btn" id="mobileSortClear">🗑️ Temizle</button>
+      </div>
     </div>
-  </section>
-
-  <section class="card header-card">
-    <div class="primary-actions">
-      <button class="cta" id="btnAdd">+ Personel Tahakkuk</button>
-      <button class="btn-ghost" id="btnCopy">⟳ Tahakkuk Kopyala</button>
-      <button class="btn-ghost" id="btnBulkManage">⚙️ Toplu Yönetim</button>
-      <button class="btn-ghost" id="btnPersonelManage">👤 Personel Yönetim</button>
-      <button class="btn-ghost" id="btnAnaliz">📊 Analiz</button>
-    </div>
-  </section>
+  </div>
 
   <!-- TABLE -->
-  <section class="tablo-kart">
-    <table>
-      <thead>
-        <tr>
-          <th class="sortable" data-sort="ad" style="text-align:left">Ad</th>
-          <th class="sortable" data-sort="hediye">Hediye</th>
-          <th class="sortable" data-sort="kira">Kira</th>
-          <th class="sortable" data-sort="cocuk">Çocuk</th>
-          <th class="sortable" data-sort="yol">Yol</th>
-          <th class="sortable" data-sort="haberlesme">Haberleşme</th>
-          <th class="sortable" data-sort="ikramiye">İkramiye</th>
-          <th class="sortable" data-sort="yakacak">Yakacak</th>
-          <th class="sortable" data-sort="elbise">Elbise</th>
-          <th class="sortable" data-sort="ssk">SSK</th>
-          <th class="sortable" data-sort="maas">Resmî Maaş</th>
-          <th class="sortable" data-sort="toplam">Toplam</th>
-          <th class="sortable" data-sort="kalan">Kalan</th>
-        </tr>
-      </thead>
-      <tbody id="listeAlani"></tbody>
-    </table>
+  <div class="card">
+    <div class="table-wrap desktop-only">
+      <table>
+        <thead>
+          <tr>
+            <th class="sortable" data-sort="ad">Ad</th>
+            <th class="sortable right" data-sort="hediye">Hediye</th>
+            <th class="sortable right" data-sort="kira">Kira</th>
+            <th class="sortable right" data-sort="cocuk">Çocuk</th>
+            <th class="sortable right" data-sort="yol">Yol</th>
+            <th class="sortable right" data-sort="haberlesme">Haberleşme</th>
+            <th class="sortable right" data-sort="ikramiye">İkramiye</th>
+            <th class="sortable right" data-sort="yakacak">Yakacak</th>
+            <th class="sortable right" data-sort="elbise">Elbise</th>
+            <th class="sortable right" data-sort="ssk">SSK</th>
+            <th class="sortable" data-sort="maas">Resmî Maaş</th>
+            <th class="sortable right" data-sort="toplam">Toplam</th>
+            <th class="sortable right" data-sort="kalan">Kalan</th>
+          </tr>
+        </thead>
+        <tbody id="listeAlani"></tbody>
+      </table>
+    </div>
     <div class="mobile-cards" id="mobileCards"></div>
-  </section>
+  </div>
 
   <div style="height:120px"></div>
 </main>
 
 <!-- MODALS -->
 <div class="modal" id="ekleModal">
-  <div class="modal-content">
+  <div class="sheet">
     <h3>Yeni Personel Tahakkuk</h3>
-    <label>Ad Soyad</label><input id="adInput" type="text" placeholder="Örn: Samet ÇAKIR">
-    <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px">
-      <div><label>Ay</label><select id="ayInput"></select></div>
-      <div><label>Yıl</label><select id="yilInput"></select></div>
-    </div>
-    <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px">
-      <div><label>Hediye</label><input id="hediyeInput" type="number" value="0" min="0" step="0.01"></div>
-      <div><label>Kira</label><input id="kiraInput" type="number" value="0" min="0" step="0.01"></div>
-      <div><label>Çocuk</label><input id="cocukInput" type="number" value="0" min="0" step="0.01"></div>
-      <div><label>Yol</label><input id="yolInput" type="number" value="0" min="0" step="0.01"></div>
-      <div><label>Haberleşme</label><input id="haberInput" type="number" value="0" min="0" step="0.01"></div>
-      <div><label>İkramiye</label><input id="ikramiyeInput" type="number" value="0" min="0" step="0.01"></div>
-      <div><label>Yakacak</label><input id="yakacakInput" type="number" value="0" min="0" step="0.01"></div>
-      <div><label>Elbise</label><input id="elbiseInput" type="number" value="0" min="0" step="0.01"></div>
-      <div><label>SSK</label><input id="sskInput" type="number" value="0" min="0" step="0.01"></div>
-    </div>
-    <div class="modal-buttons">
-      <button class="btn-ghost" onclick="closeModals()">İptal</button>
-      <button class="cta" onclick="kaydetEkle()">Kaydet</button>
-    </div>
+    <form class="form-grid" onsubmit="event.preventDefault(); kaydetEkle();">
+      <div class="form-group">
+        <label>Ad Soyad</label>
+        <input id="adInput" type="text" placeholder="Örn: Samet ÇAKIR" required>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:14px">
+        <div class="form-group">
+          <label>Ay</label>
+          <select id="ayInput" required></select>
+        </div>
+        <div class="form-group">
+          <label>Yıl</label>
+          <select id="yilInput" required></select>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:14px">
+        <div class="form-group">
+          <label>Hediye</label>
+          <input id="hediyeInput" type="number" value="0" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>Kira</label>
+          <input id="kiraInput" type="number" value="0" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>Çocuk</label>
+          <input id="cocukInput" type="number" value="0" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>Yol</label>
+          <input id="yolInput" type="number" value="0" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>Haberleşme</label>
+          <input id="haberInput" type="number" value="0" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>İkramiye</label>
+          <input id="ikramiyeInput" type="number" value="0" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>Yakacak</label>
+          <input id="yakacakInput" type="number" value="0" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>Elbise</label>
+          <input id="elbiseInput" type="number" value="0" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>SSK</label>
+          <input id="sskInput" type="number" value="0" min="0" step="0.01">
+        </div>
+      </div>
+      <div class="actions">
+        <button type="button" class="secondary" onclick="closeModals()">İptal</button>
+        <button type="submit" class="good">Kaydet</button>
+      </div>
+    </form>
   </div>
 </div>
 
 <div class="modal" id="odemeModal">
-  <div class="modal-content">
+  <div class="sheet">
     <h3 id="odemeModalBaslik">Ödeme Durumu</h3>
     <div id="odemeUyariAlani" style="display:none; margin-bottom:12px; padding:10px; background:#fef3c7; border:1px solid #fbbf24; border-radius:8px; color:#92400e; font-size:13px"></div>
     <div id="odemeKategoriAlani"></div>
     <div id="odemeTutarAlani" style="display:none; margin-top:16px; padding-top:16px; border-top:1px solid var(--stroke)">
       <h4 style="margin:0 0 12px; font-size:14px; color:var(--muted)">Tutar Düzenleme</h4>
-      <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px">
-        <div><label>Hediye</label><input id="edit_hediye" type="number" value="0" min="0" step="0.01" style="width:100%; padding:8px 12px; border:1px solid var(--stroke); border-radius:8px; background:var(--pill); color:var(--text)"></div>
-        <div><label>Kira</label><input id="edit_kira" type="number" value="0" min="0" step="0.01" style="width:100%; padding:8px 12px; border:1px solid var(--stroke); border-radius:8px; background:var(--pill); color:var(--text)"></div>
-        <div><label>Çocuk</label><input id="edit_cocuk" type="number" value="0" min="0" step="0.01" style="width:100%; padding:8px 12px; border:1px solid var(--stroke); border-radius:8px; background:var(--pill); color:var(--text)"></div>
-        <div><label>Yol</label><input id="edit_yol" type="number" value="0" min="0" step="0.01" style="width:100%; padding:8px 12px; border:1px solid var(--stroke); border-radius:8px; background:var(--pill); color:var(--text)"></div>
-        <div><label>Haberleşme</label><input id="edit_haberlesme" type="number" value="0" min="0" step="0.01" style="width:100%; padding:8px 12px; border:1px solid var(--stroke); border-radius:8px; background:var(--pill); color:var(--text)"></div>
-        <div><label>İkramiye</label><input id="edit_ikramiye" type="number" value="0" min="0" step="0.01" style="width:100%; padding:8px 12px; border:1px solid var(--stroke); border-radius:8px; background:var(--pill); color:var(--text)"></div>
-        <div><label>Yakacak</label><input id="edit_yakacak" type="number" value="0" min="0" step="0.01" style="width:100%; padding:8px 12px; border:1px solid var(--stroke); border-radius:8px; background:var(--pill); color:var(--text)"></div>
-        <div><label>Elbise</label><input id="edit_elbise" type="number" value="0" min="0" step="0.01" style="width:100%; padding:8px 12px; border:1px solid var(--stroke); border-radius:8px; background:var(--pill); color:var(--text)"></div>
-        <div><label>SSK</label><input id="edit_ssk" type="number" value="0" min="0" step="0.01" style="width:100%; padding:8px 12px; border:1px solid var(--stroke); border-radius:8px; background:var(--pill); color:var(--text)"></div>
+      <div class="form-grid" style="grid-template-columns:repeat(2,1fr)">
+        <div class="form-group">
+          <label>Hediye</label>
+          <input id="edit_hediye" type="number" value="0" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>Kira</label>
+          <input id="edit_kira" type="number" value="0" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>Çocuk</label>
+          <input id="edit_cocuk" type="number" value="0" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>Yol</label>
+          <input id="edit_yol" type="number" value="0" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>Haberleşme</label>
+          <input id="edit_haberlesme" type="number" value="0" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>İkramiye</label>
+          <input id="edit_ikramiye" type="number" value="0" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>Yakacak</label>
+          <input id="edit_yakacak" type="number" value="0" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>Elbise</label>
+          <input id="edit_elbise" type="number" value="0" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>SSK</label>
+          <input id="edit_ssk" type="number" value="0" min="0" step="0.01">
+        </div>
       </div>
       <div style="margin-top:12px; padding:10px; background:var(--pill); border-radius:8px; text-align:center">
         <div style="font-size:12px; color:var(--muted); margin-bottom:4px">Yeni Toplam</div>
         <div id="editToplamGoster" style="font-size:18px; font-weight:700; color:var(--brand)">0 ₺</div>
       </div>
     </div>
-    <div class="modal-buttons">
-      <button class="btn-ghost" onclick="closeModals()">Kapat</button>
-      <button class="btn-ghost" id="btnEditTutarlar" onclick="toggleEditMode()" style="display:none">Düzenle</button>
-      <button class="btn-danger" id="btnSilVeri" onclick="silVeri()" style="display:none">Sil</button>
-      <button class="cta" id="btnKaydetOdeme" onclick="kaydetOdeme()" style="display:none">Kaydet</button>
+    <div class="actions">
+      <button type="button" class="secondary" onclick="closeModals()">Kapat</button>
+      <button type="button" class="secondary" id="btnEditTutarlar" onclick="toggleEditMode()" style="display:none">Düzenle</button>
+      <button type="button" class="danger" id="btnSilVeri" onclick="silVeri()" style="display:none">Sil</button>
+      <button type="button" class="good" id="btnKaydetOdeme" onclick="kaydetOdeme()" style="display:none">Kaydet</button>
     </div>
   </div>
 </div>
 
 <div class="modal" id="copyModal">
-  <div class="modal-content">
+  <div class="sheet">
     <h3>Tahakkuk Kopyala</h3>
-    <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px">
-      <div><label>Kaynak Ay</label><select id="srcAy"></select></div>
-      <div><label>Kaynak Yıl</label><select id="srcYil"></select></div>
-      <div><label>Hedef Ay</label><select id="dstAy"></select></div>
-      <div><label>Hedef Yıl</label><select id="dstYil"></select></div>
-    </div>
-    <label style="margin-top:10px"><input type="checkbox" id="overwriteChk"> Var olan kayıtlar üzerine yaz</label>
-    <div class="card" style="margin-top:10px">
-      <div class="muted" style="margin-bottom:8px">Kaynak önizleme:</div>
-      <div class="tablo-kart" style="padding:0; max-height:220px; overflow:auto">
-        <table>
-          <thead><tr><th style="text-align:left">Ad</th><th>Toplam</th><th>Ödenen Alan Sayısı</th></tr></thead>
-          <tbody id="copyPreviewBody"></tbody>
-        </table>
+    <form class="form-grid" onsubmit="event.preventDefault();">
+      <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:14px">
+        <div class="form-group">
+          <label>Kaynak Ay</label>
+          <select id="srcAy"></select>
+        </div>
+        <div class="form-group">
+          <label>Kaynak Yıl</label>
+          <select id="srcYil"></select>
+        </div>
+        <div class="form-group">
+          <label>Hedef Ay</label>
+          <select id="dstAy"></select>
+        </div>
+        <div class="form-group">
+          <label>Hedef Yıl</label>
+          <select id="dstYil"></select>
+        </div>
       </div>
-    </div>
-    <div class="modal-buttons">
-      <button class="btn-ghost" onclick="closeModals()">Kapat</button>
-      <button class="cta" id="btnDoCopy">Kopyala</button>
-    </div>
+      <div class="form-group">
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer">
+          <input type="checkbox" id="overwriteChk" style="width:auto; height:auto">
+          <span>Var olan kayıtlar üzerine yaz</span>
+        </label>
+      </div>
+      <div class="card" style="margin-top:10px">
+        <div class="muted" style="margin-bottom:8px">Kaynak önizleme:</div>
+        <div class="table-wrap" style="max-height:220px">
+          <table>
+            <thead><tr><th>Ad</th><th class="right">Toplam</th><th class="right">Ödenen Alan Sayısı</th></tr></thead>
+            <tbody id="copyPreviewBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="actions">
+        <button type="button" class="secondary" onclick="closeModals()">Kapat</button>
+        <button type="button" class="good" id="btnDoCopy">Kopyala</button>
+      </div>
+    </form>
   </div>
 </div>
 
 <div class="modal" id="bulkModal">
-  <div class="modal-content">
+  <div class="sheet">
     <h3>Toplu Kategori Yönetimi</h3>
-    <label>Kategori Seçin</label>
-    <select id="bulkKategoriModal">
-      <option value="hediye">Hediye</option>
-      <option value="kira">Kira</option>
-      <option value="cocuk">Çocuk</option>
-      <option value="yol">Yol</option>
-      <option value="haberlesme">Haberleşme</option>
-      <option value="ikramiye">İkramiye</option>
-      <option value="yakacak">Yakacak</option>
-      <option value="elbise">Elbise</option>
-      <option value="ssk">SSK</option>
-      <option value="maas">Resmî Maaş</option>
-    </select>
-    <div class="muted" style="margin-top:12px; padding:10px; background:var(--pill); border-radius:8px; font-size:13px">
-      <strong>Bilgi:</strong> Seçili ay/yıl ve arama filtresi kapsamındaki tüm personeller için işlem yapılacaktır.
-    </div>
-    <div class="modal-buttons" style="margin-top:16px">
-      <button class="btn-ghost" onclick="closeModals()">İptal</button>
-      <button class="pill-btn ok" id="btnBulkOkModal" style="padding:10px 16px">Toplu: Ödendi</button>
-      <button class="pill-btn no" id="btnBulkNoModal" style="padding:10px 16px">Toplu: Ödenmedi</button>
-    </div>
+    <form class="form-grid" onsubmit="event.preventDefault();">
+      <div class="form-group">
+        <label>Kategori Seçin</label>
+        <select id="bulkKategoriModal">
+          <option value="hediye">Hediye</option>
+          <option value="kira">Kira</option>
+          <option value="cocuk">Çocuk</option>
+          <option value="yol">Yol</option>
+          <option value="haberlesme">Haberleşme</option>
+          <option value="ikramiye">İkramiye</option>
+          <option value="yakacak">Yakacak</option>
+          <option value="elbise">Elbise</option>
+          <option value="ssk">SSK</option>
+          <option value="maas">Resmî Maaş</option>
+        </select>
+      </div>
+      <div class="muted" style="padding:10px; background:var(--pill); border-radius:8px; font-size:13px">
+        <strong>Bilgi:</strong> Seçili ay/yıl ve arama filtresi kapsamındaki tüm personeller için işlem yapılacaktır.
+      </div>
+      <div class="actions">
+        <button type="button" class="secondary" onclick="closeModals()">İptal</button>
+        <button type="button" class="good" id="btnBulkOkModal">Toplu: Ödendi</button>
+        <button type="button" class="danger" id="btnBulkNoModal">Toplu: Ödenmedi</button>
+      </div>
+    </form>
   </div>
 </div>
 
 <div class="modal" id="personelManageModal">
-  <div class="modal-content" style="max-width:900px; max-height:90vh; overflow-y:auto">
+  <div class="sheet" style="max-width:900px; max-height:90vh; overflow-y:auto">
     <h3 style="margin-bottom:20px">👤 Personel Yönetim</h3>
     
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px">
@@ -796,15 +1119,15 @@
       <div style="font-size:13px; margin-top:6px">Seçim yaptığınızda veriler burada görünecek</div>
     </div>
 
-    <div class="modal-buttons" style="margin-top:20px; border-top:1px solid var(--stroke); padding-top:16px">
-      <button class="btn-ghost" onclick="closeModals()">Kapat</button>
-      <button class="cta" id="btnPersonelKaydet" style="display:none" onclick="kaydetPersonelYonetim()">Tüm Değişiklikleri Kaydet</button>
+    <div class="actions">
+      <button type="button" class="secondary" onclick="closeModals()">Kapat</button>
+      <button type="button" class="good" id="btnPersonelKaydet" style="display:none" onclick="kaydetPersonelYonetim()">Tüm Değişiklikleri Kaydet</button>
     </div>
   </div>
 </div>
 
 <div class="modal" id="analizModal">
-  <div class="modal-content" style="max-width:1000px; max-height:90vh; overflow-y:auto">
+  <div class="sheet" style="max-width:1000px; max-height:90vh; overflow-y:auto">
     <h3 style="margin-bottom:20px">📊 Personel Ödeme Analizi</h3>
     
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px">
@@ -942,52 +1265,77 @@
       <div style="font-size:13px; margin-top:6px">Analiz için bir yıl seçin</div>
     </div>
 
-    <div class="modal-buttons" style="margin-top:20px; border-top:1px solid var(--stroke); padding-top:16px">
-      <button class="btn-ghost" onclick="closeModals()">Kapat</button>
-      <button class="cta" id="btnAnalizPDF" onclick="exportAnalizPDF()" style="display:none">📄 PDF İndir</button>
+    <div class="actions">
+      <button type="button" class="secondary" onclick="closeModals()">Kapat</button>
+      <button type="button" class="good" id="btnAnalizPDF" onclick="exportAnalizPDF()" style="display:none">📄 PDF İndir</button>
     </div>
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
+<div class="toast-container" id="toastContainer"></div>
 
 <script>
-  /* Tarih */
-  (function(){
-    const d=new Date(); const days=['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
-    document.getElementById('todayText').textContent=`${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()} • ${days[d.getDay()]}`;
-  })();
+  // DOMContentLoaded'da çalıştır - ortak.js yüklenene kadar bekle
+  document.addEventListener('DOMContentLoaded', function () {
+    // Supabase ve ortak.js yüklenene kadar bekle
+    function waitForSupabaseAndOrtak(callback) {
+      if (typeof window.supabase !== 'undefined' && typeof window.norm !== 'undefined' && typeof window.showToast !== 'undefined') {
+        callback();
+      } else {
+        setTimeout(() => waitForSupabaseAndOrtak(callback), 50);
+      }
+    }
 
-  /* Firebase & helpers */
-  const db=firebase.firestore(), auth=firebase.auth();
+    waitForSupabaseAndOrtak(() => {
+      const getSupabase = () => window.supabase;
+      const getAuth = () => window.getSupabaseAuth ? window.getSupabaseAuth() : null;
+      const showToast = window.showToast; // Ortak.js'den gelen showToast
+
+      /* Tarih */
+      (function(){
+        const d=new Date(); const days=['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
+        document.getElementById('todayText').textContent=`${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()} • ${days[d.getDay()]}`;
+      })();
+
+      /* Supabase & helpers */
+      const sb = window.supabase;
+      if (!sb) {
+        console.error('Supabase client yüklenmedi');
+      }
   const monthsTR=["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
   const KATEGORILER = ["hediye","kira","cocuk","yol","haberlesme","ikramiye","yakacak","elbise","ssk"]; // Sıralı kategori listesi
   const fmt=(n)=> (Number(n||0)).toLocaleString("tr-TR",{minimumFractionDigits:2, maximumFractionDigits:2}) + " ₺";
-  const norm = (s) => String(s||'')
-  .normalize('NFD').replace(/[\u0300-\u036f]/g,'') // diakritik temizle
-  .toLowerCase().trim();
-  function toast(msg){const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(window.__to); window.__to=setTimeout(()=>t.classList.remove('show'),2500);}
+  // norm fonksiyonu ortak.js'den geliyor (window.norm), burada tekrar tanımlamaya gerek yok
+  // window.norm kullanılacak, const ile tekrar tanımlanmayacak
+  // showToast fonksiyonu ortak.js'den geliyor, burada sadece fallback
+  function toast(msg){
+    if (typeof showToast === 'function') {
+      showToast('info', 'Bilgi', msg);
+    } else {
+      const t=document.getElementById('toast'); 
+      if (t) {
+        t.textContent=msg; 
+        t.classList.add('show'); 
+        clearTimeout(window.__to); 
+        window.__to=setTimeout(()=>t.classList.remove('show'),2500);
+      }
+    }
+  }
   function closeModals(){
     ['ekleModal','odemeModal','copyModal','bulkModal','personelManageModal','analizModal'].forEach(id=>{
       const el=document.getElementById(id); 
-      if(el) el.style.display='none';
+      if(el) el.classList.remove('show');
     });
-    // Body scroll'unu geri aç
     document.body.classList.remove('modal-open');
-    document.body.style.overflow = '';
-    document.body.style.position = '';
-    document.body.style.width = '';
   }
+  // Global scope'a ekle
+  window.closeModals = closeModals;
   
   function openModal(modalId) {
     const modal = document.getElementById(modalId);
     if(modal) {
-      modal.style.display = 'flex';
-      // Body scroll'unu engelle
+      modal.classList.add('show');
       document.body.classList.add('modal-open');
-      document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
-      document.body.style.width = '100%';
       
       // ESC tuşu ile kapatma
       const escHandler = (e) => {
@@ -1008,126 +1356,20 @@
       modal.addEventListener('click', clickHandler);
     }
   }
+  // Global scope'a ekle
+  window.openModal = openModal;
 
-  function normalizeUrl(u){
-    if(!u || u === '#') return '#';
-    // HTTP/HTTPS URL'leri olduğu gibi bırak
-    if(/^https?:\/\//i.test(u)) return u;
-    if(u.startsWith('//')) return u;
-    // Zaten relative path'ler (../ veya ./ ile başlayan) olduğu gibi bırak
-    if(u.startsWith('../') || u.startsWith('./')) return u;
-    
-    // Mevcut dosyanın konumuna göre relative hale getir
-    const currentPath = location.pathname;
-    const currentDir = currentPath.substring(0, currentPath.lastIndexOf('/'));
-    // Mevcut dizin seviyesini hesapla (kaç seviye yukarı çıkmalıyız)
-    const currentDepth = currentDir.split('/').filter(x => x).length;
-    
-    // Root'a dönmek için ../ sayısı
-    const upLevels = currentDepth > 0 ? '../'.repeat(currentDepth) : '';
-    
-    // Path'i temizle: / ile başlıyorsa kaldır, yoksa olduğu gibi kullan
-    const targetPath = u.startsWith('/') ? u.substring(1) : u;
-    
-    return upLevels + targetPath;
-  }
+  // normalizeUrl fonksiyonu ortak.js'den geliyor (window.normalizeUrl), burada tekrar tanımlamaya gerek yok
+  // window.normalizeUrl kullanılacak
 
-  /* Menü (manifest – linki olduğu gibi kullan) */
-  let CURRENT_ALLOW=new Set(), CURRENT_DENY=new Set();
-  async function fetchPanels(allowSet, denySet){
-    const res=[];
-    try{
-      const snap=await db.collection('sayfa_manifesti').get();
-      snap.forEach(doc=>{
-        const d=doc.data()||{}, id=doc.id, panelTitle=d.title||id;
-        const panelGrant = allowSet.has(norm(id)) || allowSet.has(norm(panelTitle));
-        let pages = Array.isArray(d.pages)? d.pages : [];
-        pages = pages.filter(pg=>{
-          const keyNorm=norm(pg.key||pg.title||'');
-          const pageGrant=allowSet.has(keyNorm), denied=denySet.has(keyNorm);
-          return !denied && (panelGrant || pageGrant);
-        }).map(pg=>({ baslik: pg.title||pg.key||'Sayfa', url: normalizeUrl(pg.path||'#'), key: pg.key||pg.title||'', sira: typeof pg.order==='number'? pg.order:9999 }))
-          .sort((a,b)=>a.sira-b.sira);
-        if(pages.length) res.push({ id, baslik:panelTitle, sira: typeof d.order==='number'? d.order:9999, pages });
-      });
-      res.sort((a,b)=>a.sira-b.sira);
-    }catch(e){ console.error(e); toast('Menü manifesti yüklenemedi.'); }
-    return res;
-  }
-  function renderNav(panels){
-    const ul=document.getElementById('navMain'), drawer=document.getElementById('drawer');
-    ul.innerHTML=''; drawer.innerHTML='';
-    if(!panels.length){
-      ul.innerHTML='<li class="nav-item"><div class="nav-btn">Hiç panel yok</div></li>';
-      drawer.innerHTML='<div style="color:var(--muted);padding:8px">Hiç panel bulunamadı</div>';
-      return;
-    }
-    panels.forEach(p=>{
-      const li=document.createElement('li'); li.className='nav-item';
-      li.innerHTML=`<div class="nav-btn">${p.baslik} <span class="caret">▾</span></div>`;
-      const dd=document.createElement('div'); dd.className='dropdown';
-      (p.pages||[]).forEach(pg=>{
-        const a=document.createElement('a');
-        const url = normalizeUrl(pg.url || pg.path || '#');
-        a.href = url;
-        a.textContent = pg.baslik;
-        a.dataset.key=pg.key||pg.baslik; a.dataset.panel=p.id; a.dataset.panelTitle=p.baslik;
-        dd.appendChild(a);
-      });
-      li.appendChild(dd);
-      li.querySelector('.nav-btn').addEventListener('click',(e)=>{
-        e.stopPropagation();
-        ul.querySelectorAll('.nav-item').forEach(x=>{ if(x!==li) x.classList.remove('open'); });
-        li.classList.toggle('open');
-      });
-      ul.appendChild(li);
-
-      // drawer
-      const h=document.createElement('div'); h.className='panel-title'; h.textContent=p.baslik; drawer.appendChild(h);
-      (p.pages||[]).forEach(pg=>{
-        const a=document.createElement('a');
-        const url = normalizeUrl(pg.url || pg.path || '#');
-        a.href = url;
-        a.textContent = pg.baslik;
-        a.dataset.key=pg.key||pg.baslik; a.dataset.panel=p.id; a.dataset.panelTitle=p.baslik;
-        drawer.appendChild(a);
-      });
-    });
-    document.addEventListener('click',(e)=>{ if(!ul.contains(e.target)) ul.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('open')); });
-  }
-  (function(){ const hamb=document.getElementById('hamburger'), drawer=document.getElementById('drawer'); if(!hamb) return; hamb.addEventListener('click',()=>drawer.classList.toggle('open')); document.addEventListener('click',(e)=>{ if(!drawer.contains(e.target) && !hamb.contains(e.target)) drawer.classList.remove('open'); }); })();
-
-  // Link guard
-  document.addEventListener('click',(e)=>{
-    const a=e.target.closest('a[data-key]'); if(!a) return;
-    const key=norm(a.dataset.key), pnl=norm(a.dataset.panel||''), pnlTitle=norm(a.dataset.panelTitle||'');
-    if(CURRENT_DENY.has(key)){ e.preventDefault(); toast('Bu sayfa için yetkiniz yok.'); return; }
-    const allowed = CURRENT_ALLOW.has(key) || CURRENT_ALLOW.has(pnl) || CURRENT_ALLOW.has(pnlTitle);
-    if(!allowed){ e.preventDefault(); toast('Bu sayfa için yetkiniz yok.'); }
-  });
-
-  // Bildirim/Profil dropdown
-  (function(){
-    const notifBtn=document.getElementById('btnNotif'), notifDD=document.getElementById('notifDropdown');
-    const profBtn=document.getElementById('btnProfile'), profDD=document.getElementById('profDropdown');
-    function closeAll(e){
-      if(!notifDD.contains(e.target) && e.target!==notifBtn) notifDD.parentElement.classList.remove('open');
-      if(!profDD.contains(e.target)  && e.target!==profBtn)  profDD.parentElement.classList.remove('open');
-    }
-    document.addEventListener('click', closeAll);
-    notifBtn?.addEventListener('click',(e)=>{ e.stopPropagation(); notifDD.parentElement.classList.toggle('open'); profDD.parentElement.classList.remove('open'); });
-    profBtn ?.addEventListener('click',(e)=>{ e.stopPropagation(); profDD.parentElement.classList.toggle('open'); notifDD.parentElement.classList.remove('open'); });
-document.getElementById('btnLogout')?.addEventListener('click', async (e) => {
-  e.preventDefault();
-  try {
-    await auth.signOut();
-    location.assign('/index.html');   // kökten yönlendir
-  } catch (err) {
-    console.error(err);
-    toast('Çıkış yapılamadı');
-  }
-});
-  })();
+  /* Menü ve yetki yönetimi ortak.js'den geliyor */
+  // CURRENT_ALLOW ve CURRENT_DENY ortak.js'den window.CURRENT_ALLOW ve window.CURRENT_DENY olarak geliyor
+  let CURRENT_ALLOW = window.CURRENT_ALLOW || new Set();
+  let CURRENT_DENY = window.CURRENT_DENY || new Set();
+  
+  // fetchPanels ve renderNav fonksiyonları ortak.js'den geliyor, burada tanımlamaya gerek yok
+  // Hamburger ve drawer işlemleri ortak.js'de initAppShell içinde yapılıyor
+  // Link guard ve bildirim/profil dropdown işlemleri ortak.js'de yapılıyor
 
   /* ===== Sayfa verileri ===== */
   let CACHE_ROWS = [];   // Seçili Ay/Yıl'ın tamamı (tek sorgu)
@@ -1189,72 +1431,117 @@ document.getElementById('btnLogout')?.addEventListener('click', async (e) => {
   document.getElementById("btnAnaliz").onclick=async ()=>{ await openAnalizModal(); };
 
   async function loadCopyPreview(){
+    const sb = getSupabase();
     const sa=Number(srcAy.value), sy=Number(srcYil.value);
     const body=document.getElementById("copyPreviewBody"); body.innerHTML="";
-    const snap=await db.collection(aktifKoleksiyon).where("ay","==",sa).where("yil","==",sy).get();
-    if(snap.empty){ body.innerHTML='<tr><td colspan="3" class="muted" style="text-align:center;padding:12px">Kayıt yok</td></tr>'; return; }
-    snap.forEach(doc=>{
-      const d=doc.data()||{};
-      const odSay=KATEGORILER.reduce((c,k)=> c + (d.odemeler?.[k]?1:0), 0);
-      const tr=document.createElement('tr');
-      tr.innerHTML=`<td style="text-align:left">${d.ad||'-'}</td><td>${fmt(d.toplam||0)}</td><td>${odSay}</td>`;
-      body.appendChild(tr);
-    });
+    try {
+      const { data, error } = await sb.from(aktifKoleksiyon)
+        .select('*')
+        .eq('ay', sa)
+        .eq('yil', sy);
+      if(error) throw error;
+      if(!data || data.length === 0){ 
+        body.innerHTML='<tr><td colspan="3" class="muted" style="text-align:center;padding:12px">Kayıt yok</td></tr>'; 
+        return; 
+      }
+      data.forEach(d=>{
+        const odSay=KATEGORILER.reduce((c,k)=> c + (d.odemeler?.[k]?1:0), 0);
+        const tr=document.createElement('tr');
+        tr.innerHTML=`<td style="text-align:left">${d.ad||'-'}</td><td>${fmt(d.toplam||0)}</td><td>${odSay}</td>`;
+        body.appendChild(tr);
+      });
+    } catch(e) {
+      console.error(e);
+      toast('Kopya önizleme yüklenirken hata.');
+    }
   }
   document.getElementById("btnDoCopy").onclick=async ()=>{
+    const sb = getSupabase();
     const sa=Number(srcAy.value), sy=Number(srcYil.value);
     const da=Number(dstAy.value), dy=Number(dstYil.value);
     const overwrite=document.getElementById("overwriteChk").checked;
     if(sa===da && sy===dy){ toast("Kaynak ve hedef aynı olamaz."); return; }
 
-    const srcSnap=await db.collection(aktifKoleksiyon).where("ay","==",sa).where("yil","==",sy).get();
-    if(srcSnap.empty){ toast("Kaynakta kayıt yok."); return; }
+    try {
+      const { data: srcData, error: srcError } = await sb.from(aktifKoleksiyon)
+        .select('*')
+        .eq('ay', sa)
+        .eq('yil', sy);
+      if(srcError) throw srcError;
+      if(!srcData || srcData.length === 0){ toast("Kaynakta kayıt yok."); return; }
 
-    const dstSnap=await db.collection(aktifKoleksiyon).where("ay","==",da).where("yil","==",dy).get();
-    const existingByName=new Map(); dstSnap.forEach(doc=> existingByName.set(norm(doc.data().ad||''), doc.id));
+      const { data: dstData, error: dstError } = await sb.from(aktifKoleksiyon)
+        .select('id, ad')
+        .eq('ay', da)
+        .eq('yil', dy);
+      if(dstError) throw dstError;
+      const existingByName=new Map(); 
+      (dstData || []).forEach(doc=> existingByName.set(window.norm(doc.ad||''), doc.id));
 
-    const batch=db.batch(); let copied=0, skipped=0, overwritten=0;
-    srcSnap.forEach(doc=>{
-      const d=doc.data()||{}; const key=norm(d.ad||'');
-      const payload = {
-        ad: d.ad || '',
-        ay: da,
-        yil: dy,
-        hediye: +(d.hediye || 0),
-        kira: +(d.kira || 0),
-        cocuk: +(d.cocuk || 0),
-        ssk: +(d.ssk || 0),
-        yol: +(d.yol || 0),
-        haberlesme: +(d.haberlesme || 0),
-        odemeler: {
-          hediye: false,
-          kira: false,
-          cocuk: false,
-          yol: false,
-          haberlesme: false,
-          ikramiye: false,
-          yakacak: false,
-          elbise: false,
-          ssk: false
-        },
-        maas: "ödenmedi",
-        toplam: KATEGORILER.reduce((sum, k) => sum + (+(d[k] || 0)), 0),
-        tarih: new Date()
-      };    
-      if(existingByName.has(key)){
-        if(overwrite){ batch.set(db.collection(aktifKoleksiyon).doc(existingByName.get(key)), payload, {merge:false}); overwritten++; }
-        else skipped++;
-      }else{ batch.set(db.collection(aktifKoleksiyon).doc(), payload); copied++; }
-    });
-    await batch.commit();
-    closeModals();
-    toast(`Kopya tamam: ${copied}${overwrite?`, üzerine yazılan: ${overwritten}`:''}${skipped?`, atlanan: ${skipped}`:''}`);
-    aySec.value=da; yilSec.value=dy; await listele();
+      let copied=0, skipped=0, overwritten=0;
+      for(const d of srcData){
+        const key=window.norm(d.ad||'');
+        const payload = {
+          ad: d.ad || '',
+          ay: da,
+          yil: dy,
+          hediye: +(d.hediye || 0),
+          kira: +(d.kira || 0),
+          cocuk: +(d.cocuk || 0),
+          ssk: +(d.ssk || 0),
+          yol: +(d.yol || 0),
+          haberlesme: +(d.haberlesme || 0),
+          ikramiye: +(d.ikramiye || 0),
+          yakacak: +(d.yakacak || 0),
+          elbise: +(d.elbise || 0),
+          odemeler: {
+            hediye: false,
+            kira: false,
+            cocuk: false,
+            yol: false,
+            haberlesme: false,
+            ikramiye: false,
+            yakacak: false,
+            elbise: false,
+            ssk: false
+          },
+          maas: "ödenmedi",
+          toplam: KATEGORILER.reduce((sum, k) => sum + (+(d[k] || 0)), 0),
+          tarih: new Date().toISOString()
+        };
+        
+        if(existingByName.has(key)){
+          if(overwrite){ 
+            const { error: updateError } = await sb.from(aktifKoleksiyon)
+              .update(payload)
+              .eq('id', existingByName.get(key));
+            if(updateError) throw updateError;
+            overwritten++; 
+          } else {
+            skipped++;
+          }
+        } else {
+          // Yeni ID oluştur (text tipinde)
+          payload.id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          const { error: insertError } = await sb.from(aktifKoleksiyon).insert(payload);
+          if(insertError) throw insertError;
+          copied++;
+        }
+      }
+      closeModals();
+      toast(`Kopya tamam: ${copied}${overwrite?`, üzerine yazılan: ${overwritten}`:''}${skipped?`, atlanan: ${skipped}`:''}`);
+      aySec.value=da; yilSec.value=dy; await listele();
+    } catch(e) {
+      console.error(e);
+      toast('Kopya işlemi başarısız.');
+    }
   };
 
   // Ekle – tek kayıt
   async function kaydetEkle(){
+    const sb = getSupabase();
     const veri={
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       ad:(document.getElementById("adInput").value||"").trim(),
       ay:+document.getElementById("ayInput").value, 
       yil:+document.getElementById("yilInput").value,
@@ -1269,20 +1556,28 @@ document.getElementById('btnLogout')?.addEventListener('click', async (e) => {
       ssk:+document.getElementById("sskInput").value||0,
       maas:"ödenmedi",
       odemeler:{hediye:false,kira:false,cocuk:false,yol:false,haberlesme:false,ikramiye:false,yakacak:false,elbise:false,ssk:false},
-      tarih:new Date()
+      tarih:new Date().toISOString()
     };
     veri.toplam = KATEGORILER.reduce((sum, k) => sum + (veri[k] || 0), 0);
     if(!veri.ad){ toast("Ad Soyad boş olamaz."); return; }
-    try{ await db.collection(aktifKoleksiyon).add(veri); closeModals(); toast("Tahakkuk oluşturuldu."); listele(); }
+    try{ 
+      const { error } = await sb.from(aktifKoleksiyon).insert(veri);
+      if(error) throw error;
+      closeModals(); 
+      toast("Tahakkuk oluşturuldu."); 
+      listele(); 
+    }
     catch(e){ console.error(e); toast("Kayıt başarısız."); }
   }
+  // Global scope'a ekle
+  window.kaydetEkle = kaydetEkle;
 
   // Listele + filtre
-  function filterByName(d){ const q=norm(searchInput.value); return !q || norm(d.ad||'').includes(q); }
+  function filterByName(d){ const q=window.norm(searchInput.value); return !q || window.norm(d.ad||'').includes(q); }
 
 function applySearch() {
-  const q = norm(searchInput.value);
-  LAST_ROWS = CACHE_ROWS.filter(d => !q || norm(d.ad||'').includes(q));
+  const q = window.norm(searchInput.value);
+  LAST_ROWS = CACHE_ROWS.filter(d => !q || window.norm(d.ad||'').includes(q));
   applySort();
 }
 
@@ -1309,14 +1604,58 @@ function applySort() {
       valA = calcKalan(a);
       valB = calcKalan(b);
     } else {
-      valA = +(a[SORT_COL] || 0);
-      valB = +(b[SORT_COL] || 0);
+      // Kategori borcu hesapla (sadece ödenmemiş kısım)
+      const calcKategoriBorcu = (d, kategori) => {
+        const tutar = +(d[kategori] || 0);
+        if(tutar > 0 && !d.odemeler?.[kategori]) return tutar;
+        return 0;
+      };
+      if(KATEGORILER.includes(SORT_COL)) {
+        valA = calcKategoriBorcu(a, SORT_COL);
+        valB = calcKategoriBorcu(b, SORT_COL);
+      } else {
+        valA = +(a[SORT_COL] || 0);
+        valB = +(b[SORT_COL] || 0);
+      }
     }
     if(valA < valB) return SORT_DIR === 'asc' ? -1 : 1;
     if(valA > valB) return SORT_DIR === 'asc' ? 1 : -1;
     return 0;
   });
 }
+
+  // Mobil sıralama
+  const mobileSortSelect = document.getElementById("mobileSortSelect");
+  const mobileSortClear = document.getElementById("mobileSortClear");
+  
+  if(mobileSortSelect) {
+    mobileSortSelect.addEventListener('change', () => {
+      const value = mobileSortSelect.value;
+      if(!value) {
+        SORT_COL = null;
+        SORT_DIR = 'asc';
+        applySort();
+        renderTableAndSummary(LAST_ROWS);
+        return;
+      }
+      
+      const [col, dir] = value.split('_');
+      SORT_COL = col;
+      SORT_DIR = dir;
+      applySort();
+      renderTableAndSummary(LAST_ROWS);
+    });
+  }
+  
+  if(mobileSortClear) {
+    mobileSortClear.addEventListener('click', () => {
+      mobileSortSelect.value = '';
+      SORT_COL = null;
+      SORT_DIR = 'asc';
+      applySort();
+      renderTableAndSummary(LAST_ROWS);
+    });
+  }
 
 function renderTableAndSummary(rows) {
   const tbody = document.getElementById("listeAlani");
@@ -1470,13 +1809,42 @@ function renderTableAndSummary(rows) {
 async function listele() {
   const ay = +aySec.value, yil = +yilSec.value;
 
-  // Firestore: yalnızca Ay/Yıl DEĞİŞTİĞİNDE çağrılmalı
-  const snap = await db.collection(aktifKoleksiyon)
-    .where("ay","==",ay).where("yil","==",yil).get();
+  // Supabase: yalnızca Ay/Yıl DEĞİŞTİĞİNDE çağrılmalı
+  try {
+    const sb = getSupabase();
+    if (!sb) {
+      console.error('Supabase client bulunamadı');
+      toast('Veritabanı bağlantısı kurulamadı. Sayfayı yenileyin.');
+      return;
+    }
 
-  CACHE_ROWS = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  applySearch();                   // arama kutusundaki mevcut değere göre filtrele
-  renderTableAndSummary(LAST_ROWS);
+    const { data, error } = await sb.from(aktifKoleksiyon)
+      .select('*')
+      .eq('ay', ay)
+      .eq('yil', yil);
+    
+    if(error) {
+      console.error('Veritabanı hatası:', error);
+      // RLS hatası kontrolü
+      if (error.code === '42501' || error.message?.includes('permission') || error.message?.includes('policy')) {
+        toast('Bu verilere erişim yetkiniz yok. Lütfen yönetici ile iletişime geçin.');
+      } else {
+        toast(`Veriler yüklenirken hata: ${error.message || 'Bilinmeyen hata'}`);
+      }
+      return;
+    }
+    
+    CACHE_ROWS = (data || []).map(doc => ({ id: doc.id, ...doc }));
+    applySearch();                   // arama kutusundaki mevcut değere göre filtrele
+    renderTableAndSummary(LAST_ROWS);
+    
+    if (CACHE_ROWS.length === 0) {
+      toast(`${monthsTR[ay-1]} ${yil} için kayıt bulunamadı.`);
+    }
+  } catch(e) {
+    console.error('listele hatası:', e);
+    toast(`Veriler yüklenirken hata: ${e.message || 'Bilinmeyen hata'}`);
+  }
 }
 
   // Sıralama
@@ -1512,18 +1880,40 @@ async function listele() {
 
   // Toplu set
   async function bulkSet(paid){
+    const sb = getSupabase();
     if(!LAST_ROWS.length){ toast("İşaretlenecek kayıt yok."); return; }
     const cat=document.getElementById("bulkKategoriModal").value;
-    const batch=db.batch();
-    if(cat==="maas"){
-      LAST_ROWS.forEach(r=> batch.update(db.collection(aktifKoleksiyon).doc(r.id), { maas: paid ? "ödendi":"ödenmedi" }));
-    }else{
-      LAST_ROWS.forEach(r=> batch.update(db.collection(aktifKoleksiyon).doc(r.id), { [`odemeler.${cat}`]: !!paid }));
+    try {
+      for(const r of LAST_ROWS){
+        if(cat==="maas"){
+          const { error } = await sb.from(aktifKoleksiyon)
+            .update({ maas: paid ? "ödendi":"ödenmedi" })
+            .eq('id', r.id);
+          if(error) throw error;
+        }else{
+          // JSONB alanını güncellemek için önce mevcut değeri al
+          const { data: current, error: fetchError } = await sb.from(aktifKoleksiyon)
+            .select('odemeler')
+            .eq('id', r.id)
+            .single();
+          if(fetchError) throw fetchError;
+          
+          const odemeler = current.odemeler || {};
+          odemeler[cat] = !!paid;
+          
+          const { error: updateError } = await sb.from(aktifKoleksiyon)
+            .update({ odemeler })
+            .eq('id', r.id);
+          if(updateError) throw updateError;
+        }
+      }
+      closeModals();
+      toast(`Toplu güncellendi: ${LAST_ROWS.length} kayıt`); 
+      listele();
+    } catch(e) {
+      console.error(e);
+      toast('Toplu güncelleme başarısız.');
     }
-    await batch.commit(); 
-    closeModals();
-    toast(`Toplu güncellendi: ${LAST_ROWS.length} kayıt`); 
-    listele();
   }
   btnBulkOkModal.onclick=()=>bulkSet(true);
   btnBulkNoModal.onclick=()=>bulkSet(false);
@@ -1559,20 +1949,30 @@ async function listele() {
     
     const div=document.getElementById("odemeKategoriAlani"); div.innerHTML="";
     const disabledAttr = IS_ADMIN ? '' : 'disabled';
+    
+    // Form grid yapısı
+    div.innerHTML = '<div class="form-grid">';
+    const kategoriLabels = {hediye:'Hediye',kira:'Kira',cocuk:'Çocuk',yol:'Yol',haberlesme:'Haberleşme',ikramiye:'İkramiye',yakacak:'Yakacak',elbise:'Elbise',ssk:'SSK'};
+    
     KATEGORILER.forEach(key=>{
       div.innerHTML += `
-        <label>${key.toUpperCase()}</label>
-        <select id="odeme_${key}" ${disabledAttr}>
-          <option value="true"  ${veri.odemeler?.[key] ? "selected":""}>Ödendi</option>
-          <option value="false" ${!veri.odemeler?.[key] ? "selected":""}>Ödenmedi</option>
-        </select>`;
+        <div class="form-group">
+          <label>${kategoriLabels[key] || key.toUpperCase()}</label>
+          <select id="odeme_${key}" ${disabledAttr}>
+            <option value="true"  ${veri.odemeler?.[key] ? "selected":""}>Ödendi</option>
+            <option value="false" ${!veri.odemeler?.[key] ? "selected":""}>Ödenmedi</option>
+          </select>
+        </div>`;
     });
     div.innerHTML += `
-      <label>RESMÎ MAAŞ</label>
-      <select id="odeme_maas" ${disabledAttr}>
-        <option value="ödendi"   ${veri.maas==="ödendi" ? "selected":""}>Ödendi</option>
-        <option value="ödenmedi" ${veri.maas==="ödenmedi" ? "selected":""}>Ödenmedi</option>
-      </select>`;
+      <div class="form-group">
+        <label>Resmî Maaş</label>
+        <select id="odeme_maas" ${disabledAttr}>
+          <option value="ödendi"   ${veri.maas==="ödendi" ? "selected":""}>Ödendi</option>
+          <option value="ödenmedi" ${veri.maas==="ödenmedi" ? "selected":""}>Ödenmedi</option>
+        </select>
+      </div>
+    </div>`;
     
     // Tutar alanlarını doldur
     KATEGORILER.forEach(k => {
@@ -1614,6 +2014,8 @@ async function listele() {
     
     openModal("odemeModal");
   }
+  // Global scope'a ekle
+  window.openOdeme = openOdeme;
   
   function toggleEditMode() {
     editMode = !editMode;
@@ -1636,6 +2038,8 @@ async function listele() {
       }
     }
   }
+  // Global scope'a ekle
+  window.toggleEditMode = toggleEditMode;
   
   function updateEditToplam() {
     const toplam = KATEGORILER.reduce((sum, k) => {
@@ -1644,10 +2048,13 @@ async function listele() {
     }, 0);
     document.getElementById("editToplamGoster").textContent = fmt(toplam);
   }
+  // Global scope'a ekle
+  window.updateEditToplam = updateEditToplam;
   
   // Tutar inputlarına event listener ekle (modal açıldığında)
   // Bu fonksiyon openOdeme içinde çağrılacak
   async function kaydetOdeme(){
+    const sb = getSupabase();
     if(!IS_ADMIN) {
       toast('Bu işlem için yetkiniz yok.');
       return;
@@ -1670,39 +2077,56 @@ async function listele() {
     }
     
     try{ 
-      await db.collection(aktifKoleksiyon).doc(aktifID).update(updateData); 
+      const { error } = await sb.from(aktifKoleksiyon)
+        .update(updateData)
+        .eq('id', aktifID);
+      if(error) throw error;
       closeModals(); 
       toast(editMode ? "Tutarlar ve ödemeler güncellendi." : "Ödemeler güncellendi."); 
       listele(); 
     }
     catch(e){ console.error(e); toast("Güncelleme hata."); }
   }
+  // Global scope'a ekle
+  window.kaydetOdeme = kaydetOdeme;
   async function silVeri(){
+    const sb = getSupabase();
     if(!IS_ADMIN) {
       toast('Bu işlem için yetkiniz yok.');
       return;
     }
     if(!aktifID) return;
     if(confirm("Bu personel kaydı silinsin mi?")){
-      try{ await db.collection(aktifKoleksiyon).doc(aktifID).delete(); closeModals(); toast("Kayıt silindi."); listele(); }
+      try{ 
+        const { error } = await sb.from(aktifKoleksiyon)
+          .delete()
+          .eq('id', aktifID);
+        if(error) throw error;
+        closeModals(); 
+        toast("Kayıt silindi."); 
+        listele(); 
+      }
       catch(e){ console.error(e); toast("Silme hata."); }
     }
   }
+  // Global scope'a ekle
+  window.silVeri = silVeri;
 
   // Personel Yönetim Modal
   let personelManageData = {};
   
   async function openPersonelManageModal() {
+    const sb = getSupabase();
     const modal = document.getElementById("personelManageModal");
     const personelSelect = document.getElementById("personelSelect");
     const yilSelect = document.getElementById("personelYilSelect");
     
     // Personel listesini yükle
     try {
-      const snap = await db.collection(aktifKoleksiyon).get();
+      const { data, error } = await sb.from(aktifKoleksiyon).select('ad');
+      if(error) throw error;
       const personeller = new Set();
-      snap.forEach(doc => {
-        const d = doc.data();
+      (data || []).forEach(d => {
         if(d.ad) personeller.add(d.ad);
       });
       
@@ -1744,23 +2168,25 @@ async function listele() {
   }
   
   async function loadPersonelYilData(personelAd, yil) {
+    const sb = getSupabase();
     try {
-      const snap = await db.collection(aktifKoleksiyon)
-        .where("ad", "==", personelAd)
-        .where("yil", "==", yil)
-        .get();
+      const { data, error } = await sb.from(aktifKoleksiyon)
+        .select('*')
+        .eq('ad', personelAd)
+        .eq('yil', yil);
+      
+      if(error) throw error;
       
       personelManageData = {};
       let yillikToplam = 0;
       
-      snap.forEach(doc => {
-        const d = doc.data();
-        const ay = d.ay;
+      (data || []).forEach(doc => {
+        const ay = doc.ay;
         personelManageData[ay] = {
           id: doc.id,
-          ...d
+          ...doc
         };
-        yillikToplam += +(d.toplam || 0);
+        yillikToplam += +(doc.toplam || 0);
       });
       
       // UI güncelle
@@ -1917,12 +2343,10 @@ async function listele() {
     }
     
     try {
-      const batch = db.batch();
       let updated = 0;
       
-      Object.keys(personelManageData).forEach(ay => {
+      for(const ay of Object.keys(personelManageData)) {
         const data = personelManageData[ay];
-        const docRef = db.collection(aktifKoleksiyon).doc(data.id);
         
         // Checkbox'ları güncelle
         const card = document.querySelector(`input[data-ay="${ay}"]`)?.closest('div[style*="border-radius:12px"]');
@@ -1946,11 +2370,14 @@ async function listele() {
           updateObj[k] = +(data[k] || 0);
         });
         
-        batch.update(docRef, updateObj);
+        const sb = getSupabase();
+        const { error } = await sb.from(aktifKoleksiyon)
+          .update(updateObj)
+          .eq('id', data.id);
+        if(error) throw error;
         updated++;
-      });
+      }
       
-      await batch.commit();
       closeModals();
       toast(`${updated} ay verisi güncellendi.`);
       listele();
@@ -1959,6 +2386,8 @@ async function listele() {
       toast('Kayıt sırasında hata oluştu.');
     }
   }
+  // Global scope'a ekle
+  window.kaydetPersonelYonetim = kaydetPersonelYonetim;
 
   // Analiz Modal - Global değişkenler
   let kategoriChartInstance = null;
@@ -2209,16 +2638,17 @@ async function listele() {
   
   // Analiz Modal
   async function openAnalizModal() {
+    const sb = getSupabase();
     const modal = document.getElementById("analizModal");
     const personelSelect = document.getElementById("analizPersonelSelect");
     const yilSelect = document.getElementById("analizYilSelect");
     
     // Personel listesini yükle
     try {
-      const snap = await db.collection(aktifKoleksiyon).get();
+      const { data, error } = await sb.from(aktifKoleksiyon).select('ad');
+      if(error) throw error;
       const personeller = new Set();
-      snap.forEach(doc => {
-        const d = doc.data();
+      (data || []).forEach(d => {
         if(d.ad) personeller.add(d.ad);
       });
       
@@ -2270,15 +2700,17 @@ async function listele() {
   }
   
   async function loadAnalizData(personelAd, yil) {
+    const sb = getSupabase();
     try {
-      let query = db.collection(aktifKoleksiyon).where("yil", "==", yil);
+      let query = sb.from(aktifKoleksiyon).select('*').eq('yil', yil);
       if(personelAd) {
-        query = query.where("ad", "==", personelAd);
+        query = query.eq('ad', personelAd);
       }
       
-      const snap = await query.get();
+      const { data, error } = await query;
+      if(error) throw error;
       
-      if(snap.empty) {
+      if(!data || data.length === 0) {
         document.getElementById("analizDataArea").style.display = "none";
         document.getElementById("analizEmptyState").style.display = "block";
         document.getElementById("analizEmptyState").innerHTML = `
@@ -2308,8 +2740,7 @@ async function listele() {
         analizData.aylik[ay] = { toplam: 0, odenen: 0, kalan: 0 };
       }
       
-      snap.forEach(doc => {
-        const d = doc.data();
+      data.forEach(d => {
         const ay = d.ay || 1;
         
         // Kategori toplamları
@@ -2415,7 +2846,7 @@ async function listele() {
       window.currentAnalizData = analizData;
       window.currentAnalizYil = yil;
       window.currentAnalizPersonel = personelAd;
-      window.currentAnalizSnap = snap;
+      window.currentAnalizDataArray = data; // snap yerine data array'i sakla
       
       // Kategori seçimi event listener
       const kategoriSelect = document.getElementById("analizKategoriSelect");
@@ -2423,7 +2854,7 @@ async function listele() {
         kategoriSelect.onchange = () => {
           const kategori = kategoriSelect.value;
           if(kategori) {
-            loadKategoriDetay(kategori, analizData, yil, snap);
+            loadKategoriDetay(kategori, analizData, yil, data);
           } else {
             document.getElementById("kategoriDetayArea").style.display = "none";
             document.getElementById("kategoriDetayEmpty").style.display = "block";
@@ -2441,7 +2872,7 @@ async function listele() {
   }
   
   // Kategori detay analizi
-  function loadKategoriDetay(kategori, analizData, yil, snap) {
+  function loadKategoriDetay(kategori, analizData, yil, dataArray) {
     try {
       const kategoriLabels = {
         hediye: 'Hediye',
@@ -2473,8 +2904,7 @@ async function listele() {
             aylikKategoriData[ay] = { toplam: 0, odenen: 0, kalan: 0 };
           }
           
-          snap.forEach(doc => {
-            const d = doc.data();
+          dataArray.forEach(d => {
             const ay = d.ay || 1;
             const tutar = +(d[kat] || 0);
             
@@ -2589,8 +3019,7 @@ async function listele() {
         aylikKategoriData[ay] = { toplam: 0, odenen: 0, kalan: 0 };
       }
       
-      snap.forEach(doc => {
-        const d = doc.data();
+      dataArray.forEach(d => {
         const ay = d.ay || 1;
         const tutar = +(d[kategori] || 0);
         
@@ -2737,16 +3166,7 @@ async function listele() {
     }
   }
 
-  // Bildirim örnek (opsiyonel)
-  (async function(){
-    try{
-      const snap=await db.collection('duyurular').orderBy('createdAt','desc').limit(5).get();
-      const badge=document.getElementById('notifBadge'), list=document.getElementById('notifList');
-      const n=snap.size; if(n>0){ badge.style.display='block'; badge.textContent=n>99?'99+':String(n); }
-      if(n===0){ list.innerHTML='<div class="muted" style="padding:6px 8px">Yeni bildirim yok.</div>'; }
-      else snap.forEach(doc=>{ const d=doc.data()||{}; const row=document.createElement('a'); row.href='diger/bildirim.html'; row.innerHTML=`<strong>${d.baslik||'Duyuru'}</strong><div class="muted">${d.detay||''}</div>`; list.appendChild(row); });
-    }catch(e){}
-  })();
+  // Bildirimler ortak.js'den geliyor, burada yapmaya gerek yok
 
   // Yetkili kullanıcı kontrolü ve UI güncelleme
   function updateAdminUI(isAdmin) {
@@ -2764,6 +3184,7 @@ async function listele() {
     if(btnPersonelManage) btnPersonelManage.style.display = isAdmin ? "inline-block" : "none";
     
     // Tablo satırlarına tıklama - sadece admin için aktif
+    // renderTableAndSummary içinde de kontrol ediliyor, burada sadece mevcut satırları güncelle
     const tbody = document.getElementById("listeAlani");
     if(tbody) {
       tbody.querySelectorAll('tr').forEach(tr => {
@@ -2775,30 +3196,60 @@ async function listele() {
         }
       });
     }
+    
+    // Mobil kartlara tıklama - sadece admin için aktif
+    const mobileCards = document.getElementById("mobileCards");
+    if(mobileCards) {
+      mobileCards.querySelectorAll('.person-card').forEach(card => {
+        if(isAdmin) {
+          card.style.cursor = "pointer";
+        } else {
+          card.style.cursor = "default";
+          card.onclick = null;
+        }
+      });
+    }
   }
 
-  // Auth + yetki
-  try{ firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL); }catch(e){}
-  auth.onAuthStateChanged(async (user)=>{
-    if(!user){ setTimeout(()=>{ if(!auth.currentUser) location.replace('index.html'); },150); return; }
-    try{
-      const uSnap=await db.collection('kullanicilar').doc(user.uid).get();
-      const data=uSnap.exists?uSnap.data():{};
-      document.getElementById('profName').textContent = data.adSoyad ? (data.adSoyad.split(' ')[0]) : 'Profil';
-      const rawPerms=Array.isArray(data.yetkiler)? data.yetkiler : [];
-      CURRENT_ALLOW=new Set(rawPerms.filter(s=>!String(s).trim().startsWith('-') && !String(s).trim().startsWith('!')).map(norm));
-      CURRENT_DENY =new Set(rawPerms.filter(s=> String(s).trim().startsWith('-') || String(s).trim().startsWith('!')).map(s=>norm(String(s).replace(/^[-!]\s*/,''))));
-      const panels=await fetchPanels(CURRENT_ALLOW, CURRENT_DENY);
-      renderNav(panels);
+  // Auth + yetki - ortak.js'den initAppShellAuth kullanılıyor
+  // Sayfa özel init fonksiyonu
+  window.initPage = async function() {
+    try {
+      const sb = getSupabase();
+      if (!sb) {
+        console.error('Supabase client bulunamadı');
+        toast('Veritabanı bağlantısı kurulamadı. Sayfayı yenileyin.');
+        return;
+      }
+
+      const { data: { user }, error: authError } = await sb.auth.getUser();
+      
+      if (authError) {
+        console.error('Auth hatası:', authError);
+        toast('Kullanıcı doğrulaması yapılamadı. Lütfen tekrar giriş yapın.');
+        return;
+      }
+
+      if(!user) {
+        console.warn('Kullanıcı bulunamadı');
+        return;
+      }
       
       // Email kontrolü - sadece samettckrr@gmail.com yetkili
       const userEmail = user.email || '';
       const isAdmin = userEmail.toLowerCase() === 'samettckrr@gmail.com';
+      IS_ADMIN = isAdmin;
       updateAdminUI(isAdmin);
       
+      console.log('Kullanıcı:', userEmail, 'Admin:', isAdmin);
       await listele();
-    }catch(e){ console.error(e); toast('Veriler yüklenirken hata.'); }
-  });
+    } catch(e) { 
+      console.error('initPage hatası:', e); 
+      toast(`Sayfa yüklenirken hata: ${e.message || 'Bilinmeyen hata'}`); 
+    }
+  };
+    }); // waitForSupabaseAndOrtak callback kapanışı
+  }); // DOMContentLoaded kapanışı
 </script>
 </body>
 </html>
