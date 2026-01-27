@@ -1,0 +1,1423 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Personel Analiz CSV Aktarım | KARAAĞAÇ FATİH</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <link rel="icon" href="../img/logo.png"/>
+
+  <style>
+    /* app-shell.css üst bar/arka plan/toast/yetki yapısını kullanır.
+       Burada sadece sayfa-özel küçük düzenlemeler var. */
+    body {
+      padding-top: var(--appbar-h) !important;
+      overflow-x: hidden;
+      overflow-y: auto;
+      visibility: hidden;
+    }
+    body.ready { visibility: visible; }
+
+    .wrap {
+      max-width: 1400px;
+      margin: 16px auto;
+      padding: 16px;
+      display: grid;
+      gap: 16px;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      border-bottom: 2px solid var(--stroke);
+      margin: 16px 0;
+      overflow-x: auto;
+    }
+
+    .tab {
+      padding: 12px 20px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      white-space: nowrap;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .tab:hover {
+      color: var(--text);
+      background: var(--surface);
+    }
+
+    .tab.active {
+      color: var(--brand);
+      border-bottom-color: var(--brand);
+      background: var(--card);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--stroke);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+
+    .card .hd {
+      padding: 12px;
+      border-bottom: 1px solid var(--stroke);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin: -16px -16px 16px -16px;
+    }
+
+    .card .hd strong {
+      font-size: 15px;
+    }
+
+    /* File Upload */
+    .file-upload {
+      border: 2px dashed var(--stroke);
+      border-radius: 12px;
+      padding: 40px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--surface);
+    }
+
+    .file-upload:hover {
+      border-color: var(--brand);
+      background: var(--pill-hover);
+    }
+
+    .file-upload.drag-over {
+      border-color: var(--brand);
+      background: rgba(59, 130, 246, 0.05);
+    }
+
+    .file-upload input[type="file"] {
+      display: none;
+    }
+
+    .file-info {
+      margin-top: 12px;
+      padding: 12px;
+      background: var(--surface);
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    /* Preview Table */
+    .preview-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+      background: var(--card);
+      border: 1px solid var(--stroke);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .preview-table thead {
+      background: var(--surface);
+    }
+
+    .preview-table th {
+      padding: 12px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--text);
+      border-bottom: 2px solid var(--stroke);
+    }
+
+    .preview-table td {
+      padding: 10px 12px;
+      font-size: 13px;
+      border-bottom: 1px solid var(--stroke);
+    }
+
+    .preview-table tbody tr:hover {
+      background: var(--surface);
+    }
+
+    .preview-table tbody tr.error {
+      background: rgba(239, 68, 68, 0.1);
+    }
+
+    .preview-table tbody tr.error td {
+      color: var(--bad);
+    }
+
+    .error-msg {
+      color: var(--bad);
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    /* Progress */
+    .progress-wrap {
+      display: none;
+      margin-top: 16px;
+      padding: 16px;
+      background: var(--surface);
+      border-radius: 8px;
+    }
+
+    .progress-wrap.active {
+      display: block;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: var(--stroke);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--brand);
+      transition: width 0.3s;
+      width: 0%;
+    }
+
+    /* Buttons */
+    .btn-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--brand);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: var(--brand2);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--stroke);
+    }
+
+    .btn-secondary:hover {
+      background: var(--pill-hover);
+    }
+
+    /* Stats */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .stat-card {
+      padding: 12px;
+      background: var(--surface);
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .stat-card .value {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--brand);
+    }
+
+    .stat-card .label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .hint {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+      color: var(--muted);
+    }
+
+    .badge.success {
+      background: rgba(16, 185, 129, 0.1);
+      border-color: var(--good);
+      color: var(--good);
+    }
+
+    .badge.error {
+      background: rgba(239, 68, 68, 0.1);
+      border-color: var(--bad);
+      color: var(--bad);
+    }
+
+    .badge.warning {
+      background: rgba(245, 158, 11, 0.1);
+      border-color: var(--warn);
+      color: var(--warn);
+    }
+
+    .csv-paste-wrap {
+      margin-top: 16px;
+      border: 1px solid var(--stroke);
+      border-radius: 8px;
+      padding: 12px;
+      background: var(--surface);
+    }
+    .csv-paste-wrap label {
+      display: block;
+      font-weight: 600;
+      font-size: 13px;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+    .csv-paste-textarea {
+      width: 100%;
+      min-height: 120px;
+      padding: 10px 12px;
+      font-family: ui-monospace, monospace;
+      font-size: 13px;
+      border: 1px solid var(--stroke);
+      border-radius: 6px;
+      background: var(--card);
+      color: var(--text);
+      resize: vertical;
+      box-sizing: border-box;
+    }
+    .csv-paste-textarea::placeholder {
+      color: var(--muted);
+    }
+    .csv-paste-btn {
+      margin-top: 8px;
+    }
+  </style>
+
+  <!-- PapaParse for CSV parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <!-- App Shell CSS (sadece stil değişkenleri + toast) -->
+  <link rel="stylesheet" href="../css/app-shell.css" />
+</head>
+<body>
+  <!-- Minimal header - ortak.js bağımsız -->
+  <div class="appbar">
+    <div class="brand" onclick="location.href='../panel.html'">
+      <img src="../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
+    </div>
+    <nav class="nav-center">
+      <span class="muted">CSV Aktarım</span>
+    </nav>
+    <div class="nav-right">
+      <a href="personel-analiz-import-kontrol.html" class="btn btn-secondary" style="margin-right:8px">📋 CSV vs DB Kontrol</a>
+      <a href="../panel.html" class="btn btn-secondary" style="margin-right:8px">← Panele Dön</a>
+      <button class="btn btn-secondary" id="btnLogout" type="button">🚪 Çıkış</button>
+    </div>
+  </div>
+
+  <main class="wrap">
+    <header>
+      <h1 style="margin: 0; font-size: 24px; font-weight: 700;">Personel Analiz CSV Aktarım</h1>
+      <p class="hint" style="margin: 8px 0 0 0;">3 tablo için CSV dosyalarını yükleyin ve önizleyin. CSV UTF-8 ile kaydedin; sütunlar <code>;</code> veya <code>,</code> ile ayrılabilir.</p>
+    </header>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" data-tab="odeme">📅 Personel Ödeme Takvimi</button>
+      <button class="tab" data-tab="hedef">🎯 Arşiv Hedefler</button>
+      <button class="tab" data-tab="teberru">💰 Geçmiş Teberru Kayıtları</button>
+    </div>
+
+    <!-- Tab 1: Personel Ödeme Takvimi -->
+    <div class="tab-content active" id="tab-odeme">
+      <div class="card">
+        <div class="hd">
+          <strong>Personel Ödeme Takvimi CSV Aktarım</strong>
+        </div>
+        <div>
+          <div class="file-upload" id="uploadOdeme">
+            <input type="file" id="fileOdeme" accept=".csv" />
+            <div style="font-size: 48px; margin-bottom: 12px;">📤</div>
+            <div style="font-weight: 600; margin-bottom: 8px;">CSV Dosyası Seçin veya Sürükleyin</div>
+            <div class="hint">personel_uid, personel_adi_soyadi, yil, ay, tip, tutar, verildigi_tarih — tip: hediye, kira, cocuk, yakacak, ikramiye, elbise, asker, yeni_dogan, yol_yardimi, dugun</div>
+          </div>
+          <div class="file-info" id="infoOdeme" style="display: none;"></div>
+          <div class="csv-paste-wrap">
+            <label for="pasteOdeme">Veya CSV'yi buraya yapıştırın (ilk satır sütun başlıkları)</label>
+            <textarea id="pasteOdeme" class="csv-paste-textarea" placeholder="personel_uid;personel_adi_soyadi;yil;ay;tip;tutar;verildigi_tarih&#10;uuid-1;Ahmet Yılmaz;2024;1;hediye;5000;2024-01-15"></textarea>
+            <button type="button" class="btn btn-secondary csv-paste-btn" id="btnPasteOdeme">Metni İşle</button>
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-primary" id="btnImportOdeme" disabled>Verileri Aktar</button>
+            <button class="btn btn-secondary" id="btnClearOdeme">Temizle</button>
+            <button class="btn btn-secondary" id="btnSampleOdeme">Şablon İndir</button>
+          </div>
+          <div class="progress-wrap" id="progressOdeme">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+              <span>İşleniyor...</span>
+              <span id="progressTextOdeme">0%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="progressFillOdeme"></div>
+            </div>
+          </div>
+          <div class="stats" id="statsOdeme" style="display: none;">
+            <div class="stat-card">
+              <div class="value" id="statTotalOdeme">0</div>
+              <div class="label">Toplam Kayıt</div>
+            </div>
+            <div class="stat-card">
+              <div class="value" id="statSuccessOdeme">0</div>
+              <div class="label">Başarılı</div>
+            </div>
+            <div class="stat-card">
+              <div class="value" id="statErrorOdeme">0</div>
+              <div class="label">Hatalı</div>
+            </div>
+          </div>
+          <div id="previewOdeme"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 2: Arşiv Hedefler -->
+    <div class="tab-content" id="tab-hedef">
+      <div class="card">
+        <div class="hd">
+          <strong>Arşiv Hedefler CSV Aktarım</strong>
+        </div>
+        <div>
+          <div class="file-upload" id="uploadHedef">
+            <input type="file" id="fileHedef" accept=".csv" />
+            <div style="font-size: 48px; margin-bottom: 12px;">📤</div>
+            <div style="font-weight: 600; margin-bottom: 8px;">CSV Dosyası Seçin veya Sürükleyin</div>
+            <div class="hint">personel, uid, yil, sira, kategori, tip, hedef, tutar, kurban_adedi</div>
+          </div>
+          <div class="file-info" id="infoHedef" style="display: none;"></div>
+          <div class="csv-paste-wrap">
+            <label for="pasteHedef">Veya CSV'yi buraya yapıştırın</label>
+            <textarea id="pasteHedef" class="csv-paste-textarea" placeholder="personel;uid;yil;sira;kategori;tip;hedef;tutar;kurban_adedi"></textarea>
+            <button type="button" class="btn btn-secondary csv-paste-btn" id="btnPasteHedef">Metni İşle</button>
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-primary" id="btnImportHedef" disabled>Verileri Aktar</button>
+            <button class="btn btn-secondary" id="btnClearHedef">Temizle</button>
+            <button class="btn btn-secondary" id="btnSampleHedef">Şablon İndir</button>
+          </div>
+          <div class="progress-wrap" id="progressHedef">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+              <span>İşleniyor...</span>
+              <span id="progressTextHedef">0%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="progressFillHedef"></div>
+            </div>
+          </div>
+          <div class="stats" id="statsHedef" style="display: none;">
+            <div class="stat-card">
+              <div class="value" id="statTotalHedef">0</div>
+              <div class="label">Toplam Kayıt</div>
+            </div>
+            <div class="stat-card">
+              <div class="value" id="statSuccessHedef">0</div>
+              <div class="label">Başarılı</div>
+            </div>
+            <div class="stat-card">
+              <div class="value" id="statErrorHedef">0</div>
+              <div class="label">Hatalı</div>
+            </div>
+          </div>
+          <div id="previewHedef"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 3: Geçmiş Teberru Kayıtları -->
+    <div class="tab-content" id="tab-teberru">
+      <div class="card">
+        <div class="hd">
+          <strong>Geçmiş Teberru Kayıtları CSV Aktarım</strong>
+        </div>
+        <div>
+          <div class="file-upload" id="uploadTeberru">
+            <input type="file" id="fileTeberru" accept=".csv" />
+            <div style="font-size: 48px; margin-bottom: 12px;">📤</div>
+            <div style="font-weight: 600; margin-bottom: 8px;">CSV Dosyası Seçin veya Sürükleyin</div>
+            <div class="hint">vade_tarihi, tip, sahip, referans, diger, odeme, tutar — aciklama opsiyonel (boş bırakılabilir)</div>
+          </div>
+          <div class="file-info" id="infoTeberru" style="display: none;"></div>
+          <div class="csv-paste-wrap">
+            <label for="pasteTeberru">Veya CSV'yi buraya yapıştırın</label>
+            <textarea id="pasteTeberru" class="csv-paste-textarea" placeholder="vade_tarihi;tip;sahip;referans;diger;odeme;tutar;aciklama (opsiyonel)"></textarea>
+            <button type="button" class="btn btn-secondary csv-paste-btn" id="btnPasteTeberru">Metni İşle</button>
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-primary" id="btnImportTeberru" disabled>Verileri Aktar</button>
+            <button class="btn btn-secondary" id="btnClearTeberru">Temizle</button>
+            <button class="btn btn-secondary" id="btnSampleTeberru">Şablon İndir</button>
+          </div>
+          <div class="progress-wrap" id="progressTeberru">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+              <span>İşleniyor...</span>
+              <span id="progressTextTeberru">0%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="progressFillTeberru"></div>
+            </div>
+          </div>
+          <div class="stats" id="statsTeberru" style="display: none;">
+            <div class="stat-card">
+              <div class="value" id="statTotalTeberru">0</div>
+              <div class="label">Toplam Kayıt</div>
+            </div>
+            <div class="stat-card">
+              <div class="value" id="statSuccessTeberru">0</div>
+              <div class="label">Başarılı</div>
+            </div>
+            <div class="stat-card">
+              <div class="value" id="statErrorTeberru">0</div>
+              <div class="label">Hatalı</div>
+            </div>
+          </div>
+          <div id="previewTeberru"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Supabase: CDN + src/supabase.js (ortak.js yok, sayfa kendi içinde) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="../src/supabase.js"></script>
+
+  <script>
+    /* ===================== Sayfa kendi içinde (ortak.js bağımsız) ===================== */
+    const $ = (id) => document.getElementById(id);
+
+    function getSupabase() {
+      return window.supabase;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function showToast(type, title, message) {
+      const cont = document.getElementById('toastContainer');
+      if (!cont) return;
+      const safeType = ['success', 'error', 'warning', 'info'].includes(type) ? type : 'info';
+      const safeTitle = escapeHtml(String(title || ''));
+      const safeMessage = escapeHtml(String(message || ''));
+      const icon = safeType === 'success' ? '✅' : safeType === 'error' ? '⚠️' : safeType === 'warning' ? '⚠️' : 'ℹ️';
+      const div = document.createElement('div');
+      div.className = `toast ${safeType}`;
+      div.innerHTML = `<div class="toast-icon">${icon}</div><div class="toast-content"><div class="toast-title">${safeTitle}</div><div class="toast-message">${safeMessage}</div></div><button class="toast-close" type="button" aria-label="Kapat">×</button>`;
+      cont.appendChild(div);
+      requestAnimationFrame(() => div.classList.add('show'));
+      const close = () => { div.classList.remove('show'); setTimeout(() => div.remove(), 200); };
+      div.querySelector('.toast-close').addEventListener('click', close);
+      setTimeout(close, 4000);
+    }
+
+    function safeShowToast(type, title, message) {
+      showToast(type, title, message);
+    }
+
+    // CSV Schema Definitions (dugun create script'te var)
+    const CSV_SCHEMAS = {
+      odeme: {
+        required: ['personel_uid', 'personel_adi_soyadi', 'yil', 'ay', 'tip', 'tutar', 'verildigi_tarih'],
+        tipValues: ['hediye', 'kira', 'cocuk', 'yakacak', 'ikramiye', 'elbise', 'asker', 'yeni_dogan', 'yol_yardimi', 'dugun'],
+        table: 'personel_odeme_takvim'
+      },
+      hedef: {
+        required: ['personel', 'uid', 'yil', 'sira', 'kategori', 'tip', 'hedef', 'tutar', 'kurban_adedi'],
+        table: 'arsiv_hedefler'
+      },
+      teberru: {
+        required: ['vade_tarihi', 'tip', 'sahip', 'referans', 'diger', 'odeme', 'tutar'],
+        table: 'gecmis_teberru_kayitlari'
+      }
+    };
+
+    // Parse state
+    const parseState = {
+      odeme: { data: null, errors: [] },
+      hedef: { data: null, errors: [] },
+      teberru: { data: null, errors: [] }
+    };
+
+    function clearParseStateForType(t) {
+      parseState[t] = { data: null, errors: [] };
+      const Tc = t.charAt(0).toUpperCase() + t.slice(1);
+      const p = $(`preview${Tc}`);
+      const b = $(`btnImport${Tc}`);
+      const s = $(`stats${Tc}`);
+      if (p) p.innerHTML = '';
+      if (b) b.disabled = true;
+      if (s) s.style.display = 'none';
+    }
+
+    function getPasteTextarea(type) {
+      return $(`paste${type.charAt(0).toUpperCase() + type.slice(1)}`);
+    }
+
+    function getFileInput(type) {
+      return $(`file${type.charAt(0).toUpperCase() + type.slice(1)}`);
+    }
+
+    // File upload handlers
+    function setupFileUpload(type) {
+      const upload = $(`upload${type.charAt(0).toUpperCase() + type.slice(1)}`);
+      const fileInput = $(`file${type.charAt(0).toUpperCase() + type.slice(1)}`);
+      const info = $(`info${type.charAt(0).toUpperCase() + type.slice(1)}`);
+
+      // Click to select file
+      upload.addEventListener('click', () => fileInput.click());
+
+      // Drag & drop
+      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        upload.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        });
+      });
+
+      ['dragenter', 'dragover'].forEach(eventName => {
+        upload.addEventListener(eventName, () => upload.classList.add('drag-over'));
+      });
+
+      ['dragleave', 'drop'].forEach(eventName => {
+        upload.addEventListener(eventName, () => upload.classList.remove('drag-over'));
+      });
+
+      upload.addEventListener('drop', (e) => {
+        const files = e.dataTransfer.files;
+        if (files.length > 0 && files[0].name.endsWith('.csv')) {
+          fileInput.files = files;
+          handleFile(type, files[0]);
+        }
+      });
+
+      fileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+          handleFile(type, e.target.files[0]);
+        }
+      });
+    }
+
+    function processCSVText(type, text, sourceLabel) {
+      const Tc = type.charAt(0).toUpperCase() + type.slice(1);
+      const info = $(`info${Tc}`);
+      const btnImport = $(`btnImport${Tc}`);
+      const preview = $(`preview${Tc}`);
+
+      if (!text || String(text).trim() === '') {
+        safeShowToast('warning', 'Boş metin', 'CSV verisi girin veya dosya seçin.');
+        clearParseStateForType(type);
+        return;
+      }
+      text = String(text).trim();
+      info.style.display = 'block';
+      info.innerHTML = `<span class="badge">${sourceLabel}</span>`;
+
+      if (text.length && text.charCodeAt(0) === 0xFEFF) {
+        text = text.slice(1);
+      }
+        
+      // Encoding kontrolü - Türkçe karakterler doğru mu?
+        console.log('Text encoding check - İlk 200 karakter:', text.substring(0, 200));
+        const hasTurkishChars = /[İıÇçŞşĞğÜüÖö]/.test(text);
+        
+        // Bozuk karakter kontrolü - sadece gerçek bozuk karakterleri tespit et
+        // Replacement character (U+FFFD) veya yıldız karakterleri kontrol et
+        // NOT: Türkçe karakterler (ş, ğ, ü, ö, ç, ı, İ) bozuk değildir!
+        const replacementChar = '\uFFFD'; // Unicode replacement character
+        const hasCorruptedChars = text.includes(replacementChar) || 
+                                  (text.match(/\*/g) && text.match(/\*/g).length > 10); // Çok fazla yıldız varsa
+        
+        console.log('Türkçe karakter kontrolü:', hasTurkishChars ? 'VAR ✅' : 'YOK ❌');
+        console.log('Bozuk karakter kontrolü:', hasCorruptedChars ? 'VAR ⚠️' : 'YOK ✅');
+        
+        // Encoding sorunu tespit edildiyse uyar (sadece gerçek bozuk karakterler için)
+        // NOT: Türkçe karakterler varsa ve bozuk karakter yoksa sorun yok
+        if (hasCorruptedChars && !hasTurkishChars) {
+          console.warn('⚠️ ENCODING SORUNU TESPİT EDİLDİ!');
+          console.warn('CSV dosyası UTF-8 olarak kaydedilmemiş. Lütfen Excel\'de şu adımları izleyin:');
+          console.warn('1. Dosya → Farklı Kaydet');
+          console.warn('2. Dosya türü: "CSV UTF-8 (Virgülle Ayrılmış) (*.csv)" seçin');
+          console.warn('3. Kaydedin ve tekrar yükleyin');
+          safeShowToast('error', 'Encoding Hatası', 'CSV dosyası UTF-8 encoding ile kaydedilmemiş! Excel\'de "CSV UTF-8" olarak kaydedin ve tekrar yükleyin.');
+          clearParseStateForType(type);
+          return;
+        }
+        
+        // Delimiter algılama - Türkiye'de Excel genellikle ; kullanır
+        // Öncelik sırası: ; (Türkiye Excel) > , (İngilizce Excel) > TAB
+        let delimiter = ';'; // Türkiye Excel varsayılanı
+        const hasSemicolon = text.indexOf(';') !== -1;
+        const hasComma = text.indexOf(',') !== -1;
+        const hasTab = text.indexOf('\t') !== -1;
+        
+        if (hasSemicolon) {
+          delimiter = ';';
+        } else if (hasComma) {
+          delimiter = ',';
+        } else if (hasTab) {
+          delimiter = '\t';
+        }
+        
+        console.log('Delimiter algılandı:', delimiter === '\t' ? 'TAB' : delimiter === ';' ? 'NOKTALI VİRGÜL (;)' : 'VİRGÜL (,)');
+
+        const schema = CSV_SCHEMAS[type];
+        const required = schema.required;
+        const uuidLike = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+        Papa.parse(text, {
+          header: false,
+          skipEmptyLines: true,
+          delimiter: delimiter,
+          newline: '',
+          complete: async (results) => {
+            if (results.errors && results.errors.length > 0) {
+              safeShowToast('error', 'CSV Hatası', results.errors[0].message);
+              clearParseStateForType(type);
+              return;
+            }
+            const rawRows = (results.data || []).map(r => r.map(c => String(c != null ? c : '').trim()));
+            if (rawRows.length === 0) {
+              safeShowToast('warning', 'Boş CSV', 'En az bir satır (başlık veya veri) gerekli.');
+              clearParseStateForType(type);
+              return;
+            }
+
+            const first = rawRows[0];
+            let data = [];
+            let headers = [];
+
+            if (required.every(h => first.includes(h)) && first.length >= required.length) {
+              headers = first;
+              const dataRows = rawRows.slice(1);
+              data = dataRows.map(row => {
+                const o = {};
+                headers.forEach((h, i) => { o[h] = (row[i] != null ? row[i] : ''); });
+                return o;
+              });
+            } else if (first.length >= required.length && uuidLike.test(first[0])) {
+              headers = required;
+              data = rawRows.map(row => {
+                const o = {};
+                required.forEach((h, i) => { o[h] = (row[i] != null ? row[i] : ''); });
+                return o;
+              });
+            } else {
+              const msg = `İlk satır sütun başlıkları (${required.join(', ')}) veya aynı sırada veri olmalı. Bulunan: ${first.slice(0, 3).join(', ')}…`;
+              safeShowToast('error', 'Sütun hatası', msg);
+              clearParseStateForType(type);
+              return;
+            }
+
+            const errors = [];
+            const validatedData = [];
+            const allRows = [];
+
+            for (let i = 0; i < data.length; i++) {
+              const row = data[i];
+              const rowNum = i + 1;
+              const rowErrors = validateRow(type, row, rowNum);
+              
+              if (rowErrors.length === 0) {
+                // Geçerli satır - transform et ve ekle
+                try {
+                  const transformed = transformRow(type, row);
+                  validatedData.push(transformed);
+                  allRows.push({ ...transformed, _rowNum: rowNum, _errors: [] });
+                } catch (e) {
+                  console.error('Transform error:', e);
+                  errors.push({ row: rowNum, field: 'genel', message: `Transform hatası: ${e.message}` });
+                  allRows.push({ ...row, _rowNum: rowNum, _errors: [{ field: 'genel', message: `Transform hatası: ${e.message}` }] });
+                }
+              } else {
+                // Hatalı satır - hataları ekle ve ham veriyi göster
+                errors.push(...rowErrors);
+                // Transform etmeye çalış, başarısız olursa ham veriyi göster
+                let displayRow = { ...row };
+                try {
+                  const transformed = transformRow(type, row);
+                  displayRow = { ...transformed };
+                } catch (e) {
+                  // Transform başarısız, ham veriyi kullan
+                  console.warn('Transform failed for row', rowNum, e);
+                }
+                allRows.push({ ...displayRow, _rowNum: rowNum, _errors: rowErrors });
+              }
+            }
+
+            parseState[type] = { data: validatedData, errors };
+            renderPreview(type, allRows, errors);
+            btnImport.disabled = validatedData.length === 0;
+            
+            // İstatistikleri göster
+            const stats = $(`stats${type.charAt(0).toUpperCase() + type.slice(1)}`);
+            const statTotal = $(`statTotal${type.charAt(0).toUpperCase() + type.slice(1)}`);
+            const statError = $(`statError${type.charAt(0).toUpperCase() + type.slice(1)}`);
+            if (allRows.length > 0) {
+              stats.style.display = 'grid';
+              statTotal.textContent = allRows.length;
+              statError.textContent = errors.length;
+            }
+            
+            // Özet mesaj
+            if (validatedData.length > 0) {
+              safeShowToast('success', 'CSV Yüklendi', `${validatedData.length} geçerli, ${errors.length} hatalı satır bulundu.`);
+            } else if (errors.length > 0) {
+              safeShowToast('error', 'CSV Hatası', `Tüm satırlarda hata var. ${errors.length} hata bulundu.`);
+            }
+          }
+        });
+    }
+
+    async function handleFile(type, file) {
+      const ta = getPasteTextarea(type);
+      if (ta) ta.value = '';
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        processCSVText(type, e.target.result, `📄 ${file.name} · ${(file.size / 1024).toFixed(1)} KB`);
+      };
+      reader.onerror = function() {
+        safeShowToast('error', 'Dosya Okuma Hatası', 'Dosya okunamadı. CSV UTF-8 ile kaydedin.');
+        clearParseStateForType(type);
+      };
+      reader.readAsText(file, 'UTF-8');
+    }
+
+    function handlePaste(type) {
+      const ta = getPasteTextarea(type);
+      const text = ta ? ta.value.trim() : '';
+      if (!text) {
+        safeShowToast('warning', 'Boş metin', 'CSV verisini yapıştırıp "Metni İşle"ye tıklayın.');
+        return;
+      }
+      const fi = getFileInput(type);
+      if (fi) fi.value = '';
+      processCSVText(type, text, '📋 Yapıştırılan metin');
+    }
+
+    // Tutar/para alanı parse - TR (1.500,50) ve EN (1500.50) formatları
+    function parseTutar(str) {
+      if (str === null || str === undefined) return NaN;
+      let s = String(str).trim().replace(/[₺\s]/g, '');
+      if (s === '') return NaN;
+      const hasComma = s.indexOf(',') !== -1;
+      const hasDot = s.indexOf('.') !== -1;
+      if (hasComma && hasDot) {
+        const lastComma = s.lastIndexOf(',');
+        const lastDot = s.lastIndexOf('.');
+        if (lastComma > lastDot) {
+          s = s.replace(/\./g, '').replace(',', '.');
+        } else {
+          s = s.replace(/,/g, '');
+        }
+      } else if (hasComma) {
+        s = s.replace(/,/g, '.');
+      }
+      return parseFloat(s);
+    }
+
+    // Normalize date format (DD MM YYYY, DD-MM-YYYY, YYYY-MM-DD, etc.)
+    function normalizeDate(dateStr) {
+      if (!dateStr) return null;
+      const str = String(dateStr).trim();
+      
+      // YYYY-MM-DD formatı zaten doğru
+      if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+        return str;
+      }
+      
+      // DD MM YYYY veya DD-MM-YYYY formatı
+      const match1 = str.match(/^(\d{1,2})[-\s]+(\d{1,2})[-\s]+(\d{4})$/);
+      if (match1) {
+        const day = match1[1].padStart(2, '0');
+        const month = match1[2].padStart(2, '0');
+        const year = match1[3];
+        return `${year}-${month}-${day}`;
+      }
+      
+      // YYYY MM DD formatı
+      const match2 = str.match(/^(\d{4})[-\s]+(\d{1,2})[-\s]+(\d{1,2})$/);
+      if (match2) {
+        const year = match2[1];
+        const month = match2[2].padStart(2, '0');
+        const day = match2[3].padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
+      
+      return null;
+    }
+
+    // Normalize tip (Türkçe locale, dugun dahil)
+    function normalizeTip(tipStr) {
+      if (!tipStr) return null;
+      let normalized = String(tipStr).trim();
+      normalized = normalized.toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ').trim();
+      const tipMap = {
+        'hediye': 'hediye', 'kira': 'kira', 'çocuk': 'cocuk', 'cocuk': 'cocuk',
+        'yakacak': 'yakacak', 'ikramiye': 'ikramiye', 'elbise': 'elbise', 'asker': 'asker',
+        'yeni doğan': 'yeni_dogan', 'yeni_dogan': 'yeni_dogan',
+        'yol yardımı': 'yol_yardimi', 'yol yardimi': 'yol_yardimi', 'yol_yardimi': 'yol_yardimi',
+        'düğün': 'dugun', 'dugun': 'dugun'
+      };
+      return tipMap[normalized] || normalized;
+    }
+
+    function isEmptyRequired(val) {
+      if (val === 0 || val === '0') return false;
+      if (val === null || val === undefined) return true;
+      return String(val).trim() === '';
+    }
+
+    // Validate row
+    function validateRow(type, row, rowNum) {
+      const errors = [];
+      const schema = CSV_SCHEMAS[type];
+
+      for (const field of schema.required) {
+        if (isEmptyRequired(row[field])) {
+          errors.push({ row: rowNum, field, message: `${field} boş olamaz` });
+        }
+      }
+
+      if (type === 'odeme') {
+        const yil = parseInt(row.yil, 10);
+        const ay = parseInt(row.ay, 10);
+        const tutar = parseTutar(row.tutar);
+
+        if (isNaN(yil) || yil < 2020 || yil > 2030) {
+          errors.push({ row: rowNum, field: 'yil', message: 'Yıl geçersiz (2020-2030 arası olmalı)' });
+        }
+        if (isNaN(ay) || ay < 1 || ay > 12) {
+          errors.push({ row: rowNum, field: 'ay', message: 'Ay geçersiz (1-12 arası olmalı)' });
+        }
+        if (isNaN(tutar) || tutar < 0) {
+          errors.push({ row: rowNum, field: 'tutar', message: 'Tutar geçersiz' });
+        }
+        const normalizedTip = normalizeTip(row.tip);
+        if (!normalizedTip || !schema.tipValues.includes(normalizedTip)) {
+          errors.push({ row: rowNum, field: 'tip', message: `Tip geçersiz: "${row.tip}" (Beklenen: ${schema.tipValues.join(', ')})` });
+        }
+        const normalizedDate = normalizeDate(row.verildigi_tarih);
+        if (!normalizedDate) {
+          errors.push({ row: rowNum, field: 'verildigi_tarih', message: 'Tarih formatı geçersiz (DD MM YYYY veya YYYY-MM-DD)' });
+        }
+      } else if (type === 'hedef') {
+        const yil = parseInt(row.yil, 10);
+        const sira = parseInt(row.sira, 10);
+        const hedef = parseTutar(row.hedef);
+        const tutar = parseTutar(row.tutar);
+        const kurban = parseInt(String(row.kurban_adedi ?? '').trim() || '0', 10);
+
+        if (isNaN(yil) || yil < 2020 || yil > 2030) {
+          errors.push({ row: rowNum, field: 'yil', message: 'Yıl geçersiz' });
+        }
+        if (isNaN(sira) || sira < 1) {
+          errors.push({ row: rowNum, field: 'sira', message: 'Sıra geçersiz' });
+        }
+        if (isNaN(hedef) || hedef < 0) {
+          errors.push({ row: rowNum, field: 'hedef', message: 'Hedef geçersiz' });
+        }
+        if (isNaN(tutar) || tutar < 0) {
+          errors.push({ row: rowNum, field: 'tutar', message: 'Tutar geçersiz' });
+        }
+        if (isNaN(kurban) || kurban < 0) {
+          errors.push({ row: rowNum, field: 'kurban_adedi', message: 'Kurban adedi geçersiz' });
+        }
+      } else if (type === 'teberru') {
+        const tutar = parseTutar(row.tutar);
+        const normalizedDate = normalizeDate(row.vade_tarihi);
+        if (!normalizedDate) {
+          errors.push({ row: rowNum, field: 'vade_tarihi', message: 'Tarih formatı geçersiz (DD MM YYYY veya YYYY-MM-DD)' });
+        }
+        if (isNaN(tutar) || tutar < 0) {
+          errors.push({ row: rowNum, field: 'tutar', message: 'Tutar geçersiz' });
+        }
+      }
+
+      return errors;
+    }
+
+    // Transform row to database format
+    function transformRow(type, row) {
+      if (type === 'odeme') {
+        // Tip ve tarih normalizasyonu
+        const normalizedTip = normalizeTip(row.tip) || String(row.tip || '').trim().toLocaleLowerCase('tr-TR');
+        const normalizedDate = normalizeDate(row.verildigi_tarih) || String(row.verildigi_tarih || '').trim();
+
+        return {
+          personel_uid: String(row.personel_uid || '').trim(),
+          personel_adi_soyadi: String(row.personel_adi_soyadi || '').trim(),
+          yil: parseInt(row.yil, 10),
+          ay: parseInt(row.ay, 10),
+          tip: normalizedTip,
+          tutar: parseTutar(row.tutar),
+          verildigi_tarih: normalizedDate
+        };
+      } else if (type === 'hedef') {
+        const h = parseTutar(row.hedef);
+        const t = parseTutar(row.tutar);
+        return {
+          personel: String(row.personel || '').trim(),
+          uid: String(row.uid || '').trim(),
+          yil: parseInt(row.yil, 10),
+          sira: parseInt(row.sira, 10),
+          kategori: isEmptyRequired(row.kategori) ? null : String(row.kategori).trim(),
+          tip: isEmptyRequired(row.tip) ? null : String(row.tip).trim(),
+          hedef: isNaN(h) ? null : h,
+          tutar: isNaN(t) ? null : t,
+          kurban_adedi: Math.max(0, parseInt(String(row.kurban_adedi || '0').trim(), 10) || 0)
+        };
+      } else if (type === 'teberru') {
+        const normalizedDate = normalizeDate(row.vade_tarihi) || String(row.vade_tarihi || '').trim();
+        return {
+          vade_tarihi: normalizedDate,
+          tip: isEmptyRequired(row.tip) ? null : String(row.tip).trim(),
+          sahip: isEmptyRequired(row.sahip) ? null : String(row.sahip).trim(),
+          referans: isEmptyRequired(row.referans) ? null : String(row.referans).trim(),
+          diger: isEmptyRequired(row.diger) ? null : String(row.diger).trim(),
+          odeme: isEmptyRequired(row.odeme) ? null : String(row.odeme).trim(),
+          tutar: parseTutar(row.tutar),
+          aciklama: isEmptyRequired(row.aciklama) ? null : String(row.aciklama).trim()
+        };
+      }
+    }
+
+    // Render preview table
+    function renderPreview(type, allRows, errors) {
+      const preview = $(`preview${type.charAt(0).toUpperCase() + type.slice(1)}`);
+      const schema = CSV_SCHEMAS[type];
+      let headers = schema.required;
+      if (type === 'teberru') headers = [...headers, 'aciklama'];
+
+      if (allRows.length === 0) {
+        preview.innerHTML = '<div class="hint">Kayıt bulunamadı.</div>';
+        return;
+      }
+
+      let html = '<table class="preview-table"><thead><tr>';
+      headers.forEach(h => {
+        html += `<th>${h}</th>`;
+      });
+      html += '</tr></thead><tbody>';
+
+      allRows.forEach((row) => {
+        const rowNum = row._rowNum || 1;
+        const rowErrors = row._errors || [];
+        const hasError = rowErrors.length > 0;
+        
+        html += `<tr ${hasError ? 'class="error"' : ''}>`;
+        headers.forEach(h => {
+          const value = row[h] !== undefined && row[h] !== null ? String(row[h]) : '';
+          html += `<td>${escapeHtml(value)}</td>`;
+        });
+        html += '</tr>';
+        
+        if (hasError) {
+          html += `<tr class="error"><td colspan="${headers.length}" class="error-msg">`;
+          rowErrors.forEach(err => {
+            html += `• ${err.field || 'Genel'}: ${err.message}<br>`;
+          });
+          html += '</td></tr>';
+        }
+      });
+
+      html += '</tbody></table>';
+      preview.innerHTML = html;
+    }
+
+    // Import data to Supabase
+    async function importData(type) {
+      console.log('importData başladı, type:', type);
+      
+      // Supabase client kontrolü - her zaman window.supabase kullan (sb değişkeni kaldırıldı)
+      const sb = getSupabase();
+      if (!sb) {
+        console.error('Supabase client bulunamadı, window.supabase:', window.supabase);
+        safeShowToast('error', 'Hata', 'Supabase bağlantısı kurulamadı. Sayfayı yenileyin.');
+        return;
+      }
+      
+      // Auth kontrolü - session var mı?
+      try {
+        const { data: { session }, error: authError } = await sb.auth.getSession();
+        if (authError || !session) {
+          console.error('❌ Auth hatası - session yok:', authError);
+          safeShowToast('error', 'Auth Hatası', 'Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+          return;
+        }
+        console.log('✅ Auth kontrolü başarılı, user:', session.user?.email);
+      } catch (e) {
+        console.error('❌ Auth kontrolü exception:', e);
+        safeShowToast('error', 'Auth Hatası', 'Oturum kontrolü başarısız. Lütfen tekrar giriş yapın.');
+        return;
+      }
+      
+      console.log('Supabase client mevcut:', !!sb);
+
+      const { data, errors } = parseState[type];
+      console.log('=== IMPORT BAŞLIYOR ===');
+      console.log('parseState:', { 
+        type, 
+        dataLength: data?.length, 
+        errorsLength: errors?.length,
+        dataIsArray: Array.isArray(data),
+        errorsIsArray: Array.isArray(errors)
+      });
+      
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        console.error('❌ Aktarılacak veri yok veya geçersiz:', { data, isArray: Array.isArray(data), length: data?.length });
+        safeShowToast('error', 'Hata', 'Aktarılacak veri yok');
+        return;
+      }
+      
+      console.log('✅ Veri hazır, ilk 3 kayıt örneği:', data.slice(0, 3));
+
+      const schema = CSV_SCHEMAS[type];
+      const typeCapitalized = type.charAt(0).toUpperCase() + type.slice(1);
+      const progressWrap = $(`progress${typeCapitalized}`);
+      const progressFill = $(`progressFill${typeCapitalized}`);
+      const progressText = $(`progressText${typeCapitalized}`);
+      const stats = $(`stats${typeCapitalized}`);
+      const statTotal = $(`statTotal${typeCapitalized}`);
+      const statSuccess = $(`statSuccess${typeCapitalized}`);
+      const statError = $(`statError${typeCapitalized}`);
+
+      // Element kontrolü
+      if (!progressWrap || !progressFill || !progressText || !stats || !statTotal || !statSuccess || !statError) {
+        console.error('Progress elementleri bulunamadı:', {
+          progressWrap: !!progressWrap,
+          progressFill: !!progressFill,
+          progressText: !!progressText,
+          stats: !!stats,
+          statTotal: !!statTotal,
+          statSuccess: !!statSuccess,
+          statError: !!statError
+        });
+        safeShowToast('error', 'Hata', 'Sayfa elementleri bulunamadı. Sayfayı yenileyin.');
+        return;
+      }
+
+      // Progress başlangıç durumu
+      progressWrap.classList.add('active');
+      stats.style.display = 'grid';
+      statTotal.textContent = data.length;
+      statSuccess.textContent = '0';
+      statError.textContent = String(errors.length);
+      progressFill.style.width = '0%';
+      progressText.textContent = '0%';
+      
+      console.log('Progress elementleri hazır, toplam kayıt:', data.length);
+
+      // Chunk size - 561 kayıt için daha büyük chunk kullan (performans için)
+      // Supabase genellikle 1000 kayıta kadar destekler, ama güvenli olması için 200 kullanıyoruz
+      const chunkSize = 200;
+      let successCount = 0;
+      let errorCount = 0;
+
+      // Verify personel UIDs exist (for odeme and hedef) - Opsiyonel kontrol, hata olsa bile devam et
+      // Timeout ile sınırlandır (5 saniye) - çok uzun sürerse atla
+      if (type === 'odeme' || type === 'hedef') {
+        try {
+          console.log('🔍 UID kontrolü başlıyor...');
+          const uids = [...new Set(data.map(r => r.personel_uid || r.uid))];
+          console.log(`🔍 Toplam ${uids.length} benzersiz UID bulundu`);
+          
+          const uidCheckStart = Date.now();
+          
+          // Timeout wrapper
+          const uidCheckWithTimeout = Promise.race([
+            sb.from('kullanicilar').select('id').in('id', uids),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('UID kontrolü timeout (5 saniye)')), 5000)
+            )
+          ]);
+          
+          let existingUsers = null;
+          let userError = null;
+          try {
+            const result = await uidCheckWithTimeout;
+            existingUsers = result.data;
+            userError = result.error;
+          } catch (e) {
+            console.warn('⚠️ UID kontrolü timeout veya hata (devam ediliyor):', e.message);
+            userError = e;
+          }
+          
+          const uidCheckDuration = Date.now() - uidCheckStart;
+          console.log(`🔍 UID kontrolü tamamlandı (${uidCheckDuration}ms)`);
+          
+          if (userError) {
+            console.warn('⚠️ UID kontrolü hatası (devam ediliyor):', userError);
+          } else if (existingUsers) {
+            const existingUids = new Set((existingUsers || []).map(u => u.id));
+            const invalidUids = uids.filter(uid => !existingUids.has(uid));
+            if (invalidUids.length > 0) {
+              console.warn(`⚠️ ${invalidUids.length} UID kullanicilar tablosunda yok (ilk 3):`, invalidUids.slice(0, 3));
+              safeShowToast('warning', 'UID uyarısı', `${invalidUids.length} personel UID'si "kullanicilar" tablosunda bulunamadı. Kayıtlar yine aktarılır; bu UID'ler için personel sayfalarında eşleşme olmayabilir.`);
+            } else {
+              console.log('✅ Tüm UID\'ler geçerli');
+            }
+          }
+        } catch (e) {
+          console.warn('⚠️ UID kontrolü exception (devam ediliyor):', e);
+        }
+      }
+
+      let lastError = null;
+      const totalRecords = data.length;
+      console.log('📤 Insert işlemi başlıyor, tablo:', schema.table, 'toplam kayıt:', totalRecords);
+      
+      if (totalRecords === 0) {
+        console.warn('Toplam kayıt 0, işlem durduruluyor');
+        progressWrap.classList.remove('active');
+        return;
+      }
+      
+      for (let i = 0; i < totalRecords; i += chunkSize) {
+        const chunk = data.slice(i, i + chunkSize);
+        const chunkNum = Math.floor(i / chunkSize) + 1;
+        const totalChunks = Math.ceil(totalRecords / chunkSize);
+        console.log(`Chunk ${chunkNum}/${totalChunks}: ${chunk.length} kayıt ekleniyor...`);
+        
+        // Progress güncellemesi - loop başında
+        const progressBefore = Math.min(100, (i / totalRecords) * 100);
+        progressFill.style.width = `${progressBefore}%`;
+        progressText.textContent = `${Math.round(progressBefore)}%`;
+        
+        try {
+          console.log(`📤 Chunk ${chunkNum} insert başlıyor, tablo: ${schema.table}, kayıt sayısı: ${chunk.length}`);
+          console.log('Insert edilecek chunk (ilk 2 kayıt):', JSON.stringify(chunk.slice(0, 2), null, 2));
+          
+          const insertStartTime = Date.now();
+          const result = await sb.from(schema.table).insert(chunk, { returning: 'minimal' });
+          const insertDuration = Date.now() - insertStartTime;
+          
+          console.log(`⏱️ Insert süresi: ${insertDuration}ms`);
+          console.log('Insert result:', result);
+          console.log('Insert result.error:', result.error);
+          console.log('Insert result.data:', result.data);
+          
+          if (result.error) {
+            console.error('❌ Insert error:', result.error);
+            errorCount += chunk.length;
+            lastError = result.error;
+            if (errorCount === chunk.length) {
+              const err = result.error;
+              const isTipCheck = err.code === '23514' && (err.message || '').includes('tip_check');
+              if (isTipCheck && type === 'odeme') {
+                safeShowToast('error', 'Veritabanı: dugun tipi yok', 'Supabase SQL Editor\'da scripts/personel-odeme-takvim-tip-add-dugun.sql çalıştırın.');
+              } else {
+                safeShowToast('error', 'Insert Hatası', (err.message || 'Bilinmeyen hata') + (isTipCheck ? ' SQL migration gerekebilir.' : ''));
+              }
+            }
+          } else {
+            successCount += chunk.length;
+            console.log(`✅ ${chunk.length} kayıt başarıyla eklendi (result.data: ${result.data ? result.data.length : 'null'})`);
+          }
+        } catch (e) {
+          console.error('❌ Insert exception:', e);
+          console.error('Exception name:', e.name);
+          console.error('Exception message:', e.message);
+          console.error('Exception stack:', e.stack);
+          errorCount += chunk.length;
+          lastError = e;
+          // İlk exception'da toast göster
+          if (errorCount === chunk.length) {
+            safeShowToast('error', 'Insert Exception', `${e.message || 'Bilinmeyen hata'}. Konsolu kontrol edin.`);
+          }
+        }
+
+        // Progress güncellemesi - loop sonunda
+        const progress = Math.min(100, ((i + chunk.length) / totalRecords) * 100);
+        progressFill.style.width = `${progress}%`;
+        progressText.textContent = `${Math.round(progress)}%`;
+        statSuccess.textContent = String(successCount);
+        statError.textContent = String(errorCount + errors.length);
+        
+        console.log(`Progress: ${Math.round(progress)}% - Başarılı: ${successCount}, Hatalı: ${errorCount}`);
+      }
+      
+      // Son hata varsa detaylı göster
+      if (lastError && errorCount > 0) {
+        console.error('Import errors - Son hata:', lastError);
+        if (lastError.message) {
+          safeShowToast('error', 'Aktarım Hatası', `Hata: ${lastError.message}. Konsolu kontrol edin.`);
+        }
+      }
+
+      progressWrap.classList.remove('active');
+      console.log('Import tamamlandı:', { successCount, errorCount, total: data.length });
+      
+      if (successCount > 0) {
+        safeShowToast('success', 'Tamamlandı', `${successCount} kayıt başarıyla aktarıldı. ${errorCount > 0 ? errorCount + ' hata var.' : ''}`);
+      } else {
+        safeShowToast('error', 'Hata', `Hiçbir kayıt aktarılamadı. ${errorCount} hata var. Konsolu kontrol edin.`);
+      }
+    }
+
+    function clearTab(type) {
+      const Tc = type.charAt(0).toUpperCase() + type.slice(1);
+      const fileInput = $(`file${Tc}`);
+      const info = $(`info${Tc}`);
+      const preview = $(`preview${Tc}`);
+      const btnImport = $(`btnImport${Tc}`);
+      const stats = $(`stats${Tc}`);
+      const pasteTa = getPasteTextarea(type);
+
+      if (fileInput) fileInput.value = '';
+      if (pasteTa) pasteTa.value = '';
+      info.style.display = 'none';
+      preview.innerHTML = '';
+      btnImport.disabled = true;
+      stats.style.display = 'none';
+      parseState[type] = { data: null, errors: [] };
+    }
+
+    // Sample CSV download - BOM + ; delimiter (Türkçe Excel uyumlu)
+    function downloadSample(type) {
+      const sep = ';';
+      let csv = '';
+      if (type === 'odeme') {
+        csv = `personel_uid${sep}personel_adi_soyadi${sep}yil${sep}ay${sep}tip${sep}tutar${sep}verildigi_tarih\n`;
+        csv += `uuid-123${sep}Ahmet Yılmaz${sep}2023${sep}1${sep}hediye${sep}5000,00${sep}2023-02-05\n`;
+        csv += `uuid-123${sep}Ahmet Yılmaz${sep}2023${sep}1${sep}kira${sep}2000,00${sep}2023-01-03\n`;
+        csv += `uuid-123${sep}Ahmet Yılmaz${sep}2023${sep}6${sep}dugun${sep}3000,00${sep}2023-06-20\n`;
+        csv += `uuid-456${sep}Mehmet Demir${sep}2023${sep}2${sep}hediye${sep}5500,00${sep}2023-03-05\n`;
+      } else if (type === 'hedef') {
+        csv = `personel${sep}uid${sep}yil${sep}sira${sep}kategori${sep}tip${sep}hedef${sep}tutar${sep}kurban_adedi\n`;
+        csv += `Ahmet Yılmaz${sep}uuid-123${sep}2023${sep}1${sep}Ramazan-ı Şerif${sep}ramazan${sep}100000${sep}95000${sep}5\n`;
+        csv += `Ahmet Yılmaz${sep}uuid-123${sep}2023${sep}2${sep}Kurban${sep}kurban${sep}50000${sep}48000${sep}3\n`;
+      } else if (type === 'teberru') {
+        csv = `vade_tarihi${sep}tip${sep}sahip${sep}referans${sep}diger${sep}odeme${sep}tutar${sep}aciklama\n`;
+        csv += `2023-01-15${sep}normal${sep}Mehmet Demir${sep}uuid-123${sep}${sep}nakit${sep}5000,00${sep}Teberru açıklaması\n`;
+        csv += `2023-02-20${sep}normal${sep}Ali Veli${sep}uuid-123${sep}${sep}banka${sep}10000,00${sep}Başka teberru\n`;
+      }
+
+      const bom = '\uFEFF';
+      const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${type}-sablon.csv`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    }
+
+    // Initialize - DOM hazır olana kadar bekle
+    function initializePage() {
+      // Tab switching
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          const tabName = tab.dataset.tab;
+          document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+          document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+          tab.classList.add('active');
+          $(`tab-${tabName}`).classList.add('active');
+        });
+      });
+
+      ['odeme', 'hedef', 'teberru'].forEach(type => {
+        setupFileUpload(type);
+        const Tc = type.charAt(0).toUpperCase() + type.slice(1);
+        const btnImport = $(`btnImport${Tc}`);
+        const btnClear = $(`btnClear${Tc}`);
+        const btnSample = $(`btnSample${Tc}`);
+        const btnPaste = $(`btnPaste${Tc}`);
+
+        if (btnImport) btnImport.addEventListener('click', () => importData(type));
+        if (btnClear) btnClear.addEventListener('click', () => clearTab(type));
+        if (btnSample) btnSample.addEventListener('click', () => downloadSample(type));
+        if (btnPaste) btnPaste.addEventListener('click', () => handlePaste(type));
+      });
+    }
+
+    async function waitSupabase(maxMs) {
+      const start = Date.now();
+      while (!(window.supabase && typeof window.supabase.from === 'function')) {
+        if (Date.now() - start > (maxMs || 10000)) return null;
+        await new Promise(r => setTimeout(r, 100));
+      }
+      return window.supabase;
+    }
+
+    async function bootstrap() {
+      const sb = await waitSupabase(10000);
+      if (!sb) {
+        document.body.classList.add('ready');
+        showToast('error', 'Hata', 'Supabase bağlantısı kurulamadı. Sayfayı yenileyin.');
+        return;
+      }
+      const { data: { session }, error } = await sb.auth.getSession();
+      if (error || !session) {
+        location.href = '../index.html';
+        return;
+      }
+      document.body.classList.add('ready');
+      initializePage();
+      const logoutBtn = $('btnLogout');
+      if (logoutBtn) {
+        logoutBtn.addEventListener('click', async () => {
+          await sb.auth.signOut();
+          location.href = '../index.html';
+        });
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bootstrap);
+    } else {
+      bootstrap();
+    }
+  </script>
+</body>
+</html>

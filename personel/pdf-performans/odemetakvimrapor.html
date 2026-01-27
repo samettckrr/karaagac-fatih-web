@@ -1,0 +1,1913 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ödeme Takvim Raporu</title>
+  <style>
+    body { 
+      margin: 0; 
+      font-family: 'Segoe UI', sans-serif; 
+      background-color: #f1f1f1; 
+    }
+    .sayfa {
+      width: 800px; 
+      margin: 20px auto; 
+      background-color: white;
+      padding: 30px 40px; 
+      box-sizing: border-box; 
+      border: 1px solid #ccc;
+    }
+    .baslik { 
+      text-align: center;
+      margin-top: 120px;
+      margin-bottom: 80px;
+      padding-bottom: 80px;
+      border-bottom: 5px solid #2f4f30;
+    }
+    .baslik h1 { 
+      font-size: 74px; 
+      margin: 0 0 10px 0; 
+      color: #2f4f30;
+      font-weight: 700;
+    }
+    .baslik h2 { 
+      font-size: 48px; 
+      font-weight: 600; 
+      margin: 0; 
+      color: #2f4f30;
+    }
+    .filtre-bilgi {
+      font-size: 13px;
+      font-weight: 600;
+      color: #2f4f30;
+      margin-bottom: 20px;
+      padding: 12px 15px;
+      background: #e8f5e9;
+      border: 2px solid #2f4f30;
+      border-radius: 5px;
+    }
+    .odeme-aciklama {
+      background: #f8f9fa;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 10px;
+      margin-bottom: 20px;
+    }
+    .odeme-aciklama h3 {
+      margin: 0 0 10px 0;
+      font-size: 12px;
+      color: #2f4f30;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 6px;
+      font-weight: 600;
+    }
+    .odeme-aciklama-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+    .aciklama-item {
+      background: white;
+      padding: 8px;
+      border-radius: 5px;
+      border: 1px solid #e0e0e0;
+    }
+    .aciklama-item strong {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 11px;
+      color: #2f4f30;
+    }
+    .aciklama-item p {
+      margin: 5px 0;
+      font-size: 9px;
+      line-height: 1.4;
+      color: #666;
+    }
+    .aciklama-item .ornek {
+      margin-top: 5px;
+      padding: 6px;
+      background: #fff;
+      border-left: 2px solid #2f4f30;
+      font-size: 8px;
+      line-height: 1.5;
+    }
+    .aciklama-item .ornek strong {
+      display: inline;
+      font-weight: 600;
+    }
+    .kpi-container {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+    .kpi-item {
+      background: #f8f9fa;
+      border: 1px solid #ddd;
+      padding: 12px;
+      border-radius: 5px;
+      text-align: center;
+    }
+    .kpi-item .lbl {
+      font-size: 11px;
+      color: #666;
+      margin-bottom: 5px;
+    }
+    .kpi-item .val {
+      font-size: 18px;
+      font-weight: bold;
+      color: #2f4f30;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      font-size: 12px;
+    }
+    th {
+      background-color: #2f4f30;
+      color: white;
+      padding: 10px;
+      text-align: left;
+      font-weight: 600;
+    }
+    td {
+      padding: 8px 10px;
+      border-bottom: 1px solid #ddd;
+    }
+    tr:nth-child(even) {
+      background-color: #f8f9fa;
+    }
+    .durum-normal { color: #16a34a; font-weight: 600; }
+    .durum-erken { color: #f59e0b; font-weight: 600; }
+    .durum-gecikmeli { color: #e11d48; font-weight: 600; }
+    .analiz-tablo-container {
+      margin: 20px 0;
+    }
+    .analiz-tablo-baslik {
+      font-size: 16px;
+      font-weight: 700;
+      color: #ea580c;
+      margin-bottom: 12px;
+      margin-top: 25px;
+      padding: 10px 15px;
+      background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+      border-left: 5px solid #ea580c;
+      border-radius: 5px;
+      box-shadow: 0 2px 4px rgba(234, 88, 12, 0.1);
+    }
+    .analiz-tablo {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      font-size: 11px;
+    }
+    .analiz-tablo th {
+      background-color: #2f4f30;
+      color: white;
+      padding: 8px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 11px;
+    }
+    .analiz-tablo td {
+      padding: 4.5px 8px;
+      border-bottom: 1px solid #ddd;
+    }
+    .analiz-tablo tr:nth-child(even) {
+      background-color: #f8f9fa;
+    }
+    .analiz-tablo tr.personel-secili {
+      background-color: #e8f5e9 !important;
+      font-weight: 600;
+    }
+    .siralama-degisim {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+    }
+    .siralama-yukselme {
+      color: #16a34a;
+    }
+    .siralama-stabil {
+      color: #f59e0b;
+    }
+    .siralama-dusme {
+      color: #e11d48;
+    }
+    .btn-alani { 
+      text-align: center; 
+      margin-top: 30px; 
+    }
+    button {
+      padding: 10px 20px; 
+      background-color: #4a637d;
+      border: none; 
+      color: white; 
+      font-size: 15px;
+      border-radius: 5px; 
+      cursor: pointer;
+    }
+    button:hover { 
+      background-color: #3b526b; 
+    }
+    @media print {
+      body { background-color: white; }
+      .btn-alani { display: none; }
+      #detayTabloToggle { display: none !important; }
+      .sayfa { border: none; margin: 0; padding: 20px; }
+      .durum-normal { 
+        color: #16a34a !important; 
+        font-weight: 600; 
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .durum-erken { 
+        color: #f59e0b !important; 
+        font-weight: 600; 
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .durum-gecikmeli { 
+        color: #e11d48 !important; 
+        font-weight: 600; 
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .siralama-yukselme { 
+        color: #16a34a !important; 
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .siralama-stabil { 
+        color: #f59e0b !important; 
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .siralama-dusme { 
+        color: #e11d48 !important; 
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .analiz-tablo-baslik {
+        color: #ea580c !important;
+        background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%) !important;
+        border-left: 5px solid #ea580c !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+    @media (max-width: 900px) {
+      .odeme-aciklama-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    @media print {
+      .durum-normal { 
+        color: #16a34a !important; 
+        font-weight: 600; 
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .durum-erken { 
+        color: #f59e0b !important; 
+        font-weight: 600; 
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .durum-gecikmeli { 
+        color: #e11d48 !important; 
+        font-weight: 600; 
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="sayfa" id="pdfAlani">
+    <div class="baslik">
+      <h1>Karaağaç Fatih</h1>
+      <h2>Ödeme Takvim Analiz Raporu</h2>
+    </div>
+
+    <div class="filtre-bilgi" id="filtreBilgi">
+      Filtreler yükleniyor...
+    </div>
+
+    <!-- Ödeme Zamanlaması Kuralları -->
+    <section class="odeme-aciklama">
+      <h3>Ödeme Zamanlaması Kuralları</h3>
+      
+      <div class="odeme-aciklama-grid">
+        <div class="aciklama-item">
+          <strong>🎁 Hediye Ödemesi</strong>
+          <p>Örnek "Mayıs hediyesi" için ayın takibine (Haziran) bir sonraki ayın 1-5 arasında ödeme yapılması normal vakittir.</p>
+          <div class="ornek">
+            <strong>Örnek:</strong> Mayıs hediyesi için <strong style="color: #16a34a;">normal ödeme: Haziran 1-5 arası</strong><br>
+            • Mayıs ayında ödeme → <strong style="color: #f59e0b;">Erken ödeme</strong><br>
+            • Haziran 6'sından sonra ödeme → <strong style="color: #e11d48;">Gecikmeli ödeme</strong>
+          </div>
+        </div>
+
+        <div class="aciklama-item">
+          <strong>🏠 Kira Ödemesi</strong>
+          <p>Örnek "Mayıs kirası" için aynı ayın (Mayıs) 1-5 arasında ödeme yapılması normal ödemedir.</p>
+          <div class="ornek">
+            <strong>Örnek:</strong> Mayıs kirası için <strong style="color: #16a34a;">normal ödeme: Mayıs 1-5 arası</strong><br>
+            • Nisan ayında ödeme → <strong style="color: #f59e0b;">Erken ödeme</strong><br>
+            • Mayıs 6'sından sonra ödeme → <strong style="color: #e11d48;">Gecikmeli ödeme</strong>
+          </div>
+        </div>
+
+        <div class="aciklama-item">
+          <strong>👶 Çocuk ve Yol Yardımı</strong>
+          <p>Hediye ödemesi gibidir. Örnek "Mayıs çocuk yardımı" için Haziran 1-5 arasında ödeme yapılması normal vakittir.</p>
+          <div class="ornek">
+            <strong>Örnek:</strong> Mayıs çocuk/yol yardımı için <strong style="color: #16a34a;">normal ödeme: Haziran 1-5 arası</strong><br>
+            • Mayıs ayında ödeme → <strong style="color: #f59e0b;">Erken ödeme</strong><br>
+            • Haziran 6'sından sonra ödeme → <strong style="color: #e11d48;">Gecikmeli ödeme</strong>
+          </div>
+        </div>
+
+        <div class="aciklama-item">
+          <strong>💰 Diğer Ödemeler</strong>
+          <p>Yakacak, İkramiye, Elbise, Asker, Yeni Doğan, Düğün ödemeleri için aynı ayın 16-30/31 arasında ödeme yapılması normal ödemedir. İlk 15 gün içinde ödeme erken ödemedir.</p>
+          <div class="ornek">
+            <strong>Örnek:</strong> Mayıs yakacak/ikramiye/elbise/asker/yeni doğan/düğün için <strong style="color: #16a34a;">normal ödeme: Mayıs 16-30/31 arası</strong><br>
+            • Mayıs 1-15 arası ödeme → <strong style="color: #f59e0b;">Erken ödeme</strong><br>
+            • Haziran ayında ödeme → <strong style="color: #e11d48;">Gecikmeli ödeme</strong>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Ödeme Takvimi Veri Kaynağı Açıklaması -->
+    <section class="odeme-aciklama" style="margin-bottom: 16px; padding: 10px;">
+      <p style="margin: 0; font-size: 11px; line-height: 1.6; color: #333;">
+        Buradaki veriler muhasebe "Tekdüzen" üzerinden alınmıştır. Sisteme göre %100 mutabık ve doğrudur.
+      </p>
+    </section>
+
+    <div class="kpi-container" id="kpiContainer">
+      <!-- KPI'lar buraya eklenecek -->
+    </div>
+
+    <!-- Tip Bazlı Analiz Tabloları -->
+    <div id="tipAnalizTablolari">
+      <!-- Genel Tip Analizi -->
+      <div class="analiz-tablo-container" id="genelTipAnalizContainer">
+        <div class="analiz-tablo-baslik">Tip Bazlı Ödeme Analizi (Tüm Yıllar)</div>
+        <div style="font-size: 10px; color: #666; margin-bottom: 10px; padding: 8px; background-color: #f8f9fa; border-left: 3px solid #2f4f30;">
+          Bu tablo, tüm yıllar için ödeme tiplerine göre toplam ödemeleri, aylık ortalamaları ve kaç personelin bu tip ödeme yaptığını gösterir.
+        </div>
+        <table class="analiz-tablo" id="genelTipAnalizTablo">
+          <thead>
+            <tr>
+              <th>Tip</th>
+              <th style="text-align: center;">Ödeme Sayısı</th>
+              <th style="text-align: right;">Toplam Ödeme</th>
+              <th style="text-align: right;">Aylık Ortalama</th>
+              <th style="text-align: center;">Personel Sayısı</th>
+            </tr>
+          </thead>
+          <tbody id="genelTipAnalizBody">
+            <tr><td colspan="5" style="text-align: center; padding: 20px;">Yükleniyor...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 2023 Tip Analizi -->
+      <div class="analiz-tablo-container" id="tip2023Container">
+        <div class="analiz-tablo-baslik">2023 Yılı Tip Bazlı Analiz</div>
+        <div style="font-size: 10px; color: #666; margin-bottom: 10px; padding: 8px; background-color: #f8f9fa; border-left: 3px solid #2f4f30;">
+          2023 yılı için ödeme tiplerine göre toplam ödemeleri, aylık ortalamaları ve kaç personelin bu tip ödeme yaptığını gösterir.
+        </div>
+        <table class="analiz-tablo" id="tip2023Tablo">
+          <thead>
+            <tr>
+              <th>Tip</th>
+              <th style="text-align: center;">Ödeme Sayısı</th>
+              <th style="text-align: right;">Toplam Ödeme</th>
+              <th style="text-align: right;">Aylık Ortalama</th>
+              <th style="text-align: center;">Personel Sayısı</th>
+            </tr>
+          </thead>
+          <tbody id="tip2023Body">
+            <tr><td colspan="5" style="text-align: center; padding: 20px;">Yükleniyor...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 2024 Tip Analizi -->
+      <div class="analiz-tablo-container" id="tip2024Container">
+        <div class="analiz-tablo-baslik">2024 Yılı Tip Bazlı Analiz</div>
+        <div style="font-size: 10px; color: #666; margin-bottom: 10px; padding: 8px; background-color: #f8f9fa; border-left: 3px solid #2f4f30;">
+          2024 yılı için ödeme tiplerine göre toplam ödemeleri, aylık ortalamaları ve kaç personelin bu tip ödeme yaptığını gösterir.
+        </div>
+        <table class="analiz-tablo" id="tip2024Tablo">
+          <thead>
+            <tr>
+              <th>Tip</th>
+              <th style="text-align: center;">Ödeme Sayısı</th>
+              <th style="text-align: right;">Toplam Ödeme</th>
+              <th style="text-align: right;">Aylık Ortalama</th>
+              <th style="text-align: center;">Personel Sayısı</th>
+            </tr>
+          </thead>
+          <tbody id="tip2024Body">
+            <tr><td colspan="5" style="text-align: center; padding: 20px;">Yükleniyor...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 2025 Tip Analizi -->
+      <div class="analiz-tablo-container" id="tip2025Container">
+        <div class="analiz-tablo-baslik">2025 Yılı Tip Bazlı Analiz</div>
+        <div style="font-size: 10px; color: #666; margin-bottom: 10px; padding: 8px; background-color: #f8f9fa; border-left: 3px solid #2f4f30;">
+          2025 yılı için ödeme tiplerine göre toplam ödemeleri, aylık ortalamaları ve kaç personelin bu tip ödeme yaptığını gösterir.
+        </div>
+        <table class="analiz-tablo" id="tip2025Tablo">
+          <thead>
+            <tr>
+              <th>Tip</th>
+              <th style="text-align: center;">Ödeme Sayısı</th>
+              <th style="text-align: right;">Toplam Ödeme</th>
+              <th style="text-align: right;">Aylık Ortalama</th>
+              <th style="text-align: center;">Personel Sayısı</th>
+            </tr>
+          </thead>
+          <tbody id="tip2025Body">
+            <tr><td colspan="5" style="text-align: center; padding: 20px;">Yükleniyor...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Analiz Tabloları -->
+    <div id="analizTablolari">
+      <!-- Genel Analiz Tablosu -->
+      <div class="analiz-tablo-container" id="genelAnalizContainer">
+        <div class="analiz-tablo-baslik">Genel Analiz (Tüm Yıllar)</div>
+        <div style="font-size: 10px; color: #666; margin-bottom: 10px; padding: 8px; background-color: #f8f9fa; border-left: 3px solid #2f4f30;">
+          Bu tablo, tüm yıllar için personel bazında toplam ödemeleri, aylık ortalamaları, ödeme durumlarını (Normal/Erken/Gecikmeli) ve en yüksek ödeme tutarlarını gösterir. Sıralama toplam ödemeye göre yapılmıştır.
+        </div>
+        <table class="analiz-tablo" id="genelAnalizTablo">
+          <thead>
+            <tr>
+              <th>Personel</th>
+              <th style="text-align: center;">Ödeme Sayısı</th>
+              <th style="text-align: right;">Toplam Ödeme</th>
+              <th style="text-align: right;">Aylık Ortalama</th>
+              <th style="text-align: center;">Normal %</th>
+              <th style="text-align: center;">Erken %</th>
+              <th style="text-align: center;">Gecikmeli %</th>
+              <th style="text-align: right;">En Yüksek</th>
+              <th style="text-align: center;">Tip Sayısı</th>
+            </tr>
+          </thead>
+          <tbody id="genelAnalizBody">
+            <tr><td colspan="9" style="text-align: center; padding: 20px;">Yükleniyor...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 2023 Yılı Analiz Tablosu -->
+      <div class="analiz-tablo-container" id="yil2023Container">
+        <div class="analiz-tablo-baslik">2023 Yılı Analizi</div>
+        <div style="font-size: 10px; color: #666; margin-bottom: 10px; padding: 8px; background-color: #f8f9fa; border-left: 3px solid #2f4f30;">
+          2023 yılı için personel bazında toplam ödemeleri, aylık ortalamaları, ödeme durumlarını (Normal/Erken/Gecikmeli) ve en yüksek ödeme tutarlarını gösterir. Sıralama toplam ödemeye göre yapılmıştır.
+        </div>
+        <table class="analiz-tablo" id="yil2023Tablo">
+          <thead>
+            <tr>
+              <th>Personel</th>
+              <th style="text-align: center;">Ödeme Sayısı</th>
+              <th style="text-align: right;">Toplam Ödeme</th>
+              <th style="text-align: right;">Aylık Ortalama</th>
+              <th style="text-align: center;">Normal %</th>
+              <th style="text-align: center;">Erken %</th>
+              <th style="text-align: center;">Gecikmeli %</th>
+              <th style="text-align: right;">En Yüksek</th>
+              <th style="text-align: center;">Tip Sayısı</th>
+            </tr>
+          </thead>
+          <tbody id="yil2023Body">
+            <tr><td colspan="9" style="text-align: center; padding: 20px;">Yükleniyor...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 2024 Yılı Analiz Tablosu -->
+      <div class="analiz-tablo-container" id="yil2024Container">
+        <div class="analiz-tablo-baslik">2024 Yılı Analizi</div>
+        <div style="font-size: 10px; color: #666; margin-bottom: 10px; padding: 8px; background-color: #f8f9fa; border-left: 3px solid #2f4f30;">
+          2024 yılı için personel bazında toplam ödemeleri, aylık ortalamaları, ödeme durumlarını (Normal/Erken/Gecikmeli) ve en yüksek ödeme tutarlarını gösterir. "2023 Sıralama" sütunu, 2023 yılındaki sıralamayı ve 2023'e göre değişimi (↑ yükselme, ─ stabil, ↓ düşme) gösterir.
+        </div>
+        <table class="analiz-tablo" id="yil2024Tablo">
+          <thead>
+            <tr>
+              <th>Personel</th>
+              <th style="text-align: center;">Ödeme Sayısı</th>
+              <th style="text-align: right;">Toplam Ödeme</th>
+              <th style="text-align: right;">Aylık Ortalama</th>
+              <th style="text-align: center;">Normal %</th>
+              <th style="text-align: center;">Erken %</th>
+              <th style="text-align: center;">Gecikmeli %</th>
+              <th style="text-align: right;">En Yüksek</th>
+              <th style="text-align: center;">Tip Sayısı</th>
+              <th style="text-align: center;">2023 Sıralama</th>
+            </tr>
+          </thead>
+          <tbody id="yil2024Body">
+            <tr><td colspan="10" style="text-align: center; padding: 20px;">Yükleniyor...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 2025 Yılı Analiz Tablosu -->
+      <div class="analiz-tablo-container" id="yil2025Container">
+        <div class="analiz-tablo-baslik">2025 Yılı Analizi</div>
+        <div style="font-size: 10px; color: #666; margin-bottom: 10px; padding: 8px; background-color: #f8f9fa; border-left: 3px solid #2f4f30;">
+          2025 yılı için personel bazında toplam ödemeleri, aylık ortalamaları, ödeme durumlarını (Normal/Erken/Gecikmeli) ve en yüksek ödeme tutarlarını gösterir. "2024 Sıralama" sütunu, 2024 yılındaki sıralamayı ve 2024'e göre değişimi (↑ yükselme, ─ stabil, ↓ düşme) gösterir.
+        </div>
+        <table class="analiz-tablo" id="yil2025Tablo">
+          <thead>
+            <tr>
+              <th>Personel</th>
+              <th style="text-align: center;">Ödeme Sayısı</th>
+              <th style="text-align: right;">Toplam Ödeme</th>
+              <th style="text-align: right;">Aylık Ortalama</th>
+              <th style="text-align: center;">Normal %</th>
+              <th style="text-align: center;">Erken %</th>
+              <th style="text-align: center;">Gecikmeli %</th>
+              <th style="text-align: right;">En Yüksek</th>
+              <th style="text-align: center;">Tip Sayısı</th>
+              <th style="text-align: center;">2024 Sıralama</th>
+            </tr>
+          </thead>
+          <tbody id="yil2025Body">
+            <tr><td colspan="10" style="text-align: center; padding: 20px;">Yükleniyor...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Personel Detay Analizleri -->
+    <div id="personelDetayAnalizleri">
+      <!-- Personel Bazlı Tip Analizleri -->
+      <div class="analiz-tablo-container" id="personelTipAnalizContainer">
+        <div class="analiz-tablo-baslik">Personel Bazlı Tip Ödeme Analizleri</div>
+        <div style="font-size: 10px; color: #666; margin-bottom: 10px; padding: 8px; background-color: #f8f9fa; border-left: 3px solid #2f4f30;">
+          Her personel için ödeme tiplerine göre ödeme sayısı, toplam tutar, ortalama tutar ve yıllık bazda artış yüzdeleri gösterilir.
+        </div>
+        <div id="personelTipAnalizIcerik">
+          <!-- Her personel için dinamik olarak oluşturulacak -->
+        </div>
+      </div>
+
+      <!-- Kira Artış Analizleri -->
+      <div class="analiz-tablo-container" id="kiraArtisAnalizContainer">
+        <div class="analiz-tablo-baslik">Kira Artış Analizleri (Dönem Bazlı)</div>
+        <div style="font-size: 10px; color: #666; margin-bottom: 10px; padding: 8px; background-color: #f8f9fa; border-left: 3px solid #2f4f30;">
+          Her personel için kira ödemelerindeki değişiklikler dönemler halinde gösterilir. Aynı tutarlı aylar birleştirilerek özetlenir. Artış yüzdeleri yeşil (artış) veya kırmızı (azalış) renklerle gösterilir.
+        </div>
+        <div id="kiraArtisAnalizIcerik">
+          <!-- Her personel için dinamik olarak oluşturulacak -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Detay Tablosu Gizle/Göster Butonu -->
+    <div style="text-align: center; margin: 20px 0;">
+      <button id="detayTabloToggle" onclick="toggleDetayTablo()" style="padding: 10px 20px; background-color: #2f4f30; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: 600;">
+        📋 Detay Tablosunu Gizle
+      </button>
+    </div>
+
+    <table id="veriTablo">
+      <thead>
+        <tr>
+          <th>Personel</th>
+          <th>Tip</th>
+          <th>Tarih (Yıl-Ay)</th>
+          <th style="text-align: right;">Tutar</th>
+          <th>Ödeme Tarihi</th>
+          <th style="text-align: center;">Durum</th>
+        </tr>
+      </thead>
+      <tbody id="veriTabloBody">
+        <tr>
+          <td colspan="6" style="text-align: center; padding: 20px;">Veriler yükleniyor...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="btn-alani">
+    <button onclick="pdfCiktisiAl()">PDF Çıktısı Al</button>
+  </div>
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="../../src/supabase.js"></script>
+  <script src="../../src/supabase-auth-wrapper.js"></script>
+  <script src="../../src/supabase-db-wrapper.js"></script>
+  <script src="../../js/ortak.js"></script>
+  
+  <!-- html2pdf -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      function waitForSupabaseAndOrtak(callback) {
+        // window.supabase'in bir client instance olduğunu kontrol et (from metodu olmalı)
+        if (typeof window.supabase !== 'undefined' && 
+            typeof window.supabase.from === 'function' && 
+            typeof window.norm !== 'undefined') {
+          callback();
+        } else {
+          setTimeout(() => waitForSupabaseAndOrtak(callback), 50);
+        }
+      }
+
+      waitForSupabaseAndOrtak(() => {
+        const getSupabase = () => window.supabase;
+        const $ = (id) => document.getElementById(id);
+        const fmt = n => (n==null||isNaN(n)) ? '₺0' : '₺' + Number(n).toLocaleString('tr-TR',{maximumFractionDigits:2});
+        const basHarfBuyuk = (str) => {
+          if (!str) return '';
+          return str.split(' ').map(kelime => {
+            return kelime.charAt(0).toUpperCase() + kelime.slice(1).toLowerCase();
+          }).join(' ');
+        };
+
+        // URL parametrelerinden filtreleri al
+        const urlParams = new URLSearchParams(window.location.search);
+        const yil = urlParams.get('yil') || '';
+        const ay = urlParams.get('ay') || '';
+        const tip = urlParams.get('tip') || '';
+        const personelUid = urlParams.get('personel') || '';
+
+        // Personel adını al (filtre bilgisi için)
+        let personelAdi = '';
+        if (personelUid) {
+          // Personel adını almak için async işlem yapacağız
+          (async () => {
+            try {
+              const sb = getSupabase();
+              const { data } = await sb.from('personel_odeme_takvim')
+                .select('personel_adi_soyadi')
+                .eq('personel_uid', personelUid)
+                .limit(1)
+                .single();
+              if (data) {
+                personelAdi = data.personel_adi_soyadi;
+                // Filtre bilgisini güncelle
+                guncelleFiltreBilgi();
+              }
+            } catch(e) {
+              console.error('Personel adı alınamadı:', e);
+            }
+          })();
+        }
+
+        function guncelleFiltreBilgi() {
+          const filtreler = [];
+          
+          // Personel
+          if (personelUid) {
+            if (personelAdi) {
+              filtreler.push(basHarfBuyuk(personelAdi));
+            } else {
+              filtreler.push(personelUid);
+            }
+          } else {
+            filtreler.push('Tüm Personel');
+          }
+          
+          // Yıl
+          if (yil) {
+            filtreler.push(yil);
+          } else {
+            filtreler.push('Tüm Yıllar');
+          }
+          
+          // Ay
+          if (ay) {
+            const ayIsimleri = ['', 'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+            filtreler.push(ayIsimleri[parseInt(ay)]);
+          } else {
+            filtreler.push('Tüm Aylar');
+          }
+          
+          // Tip
+          if (tip) {
+            const tipIsimleri = {
+              'hediye': 'Hediye',
+              'kira': 'Kira',
+              'cocuk': 'Çocuk',
+              'yakacak': 'Yakacak',
+              'ikramiye': 'İkramiye',
+              'elbise': 'Elbise',
+              'asker': 'Asker',
+              'yeni_dogan': 'Yeni Doğan',
+              'yol_yardimi': 'Yol Yardımı',
+              'dugun': 'Düğün'
+            };
+            filtreler.push(tipIsimleri[tip] || tip);
+          } else {
+            filtreler.push('Tüm Tipler');
+          }
+          
+          $('filtreBilgi').textContent = filtreler.join(' - ');
+        }
+
+        // İlk filtre bilgisini göster
+        guncelleFiltreBilgi();
+
+        // Ödeme durumu hesaplama (personel_analiz.html'deki doğru versiyon)
+        function hesaplaDurum(verildigiTarih, yil, ay, tip) {
+          const odemeTarihi = new Date(verildigiTarih);
+          const odemeYil = odemeTarihi.getFullYear();
+          const odemeAy = odemeTarihi.getMonth() + 1;
+          const odemeGun = odemeTarihi.getDate();
+
+          // Hediye, Çocuk, Yol Yardımı: Sonraki ayın 1-5'i normal
+          const hediyeTipleri = ['hediye', 'cocuk', 'yol_yardimi'];
+          // Kira: Aynı ayın 1-5'i normal
+          const kiraTipleri = ['kira'];
+          // İkramiye, Asker, Yeni Doğan, Düğün, Yakacak, Elbise: Aynı ayın 16-30/31'i normal, 1-15 erken
+          const esnekTipleri = ['ikramiye', 'asker', 'yeni_dogan', 'dugun', 'yakacak', 'elbise'];
+
+          if (hediyeTipleri.includes(tip)) {
+            // Sonraki ayın 1-5'i normal
+            const normalBaslangicAy = ay + 1;
+            let normalBaslangicYil = yil;
+            let nextAy = normalBaslangicAy;
+            let nextYil = normalBaslangicYil;
+            if (nextAy > 12) {
+              nextAy = 1;
+              nextYil++;
+            }
+
+            // Ödeme tarihi normal aralıkta mı? (Sonraki ayın 1-5'i)
+            if (odemeYil === nextYil && odemeAy === nextAy && odemeGun >= 1 && odemeGun <= 5) {
+              return { durum: 'Normal', sinif: 'durum-normal' };
+            }
+
+            // Erken ödeme kontrolü (normal ayın öncesi)
+            if (odemeYil < nextYil || (odemeYil === nextYil && odemeAy < nextAy)) {
+              return { durum: 'Erken', sinif: 'durum-erken' };
+            }
+
+            // Gecikmeli ödeme (sonraki ayın 6'sından sonra)
+            if (odemeYil > nextYil || (odemeYil === nextYil && odemeAy > nextAy) || 
+                (odemeYil === nextYil && odemeAy === nextAy && odemeGun > 5)) {
+              return { durum: 'Gecikmeli', sinif: 'durum-gecikmeli' };
+            }
+          } else if (kiraTipleri.includes(tip)) {
+            // Aynı ayın 1-5'i normal
+            if (odemeYil === yil && odemeAy === ay && odemeGun >= 1 && odemeGun <= 5) {
+              return { durum: 'Normal', sinif: 'durum-normal' };
+            }
+
+            // Erken ödeme kontrolü (normal ayın öncesi)
+            if (odemeYil < yil || (odemeYil === yil && odemeAy < ay)) {
+              return { durum: 'Erken', sinif: 'durum-erken' };
+            }
+
+            // Gecikmeli ödeme (aynı ayın 6'sından sonra veya sonraki ay)
+            if (odemeYil > yil || (odemeYil === yil && odemeAy > ay) || 
+                (odemeYil === yil && odemeAy === ay && odemeGun > 5)) {
+              return { durum: 'Gecikmeli', sinif: 'durum-gecikmeli' };
+            }
+          } else if (esnekTipleri.includes(tip)) {
+            // Aynı ayın 16-30/31'i normal, 1-15 erken, sonraki ay gecikmeli
+            if (odemeYil === yil && odemeAy === ay) {
+              // Aynı ay içinde
+              if (odemeGun >= 16) {
+                // Ayın son gününü kontrol et
+                const aySonGunu = new Date(yil, ay, 0).getDate();
+                if (odemeGun <= aySonGunu) {
+                  return { durum: 'Normal', sinif: 'durum-normal' };
+                }
+              } else if (odemeGun >= 1 && odemeGun <= 15) {
+                return { durum: 'Erken', sinif: 'durum-erken' };
+              }
+            } else if (odemeYil < yil || (odemeYil === yil && odemeAy < ay)) {
+              // Önceki ay - erken
+              return { durum: 'Erken', sinif: 'durum-erken' };
+            } else {
+              // Sonraki ay - gecikmeli
+              return { durum: 'Gecikmeli', sinif: 'durum-gecikmeli' };
+            }
+          } else {
+            // Bilinmeyen tip - varsayılan olarak normal
+            return { durum: 'Normal', sinif: 'durum-normal' };
+          }
+          
+          return { durum: 'Normal', sinif: 'durum-normal' };
+        }
+
+        async function yukleVeriler() {
+          try {
+            const sb = getSupabase();
+            if (!sb) {
+              console.error('Supabase client hazır değil');
+              return;
+            }
+
+            // Analiz tabloları için tüm verileri çek (sadece tip ve ay filtresi uygulanmaz, personel filtresi uygulanır)
+            let analizQuery = sb.from('personel_odeme_takvim').select('*');
+            if(personelUid) analizQuery = analizQuery.eq('personel_uid', personelUid);
+            const { data: tumVeriler, error: analizError } = await analizQuery;
+            if(analizError) throw analizError;
+
+            // Detay tablosu için filtrelenmiş veriler
+            let query = sb.from('personel_odeme_takvim').select('*');
+
+            if(yil) query = query.eq('yil', parseInt(yil));
+            if(ay) query = query.eq('ay', parseInt(ay));
+            if(tip) query = query.eq('tip', tip);
+            if(personelUid) query = query.eq('personel_uid', personelUid);
+
+            query = query.order('verildigi_tarih', { ascending: false });
+
+            const { data, error } = await query;
+
+            if(error) throw error;
+
+            const veriler = data || [];
+            
+            // Analiz tablolarını oluştur
+            olusturAnalizTablolari(tumVeriler || [], personelUid, yil);
+            
+            // Tip bazlı analiz tablolarını oluştur
+            olusturTipAnalizTablolari(tumVeriler || [], yil);
+            
+            // Personel detay analizlerini oluştur
+            olusturPersonelDetayAnalizleri(tumVeriler || [], personelUid);
+            
+            // KPI'ları güncelle
+            const toplam = veriler.reduce((sum, v) => sum + parseFloat(v.tutar || 0), 0);
+            const sayi = veriler.length;
+            const uniquePersonel = new Set(veriler.map(v => v.personel_uid)).size;
+            const tutarlar = veriler.map(v => parseFloat(v.tutar || 0)).filter(v => !isNaN(v));
+            const max = tutarlar.length > 0 ? Math.max(...tutarlar) : 0;
+            
+            const yilAyKombinasyonlari = new Set();
+            veriler.forEach(v => {
+              if (v.yil && v.ay) {
+                yilAyKombinasyonlari.add(`${v.yil}-${v.ay}`);
+              }
+            });
+            const toplamAySayisi = yilAyKombinasyonlari.size;
+            const ortalama = toplamAySayisi > 0 ? toplam / toplamAySayisi : 0;
+
+            // Durum yüzdeleri
+            let normalSayi = 0, erkenSayi = 0, gecikmeliSayi = 0;
+            veriler.forEach(v => {
+              const durum = hesaplaDurum(v.verildigi_tarih, v.yil, v.ay, v.tip);
+              if (durum.durum === 'Normal') normalSayi++;
+              else if (durum.durum === 'Erken') erkenSayi++;
+              else if (durum.durum === 'Gecikmeli') gecikmeliSayi++;
+            });
+
+            const normalYuzde = sayi > 0 ? ((normalSayi / sayi) * 100).toFixed(1) : 0;
+            const erkenYuzde = sayi > 0 ? ((erkenSayi / sayi) * 100).toFixed(1) : 0;
+            const gecikmeliYuzde = sayi > 0 ? ((gecikmeliSayi / sayi) * 100).toFixed(1) : 0;
+
+            // KPI'ları göster
+            $('kpiContainer').innerHTML = `
+              <div class="kpi-item">
+                <div class="lbl">Toplam Ödeme</div>
+                <div class="val">${fmt(toplam)}</div>
+              </div>
+              <div class="kpi-item">
+                <div class="lbl">Ödeme Sayısı</div>
+                <div class="val">${sayi.toLocaleString('tr-TR')}</div>
+              </div>
+              <div class="kpi-item">
+                <div class="lbl">Ortalama Ödeme</div>
+                <div class="val">${fmt(ortalama)}</div>
+              </div>
+              <div class="kpi-item">
+                <div class="lbl">Personel Sayısı</div>
+                <div class="val">${uniquePersonel.toLocaleString('tr-TR')}</div>
+              </div>
+              <div class="kpi-item">
+                <div class="lbl">En Yüksek Ödeme</div>
+                <div class="val">${fmt(max)}</div>
+              </div>
+              <div class="kpi-item">
+                <div class="lbl">Ödeme Durumu</div>
+                <div class="val" style="font-size: 12px; line-height: 1.6;">
+                  <div style="color: #16a34a;">Normal: ${normalYuzde}%</div>
+                  <div style="color: #f59e0b;">Erken: ${erkenYuzde}%</div>
+                  <div style="color: #e11d48;">Gecikmeli: ${gecikmeliYuzde}%</div>
+                </div>
+              </div>
+            `;
+
+            // Tabloyu doldur
+            const tbody = $('veriTabloBody');
+            if (veriler.length === 0) {
+              tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px;">Veri bulunamadı</td></tr>';
+            } else {
+              tbody.innerHTML = veriler.map(v => {
+                const durum = hesaplaDurum(v.verildigi_tarih, v.yil, v.ay, v.tip);
+                const odemeTarihi = new Date(v.verildigi_tarih).toLocaleDateString('tr-TR');
+                const tipIsim = v.tip ? v.tip.charAt(0).toUpperCase() + v.tip.slice(1).replace(/_/g, ' ') : '-';
+                const personelAdiFormatli = basHarfBuyuk(v.personel_adi_soyadi || '-');
+                return `
+                  <tr>
+                    <td>${personelAdiFormatli}</td>
+                    <td>${tipIsim}</td>
+                    <td>${v.yil || '-'}-${String(v.ay || '').padStart(2, '0')}</td>
+                    <td style="text-align: right;">${fmt(v.tutar)}</td>
+                    <td>${odemeTarihi}</td>
+                    <td style="text-align: center;" class="${durum.sinif}">${durum.durum}</td>
+                  </tr>
+                `;
+              }).join('');
+            }
+          } catch(e) {
+            console.error('Veriler yüklenemedi:', e);
+            $('veriTabloBody').innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: red;">Hata: ' + (e.message || e) + '</td></tr>';
+          }
+        }
+
+        // Analiz tablolarını oluştur
+        function olusturAnalizTablolari(tumVeriler, seciliPersonelUid, seciliYil) {
+          // Yıl filtrelenmişse sadece o yılın tablosunu göster
+          if (seciliYil) {
+            document.getElementById('genelAnalizContainer').style.display = 'none';
+            document.getElementById('yil2023Container').style.display = 'none';
+            document.getElementById('yil2024Container').style.display = 'none';
+            document.getElementById('yil2025Container').style.display = 'none';
+            
+            const yilInt = parseInt(seciliYil);
+            if (yilInt === 2023) {
+              document.getElementById('yil2023Container').style.display = 'block';
+              olusturYilTablosu(tumVeriler, 2023, null, seciliPersonelUid, 'yil2023Body');
+            } else if (yilInt === 2024) {
+              document.getElementById('yil2024Container').style.display = 'block';
+              const yil2023Veriler = tumVeriler.filter(v => v.yil === 2023);
+              olusturYilTablosu(tumVeriler, 2024, yil2023Veriler, seciliPersonelUid, 'yil2024Body', 2023);
+            } else if (yilInt === 2025) {
+              document.getElementById('yil2025Container').style.display = 'block';
+              const yil2024Veriler = tumVeriler.filter(v => v.yil === 2024);
+              olusturYilTablosu(tumVeriler, 2025, yil2024Veriler, seciliPersonelUid, 'yil2025Body', 2024);
+            } else {
+              // Diğer yıllar için genel format
+              document.getElementById('genelAnalizContainer').style.display = 'block';
+              olusturGenelAnalizTablosu(tumVeriler, seciliPersonelUid);
+            }
+            return;
+          }
+
+          // Tüm tabloları göster
+          document.getElementById('genelAnalizContainer').style.display = 'block';
+          document.getElementById('yil2023Container').style.display = 'block';
+          document.getElementById('yil2024Container').style.display = 'block';
+          document.getElementById('yil2025Container').style.display = 'block';
+
+          // Genel analiz tablosu
+          olusturGenelAnalizTablosu(tumVeriler, seciliPersonelUid);
+
+          // Yıllara göre tablolar
+          olusturYilTablosu(tumVeriler, 2023, null, seciliPersonelUid, 'yil2023Body');
+          
+          const yil2023Veriler = tumVeriler.filter(v => v.yil === 2023);
+          olusturYilTablosu(tumVeriler, 2024, yil2023Veriler, seciliPersonelUid, 'yil2024Body', 2023);
+          
+          const yil2024Veriler = tumVeriler.filter(v => v.yil === 2024);
+          olusturYilTablosu(tumVeriler, 2025, yil2024Veriler, seciliPersonelUid, 'yil2025Body', 2024);
+        }
+
+        function olusturGenelAnalizTablosu(tumVeriler, seciliPersonelUid) {
+          // Personel bazında grupla
+          const personelMap = {};
+          const yillar = new Set();
+          
+          tumVeriler.forEach(v => {
+            const pUid = v.personel_uid || 'Bilinmeyen';
+            const pAdi = v.personel_adi_soyadi || 'Bilinmeyen';
+            if (!personelMap[pUid]) {
+              personelMap[pUid] = {
+                personelUid: pUid,
+                personelAdi: pAdi,
+                odemeSayisi: 0,
+                toplamOdeme: 0,
+                tutarlar: [],
+                tipler: new Set(),
+                normalSayi: 0,
+                erkenSayi: 0,
+                gecikmeliSayi: 0
+              };
+            }
+            personelMap[pUid].odemeSayisi++;
+            const tutar = parseFloat(v.tutar || 0);
+            personelMap[pUid].toplamOdeme += tutar;
+            personelMap[pUid].tutarlar.push(tutar);
+            if (v.tip) personelMap[pUid].tipler.add(v.tip);
+            if (v.yil) yillar.add(v.yil);
+            
+            // Durum hesapla
+            const durum = hesaplaDurum(v.verildigi_tarih, v.yil, v.ay, v.tip);
+            if (durum.durum === 'Normal') personelMap[pUid].normalSayi++;
+            else if (durum.durum === 'Erken') personelMap[pUid].erkenSayi++;
+            else if (durum.durum === 'Gecikmeli') personelMap[pUid].gecikmeliSayi++;
+          });
+
+          // Dönem bazlı ay sayısını hesapla (verilerin kapsadığı yıllar x 12)
+          const donemAySayisi = yillar.size * 12;
+
+          // Toplam ödemeye göre sırala (büyükten küçüğe)
+          const personelListesi = Object.values(personelMap).map(p => ({
+            ...p,
+            ortalamaOdeme: donemAySayisi > 0 ? p.toplamOdeme / donemAySayisi : 0,
+            enYuksekOdeme: p.tutarlar.length > 0 ? Math.max(...p.tutarlar) : 0,
+            farkliTipSayisi: p.tipler.size,
+            normalYuzde: p.odemeSayisi > 0 ? (p.normalSayi / p.odemeSayisi) * 100 : 0,
+            erkenYuzde: p.odemeSayisi > 0 ? (p.erkenSayi / p.odemeSayisi) * 100 : 0,
+            gecikmeliYuzde: p.odemeSayisi > 0 ? (p.gecikmeliSayi / p.odemeSayisi) * 100 : 0
+          })).sort((a, b) => b.toplamOdeme - a.toplamOdeme);
+
+          const tbody = document.getElementById('genelAnalizBody');
+          if (personelListesi.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px;">Veri bulunamadı</td></tr>';
+            return;
+          }
+
+          tbody.innerHTML = personelListesi.map(p => {
+            const satirSinif = seciliPersonelUid && p.personelUid === seciliPersonelUid ? 'personel-secili' : '';
+            return `
+              <tr class="${satirSinif}">
+                <td>${basHarfBuyuk(p.personelAdi)}</td>
+                <td style="text-align: center;">${p.odemeSayisi}</td>
+                <td style="text-align: right;">${fmt(p.toplamOdeme)}</td>
+                <td style="text-align: right;">${fmt(p.ortalamaOdeme)}</td>
+                <td style="text-align: center;" class="durum-normal">${p.normalYuzde.toFixed(1)}%</td>
+                <td style="text-align: center;" class="durum-erken">${p.erkenYuzde.toFixed(1)}%</td>
+                <td style="text-align: center;" class="durum-gecikmeli">${p.gecikmeliYuzde.toFixed(1)}%</td>
+                <td style="text-align: right;">${fmt(p.enYuksekOdeme)}</td>
+                <td style="text-align: center;">${p.farkliTipSayisi}</td>
+              </tr>
+            `;
+          }).join('');
+        }
+
+        function olusturYilTablosu(tumVeriler, yil, oncekiYilVeriler, seciliPersonelUid, tbodyId, oncekiYil = null) {
+          const yilVeriler = tumVeriler.filter(v => v.yil === yil);
+          
+          // Personel bazında grupla
+          const personelMap = {};
+          yilVeriler.forEach(v => {
+            const pUid = v.personel_uid || 'Bilinmeyen';
+            const pAdi = v.personel_adi_soyadi || 'Bilinmeyen';
+            if (!personelMap[pUid]) {
+              personelMap[pUid] = {
+                personelUid: pUid,
+                personelAdi: pAdi,
+                odemeSayisi: 0,
+                toplamOdeme: 0,
+                tutarlar: [],
+                tipler: new Set(),
+                normalSayi: 0,
+                erkenSayi: 0,
+                gecikmeliSayi: 0
+              };
+            }
+            personelMap[pUid].odemeSayisi++;
+            const tutar = parseFloat(v.tutar || 0);
+            personelMap[pUid].toplamOdeme += tutar;
+            personelMap[pUid].tutarlar.push(tutar);
+            if (v.tip) personelMap[pUid].tipler.add(v.tip);
+            
+            // Durum hesapla
+            const durum = hesaplaDurum(v.verildigi_tarih, v.yil, v.ay, v.tip);
+            if (durum.durum === 'Normal') personelMap[pUid].normalSayi++;
+            else if (durum.durum === 'Erken') personelMap[pUid].erkenSayi++;
+            else if (durum.durum === 'Gecikmeli') personelMap[pUid].gecikmeliSayi++;
+          });
+
+          // Yıl bazlı ay sayısı: 12 ay (2025 için şu anki aya kadar hesaplanabilir ama basit tutmak için 12)
+          const donemAySayisi = 12;
+
+          // Toplam ödemeye göre sırala
+          const personelListesi = Object.values(personelMap).map(p => ({
+            ...p,
+            ortalamaOdeme: donemAySayisi > 0 ? p.toplamOdeme / donemAySayisi : 0,
+            enYuksekOdeme: p.tutarlar.length > 0 ? Math.max(...p.tutarlar) : 0,
+            farkliTipSayisi: p.tipler.size,
+            normalYuzde: p.odemeSayisi > 0 ? (p.normalSayi / p.odemeSayisi) * 100 : 0,
+            erkenYuzde: p.odemeSayisi > 0 ? (p.erkenSayi / p.odemeSayisi) * 100 : 0,
+            gecikmeliYuzde: p.odemeSayisi > 0 ? (p.gecikmeliSayi / p.odemeSayisi) * 100 : 0
+          })).sort((a, b) => b.toplamOdeme - a.toplamOdeme);
+
+          // Önceki yıl sıralamasını hesapla (varsa)
+          let oncekiYilSiralama = {};
+          if (oncekiYilVeriler && oncekiYilVeriler.length > 0) {
+            const oncekiYilMap = {};
+            oncekiYilVeriler.forEach(v => {
+              const pUid = v.personel_uid || 'Bilinmeyen';
+              if (!oncekiYilMap[pUid]) {
+                oncekiYilMap[pUid] = {
+                  toplamOdeme: 0
+                };
+              }
+              oncekiYilMap[pUid].toplamOdeme += parseFloat(v.tutar || 0);
+            });
+
+            const oncekiYilListesi = Object.entries(oncekiYilMap).map(([personelUid, data]) => ({
+              personelUid,
+              toplamOdeme: data.toplamOdeme
+            })).sort((a, b) => b.toplamOdeme - a.toplamOdeme);
+
+            oncekiYilListesi.forEach((p, index) => {
+              oncekiYilSiralama[p.personelUid] = index + 1;
+            });
+          }
+
+          const tbody = document.getElementById(tbodyId);
+          const colspan = oncekiYil ? 10 : 9;
+          if (personelListesi.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="${colspan}" style="text-align: center; padding: 20px;">Veri bulunamadı</td></tr>`;
+            return;
+          }
+
+          tbody.innerHTML = personelListesi.map((p, index) => {
+            const mevcutSira = index + 1;
+            const oncekiSira = oncekiYilSiralama[p.personelUid];
+            
+            let siralamaGosterim = '';
+            if (oncekiYil && oncekiSira) {
+              const fark = oncekiSira - mevcutSira;
+              if (fark > 0) {
+                // Yükselme
+                siralamaGosterim = `<span class="siralama-degisim siralama-yukselme">${oncekiSira}. ↑</span>`;
+              } else if (fark === 0) {
+                // Stabil
+                siralamaGosterim = `<span class="siralama-degisim siralama-stabil">${oncekiSira}. ─</span>`;
+              } else {
+                // Düşme
+                siralamaGosterim = `<span class="siralama-degisim siralama-dusme">${oncekiSira}. ↓</span>`;
+              }
+            } else if (oncekiYil) {
+              siralamaGosterim = '<span style="color: #999;">-</span>';
+            }
+
+            const satirSinif = seciliPersonelUid && p.personelUid === seciliPersonelUid ? 'personel-secili' : '';
+            
+            const satir = `
+              <tr class="${satirSinif}">
+                <td>${basHarfBuyuk(p.personelAdi)}</td>
+                <td style="text-align: center;">${p.odemeSayisi}</td>
+                <td style="text-align: right;">${fmt(p.toplamOdeme)}</td>
+                <td style="text-align: right;">${fmt(p.ortalamaOdeme)}</td>
+                <td style="text-align: center;" class="durum-normal">${p.normalYuzde.toFixed(1)}%</td>
+                <td style="text-align: center;" class="durum-erken">${p.erkenYuzde.toFixed(1)}%</td>
+                <td style="text-align: center;" class="durum-gecikmeli">${p.gecikmeliYuzde.toFixed(1)}%</td>
+                <td style="text-align: right;">${fmt(p.enYuksekOdeme)}</td>
+                <td style="text-align: center;">${p.farkliTipSayisi}</td>
+                ${oncekiYil ? `<td style="text-align: center;">${siralamaGosterim}</td>` : ''}
+              </tr>
+            `;
+            return satir;
+          }).join('');
+        }
+
+        // Tip bazlı analiz tablolarını oluştur
+        function olusturTipAnalizTablolari(tumVeriler, seciliYil) {
+          // Yıl filtrelenmişse sadece o yılın tablosunu göster
+          if (seciliYil) {
+            document.getElementById('genelTipAnalizContainer').style.display = 'none';
+            document.getElementById('tip2023Container').style.display = 'none';
+            document.getElementById('tip2024Container').style.display = 'none';
+            document.getElementById('tip2025Container').style.display = 'none';
+            
+            const yilInt = parseInt(seciliYil);
+            if (yilInt === 2023) {
+              document.getElementById('tip2023Container').style.display = 'block';
+              olusturTipYilTablosu(tumVeriler, 2023, 'tip2023Body');
+            } else if (yilInt === 2024) {
+              document.getElementById('tip2024Container').style.display = 'block';
+              olusturTipYilTablosu(tumVeriler, 2024, 'tip2024Body');
+            } else if (yilInt === 2025) {
+              document.getElementById('tip2025Container').style.display = 'block';
+              olusturTipYilTablosu(tumVeriler, 2025, 'tip2025Body');
+            } else {
+              document.getElementById('genelTipAnalizContainer').style.display = 'block';
+              olusturGenelTipAnalizTablosu(tumVeriler);
+            }
+            return;
+          }
+
+          // Tüm tabloları göster
+          document.getElementById('genelTipAnalizContainer').style.display = 'block';
+          document.getElementById('tip2023Container').style.display = 'block';
+          document.getElementById('tip2024Container').style.display = 'block';
+          document.getElementById('tip2025Container').style.display = 'block';
+
+          olusturGenelTipAnalizTablosu(tumVeriler);
+          olusturTipYilTablosu(tumVeriler, 2023, 'tip2023Body');
+          olusturTipYilTablosu(tumVeriler, 2024, 'tip2024Body');
+          olusturTipYilTablosu(tumVeriler, 2025, 'tip2025Body');
+        }
+
+        function olusturGenelTipAnalizTablosu(tumVeriler) {
+          const tipMap = {};
+          const yillar = new Set();
+          
+          tumVeriler.forEach(v => {
+            const tip = v.tip || 'Bilinmeyen';
+            if (!tipMap[tip]) {
+              tipMap[tip] = {
+                tip: tip,
+                odemeSayisi: 0,
+                toplamOdeme: 0,
+                tutarlar: [],
+                personeller: new Set()
+              };
+            }
+            tipMap[tip].odemeSayisi++;
+            const tutar = parseFloat(v.tutar || 0);
+            tipMap[tip].toplamOdeme += tutar;
+            tipMap[tip].tutarlar.push(tutar);
+            if (v.personel_uid) tipMap[tip].personeller.add(v.personel_uid);
+            if (v.yil) yillar.add(v.yil);
+          });
+
+          const donemAySayisi = yillar.size * 12;
+          const tipListesi = Object.values(tipMap).map(t => ({
+            ...t,
+            aylikOrtalama: donemAySayisi > 0 ? t.toplamOdeme / donemAySayisi : 0,
+            ortalamaTutar: t.odemeSayisi > 0 ? t.toplamOdeme / t.odemeSayisi : 0,
+            personelSayisi: t.personeller.size
+          })).sort((a, b) => b.toplamOdeme - a.toplamOdeme);
+
+          const tbody = document.getElementById('genelTipAnalizBody');
+          if (tipListesi.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px;">Veri bulunamadı</td></tr>';
+            return;
+          }
+
+          tbody.innerHTML = tipListesi.map(t => {
+            const tipIsim = t.tip ? t.tip.charAt(0).toUpperCase() + t.tip.slice(1).replace(/_/g, ' ') : 'Bilinmeyen';
+            return `
+              <tr>
+                <td>${tipIsim}</td>
+                <td style="text-align: center;">${t.odemeSayisi}</td>
+                <td style="text-align: right;">${fmt(t.toplamOdeme)}</td>
+                <td style="text-align: right;">${fmt(t.aylikOrtalama)}</td>
+                <td style="text-align: center;">${t.personelSayisi}</td>
+              </tr>
+            `;
+          }).join('');
+        }
+
+        function olusturTipYilTablosu(tumVeriler, yil, tbodyId) {
+          const yilVeriler = tumVeriler.filter(v => v.yil === yil);
+          const tipMap = {};
+          
+          yilVeriler.forEach(v => {
+            const tip = v.tip || 'Bilinmeyen';
+            if (!tipMap[tip]) {
+              tipMap[tip] = {
+                tip: tip,
+                odemeSayisi: 0,
+                toplamOdeme: 0,
+                tutarlar: [],
+                personeller: new Set()
+              };
+            }
+            tipMap[tip].odemeSayisi++;
+            const tutar = parseFloat(v.tutar || 0);
+            tipMap[tip].toplamOdeme += tutar;
+            tipMap[tip].tutarlar.push(tutar);
+            if (v.personel_uid) tipMap[tip].personeller.add(v.personel_uid);
+          });
+
+          const donemAySayisi = 12;
+          const tipListesi = Object.values(tipMap).map(t => ({
+            ...t,
+            aylikOrtalama: donemAySayisi > 0 ? t.toplamOdeme / donemAySayisi : 0,
+            ortalamaTutar: t.odemeSayisi > 0 ? t.toplamOdeme / t.odemeSayisi : 0,
+            personelSayisi: t.personeller.size
+          })).sort((a, b) => b.toplamOdeme - a.toplamOdeme);
+
+          const tbody = document.getElementById(tbodyId);
+          if (tipListesi.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px;">Veri bulunamadı</td></tr>';
+            return;
+          }
+
+          tbody.innerHTML = tipListesi.map(t => {
+            const tipIsim = t.tip ? t.tip.charAt(0).toUpperCase() + t.tip.slice(1).replace(/_/g, ' ') : 'Bilinmeyen';
+            return `
+              <tr>
+                <td>${tipIsim}</td>
+                <td style="text-align: center;">${t.odemeSayisi}</td>
+                <td style="text-align: right;">${fmt(t.toplamOdeme)}</td>
+                <td style="text-align: right;">${fmt(t.aylikOrtalama)}</td>
+                <td style="text-align: center;">${t.personelSayisi}</td>
+              </tr>
+            `;
+          }).join('');
+        }
+
+        // Personel detay analizlerini oluştur
+        function olusturPersonelDetayAnalizleri(tumVeriler, seciliPersonelUid) {
+          // Personel bazında grupla
+          const personelMap = {};
+          tumVeriler.forEach(v => {
+            const pUid = v.personel_uid || 'Bilinmeyen';
+            const pAdi = v.personel_adi_soyadi || 'Bilinmeyen';
+            if (!personelMap[pUid]) {
+              personelMap[pUid] = {
+                personelUid: pUid,
+                personelAdi: pAdi,
+                odemeler: []
+              };
+            }
+            personelMap[pUid].odemeler.push({
+              tip: v.tip,
+              tutar: parseFloat(v.tutar || 0),
+              yil: v.yil,
+              ay: v.ay,
+              tarih: v.verildigi_tarih
+            });
+          });
+
+          // Tüm personellerin en son kira tutarlarını hesapla (sıralama için)
+          const tumPersonellerKiraHam = Object.values(personelMap).map(p => {
+            const kiraOdemeler = p.odemeler
+              .filter(o => o.tip === 'kira')
+              .sort((a, b) => {
+                if (a.yil !== b.yil) return b.yil - a.yil;
+                if (a.ay !== b.ay) return b.ay - a.ay;
+                return new Date(b.tarih) - new Date(a.tarih);
+              });
+            
+            return {
+              personelUid: p.personelUid,
+              personelAdi: p.personelAdi,
+              enSonKira: kiraOdemeler.length > 0 ? kiraOdemeler[0].tutar : 0
+            };
+          }).filter(p => p.enSonKira > 0)
+            .sort((a, b) => b.enSonKira - a.enSonKira); // Yüksekten düşüğe sırala
+          
+          // Aynı tutara sahip personelleri aynı sırada grupla
+          const tumPersonellerKira = [];
+          let mevcutSira = 1;
+          let oncekiTutar = null;
+          
+          tumPersonellerKiraHam.forEach((p, index) => {
+            if (oncekiTutar === null || p.enSonKira !== oncekiTutar) {
+              // Yeni bir tutar grubu başlıyor
+              if (index > 0) {
+                mevcutSira = tumPersonellerKira.length + 1;
+              }
+              oncekiTutar = p.enSonKira;
+            }
+            // Aynı tutara sahip personeller aynı sırada
+            tumPersonellerKira.push({
+              ...p,
+              sira: mevcutSira
+            });
+          });
+
+          // Eğer personel filtrelenmişse sadece o personeli göster
+          const gosterilecekPersoneller = seciliPersonelUid 
+            ? Object.values(personelMap).filter(p => p.personelUid === seciliPersonelUid)
+            : Object.values(personelMap);
+
+          // Personel tip analizleri
+          const personelTipIcerik = [];
+          gosterilecekPersoneller.forEach(p => {
+            // Tip bazında grupla
+            const tipMap = {};
+            p.odemeler.forEach(o => {
+              const tip = o.tip || 'Bilinmeyen';
+              if (!tipMap[tip]) {
+                tipMap[tip] = {
+                  tip: tip,
+                  toplam: 0,
+                  sayi: 0,
+                  yillar: {}
+                };
+              }
+              tipMap[tip].toplam += o.tutar;
+              tipMap[tip].sayi++;
+              if (!tipMap[tip].yillar[o.yil]) {
+                tipMap[tip].yillar[o.yil] = { toplam: 0, sayi: 0 };
+              }
+              tipMap[tip].yillar[o.yil].toplam += o.tutar;
+              tipMap[tip].yillar[o.yil].sayi++;
+            });
+
+            const tipListesi = Object.values(tipMap).map(t => ({
+              ...t,
+              ortalama: t.sayi > 0 ? t.toplam / t.sayi : 0,
+              artislar: hesaplaTipArtislari(t.yillar)
+            }));
+
+            personelTipIcerik.push({
+              personel: p,
+              tipler: tipListesi
+            });
+          });
+
+          // HTML oluştur
+          const tipAnalizHTML = personelTipIcerik.map(pt => {
+            const personelAdi = basHarfBuyuk(pt.personel.personelAdi);
+            const seciliClass = seciliPersonelUid && pt.personel.personelUid === seciliPersonelUid ? 'personel-secili' : '';
+            
+            const tipSatirlar = pt.tipler.map(t => {
+              const tipIsim = t.tip ? t.tip.charAt(0).toUpperCase() + t.tip.slice(1).replace(/_/g, ' ') : 'Bilinmeyen';
+              const artisBilgisi = t.artislar.length > 0 
+                ? t.artislar.map(a => `${a.yil}: ${a.yuzde > 0 ? '+' : ''}${a.yuzde.toFixed(1)}%`).join(', ')
+                : '-';
+              
+              return `
+                <tr>
+                  <td>${tipIsim}</td>
+                  <td style="text-align: center;">${t.sayi}</td>
+                  <td style="text-align: right;">${fmt(t.toplam)}</td>
+                  <td style="text-align: right;">${fmt(t.ortalama)}</td>
+                  <td style="text-align: center; font-size: 10px;">${artisBilgisi}</td>
+                </tr>
+              `;
+            }).join('');
+
+            return `
+              <div style="margin-bottom: 30px;">
+                <div style="font-weight: 700; font-size: 13px; margin-bottom: 10px; color: #2f4f30;">
+                  ${personelAdi}
+                </div>
+                <table class="analiz-tablo">
+                  <thead>
+                    <tr>
+                      <th>Tip</th>
+                      <th style="text-align: center;">Ödeme Sayısı</th>
+                      <th style="text-align: right;">Toplam</th>
+                      <th style="text-align: right;">Ortalama</th>
+                      <th style="text-align: center;">Yıllık Artışlar</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${tipSatirlar}
+                  </tbody>
+                </table>
+              </div>
+            `;
+          }).join('');
+
+          document.getElementById('personelTipAnalizIcerik').innerHTML = tipAnalizHTML;
+
+          // Kira artış analizleri
+          const kiraArtisHTML = gosterilecekPersoneller
+            .filter(p => p.odemeler.some(o => o.tip === 'kira'))
+            .map(p => {
+              const personelAdi = basHarfBuyuk(p.personelAdi);
+              const kiraOdemeler = p.odemeler
+                .filter(o => o.tip === 'kira')
+                .sort((a, b) => {
+                  if (a.yil !== b.yil) return a.yil - b.yil;
+                  return a.ay - b.ay;
+                });
+              
+              // Bu personelin sıralamasını bul (en son kira tutarına göre)
+              const enSonKiraTutari = kiraOdemeler.length > 0 ? kiraOdemeler[kiraOdemeler.length - 1].tutar : 0;
+              const mevcutPersonel = tumPersonellerKira.find(per => per.personelUid === p.personelUid);
+              const personelSiralama = mevcutPersonel ? mevcutPersonel.sira : 0;
+              const toplamPersonelSayisi = tumPersonellerKira.length;
+              
+              // Aynı sırada kaç kişi var?
+              const ayniSiradaKisiSayisi = tumPersonellerKira.filter(per => per.sira === personelSiralama).length;
+              
+              // Sıralama yüzdesi hesapla (en yüksek sıra numarasına göre)
+              const enYuksekSira = Math.max(...tumPersonellerKira.map(per => per.sira));
+              const siraYuzdesi = enYuksekSira > 0 ? (personelSiralama / enYuksekSira) * 100 : 0;
+
+              if (kiraOdemeler.length < 2) {
+                return `
+                  <div style="margin-bottom: 20px;">
+                    <div style="font-weight: 700; font-size: 13px; margin-bottom: 10px; color: #2f4f30;">
+                      ${personelAdi}
+                    </div>
+                    <div style="padding: 10px; color: #666; font-size: 11px;">Yeterli veri yok (en az 2 ödeme gerekli)</div>
+                  </div>
+                `;
+              }
+
+              // Aynı tutarlı dönemleri grupla
+              const donemler = [];
+              let baslangicYil = kiraOdemeler[0].yil;
+              let baslangicAy = kiraOdemeler[0].ay;
+              let mevcutTutar = kiraOdemeler[0].tutar;
+              
+              const ayIsimleri = ['', 'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+              
+              for (let i = 1; i < kiraOdemeler.length; i++) {
+                const simdiki = kiraOdemeler[i];
+                
+                if (simdiki.tutar !== mevcutTutar) {
+                  // Önceki dönemi kaydet
+                  const bitisYil = kiraOdemeler[i - 1].yil;
+                  const bitisAy = kiraOdemeler[i - 1].ay;
+                  
+                  donemler.push({
+                    baslangicYil,
+                    baslangicAy,
+                    bitisYil,
+                    bitisAy,
+                    tutar: mevcutTutar
+                  });
+                  
+                  // Yeni dönem başlat
+                  baslangicYil = simdiki.yil;
+                  baslangicAy = simdiki.ay;
+                  mevcutTutar = simdiki.tutar;
+                }
+              }
+              
+              // Son dönemi ekle
+              const sonIndex = kiraOdemeler.length - 1;
+              donemler.push({
+                baslangicYil,
+                baslangicAy,
+                bitisYil: kiraOdemeler[sonIndex].yil,
+                bitisAy: kiraOdemeler[sonIndex].ay,
+                tutar: mevcutTutar
+              });
+
+              // Artış satırlarını oluştur
+              const artisSatirlar = [];
+              const artisAylari = []; // Artış yapılan ayları kaydet
+              
+              for (let i = 1; i < donemler.length; i++) {
+                const oncekiDonem = donemler[i - 1];
+                const simdikiDonem = donemler[i];
+                const artis = simdikiDonem.tutar - oncekiDonem.tutar;
+                const yuzdeArtis = oncekiDonem.tutar > 0 ? (artis / oncekiDonem.tutar) * 100 : 0;
+                
+                // Artış yapılan ayı kaydet
+                if (artis > 0) {
+                  artisAylari.push({
+                    yil: simdikiDonem.baslangicYil,
+                    ay: simdikiDonem.baslangicAy,
+                    ayIsim: ayIsimleri[simdikiDonem.baslangicAy],
+                    yuzde: yuzdeArtis
+                  });
+                }
+                
+                // Dönem metni
+                let donemMetni = '';
+                if (oncekiDonem.baslangicYil === oncekiDonem.bitisYil && oncekiDonem.baslangicAy === oncekiDonem.bitisAy) {
+                  donemMetni = `${oncekiDonem.baslangicYil} ${ayIsimleri[oncekiDonem.baslangicAy]}`;
+                } else {
+                  donemMetni = `${oncekiDonem.baslangicYil} ${ayIsimleri[oncekiDonem.baslangicAy]} - ${oncekiDonem.bitisYil} ${ayIsimleri[oncekiDonem.bitisAy]}`;
+                }
+                
+                let yeniDonemMetni = '';
+                if (simdikiDonem.baslangicYil === simdikiDonem.bitisYil && simdikiDonem.baslangicAy === simdikiDonem.bitisAy) {
+                  yeniDonemMetni = `${simdikiDonem.baslangicYil} ${ayIsimleri[simdikiDonem.baslangicAy]}`;
+                } else {
+                  yeniDonemMetni = `${simdikiDonem.baslangicYil} ${ayIsimleri[simdikiDonem.baslangicAy]} - ${simdikiDonem.bitisYil} ${ayIsimleri[simdikiDonem.bitisAy]}`;
+                }
+                
+                artisSatirlar.push(`
+                  <tr>
+                    <td>${donemMetni} = ${fmt(oncekiDonem.tutar)}</td>
+                    <td>${yeniDonemMetni} = ${fmt(simdikiDonem.tutar)}</td>
+                    <td style="text-align: center; ${yuzdeArtis > 0 ? 'color: #16a34a;' : yuzdeArtis < 0 ? 'color: #e11d48;' : ''}">
+                      ${yuzdeArtis > 0 ? '+' : ''}${yuzdeArtis.toFixed(1)}% artış
+                    </td>
+                  </tr>
+                `);
+              }
+
+              // En son kira tutarı
+              const enSonKira = kiraOdemeler[kiraOdemeler.length - 1];
+              const enSonTutar = enSonKira.tutar;
+              
+              // Personel arasındaki sıralama analizi
+              let siralamaAnalizi = '';
+              if (personelSiralama > 0 && toplamPersonelSayisi > 0) {
+                const siraMetni = ayniSiradaKisiSayisi > 1 
+                  ? `${personelSiralama}. sırada (${ayniSiradaKisiSayisi} kişi ile birlikte)`
+                  : `${personelSiralama}. sırada`;
+                
+                if (siraYuzdesi <= 30) {
+                  // İlk %30 içinde - yüksek kira
+                  siralamaAnalizi = `<div style="font-size: 11px; color: #ea580c; margin-top: 12px; padding: 10px; background-color: #fff7ed; border-left: 3px solid #ea580c; line-height: 1.6; font-weight: 600;">
+                    ⚠️ Personel arasında kira miktarınız yüksek! En son kira tutarınız (${fmt(enSonTutar)}) ${toplamPersonelSayisi} personel arasında ${siraMetni} yer almaktadır.
+                  </div>`;
+                } else if (siraYuzdesi <= 70) {
+                  // %30-70 arası - orta seviye
+                  siralamaAnalizi = `<div style="font-size: 11px; color: #333; margin-top: 12px; padding: 10px; background-color: #f8f9fa; border-left: 3px solid #2f4f30; line-height: 1.6;">
+                    ℹ️ Personel arasında kira miktarınız orta seviyede. En son kira tutarınız (${fmt(enSonTutar)}) ${toplamPersonelSayisi} personel arasında ${siraMetni} yer almaktadır.
+                  </div>`;
+                } else {
+                  // Son %30 içinde - ideal seviye
+                  siralamaAnalizi = `<div style="font-size: 11px; color: #16a34a; margin-top: 12px; padding: 10px; background-color: #f0fdf4; border-left: 3px solid #16a34a; line-height: 1.6;">
+                    ✓ Personel arasında kira miktarınız ideal seviyede. En son kira tutarınız (${fmt(enSonTutar)}) ${toplamPersonelSayisi} personel arasında ${siraMetni} yer almaktadır.
+                  </div>`;
+                }
+              }
+              
+              // Yıllara göre artış trendini analiz et
+              const yilBazliArtislar = [];
+              for (let i = 1; i < donemler.length; i++) {
+                const oncekiDonem = donemler[i - 1];
+                const simdikiDonem = donemler[i];
+                const artis = simdikiDonem.tutar - oncekiDonem.tutar;
+                const yuzdeArtis = oncekiDonem.tutar > 0 ? (artis / oncekiDonem.tutar) * 100 : 0;
+                
+                // Artış yapılan yılı belirle (yeni dönemin başlangıç yılı)
+                const artisYili = simdikiDonem.baslangicYil;
+                
+                // Sadece pozitif artışları say (artış yapılan yıllar)
+                if (artis > 0) {
+                  const mevcutYil = yilBazliArtislar.find(y => y.yil === artisYili);
+                  if (mevcutYil) {
+                    mevcutYil.artisTutar += artis;
+                    mevcutYil.artisYuzde += yuzdeArtis;
+                    mevcutYil.sayi++;
+                  } else {
+                    yilBazliArtislar.push({
+                      yil: artisYili,
+                      artisTutar: artis,
+                      artisYuzde: yuzdeArtis,
+                      sayi: 1
+                    });
+                  }
+                }
+              }
+              
+              // Yıllık ortalamaları hesapla
+              yilBazliArtislar.forEach(y => {
+                if (y.sayi > 0) {
+                  y.artisYuzde = y.artisYuzde / y.sayi;
+                }
+              });
+              
+              // Trend analizi: 2023→2024, 2024→2025, 2023→2025 karşılaştırmaları
+              let trendAnalizi = '';
+              const yillarSiralanmis = yilBazliArtislar.sort((a, b) => a.yil - b.yil);
+              
+              // Yıl bazlı verileri bul
+              const yil2023 = yillarSiralanmis.find(y => y.yil === 2023);
+              const yil2024 = yillarSiralanmis.find(y => y.yil === 2024);
+              const yil2025 = yillarSiralanmis.find(y => y.yil === 2025);
+              
+              // Karşılaştırma sonuçları
+              const karsilastirmalar = [];
+              
+              // 2023 → 2024 karşılaştırması
+              if (yil2023 && yil2024) {
+                const yuzdeFark = yil2024.artisYuzde - yil2023.artisYuzde;
+                const tutarFark = yil2024.artisTutar - yil2023.artisTutar;
+                karsilastirmalar.push({
+                  donem: '2023→2024',
+                  yuzdeFark,
+                  tutarFark,
+                  yuzdeDusus: yuzdeFark < 0,
+                  tutarArtis: tutarFark > 0,
+                  yuzdeArtis: yuzdeFark > 0,
+                  tutarDusus: tutarFark < 0
+                });
+              }
+              
+              // 2024 → 2025 karşılaştırması (en önemli)
+              let karsilastirma2024_2025 = null;
+              if (yil2024 && yil2025) {
+                const yuzdeFark = yil2025.artisYuzde - yil2024.artisYuzde;
+                const tutarFark = yil2025.artisTutar - yil2024.artisTutar;
+                karsilastirma2024_2025 = {
+                  donem: '2024→2025',
+                  yuzdeFark,
+                  tutarFark,
+                  yuzdeDusus: yuzdeFark < 0,
+                  tutarArtis: tutarFark > 0,
+                  yuzdeArtis: yuzdeFark > 0,
+                  tutarDusus: tutarFark < 0
+                };
+                karsilastirmalar.push(karsilastirma2024_2025);
+              }
+              
+              // 2023 → 2025 karşılaştırması
+              if (yil2023 && yil2025) {
+                const yuzdeFark = yil2025.artisYuzde - yil2023.artisYuzde;
+                const tutarFark = yil2025.artisTutar - yil2023.artisTutar;
+                karsilastirmalar.push({
+                  donem: '2023→2025',
+                  yuzdeFark,
+                  tutarFark,
+                  yuzdeDusus: yuzdeFark < 0,
+                  tutarArtis: tutarFark > 0,
+                  yuzdeArtis: yuzdeFark > 0,
+                  tutarDusus: tutarFark < 0
+                });
+              }
+              
+              // Yıl bilgileri
+              const yilBilgileri = yillarSiralanmis
+                .map(y => `${y.yil}: %${y.artisYuzde.toFixed(1)} (${y.artisTutar > 0 ? '+' : ''}${fmt(y.artisTutar)})`)
+                .join(', ');
+              
+              // Analiz metni oluştur (2024→2025'e öncelik ver)
+              if (karsilastirma2024_2025) {
+                const k = karsilastirma2024_2025;
+                
+                // 2024→2025 analizi (öncelikli)
+                if (k.yuzdeDusus && k.tutarArtis) {
+                  trendAnalizi = `Yıllara göre analiz: ${yilBilgileri}. ÖNEMLİ: 2024→2025 döneminde yüzde artış oranı %${Math.abs(k.yuzdeFark).toFixed(1)} azalmış ancak tutar olarak ${fmt(k.tutarFark)} artış görülmüştür. Bu durum gözden kaçırılmamalıdır. Genel trend: 2023→2024 ve 2023→2025 karşılaştırmalarında da benzer bir seyir izlenmektedir. 2026 yılı için önceden tedbir alınması ve kurum bütçe planlamasına mutabık şekilde hareket edilmesi gerekmektedir.`;
+                } else if (k.yuzdeDusus && k.tutarDusus) {
+                  trendAnalizi = `Yıllara göre analiz: ${yilBilgileri}. ÖNEMLİ: 2024→2025 döneminde hem yüzde (%) hem de tutar (₺) olarak düşüş görülmüştür. Bu olumlu bir gelişmedir. Genel trend: 2023→2024 ve 2023→2025 karşılaştırmalarında da benzer bir seyir izlenmektedir. 2026 yılında da benzer bir trend beklenmektedir.`;
+                } else if (k.yuzdeArtis && k.tutarArtis) {
+                  trendAnalizi = `Yıllara göre analiz: ${yilBilgileri}. ÖNEMLİ: 2024→2025 döneminde hem yüzde (%) hem de tutar (₺) olarak artış görülmüştür. Genel trend: 2023→2024 ve 2023→2025 karşılaştırmalarında da benzer bir seyir izlenmektedir. 2026 yılı için önceden tedbir alınması ve kurum bütçe planlamasına mutabık şekilde hareket edilmesi gerekmektedir.`;
+                } else {
+                  trendAnalizi = `Yıllara göre analiz: ${yilBilgileri}. ÖNEMLİ: 2024→2025 döneminde karışık bir trend görülmektedir. Genel trend: 2023→2024 ve 2023→2025 karşılaştırmalarında da iniş-çıkışlar mevcuttur. 2026 yılı için önceden tedbir alınması ve kurum bütçe planlamasına mutabık şekilde hareket edilmesi gerekmektedir.`;
+                }
+              } else if (karsilastirmalar.length > 0) {
+                // 2024→2025 yoksa diğer karşılaştırmalara bak
+                const k = karsilastirmalar[0];
+                if (k.yuzdeDusus && k.tutarArtis) {
+                  trendAnalizi = `Yıllara göre analiz: ${yilBilgileri}. Yüzde artış oranı azalmış ancak tutar olarak artış görülmüştür. Bunu da gözden kaçırmamalıyız. 2026 yılı için önceden tedbir alınması ve kurum bütçe planlamasına mutabık şekilde hareket edilmesi gerekmektedir.`;
+                } else if (k.yuzdeDusus && k.tutarDusus) {
+                  trendAnalizi = `Yıllara göre analiz: ${yilBilgileri}. Bu personel kira artışlarını hem yüzde (%) hem de tutar (₺) olarak düşürmüştür. Bu olumlu bir gelişmedir ve 2026 yılında da benzer bir trend beklenmektedir.`;
+                } else if (k.yuzdeArtis && k.tutarArtis) {
+                  trendAnalizi = `Yıllara göre analiz: ${yilBilgileri}. Bu personel kira artışlarında hem yüzde (%) hem de tutar (₺) olarak artış göstermektedir. 2026 yılı için önceden tedbir alınması ve kurum bütçe planlamasına mutabık şekilde hareket edilmesi gerekmektedir.`;
+                } else {
+                  trendAnalizi = `Yıllara göre analiz: ${yilBilgileri}. Bu personel kira artışlarında iniş-çıkışlar görülmektedir. 2026 yılı için önceden tedbir alınması ve kurum bütçe planlamasına mutabık şekilde hareket edilmesi gerekmektedir.`;
+                }
+              } else {
+                trendAnalizi = `Yıllara göre analiz: ${yilBilgileri}. Artış trendi stabil seyretmektedir.`;
+              }
+              
+              // 2026 için öneri hesapla (%30 artış, yukarı yuvarlama)
+              const onerilenArtis = enSonTutar * 0.30;
+              const onerilenTutar = Math.ceil(enSonTutar + onerilenArtis);
+              
+              // Artış yapılan ayları analiz et
+              let artisAylariMetni = '';
+              if (artisAylari.length > 0) {
+                const aylarGruplu = {};
+                artisAylari.forEach(a => {
+                  const key = `${a.yil}-${a.ay}`;
+                  if (!aylarGruplu[key]) {
+                    aylarGruplu[key] = [];
+                  }
+                  aylarGruplu[key].push(a);
+                });
+                
+                const aylarListesi = Object.values(aylarGruplu).map(grup => {
+                  const ilk = grup[0];
+                  return `${ilk.yil} ${ilk.ayIsim}`;
+                });
+                
+                if (aylarListesi.length === 1) {
+                  artisAylariMetni = `Bu personel kira artışı ${aylarListesi[0]} ayında oluyor.`;
+                } else if (aylarListesi.length <= 3) {
+                  artisAylariMetni = `Bu personel kira artışı ${aylarListesi.slice(0, -1).join(', ')} ve ${aylarListesi[aylarListesi.length - 1]} aylarında oluyor.`;
+                } else {
+                  artisAylariMetni = `Bu personel kira artışı ${aylarListesi.slice(0, 2).join(', ')} ve diğer aylarda oluyor (toplam ${aylarListesi.length} farklı dönem).`;
+                }
+              } else {
+                artisAylariMetni = 'Bu personel için henüz kira artışı yapılmamış.';
+              }
+              
+              // En son artış ayını bul
+              let sonArtisAyi = '';
+              if (artisAylari.length > 0) {
+                const sonArtis = artisAylari[artisAylari.length - 1];
+                sonArtisAyi = `${sonArtis.yil} ${sonArtis.ayIsim}`;
+              }
+              
+              // 2026 öneri metni
+              let oneriMetni = '';
+              if (sonArtisAyi) {
+                // Son artış ayından sonraki yılın aynı ayını öner
+                const sonArtisYil = artisAylari[artisAylari.length - 1].yil;
+                const sonArtisAy = artisAylari[artisAylari.length - 1].ay;
+                const onerilenYil = sonArtisYil + 1;
+                const onerilenAyIsim = ayIsimleri[sonArtisAy];
+                
+                oneriMetni = `2026 ${onerilenAyIsim} ayı için önerilen kira tutarı: ${fmt(onerilenTutar)} (mevcut tutar ${fmt(enSonTutar)} üzerinden %30 artış, yukarı yuvarlanmıştır). Bu bilgi yöneticiye rehberlik eder; yönetici personeli buna göre yönlendirerek kira artışını minimize edebilir.`;
+              } else {
+                oneriMetni = `2026 yılı için önerilen kira tutarı: ${fmt(onerilenTutar)} (mevcut tutar ${fmt(enSonTutar)} üzerinden %30 artış, yukarı yuvarlanmıştır). Bu bilgi yöneticiye rehberlik eder; yönetici personeli buna göre yönlendirerek kira artışını minimize edebilir.`;
+              }
+
+              return `
+                <div style="margin-bottom: 30px;">
+                  <div style="font-weight: 700; font-size: 13px; margin-bottom: 10px; color: #2f4f30;">
+                    ${personelAdi}
+                  </div>
+                  <div style="font-size: 11px; color: #333; margin-bottom: 12px; padding: 10px; background-color: #f8f9fa; border-left: 3px solid #2f4f30; line-height: 1.6;">
+                    ${artisAylariMetni}
+                  </div>
+                  <div style="font-size: 11px; color: #333; margin-bottom: 12px; padding: 10px; background-color: #e8f5e9; border-left: 3px solid #16a34a; line-height: 1.6;">
+                    ${trendAnalizi}
+                  </div>
+                  <table class="analiz-tablo">
+                    <thead>
+                      <tr>
+                        <th>Dönem (Eski Tutar)</th>
+                        <th>Dönem (Yeni Tutar)</th>
+                        <th style="text-align: center;">Artış</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${artisSatirlar.join('')}
+                    </tbody>
+                  </table>
+                  <div style="font-size: 11px; color: #ea580c; margin-top: 12px; padding: 10px; background-color: #fff7ed; border-left: 3px solid #ea580c; line-height: 1.6; font-weight: 600;">
+                    💡 ${oneriMetni}
+                  </div>
+                  ${siralamaAnalizi}
+                </div>
+              `;
+            }).join('');
+
+          document.getElementById('kiraArtisAnalizIcerik').innerHTML = kiraArtisHTML || '<div style="padding: 20px; text-align: center; color: #666;">Kira ödemesi bulunamadı</div>';
+        }
+
+        function hesaplaTipArtislari(yillar) {
+          const yilListesi = Object.keys(yillar).map(y => parseInt(y)).sort();
+          const artislar = [];
+          
+          for (let i = 1; i < yilListesi.length; i++) {
+            const oncekiYil = yilListesi[i - 1];
+            const simdikiYil = yilListesi[i];
+            const oncekiOrtalama = yillar[oncekiYil].sayi > 0 ? yillar[oncekiYil].toplam / yillar[oncekiYil].sayi : 0;
+            const simdikiOrtalama = yillar[simdikiYil].sayi > 0 ? yillar[simdikiYil].toplam / yillar[simdikiYil].sayi : 0;
+            
+            if (oncekiOrtalama > 0) {
+              const yuzdeArtis = ((simdikiOrtalama - oncekiOrtalama) / oncekiOrtalama) * 100;
+              artislar.push({
+                yil: simdikiYil,
+                yuzde: yuzdeArtis
+              });
+            }
+          }
+          
+          return artislar;
+        }
+
+        // Detay tablosunu gizle/göster fonksiyonu
+        window.toggleDetayTablo = function() {
+          const tablo = document.getElementById('veriTablo');
+          const buton = document.getElementById('detayTabloToggle');
+          
+          if (tablo.style.display === 'none') {
+            tablo.style.display = 'table';
+            buton.textContent = '📋 Detay Tablosunu Gizle';
+            buton.style.backgroundColor = '#2f4f30';
+          } else {
+            tablo.style.display = 'none';
+            buton.textContent = '📋 Detay Tablosunu Göster';
+            buton.style.backgroundColor = '#16a34a';
+          }
+        };
+
+        yukleVeriler();
+      });
+    });
+
+    function pdfCiktisiAl() {
+      const element = document.getElementById("pdfAlani");
+      if (!element) {
+        alert("PDF alanı bulunamadı!");
+        return;
+      }
+
+      const opt = {
+        margin: [0.5, 0.5, 0.5, 0.5],
+        filename: 'odeme-takvim-raporu.pdf',
+        image: { type: 'png', quality: 0.98 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          scrollX: 0,
+          scrollY: 0,
+          windowWidth: 800
+        },
+        jsPDF: {
+          unit: 'in',
+          format: 'a4',
+          orientation: 'portrait'
+        }
+      };
+
+      html2pdf().set(opt).from(element).save();
+    }
+  </script>
+</body>
+</html>

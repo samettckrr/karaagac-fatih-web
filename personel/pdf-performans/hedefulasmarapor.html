@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Hedef-Ulaşma Analiz Raporu</title>
+  <style>
+    body { 
+      margin: 0; 
+      font-family: 'Segoe UI', sans-serif; 
+      background-color: #f1f1f1; 
+    }
+    .sayfa {
+      width: 800px; 
+      margin: 20px auto; 
+      background-color: white;
+      padding: 30px 40px; 
+      box-sizing: border-box; 
+      border: 1px solid #ccc;
+    }
+    .baslik { 
+      text-align: center;
+      margin-top: 120px;
+      margin-bottom: 80px;
+      padding-bottom: 80px;
+      border-bottom: 5px solid #2f4f30;
+    }
+    .baslik h1 { 
+      font-size: 74px; 
+      margin: 0 0 10px 0; 
+      color: #2f4f30;
+      font-weight: 700;
+    }
+    .baslik h2 { 
+      font-size: 48px; 
+      font-weight: 600; 
+      margin: 0; 
+      color: #2f4f30;
+    }
+    .filtre-bilgi {
+      font-size: 13px;
+      font-weight: 600;
+      color: #2f4f30;
+      margin-bottom: 30px;
+      padding: 12px 15px;
+      background: #e8f5e9;
+      border: 2px solid #2f4f30;
+      border-radius: 5px;
+    }
+    .odeme-aciklama {
+      background: #f8f9fa;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 10px;
+      margin-bottom: 20px;
+    }
+    .kpi-container {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin-bottom: 60px;
+    }
+    .kpi-item {
+      background: #f8f9fa;
+      border: 1px solid #ddd;
+      padding: 12px;
+      border-radius: 5px;
+      text-align: center;
+    }
+    .kpi-item .lbl {
+      font-size: 11px;
+      color: #666;
+      margin-bottom: 5px;
+    }
+    .kpi-item .val {
+      font-size: 18px;
+      font-weight: bold;
+      color: #2f4f30;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      font-size: 12px;
+    }
+    th {
+      background-color: #2f4f30;
+      color: white;
+      padding: 10px;
+      text-align: left;
+      font-weight: 600;
+    }
+    td {
+      padding: 8px 10px;
+      border-bottom: 1px solid #ddd;
+    }
+    tr:nth-child(even) {
+      background-color: #f8f9fa;
+    }
+    .oran-iyi { color: #16a34a; font-weight: 600; }
+    .oran-orta { color: #f59e0b; font-weight: 600; }
+    .oran-kotu { color: #e11d48; font-weight: 600; }
+    .analiz-tablo-container {
+      margin: 20px 0;
+    }
+    .analiz-tablo-baslik {
+      font-size: 14px;
+      font-weight: 700;
+      color: #2f4f30;
+      margin-bottom: 10px;
+      padding-bottom: 5px;
+      border-bottom: 2px solid #2f4f30;
+    }
+    .analiz-tablo {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      font-size: 11px;
+    }
+    .analiz-tablo th {
+      background-color: #2f4f30;
+      color: white;
+      padding: 8px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 11px;
+    }
+    .analiz-tablo td {
+      padding: 4.5px 8px;
+      border-bottom: 1px solid #ddd;
+    }
+    .analiz-tablo tr:nth-child(even) {
+      background-color: #f8f9fa;
+    }
+    .analiz-tablo tr.personel-secili {
+      background-color: #e8f5e9 !important;
+      font-weight: 600;
+    }
+    .siralama-degisim {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+    }
+    .siralama-yukselme {
+      color: #16a34a;
+    }
+    .siralama-stabil {
+      color: #f59e0b;
+    }
+    .siralama-dusme {
+      color: #e11d48;
+    }
+    .btn-alani { 
+      text-align: center; 
+      margin-top: 30px; 
+    }
+    button {
+      padding: 10px 20px; 
+      background-color: #4a637d;
+      border: none; 
+      color: white; 
+      font-size: 15px;
+      border-radius: 5px; 
+      cursor: pointer;
+    }
+    button:hover { 
+      background-color: #3b526b; 
+    }
+    @media print {
+      body { background-color: white; }
+      .btn-alani { display: none; }
+      .sayfa { border: none; margin: 0; padding: 20px; }
+      .oran-iyi { 
+        color: #16a34a !important; 
+        font-weight: 600; 
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .oran-orta { 
+        color: #f59e0b !important; 
+        font-weight: 600; 
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .oran-kotu { 
+        color: #e11d48 !important; 
+        font-weight: 600; 
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="sayfa" id="pdfAlani">
+    <div class="baslik">
+      <h1>Karaağaç Fatih</h1>
+      <h2>Hedef-Ulaşma Analiz Raporu</h2>
+    </div>
+
+    <div class="filtre-bilgi" id="filtreBilgi">
+      Filtreler yükleniyor...
+    </div>
+
+    <!-- Hedef Veri Kaynağı Açıklaması -->
+    <section class="odeme-aciklama" style="margin-bottom: 16px; padding: 10px;">
+      <p style="margin: 0; font-size: 11px; line-height: 1.6; color: #333;">
+        <strong>Veri Kaynağı:</strong> Karaağaç Fatih Web Sitesi & E-Tablo Kayıtları
+      </p>
+      <p style="margin: 8px 0 0; font-size: 11px; line-height: 1.6; color: #333;">
+        <strong>2023 Ramazan-ı Şerif:</strong> Kayıtlarda kesin hedef verisi bulunmadığından, döneme ait ortalama veriler baz alınarak tahmini bir hedef belirlenmiştir.
+      </p>
+      <p style="margin: 8px 0 0; font-size: 11px; line-height: 1.6; color: #333;">
+        <strong>Kurban Adetleri:</strong> Verilerde küçük sapmalar olabileceği göz önünde bulundurulmalıdır.
+      </p>
+    </section>
+
+    <div class="kpi-container" id="kpiContainer">
+      <!-- KPI'lar buraya eklenecek -->
+    </div>
+
+    <!-- Analiz Tabloları -->
+    <div id="analizTablolari">
+      <!-- Genel Analiz Tablosu -->
+      <div class="analiz-tablo-container" id="genelAnalizContainer">
+        <div class="analiz-tablo-baslik">Genel Analiz (Tüm Yıllar)</div>
+        <table class="analiz-tablo" id="genelAnalizTablo">
+          <thead>
+            <tr>
+              <th>Personel</th>
+              <th style="text-align: center;">Hedef Sayısı</th>
+              <th style="text-align: right;">Toplam Hedef</th>
+              <th style="text-align: right;">Toplam Tutar</th>
+              <th style="text-align: center;">Ulaşma Oranı</th>
+              <th style="text-align: center;">Kurban Adedi</th>
+            </tr>
+          </thead>
+          <tbody id="genelAnalizBody">
+            <tr><td colspan="6" style="text-align: center; padding: 20px;">Yükleniyor...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 2023 Yılı Analiz Tablosu -->
+      <div class="analiz-tablo-container" id="yil2023Container">
+        <div class="analiz-tablo-baslik">2023 Yılı Analizi</div>
+        <table class="analiz-tablo" id="yil2023Tablo">
+          <thead>
+            <tr>
+              <th>Personel</th>
+              <th style="text-align: center;">Hedef Sayısı</th>
+              <th style="text-align: right;">Toplam Hedef</th>
+              <th style="text-align: right;">Toplam Tutar</th>
+              <th style="text-align: center;">Ulaşma Oranı</th>
+              <th style="text-align: center;">Kurban Adedi</th>
+            </tr>
+          </thead>
+          <tbody id="yil2023Body">
+            <tr><td colspan="6" style="text-align: center; padding: 20px;">Yükleniyor...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 2024 Yılı Analiz Tablosu -->
+      <div class="analiz-tablo-container" id="yil2024Container">
+        <div class="analiz-tablo-baslik">2024 Yılı Analizi</div>
+        <table class="analiz-tablo" id="yil2024Tablo">
+          <thead>
+            <tr>
+              <th>Personel</th>
+              <th style="text-align: center;">Hedef Sayısı</th>
+              <th style="text-align: right;">Toplam Hedef</th>
+              <th style="text-align: right;">Toplam Tutar</th>
+              <th style="text-align: center;">Ulaşma Oranı</th>
+              <th style="text-align: center;">Kurban Adedi</th>
+              <th style="text-align: center;">2023 Sıralama</th>
+            </tr>
+          </thead>
+          <tbody id="yil2024Body">
+            <tr><td colspan="7" style="text-align: center; padding: 20px;">Yükleniyor...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 2025 Yılı Analiz Tablosu -->
+      <div class="analiz-tablo-container" id="yil2025Container">
+        <div class="analiz-tablo-baslik">2025 Yılı Analizi</div>
+        <table class="analiz-tablo" id="yil2025Tablo">
+          <thead>
+            <tr>
+              <th>Personel</th>
+              <th style="text-align: center;">Hedef Sayısı</th>
+              <th style="text-align: right;">Toplam Hedef</th>
+              <th style="text-align: right;">Toplam Tutar</th>
+              <th style="text-align: center;">Ulaşma Oranı</th>
+              <th style="text-align: center;">Kurban Adedi</th>
+              <th style="text-align: center;">2024 Sıralama</th>
+            </tr>
+          </thead>
+          <tbody id="yil2025Body">
+            <tr><td colspan="7" style="text-align: center; padding: 20px;">Yükleniyor...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <table id="veriTablo">
+      <thead>
+        <tr>
+          <th>Personel</th>
+          <th>Yıl</th>
+          <th>Kategori</th>
+          <th>Tip</th>
+          <th style="text-align: right;">Hedef</th>
+          <th style="text-align: right;">Tutar</th>
+          <th style="text-align: center;">Ulaşma Oranı</th>
+          <th style="text-align: center;">Kurban</th>
+        </tr>
+      </thead>
+      <tbody id="veriTabloBody">
+        <tr>
+          <td colspan="8" style="text-align: center; padding: 20px;">Veriler yükleniyor...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="btn-alani">
+    <button onclick="pdfCiktisiAl()">PDF Çıktısı Al</button>
+  </div>
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="../../src/supabase.js"></script>
+  <script src="../../src/supabase-auth-wrapper.js"></script>
+  <script src="../../src/supabase-db-wrapper.js"></script>
+  <script src="../../js/ortak.js"></script>
+  
+  <!-- html2pdf -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      function waitForSupabaseAndOrtak(callback) {
+        // window.supabase'in bir client instance olduğunu kontrol et (from metodu olmalı)
+        if (typeof window.supabase !== 'undefined' && 
+            typeof window.supabase.from === 'function' && 
+            typeof window.norm !== 'undefined') {
+          callback();
+        } else {
+          setTimeout(() => waitForSupabaseAndOrtak(callback), 50);
+        }
+      }
+
+      waitForSupabaseAndOrtak(() => {
+        const getSupabase = () => window.supabase;
+        const $ = (id) => document.getElementById(id);
+        const fmt = n => (n==null||isNaN(n)) ? '₺0' : '₺' + Number(n).toLocaleString('tr-TR',{maximumFractionDigits:2});
+        const basHarfBuyuk = (str) => {
+          if (!str) return '';
+          return str.split(' ').map(kelime => {
+            return kelime.charAt(0).toUpperCase() + kelime.slice(1).toLowerCase();
+          }).join(' ');
+        };
+
+        // URL parametrelerinden filtreleri al
+        const urlParams = new URLSearchParams(window.location.search);
+        const yil = urlParams.get('yil') || '';
+        const personel = urlParams.get('personel') || '';
+        const kategori = urlParams.get('kategori') || '';
+
+        // Filtre bilgisini göster
+        const filtreler = [];
+        
+        // Personel
+        if (personel) {
+          filtreler.push(basHarfBuyuk(personel));
+        } else {
+          filtreler.push('Tüm Personel');
+        }
+        
+        // Yıl
+        if (yil) {
+          filtreler.push(yil);
+        } else {
+          filtreler.push('Tüm Yıllar');
+        }
+        
+        // Kategori
+        if (kategori) {
+          filtreler.push(kategori);
+        } else {
+          filtreler.push('Tüm Kategoriler');
+        }
+        
+        $('filtreBilgi').textContent = filtreler.join(' - ');
+
+        async function yukleVeriler() {
+          try {
+            const sb = getSupabase();
+            if (!sb) {
+              console.error('Supabase client hazır değil');
+              return;
+            }
+
+            // Analiz tabloları için tüm verileri çek (sadece kategori filtresi uygulanır)
+            let analizQuery = sb.from('arsiv_hedefler').select('*');
+            if(kategori) analizQuery = analizQuery.eq('kategori', kategori);
+            const { data: tumVeriler, error: analizError } = await analizQuery;
+            if(analizError) throw analizError;
+
+            // Detay tablosu için filtrelenmiş veriler
+            let query = sb.from('arsiv_hedefler').select('*');
+            if(yil) query = query.eq('yil', parseInt(yil));
+            if(personel) query = query.eq('personel', personel);
+            if(kategori) query = query.eq('kategori', kategori);
+            query = query.order('yil', { ascending: false }).order('sira', { ascending: true });
+            const { data, error } = await query;
+            if(error) throw error;
+
+            const veriler = data || [];
+            
+            // Analiz tablolarını oluştur
+            olusturAnalizTablolari(tumVeriler || [], personel, yil);
+            
+            // KPI'ları güncelle
+            const toplamHedef = veriler.reduce((sum, v) => sum + parseFloat(v.hedef || 0), 0);
+            const toplamTutar = veriler.reduce((sum, v) => sum + parseFloat(v.tutar || 0), 0);
+            const ulasmaOrani = toplamHedef > 0 ? (toplamTutar / toplamHedef) * 100 : 0;
+            const sayi = veriler.length;
+            const ortalamaUlasma = veriler.length > 0 ? 
+              veriler.reduce((sum, v) => {
+                const h = parseFloat(v.hedef || 0);
+                const t = parseFloat(v.tutar || 0);
+                return sum + (h > 0 ? (t / h) * 100 : 0);
+              }, 0) / veriler.length : 0;
+            const toplamKurban = veriler.reduce((sum, v) => sum + parseFloat(v.kurban_adedi || 0), 0);
+
+            // KPI'ları göster
+            $('kpiContainer').innerHTML = `
+              <div class="kpi-item">
+                <div class="lbl">Toplam Hedef</div>
+                <div class="val">${fmt(toplamHedef)}</div>
+              </div>
+              <div class="kpi-item">
+                <div class="lbl">Toplam Tutar</div>
+                <div class="val">${fmt(toplamTutar)}</div>
+              </div>
+              <div class="kpi-item">
+                <div class="lbl">Ulaşma Oranı</div>
+                <div class="val">${ulasmaOrani.toFixed(1)}%</div>
+              </div>
+              <div class="kpi-item">
+                <div class="lbl">Kayıt Sayısı</div>
+                <div class="val">${sayi.toLocaleString('tr-TR')}</div>
+              </div>
+              <div class="kpi-item">
+                <div class="lbl">Ortalama Ulaşma</div>
+                <div class="val">${ortalamaUlasma.toFixed(1)}%</div>
+              </div>
+              <div class="kpi-item">
+                <div class="lbl">Toplam Kurban Adedi</div>
+                <div class="val">${toplamKurban.toLocaleString('tr-TR')}</div>
+              </div>
+            `;
+
+            // Tabloyu doldur
+            const tbody = $('veriTabloBody');
+            if (veriler.length === 0) {
+              tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px;">Veri bulunamadı</td></tr>';
+            } else {
+              tbody.innerHTML = veriler.map(v => {
+                const hedef = parseFloat(v.hedef || 0);
+                const tutar = parseFloat(v.tutar || 0);
+                const oran = hedef > 0 ? (tutar / hedef) * 100 : 0;
+                let oranSinif = 'oran-kotu';
+                if (oran >= 100) oranSinif = 'oran-iyi';
+                else if (oran >= 50) oranSinif = 'oran-orta';
+                return `
+                  <tr>
+                    <td>${basHarfBuyuk(v.personel || '-')}</td>
+                    <td>${v.yil || '-'}</td>
+                    <td>${v.kategori || '-'}</td>
+                    <td>${v.tip || '-'}</td>
+                    <td style="text-align: right;">${fmt(hedef)}</td>
+                    <td style="text-align: right;">${fmt(tutar)}</td>
+                    <td style="text-align: center;" class="${oranSinif}">${oran.toFixed(1)}%</td>
+                    <td style="text-align: center;">${v.kurban_adedi || 0}</td>
+                  </tr>
+                `;
+              }).join('');
+            }
+          } catch(e) {
+            console.error('Veriler yüklenemedi:', e);
+            $('veriTabloBody').innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px; color: red;">Hata: ' + (e.message || e) + '</td></tr>';
+          }
+        }
+
+        // Analiz tablolarını oluştur
+        function olusturAnalizTablolari(tumVeriler, seciliPersonel, seciliYil) {
+          // Yıl filtrelenmişse sadece o yılın tablosunu göster
+          if (seciliYil) {
+            document.getElementById('genelAnalizContainer').style.display = 'none';
+            document.getElementById('yil2023Container').style.display = 'none';
+            document.getElementById('yil2024Container').style.display = 'none';
+            document.getElementById('yil2025Container').style.display = 'none';
+            
+            const yilInt = parseInt(seciliYil);
+            if (yilInt === 2023) {
+              document.getElementById('yil2023Container').style.display = 'block';
+              olusturYilTablosu(tumVeriler, 2023, null, seciliPersonel, 'yil2023Body');
+            } else if (yilInt === 2024) {
+              document.getElementById('yil2024Container').style.display = 'block';
+              const yil2023Veriler = tumVeriler.filter(v => v.yil === 2023);
+              olusturYilTablosu(tumVeriler, 2024, yil2023Veriler, seciliPersonel, 'yil2024Body', 2023);
+            } else if (yilInt === 2025) {
+              document.getElementById('yil2025Container').style.display = 'block';
+              const yil2024Veriler = tumVeriler.filter(v => v.yil === 2024);
+              olusturYilTablosu(tumVeriler, 2025, yil2024Veriler, seciliPersonel, 'yil2025Body', 2024);
+            } else {
+              // Diğer yıllar için genel format
+              document.getElementById('genelAnalizContainer').style.display = 'block';
+              olusturGenelAnalizTablosu(tumVeriler, seciliPersonel);
+            }
+            return;
+          }
+
+          // Tüm tabloları göster
+          document.getElementById('genelAnalizContainer').style.display = 'block';
+          document.getElementById('yil2023Container').style.display = 'block';
+          document.getElementById('yil2024Container').style.display = 'block';
+          document.getElementById('yil2025Container').style.display = 'block';
+
+          // Genel analiz tablosu
+          olusturGenelAnalizTablosu(tumVeriler, seciliPersonel);
+
+          // Yıllara göre tablolar
+          olusturYilTablosu(tumVeriler, 2023, null, seciliPersonel, 'yil2023Body');
+          
+          const yil2023Veriler = tumVeriler.filter(v => v.yil === 2023);
+          olusturYilTablosu(tumVeriler, 2024, yil2023Veriler, seciliPersonel, 'yil2024Body', 2023);
+          
+          const yil2024Veriler = tumVeriler.filter(v => v.yil === 2024);
+          olusturYilTablosu(tumVeriler, 2025, yil2024Veriler, seciliPersonel, 'yil2025Body', 2024);
+        }
+
+        function olusturGenelAnalizTablosu(tumVeriler, seciliPersonel) {
+          // Personel bazında grupla
+          const personelMap = {};
+          tumVeriler.forEach(v => {
+            const p = v.personel || 'Bilinmeyen';
+            if (!personelMap[p]) {
+              personelMap[p] = {
+                personel: p,
+                hedefSayisi: 0,
+                toplamHedef: 0,
+                toplamTutar: 0,
+                toplamKurban: 0
+              };
+            }
+            personelMap[p].hedefSayisi++;
+            personelMap[p].toplamHedef += parseFloat(v.hedef || 0);
+            personelMap[p].toplamTutar += parseFloat(v.tutar || 0);
+            personelMap[p].toplamKurban += parseFloat(v.kurban_adedi || 0);
+          });
+
+          // Ulaşma oranına göre sırala (büyükten küçüğe)
+          const personelListesi = Object.values(personelMap).map(p => ({
+            ...p,
+            ulasmaOrani: p.toplamHedef > 0 ? (p.toplamTutar / p.toplamHedef) * 100 : 0
+          })).sort((a, b) => b.ulasmaOrani - a.ulasmaOrani);
+
+          const tbody = document.getElementById('genelAnalizBody');
+          if (personelListesi.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px;">Veri bulunamadı</td></tr>';
+            return;
+          }
+
+          tbody.innerHTML = personelListesi.map(p => {
+            const oranSinif = p.ulasmaOrani >= 100 ? 'oran-iyi' : (p.ulasmaOrani >= 50 ? 'oran-orta' : 'oran-kotu');
+            const satirSinif = seciliPersonel && p.personel === seciliPersonel ? 'personel-secili' : '';
+            return `
+              <tr class="${satirSinif}">
+                <td>${basHarfBuyuk(p.personel)}</td>
+                <td style="text-align: center;">${p.hedefSayisi}</td>
+                <td style="text-align: right;">${fmt(p.toplamHedef)}</td>
+                <td style="text-align: right;">${fmt(p.toplamTutar)}</td>
+                <td style="text-align: center;" class="${oranSinif}">${p.ulasmaOrani.toFixed(1)}%</td>
+                <td style="text-align: center;">${p.toplamKurban}</td>
+              </tr>
+            `;
+          }).join('');
+        }
+
+        function olusturYilTablosu(tumVeriler, yil, oncekiYilVeriler, seciliPersonel, tbodyId, oncekiYil = null) {
+          const yilVeriler = tumVeriler.filter(v => v.yil === yil);
+          
+          // Personel bazında grupla
+          const personelMap = {};
+          yilVeriler.forEach(v => {
+            const p = v.personel || 'Bilinmeyen';
+            if (!personelMap[p]) {
+              personelMap[p] = {
+                personel: p,
+                hedefSayisi: 0,
+                toplamHedef: 0,
+                toplamTutar: 0,
+                toplamKurban: 0
+              };
+            }
+            personelMap[p].hedefSayisi++;
+            personelMap[p].toplamHedef += parseFloat(v.hedef || 0);
+            personelMap[p].toplamTutar += parseFloat(v.tutar || 0);
+            personelMap[p].toplamKurban += parseFloat(v.kurban_adedi || 0);
+          });
+
+          // Ulaşma oranına göre sırala
+          const personelListesi = Object.values(personelMap).map(p => ({
+            ...p,
+            ulasmaOrani: p.toplamHedef > 0 ? (p.toplamTutar / p.toplamHedef) * 100 : 0
+          })).sort((a, b) => b.ulasmaOrani - a.ulasmaOrani);
+
+          // Önceki yıl sıralamasını hesapla (varsa)
+          let oncekiYilSiralama = {};
+          if (oncekiYilVeriler && oncekiYilVeriler.length > 0) {
+            const oncekiYilMap = {};
+            oncekiYilVeriler.forEach(v => {
+              const p = v.personel || 'Bilinmeyen';
+              if (!oncekiYilMap[p]) {
+                oncekiYilMap[p] = {
+                  toplamHedef: 0,
+                  toplamTutar: 0
+                };
+              }
+              oncekiYilMap[p].toplamHedef += parseFloat(v.hedef || 0);
+              oncekiYilMap[p].toplamTutar += parseFloat(v.tutar || 0);
+            });
+
+            const oncekiYilListesi = Object.entries(oncekiYilMap).map(([personel, data]) => ({
+              personel,
+              ulasmaOrani: data.toplamHedef > 0 ? (data.toplamTutar / data.toplamHedef) * 100 : 0
+            })).sort((a, b) => b.ulasmaOrani - a.ulasmaOrani);
+
+            oncekiYilListesi.forEach((p, index) => {
+              oncekiYilSiralama[p.personel] = index + 1;
+            });
+          }
+
+          const tbody = document.getElementById(tbodyId);
+          const colspan = oncekiYil ? 7 : 6;
+          if (personelListesi.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="${colspan}" style="text-align: center; padding: 20px;">Veri bulunamadı</td></tr>`;
+            return;
+          }
+
+          tbody.innerHTML = personelListesi.map((p, index) => {
+            const mevcutSira = index + 1;
+            const oncekiSira = oncekiYilSiralama[p.personel];
+            
+            let siralamaGosterim = '';
+            if (oncekiYil && oncekiSira) {
+              const fark = oncekiSira - mevcutSira;
+              if (fark > 0) {
+                // Yükselme
+                siralamaGosterim = `<span class="siralama-degisim siralama-yukselme">${oncekiSira}. ↑</span>`;
+              } else if (fark === 0) {
+                // Stabil
+                siralamaGosterim = `<span class="siralama-degisim siralama-stabil">${oncekiSira}. ─</span>`;
+              } else {
+                // Düşme
+                siralamaGosterim = `<span class="siralama-degisim siralama-dusme">${oncekiSira}. ↓</span>`;
+              }
+            } else if (oncekiYil) {
+              siralamaGosterim = '<span style="color: #999;">-</span>';
+            }
+
+            const oranSinif = p.ulasmaOrani >= 100 ? 'oran-iyi' : (p.ulasmaOrani >= 50 ? 'oran-orta' : 'oran-kotu');
+            const satirSinif = seciliPersonel && p.personel === seciliPersonel ? 'personel-secili' : '';
+            
+            const satir = `
+              <tr class="${satirSinif}">
+                <td>${basHarfBuyuk(p.personel)}</td>
+                <td style="text-align: center;">${p.hedefSayisi}</td>
+                <td style="text-align: right;">${fmt(p.toplamHedef)}</td>
+                <td style="text-align: right;">${fmt(p.toplamTutar)}</td>
+                <td style="text-align: center;" class="${oranSinif}">${p.ulasmaOrani.toFixed(1)}%</td>
+                <td style="text-align: center;">${p.toplamKurban}</td>
+                ${oncekiYil ? `<td style="text-align: center;">${siralamaGosterim}</td>` : ''}
+              </tr>
+            `;
+            return satir;
+          }).join('');
+        }
+
+        yukleVeriler();
+      });
+    });
+
+    function pdfCiktisiAl() {
+      const element = document.getElementById("pdfAlani");
+      if (!element) {
+        alert("PDF alanı bulunamadı!");
+        return;
+      }
+
+      const opt = {
+        margin: [0.5, 0.5, 0.5, 0.5],
+        filename: 'hedef-ulasma-raporu.pdf',
+        image: { type: 'png', quality: 0.98 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          scrollX: 0,
+          scrollY: 0,
+          windowWidth: 800
+        },
+        jsPDF: {
+          unit: 'in',
+          format: 'a4',
+          orientation: 'portrait'
+        }
+      };
+
+      html2pdf().set(opt).from(element).save();
+    }
+  </script>
+</body>
+</html>

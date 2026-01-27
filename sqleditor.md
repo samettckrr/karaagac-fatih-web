@@ -16,6 +16,20 @@ CREATE TABLE public.alacak_ayar (
   yillar ARRAY,
   CONSTRAINT alacak_ayar_pkey PRIMARY KEY (id)
 );
+CREATE TABLE public.arsiv_hedefler (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  personel text NOT NULL,
+  uid text NOT NULL,
+  yil integer NOT NULL,
+  sira integer NOT NULL,
+  kategori text,
+  tip text,
+  hedef numeric,
+  tutar numeric,
+  kurban_adedi integer DEFAULT 0 CHECK (kurban_adedi >= 0),
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT arsiv_hedefler_pkey PRIMARY KEY (id)
+);
 CREATE TABLE public.bildirimler (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   baslik text NOT NULL,
@@ -32,6 +46,15 @@ CREATE TABLE public.bildirimler (
   zaman timestamp with time zone DEFAULT now(),
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT bildirimler_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.butceihvan (
+  id text NOT NULL DEFAULT (gen_random_uuid())::text,
+  yil integer NOT NULL,
+  ay integer NOT NULL CHECK (ay >= 1 AND ay <= 12),
+  tip text NOT NULL CHECK (lower(tip) = ANY (ARRAY['gider'::text, 'gelir'::text, 'yatırım'::text, 'yatirim'::text])),
+  kategori text NOT NULL,
+  tutar numeric NOT NULL,
+  CONSTRAINT butceihvan_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.ders_kayitlari (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -70,6 +93,19 @@ CREATE TABLE public.duzenleme_talepleri (
   createdat timestamp with time zone DEFAULT now(),
   updatedat timestamp with time zone DEFAULT now(),
   CONSTRAINT duzenleme_talepleri_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.gecmis_teberru_kayitlari (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  vade_tarihi date NOT NULL,
+  tip text,
+  sahip text,
+  referans text,
+  diger text,
+  odeme text,
+  tutar numeric NOT NULL CHECK (tutar >= 0::numeric),
+  aciklama text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT gecmis_teberru_kayitlari_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.hedefler (
   id text NOT NULL,
@@ -171,6 +207,18 @@ CREATE TABLE public.kullanici_log (
   zaman timestamp with time zone DEFAULT now(),
   user_agent text,
   CONSTRAINT kullanici_log_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.kullanici_sifreleri (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  uid uuid NOT NULL UNIQUE,
+  email text NOT NULL,
+  sifre text NOT NULL,
+  olusturan_admin_uid uuid,
+  olusturma_tarihi timestamp with time zone NOT NULL DEFAULT now(),
+  guncelleme_tarihi timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT kullanici_sifreleri_pkey PRIMARY KEY (id),
+  CONSTRAINT kullanici_sifreleri_uid_fkey FOREIGN KEY (uid) REFERENCES auth.users(id),
+  CONSTRAINT kullanici_sifreleri_olusturan_admin_uid_fkey FOREIGN KEY (olusturan_admin_uid) REFERENCES auth.users(id)
 );
 CREATE TABLE public.kullanicilar (
   id text NOT NULL,
@@ -317,6 +365,18 @@ CREATE TABLE public.personel_odeme (
   yol numeric,
   odemeler jsonb,
   CONSTRAINT personel_odeme_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.personel_odeme_takvim (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  personel_uid text NOT NULL,
+  personel_adi_soyadi text NOT NULL,
+  yil integer NOT NULL,
+  ay integer NOT NULL CHECK (ay >= 1 AND ay <= 12),
+  tip text NOT NULL CHECK (tip = ANY (ARRAY['hediye'::text, 'kira'::text, 'cocuk'::text, 'yakacak'::text, 'ikramiye'::text, 'elbise'::text, 'asker'::text, 'yeni_dogan'::text, 'yol_yardimi'::text])),
+  tutar numeric NOT NULL CHECK (tutar >= 0::numeric),
+  verildigi_tarih date NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT personel_odeme_takvim_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.ramazan_arsiv (
   id text NOT NULL,

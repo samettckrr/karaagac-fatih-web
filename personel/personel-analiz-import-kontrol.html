@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Personel Analiz CSV Kontrol | KARAAĞAÇ FATİH</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <link rel="icon" href="../img/logo.png"/>
+  <link rel="stylesheet" href="../css/app-shell.css" />
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <style>
+    body { padding-top: var(--appbar-h) !important; overflow-x: hidden; visibility: hidden; }
+    body.ready { visibility: visible !important; }
+    .wrap { max-width: 1400px; margin: 16px auto; padding: 16px; }
+    .tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--stroke); margin: 16px 0; overflow-x: auto; }
+    .tab { padding: 12px 20px; border: none; background: transparent; color: var(--muted); cursor: pointer; font-weight: 500; border-bottom: 3px solid transparent; white-space: nowrap; }
+    .tab:hover { color: var(--text); background: var(--surface); }
+    .tab.active { color: var(--brand); border-bottom-color: var(--brand); background: var(--card); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .card { background: var(--card); border: 1px solid var(--stroke); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+    .card .hd { padding: 12px; border-bottom: 1px solid var(--stroke); margin: -16px -16px 16px -16px; font-weight: 600; }
+    .kontrol-textarea { width: 100%; min-height: 140px; padding: 10px 12px; font-family: ui-monospace, monospace; font-size: 13px; border: 1px solid var(--stroke); border-radius: 8px; background: var(--surface); color: var(--text); resize: vertical; box-sizing: border-box; }
+    .kontrol-textarea::placeholder { color: var(--muted); }
+    .btn-group { display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
+    .btn { padding: 10px 18px; border-radius: 8px; border: none; cursor: pointer; font-weight: 500; }
+    .btn-primary { background: var(--brand); color: #fff; }
+    .btn-primary:hover { background: var(--brand2, #2563eb); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--stroke); }
+    .btn-secondary:hover { background: var(--pill-hover, #f1f5f9); }
+    .kontrol-info { padding: 10px 12px; background: var(--surface); border-radius: 8px; font-size: 14px; margin-bottom: 12px; }
+    .kontrol-result { margin-top: 16px; padding: 16px; background: var(--surface); border-radius: 8px; border: 1px solid var(--stroke); }
+    .kontrol-result h4 { margin: 0 0 8px 0; font-size: 14px; }
+    .kontrol-result ul { margin: 0; padding-left: 20px; }
+    .kontrol-result li { margin: 4px 0; font-size: 13px; }
+    .kontrol-result .badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; margin-right: 6px; }
+    .badge.ok { background: rgba(16,185,129,0.15); color: var(--good); }
+    .badge.warn { background: rgba(245,158,11,0.15); color: var(--warn); }
+    .badge.err { background: rgba(239,68,68,0.15); color: var(--bad); }
+    .result-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+    .result-table th, .result-table td { padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--stroke); }
+    .result-table th { background: var(--surface); font-weight: 600; }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+    .sonuc-baslik { font-size: 18px; font-weight: 700; margin: 0 0 12px 0; padding: 12px 16px; border-radius: 8px; }
+    .sonuc-baslik.tamam { background: rgba(16,185,129,0.12); color: var(--good); border: 1px solid var(--good); }
+    .sonuc-baslik.hata { background: rgba(239,68,68,0.08); color: var(--bad); border: 1px solid var(--bad); }
+    .ozet-kutu { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 16px; }
+    .ozet-kutu .kutu { padding: 10px 14px; background: var(--card); border: 1px solid var(--stroke); border-radius: 8px; text-align: center; }
+    .ozet-kutu .kutu .sayi { font-size: 20px; font-weight: 700; }
+    .ozet-kutu .kutu .lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .blok { margin-top: 20px; padding: 14px 16px; border-radius: 8px; border-left: 4px solid var(--stroke); }
+    .blok.hata { border-left-color: var(--bad); background: rgba(239,68,68,0.06); }
+    .blok.warn { border-left-color: var(--warn); background: rgba(245,158,11,0.06); }
+    .blok h4 { margin: 0 0 6px 0; font-size: 14px; }
+    .blok .aciklama { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+    .blok .nasil { font-size: 13px; padding: 10px 12px; background: var(--surface); border-radius: 6px; margin-top: 8px; border: 1px solid var(--stroke); }
+    .blok .nasil strong { color: var(--text); }
+    .blok ul { margin: 8px 0 0 0; padding-left: 20px; }
+    .blok .link { color: var(--brand); text-decoration: underline; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="appbar">
+    <div class="brand" onclick="location.href='../panel.html'"><img src="../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span></div>
+    <nav class="nav-center"><span class="muted">CSV vs Veritabanı Kontrol</span></nav>
+    <div class="nav-right">
+      <a href="personel-analiz-import.html" class="btn btn-secondary" style="margin-right:8px">← CSV Aktarım</a>
+      <a href="../panel.html" class="btn btn-secondary" style="margin-right:8px">Panele Dön</a>
+      <button class="btn btn-secondary" id="btnLogout" type="button">Çıkış</button>
+    </div>
+  </div>
+
+  <main class="wrap">
+    <h1 style="margin:0;font-size:22px;">Personel Analiz – CSV / Veritabanı Karşılaştırma</h1>
+    <p class="hint">Veritabanından veriyi çekin, CSV’nizi yapıştırın, Sonuçta <strong>hata var mı, nerede, nasıl düzelteceğin</strong> adım adım yazıyor.</p>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="odeme">Ödeme Takvimi</button>
+      <button class="tab" data-tab="hedef">Arşiv Hedefler</button>
+      <button class="tab" data-tab="teberru">Geçmiş Teberru</button>
+    </div>
+
+    <div class="tab-content active" id="tab-odeme">
+      <div class="card">
+        <div class="hd">Personel Ödeme Takvimi</div>
+        <div class="kontrol-info" id="infoOdeme">Veritabanı henüz çekilmedi.</div>
+        <div class="btn-group">
+          <button class="btn btn-primary" id="btnFetchOdeme">Veritabanından veri çek</button>
+        </div>
+        <label style="display:block;font-weight:600;margin-top:12px;">CSV verinizi buraya yapıştırın (ilk satır başlık veya veri)</label>
+        <textarea id="pasteOdeme" class="kontrol-textarea" placeholder="personel_uid;personel_adi_soyadi;yil;ay;tip;tutar;verildigi_tarih"></textarea>
+        <div class="btn-group">
+          <button class="btn btn-primary" id="btnCompareOdeme" disabled>Karşılaştır</button>
+        </div>
+        <div id="resultOdeme"></div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-hedef">
+      <div class="card">
+        <div class="hd">Arşiv Hedefler</div>
+        <div class="kontrol-info" id="infoHedef">Veritabanı henüz çekilmedi.</div>
+        <div class="btn-group">
+          <button class="btn btn-primary" id="btnFetchHedef">Veritabanından veri çek</button>
+        </div>
+        <label style="display:block;font-weight:600;margin-top:12px;">CSV verinizi buraya yapıştırın</label>
+        <textarea id="pasteHedef" class="kontrol-textarea" placeholder="personel;uid;yil;sira;kategori;tip;hedef;tutar;kurban_adedi"></textarea>
+        <div class="btn-group">
+          <button class="btn btn-primary" id="btnCompareHedef" disabled>Karşılaştır</button>
+        </div>
+        <div id="resultHedef"></div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-teberru">
+      <div class="card">
+        <div class="hd">Geçmiş Teberru Kayıtları</div>
+        <div class="kontrol-info" id="infoTeberru">Veritabanı henüz çekilmedi.</div>
+        <div class="btn-group">
+          <button class="btn btn-primary" id="btnFetchTeberru">Veritabanından veri çek</button>
+        </div>
+        <label style="display:block;font-weight:600;margin-top:12px;">CSV verinizi buraya yapıştırın</label>
+        <textarea id="pasteTeberru" class="kontrol-textarea" placeholder="vade_tarihi;tip;sahip;referans;diger;odeme;tutar;aciklama"></textarea>
+        <div class="btn-group">
+          <button class="btn btn-primary" id="btnCompareTeberru" disabled>Karşılaştır</button>
+        </div>
+        <div id="resultTeberru"></div>
+      </div>
+    </div>
+  </main>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="../src/supabase.js"></script>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    function getSupabase() { return window.supabase; }
+    function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+    function showToast(type, title, msg) {
+      const cont = document.getElementById('toastContainer');
+      if (!cont) return;
+      const t = ['success','error','warning','info'].includes(type) ? type : 'info';
+      const icon = t === 'success' ? '✅' : t === 'error' ? '⚠️' : t === 'warning' ? '⚠️' : 'ℹ️';
+      const div = document.createElement('div');
+      div.className = `toast ${t}`;
+      div.innerHTML = `<div class="toast-icon">${icon}</div><div class="toast-content"><div class="toast-title">${escapeHtml(String(title))}</div><div class="toast-message">${escapeHtml(String(msg))}</div></div><button class="toast-close" type="button">×</button>`;
+      cont.appendChild(div);
+      requestAnimationFrame(() => div.classList.add('show'));
+      const close = () => { div.classList.remove('show'); setTimeout(() => div.remove(), 200); };
+      div.querySelector('.toast-close').addEventListener('click', close);
+      setTimeout(close, 4000);
+    }
+
+    const SCHEMAS = {
+      odeme: { required: ['personel_uid','personel_adi_soyadi','yil','ay','tip','tutar','verildigi_tarih'], table: 'personel_odeme_takvim' },
+      hedef: { required: ['personel','uid','yil','sira','kategori','tip','hedef','tutar','kurban_adedi'], table: 'arsiv_hedefler' },
+      teberru: { required: ['vade_tarihi','tip','sahip','referans','diger','odeme','tutar'], table: 'gecmis_teberru_kayitlari' }
+    };
+
+    const state = { odeme: { db: null }, hedef: { db: null }, teberru: { db: null } };
+
+    function parseTutar(s) {
+      if (s == null || s === undefined) return NaN;
+      let x = String(s).trim().replace(/[₺\s]/g, '');
+      if (!x) return NaN;
+      const c = x.indexOf(','), d = x.indexOf('.');
+      if (c !== -1 && d !== -1) x = x.lastIndexOf(',') > x.lastIndexOf('.') ? x.replace(/\./g,'').replace(',','.') : x.replace(/,/g,'');
+      else if (c !== -1) x = x.replace(/,/g, '.');
+      return parseFloat(x);
+    }
+
+    function normalizeDate(str) {
+      if (!str) return null;
+      const s = String(str).trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+      const m1 = s.match(/^(\d{1,2})[-\s]+(\d{1,2})[-\s]+(\d{4})$/);
+      if (m1) return `${m1[3]}-${m1[2].padStart(2,'0')}-${m1[1].padStart(2,'0')}`;
+      const m2 = s.match(/^(\d{4})[-\s]+(\d{1,2})[-\s]+(\d{1,2})$/);
+      if (m2) return `${m2[1]}-${m2[2].padStart(2,'0')}-${m2[3].padStart(2,'0')}`;
+      return null;
+    }
+
+    function parseCSV(type, text) {
+      if (!text || !text.trim()) return { data: [], headers: [], error: 'Boş metin' };
+      let t = text.trim();
+      if (t.charCodeAt(0) === 0xFEFF) t = t.slice(1);
+      const sep = t.indexOf(';') !== -1 ? ';' : t.indexOf('\t') !== -1 ? '\t' : ',';
+      const raw = Papa.parse(t, { header: false, skipEmptyLines: true, delimiter: sep });
+      if (raw.errors && raw.errors.length) return { data: [], headers: [], error: raw.errors[0].message };
+      const rows = (raw.data || []).map(r => r.map(c => String(c != null ? c : '').trim()));
+      if (!rows.length) return { data: [], headers: [], error: 'Satır yok' };
+      const req = SCHEMAS[type].required;
+      const first = rows[0];
+      const uuidLike = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      let headers, dataRows;
+      if (req.every(h => first.includes(h)) && first.length >= req.length) {
+        headers = first;
+        dataRows = rows.slice(1);
+      } else if (first.length >= req.length && uuidLike.test(first[0])) {
+        headers = req;
+        dataRows = rows;
+      } else
+        return { data: [], headers: [], error: 'İlk satır başlık veya aynı sırada veri olmalı. Gerekli: ' + req.join(', ') };
+      const data = dataRows.map(row => {
+        const o = {};
+        headers.forEach((h, i) => { o[h] = (row[i] != null ? row[i] : ''); });
+        return o;
+      });
+      return { data, headers, error: null };
+    }
+
+    function rowKey(type, row) {
+      if (type === 'odeme') return [row.personel_uid, row.yil, row.ay, row.tip, normalizeDate(row.verildigi_tarih) || row.verildigi_tarih].join('|');
+      if (type === 'hedef') return [row.uid, row.yil, row.sira].join('|');
+      return [(normalizeDate(row.vade_tarihi) || row.vade_tarihi), (row.sahip||''), String(parseTutar(row.tutar)), (row.referans||''), (row.aciklama||'').slice(0,80)].join('|');
+    }
+
+    function normDbRow(type, r) {
+      if (type === 'odeme') return { personel_uid: r.personel_uid, personel_adi_soyadi: r.personel_adi_soyadi, yil: r.yil, ay: r.ay, tip: r.tip, tutar: r.tutar, verildigi_tarih: r.verildigi_tarih };
+      if (type === 'hedef') return { personel: r.personel, uid: r.uid, yil: r.yil, sira: r.sira, kategori: r.kategori, tip: r.tip, hedef: r.hedef, tutar: r.tutar, kurban_adedi: r.kurban_adedi };
+      return { vade_tarihi: r.vade_tarihi, tip: r.tip, sahip: r.sahip, referans: r.referans, diger: r.diger, odeme: r.odeme, tutar: r.tutar, aciklama: r.aciklama };
+    }
+
+    function normCsvRow(type, row) {
+      const o = {};
+      const req = type === 'teberru' ? [...SCHEMAS[type].required, 'aciklama'] : SCHEMAS[type].required;
+      req.forEach(h => { o[h] = row[h] != null ? String(row[h]).trim() : ''; });
+      return o;
+    }
+
+    function rowsEqual(type, a, b) {
+      const keys = type === 'odeme' ? ['personel_uid','yil','ay','tip','tutar','verildigi_tarih'] : type === 'hedef' ? ['uid','yil','sira','hedef','tutar','kurban_adedi'] : ['vade_tarihi','sahip','tutar','referans','aciklama'];
+      for (const k of keys) {
+        const va = a[k] == null ? '' : String(a[k]).trim();
+        const vb = b[k] == null ? '' : String(b[k]).trim();
+        if (k === 'tutar' || k === 'hedef') {
+          const na = parseTutar(va), nb = parseTutar(vb);
+          if (Number.isNaN(na) || Number.isNaN(nb) || Math.abs(na - nb) > 0.01) return false;
+        } else if (k === 'vade_tarihi' || k === 'verildigi_tarih') {
+          if ((normalizeDate(va) || va) !== (normalizeDate(vb) || vb)) return false;
+        } else if (va !== vb) return false;
+      }
+      return true;
+    }
+
+    async function fetchDb(type) {
+      const sb = getSupabase();
+      if (!sb) { showToast('error', 'Hata', 'Supabase bağlantısı yok.'); return; }
+      const schema = SCHEMAS[type];
+      const info = $(`info${type.charAt(0).toUpperCase() + type.slice(1)}`);
+      const btnCompare = $(`btnCompare${type.charAt(0).toUpperCase() + type.slice(1)}`);
+      info.textContent = 'Çekiliyor…';
+      const { data, error } = await sb.from(schema.table).select('*');
+      if (error) {
+        info.textContent = 'Hata: ' + (error.message || 'Veri çekilemedi.');
+        showToast('error', 'Veritabanı', error.message || 'Veri çekilemedi.');
+        state[type].db = null;
+        if (btnCompare) btnCompare.disabled = true;
+        return;
+      }
+      state[type].db = (data || []).map(r => normDbRow(type, r));
+      info.textContent = `Veritabanı: ${state[type].db.length} kayıt çekildi.`;
+      if (btnCompare) btnCompare.disabled = false;
+      showToast('success', 'Veri çekildi', `${state[type].db.length} kayıt.`);
+    }
+
+    async function checkUids(sb, uids) {
+      if (!uids.length) return new Set();
+      const { data } = await sb.from('kullanicilar').select('id').in('id', uids);
+      return new Set((data || []).map(u => u.id));
+    }
+
+    async function runCompare(type) {
+      const sb = getSupabase();
+      if (!sb) { showToast('error', 'Hata', 'Supabase bağlantısı yok.'); return; }
+      const dbRows = state[type].db;
+      if (!dbRows || !dbRows.length) { showToast('warning', 'Uyarı', 'Önce veritabanından veri çekin.'); return; }
+      const ta = $(`paste${type.charAt(0).toUpperCase() + type.slice(1)}`);
+      const text = ta ? ta.value.trim() : '';
+      const parsed = parseCSV(type, text);
+      if (parsed.error) { showToast('error', 'CSV hatası', parsed.error); return; }
+      const csvRows = parsed.data.map(r => normCsvRow(type, r));
+
+      const dbByKey = new Map();
+      dbRows.forEach(r => { const k = rowKey(type, r); if (!dbByKey.has(k)) dbByKey.set(k, r); });
+      const csvByKey = new Map();
+      const keyToCsvRows = new Map();
+      csvRows.forEach(r => {
+        const k = rowKey(type, r);
+        if (!keyToCsvRows.has(k)) keyToCsvRows.set(k, []);
+        keyToCsvRows.get(k).push(r);
+        if (!csvByKey.has(k)) csvByKey.set(k, r);
+      });
+      const duplicateKeys = [...keyToCsvRows.entries()].filter(([, arr]) => arr.length > 1).map(([k]) => k);
+      const duplicateRowCount = duplicateKeys.reduce((s, k) => s + keyToCsvRows.get(k).length - 1, 0);
+
+      const onlyCsv = [];
+      const onlyDb = [];
+      const mismatches = [];
+      const matched = new Set();
+
+      csvRows.forEach(r => {
+        const k = rowKey(type, r);
+        const db = dbByKey.get(k);
+        if (!db) onlyCsv.push(r);
+        else if (!rowsEqual(type, r, db)) mismatches.push({ csv: r, db });
+        else matched.add(k);
+      });
+      dbRows.forEach(r => {
+        const k = rowKey(type, r);
+        if (!csvByKey.has(k)) onlyDb.push(r);
+      });
+
+      let invalidUids = [];
+      if (type === 'odeme' || type === 'hedef') {
+        const uids = [...new Set(csvRows.map(r => r.personel_uid || r.uid).filter(Boolean))];
+        const valid = await checkUids(sb, uids);
+        invalidUids = uids.filter(id => !valid.has(id));
+      }
+      // gecmis_teberru_kayitlari'nda uid kolonu yok; referans/diger text alanları, kullanicilar FK değil → UID kontrolü yapılmaz
+
+      const gap = csvRows.length - matched.size;
+      const hasProblem = invalidUids.length > 0 || onlyCsv.length > 0 || onlyDb.length > 0 || mismatches.length > 0 || duplicateRowCount > 0;
+      const resEl = $(`result${type.charAt(0).toUpperCase() + type.slice(1)}`);
+      const cols = type === 'odeme' ? ['personel_uid','personel_adi_soyadi','yil','ay','tip','tutar','verildigi_tarih'] : type === 'hedef' ? ['uid','personel','yil','sira','hedef','tutar'] : ['vade_tarihi','tip','sahip','referans','tutar','aciklama'];
+
+      let html = '<div class="kontrol-result">';
+
+      html += '<p class="sonuc-baslik ' + (hasProblem ? 'hata' : 'tamam') + '">';
+      if (!hasProblem) html += '✅ Hata yok — CSV ile veritabanı uyumlu.';
+      else html += '⚠️ Hata / fark var — Aşağıda ne olduğu ve nasıl düzelteceğiniz yazıyor.';
+      html += '</p>';
+
+      if (gap > 0) {
+        html += '<div class="blok ' + (duplicateRowCount > 0 && onlyCsv.length === 0 && onlyDb.length === 0 && mismatches.length === 0 ? 'warn' : 'hata') + '" style="margin-top:0;">';
+        html += '<h4 style="margin:0 0 6px 0;">📌 ' + gap + ' kayıt neden eşleşmedi?</h4>';
+        const parts = [];
+        if (onlyCsv.length) parts.push(onlyCsv.length + ' sadece CSV\'de (DB\'de yok)');
+        if (onlyDb.length) parts.push(onlyDb.length + ' sadece DB\'de (CSV\'de yok)');
+        if (mismatches.length) parts.push(mismatches.length + ' uyuşmazlık (aynı kayıt, farklı değer)');
+        if (duplicateRowCount) parts.push(duplicateRowCount + ' yinelenen CSV satırı (aynı anahtar, eşleşen sayıya 1 kez dahil)');
+        html += '<p class="aciklama" style="margin:0;">' + (parts.length ? parts.join(' • ') : '—') + '</p>';
+        html += '<p class="hint" style="margin-top:6px;">Aşağıda hangi satırlar olduğu tek tek gösteriliyor.</p>';
+        html += '</div>';
+      }
+
+      html += '<h4 style="margin:16px 0 8px 0;">Özet</h4>';
+      html += '<div class="ozet-kutu">';
+      html += `<div class="kutu"><span class="sayi">${csvRows.length}</span><div class="lbl">CSV satır</div></div>`;
+      html += `<div class="kutu"><span class="sayi">${dbRows.length}</span><div class="lbl">DB kayıt</div></div>`;
+      html += `<div class="kutu"><span class="sayi">${matched.size}</span><div class="lbl">Eşleşen</div></div>`;
+      if (onlyCsv.length) html += `<div class="kutu"><span class="sayi">${onlyCsv.length}</span><div class="lbl">Sadece CSV'de</div></div>`;
+      if (onlyDb.length) html += `<div class="kutu"><span class="sayi">${onlyDb.length}</span><div class="lbl">Sadece DB'de</div></div>`;
+      if (mismatches.length) html += `<div class="kutu"><span class="sayi">${mismatches.length}</span><div class="lbl">Uyuşmazlık</div></div>`;
+      if (duplicateRowCount) html += `<div class="kutu"><span class="sayi">${duplicateRowCount}</span><div class="lbl">Yinelenen</div></div>`;
+      if (invalidUids.length) html += `<div class="kutu"><span class="sayi">${invalidUids.length}</span><div class="lbl">Geçersiz UID</div></div>`;
+      html += '</div>';
+
+      if (invalidUids.length) {
+        html += '<div class="blok hata">';
+        html += '<h4>1. Geçersiz UID — Bu personel/kullanıcı ID’leri veritabanında yok</h4>';
+        html += '<p class="aciklama">CSV’de kullandığınız bu UID’ler <code>kullanicilar</code> tablosunda bulunmuyor. Import sırasında "geçersiz UID" uyarısı alırsınız; personel sayfalarında bu kayıtlar eşleşmeyebilir.</p>';
+        html += '<p class="nasil"><strong>Nasıl düzelteceğim?</strong><br>① <a href="../admin/kullanici-ekle.html" class="link">Kullanıcı yönetimi</a>nden bu personelleri ekleyin; veya<br>② CSV’deki UID’leri, zaten <code>kullanicilar</code>’da olan gerçek kullanıcı ID’leriyle değiştirin.<br>Sonra <a href="personel-analiz-import.html" class="link">CSV Aktarım</a> sayfasından tekrar aktarın.</p>';
+        html += '<p style="margin-top:8px;font-size:12px;">Geçersiz UID’ler:</p><ul>';
+        invalidUids.slice(0, 15).forEach(id => { html += `<li><code>${escapeHtml(id)}</code></li>`; });
+        if (invalidUids.length > 15) html += `<li class="hint">… ve ${invalidUids.length - 15} tane daha</li>`;
+        html += '</ul></div>';
+      }
+
+      if (onlyCsv.length) {
+        html += '<div class="blok warn">';
+        html += '<h4>2. Sadece CSV’de olan — Veritabanında yok</h4>';
+        html += '<p class="aciklama">Bu kayıtlar CSV’nizde var ama veritabanında eşleşen satır yok. Yani bu veriler henüz DB’ye aktarılmamış.</p>';
+        html += '<p class="nasil"><strong>Nasıl düzelteceğim?</strong><br><a href="personel-analiz-import.html" class="link">CSV Aktarım</a> sayfasına gidin, bu CSV’yi yapıştırıp <strong>Verileri Aktar</strong> ile ekleyin. Bu satırlar DB’ye gidecek.</p>';
+        html += '<p style="margin-top:8px;font-size:12px;">Eksik kayıtlar (ilk 25):</p>';
+        html += '<table class="result-table"><thead><tr><th>#</th>';
+        cols.forEach(c => { html += `<th>${escapeHtml(c)}</th>`; });
+        html += '</tr></thead><tbody>';
+        onlyCsv.slice(0, 25).forEach((r, i) => {
+          html += '<tr><td>' + (i + 1) + '</td>';
+          cols.forEach(c => { html += `<td>${escapeHtml(String(r[c] ?? ''))}</td>`; });
+          html += '</tr>';
+        });
+        html += '</tbody></table>';
+        if (onlyCsv.length > 25) html += `<p class="hint">İlk 25 gösterildi; toplam ${onlyCsv.length}.</p>`;
+        html += '</div>';
+      }
+
+      if (onlyDb.length) {
+        html += '<div class="blok warn">';
+        html += '<h4>3. Sadece DB’de olan — CSV’nizde yok</h4>';
+        html += '<p class="aciklama">Bu kayıtlar veritabanında var ama CSV’nizde yok. Ya CSV’yi eksik hazırladınız ya da DB’de fazladan kayıt var.</p>';
+        html += '<p class="nasil"><strong>Nasıl düzelteceğim?</strong><br>① Doğru kaynak CSV ise: Excel’de CSV’nize bu satırları ekleyin; veya<br>② DB’de fazlalık varsa: Bu kayıtları silmek için veritabanı / admin işlemi gerekir (bu sayfa silmez).</p>';
+        html += '<p style="margin-top:8px;font-size:12px;">Fazladan kayıtlar (ilk 25):</p>';
+        html += '<table class="result-table"><thead><tr><th>#</th>';
+        cols.forEach(c => { html += `<th>${escapeHtml(c)}</th>`; });
+        html += '</tr></thead><tbody>';
+        onlyDb.slice(0, 25).forEach((r, i) => {
+          html += '<tr><td>' + (i + 1) + '</td>';
+          cols.forEach(c => { html += `<td>${escapeHtml(String(r[c] ?? ''))}</td>`; });
+          html += '</tr>';
+        });
+        html += '</tbody></table>';
+        if (onlyDb.length > 25) html += `<p class="hint">İlk 25 gösterildi; toplam ${onlyDb.length}.</p>`;
+        html += '</div>';
+      }
+
+      if (mismatches.length) {
+        html += '<div class="blok hata">';
+        html += '<h4>4. Uyuşmazlık — Aynı kayıt, farklı değer (tutar / tarih vb.)</h4>';
+        html += '<p class="aciklama">Bu kayıtlar hem CSV’de hem DB’de var ama tutar, tarih vb. alanlar farklı. Hangisi doğru siz bilirsiniz.</p>';
+        html += '<p class="nasil"><strong>Nasıl düzelteceğim?</strong><br>① CSV’deki değer doğruysa: CSV’yi düzeltip <a href="personel-analiz-import.html" class="link">CSV Aktarım</a>dan <strong>yeniden aktarın</strong>. Import mevcut satırları güncellemez; aynı anahtar için yeni satır eklenir veya hata alabilirsiniz. Bu yüzden önce DB’deki ilgili kaydı silip sonra CSV’den tekrar aktarmanız gerekebilir.<br>② DB’deki değer doğruysa: CSV’nizi DB’ye göre düzeltin (Excel’de).</p>';
+        html += '<p style="margin-top:8px;font-size:12px;">Farklı olan alanlar:</p>';
+        html += '<table class="result-table"><thead><tr><th>#</th><th>Kayıt</th><th>Alan</th><th>CSV’deki</th><th>DB’deki</th></tr></thead><tbody>';
+        const keys = type === 'odeme' ? ['tutar','verildigi_tarih'] : type === 'hedef' ? ['hedef','tutar','kurban_adedi'] : ['vade_tarihi','sahip','tutar','referans','aciklama'];
+        let rowNo = 0;
+        mismatches.slice(0, 15).forEach((m) => {
+          keys.forEach(k => {
+            const cv = m.csv[k] != null ? String(m.csv[k]) : '', dv = m.db[k] != null ? String(m.db[k]) : '';
+            let eq = false;
+            if (k === 'tutar' || k === 'hedef') { const nv = parseTutar(cv), nd = parseTutar(dv); eq = (Number.isNaN(nv) && Number.isNaN(nd)) || (!Number.isNaN(nv) && !Number.isNaN(nd) && Math.abs(nv - nd) <= 0.01); }
+            else if (k === 'vade_tarihi' || k === 'verildigi_tarih') { eq = (normalizeDate(cv) || cv) === (normalizeDate(dv) || dv); }
+            else eq = (cv === dv);
+            if (!eq) {
+              rowNo++;
+              const keyPreview = type === 'odeme' ? (m.csv.personel_adi_soyadi + ' ' + m.csv.yil + '/' + m.csv.ay + ' ' + m.csv.tip) : type === 'hedef' ? (m.csv.personel + ' ' + m.csv.yil + '-' + m.csv.sira) : (m.csv.vade_tarihi + ' ' + m.csv.sahip);
+              html += `<tr><td>${rowNo}</td><td>${escapeHtml(String(keyPreview).slice(0, 35))}</td><td>${escapeHtml(k)}</td><td>${escapeHtml(cv)}</td><td>${escapeHtml(dv)}</td></tr>`;
+            }
+          });
+        });
+        html += '</tbody></table>';
+        if (mismatches.length > 15) html += `<p class="hint">İlk 15 fark gösterildi; toplam ${mismatches.length} uyuşmaz kayıt.</p>`;
+        html += '</div>';
+      }
+
+      if (duplicateRowCount > 0) {
+        html += '<div class="blok warn">';
+        html += '<h4>5. Yinelenen CSV satırları — Aynı anahtar, birden fazla kez</h4>';
+        html += '<p class="aciklama">Bu anahtarlar CSV\'nizde birden fazla satırda geçiyor. Eşleşen sayıya her anahtar 1 kez dahil edildi; bu yüzden ' + gap + ' satır "eşleşmedi" gibi görünüyor.</p>';
+        html += '<p class="nasil"><strong>Ne yapmalı?</strong> CSV\'de gerçekten tekrarlar varsa sorun yok. Tekil olması gerekiyorsa, Excel\'de yinelenen satırları silin veya anahtarı değiştirin (örn. tarih, tutar, açıklama).</p>';
+        html += '<p style="margin-top:8px;font-size:12px;">Yinelenen anahtarlar (ilk 20) ve örnek satır:</p>';
+        html += '<table class="result-table"><thead><tr><th>#</th><th>Anahtar (kısaltılmış)</th>';
+        cols.forEach(c => { html += `<th>${escapeHtml(c)}</th>`; });
+        html += '</tr></thead><tbody>';
+        duplicateKeys.slice(0, 20).forEach((k, i) => {
+          const ex = keyToCsvRows.get(k)[0];
+          html += '<tr><td>' + (i + 1) + '</td><td title="' + escapeHtml(k) + '">' + escapeHtml(String(k).slice(0, 50)) + (k.length > 50 ? '…' : '') + '</td>';
+          cols.forEach(c => { html += '<td>' + escapeHtml(String(ex[c] ?? '')) + '</td>'; });
+          html += '</tr>';
+        });
+        html += '</tbody></table>';
+        if (duplicateKeys.length > 20) html += `<p class="hint">İlk 20 yinelenen anahtar gösterildi; toplam ${duplicateKeys.length} anahtar, ${duplicateRowCount} fazladan satır.</p>`;
+        else html += `<p class="hint">Toplam ${duplicateKeys.length} yinelenen anahtar, ${duplicateRowCount} fazladan satır.</p>`;
+        html += '</div>';
+      }
+
+      html += '</div>';
+      resEl.innerHTML = html;
+      showToast('success', 'Karşılaştırma bitti', hasProblem ? 'Hata/fark var; aşağıda nasıl düzelteceğiniz yazıyor.' : 'CSV ile DB uyumlu.');
+    }
+
+    function init() {
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          const name = tab.dataset.tab;
+          document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+          document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+          tab.classList.add('active');
+          $(`tab-${name}`).classList.add('active');
+        });
+      });
+      ['odeme','hedef','teberru'].forEach(type => {
+        const Tc = type.charAt(0).toUpperCase() + type.slice(1);
+        const btnFetch = $(`btnFetch${Tc}`);
+        const btnCompare = $(`btnCompare${Tc}`);
+        if (btnFetch) btnFetch.addEventListener('click', () => fetchDb(type));
+        if (btnCompare) btnCompare.addEventListener('click', () => { runCompare(type).catch(e => { console.error(e); showToast('error', 'Hata', e.message || 'Karşılaştırma başarısız.'); }); });
+      });
+    }
+
+    async function bootstrap() {
+      let sb = getSupabase();
+      const start = Date.now();
+      while ((!sb || !sb.from) && Date.now() - start < 10000) {
+        await new Promise(r => setTimeout(r, 100));
+        sb = getSupabase();
+      }
+      if (!sb || !sb.from) {
+        document.body.classList.add('ready');
+        showToast('error', 'Hata', 'Supabase bağlantısı kurulamadı.');
+        return;
+      }
+      const { data: { session }, error } = await sb.auth.getSession();
+      if (error || !session) { location.href = '../index.html'; return; }
+      document.body.classList.add('ready');
+      init();
+      const logout = $('btnLogout');
+      if (logout) logout.addEventListener('click', async () => { await sb.auth.signOut(); location.href = '../index.html'; });
+    }
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootstrap);
+    else bootstrap();
+  </script>
+</body>
+</html>

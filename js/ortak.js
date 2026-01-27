@@ -1083,6 +1083,12 @@ function initAppShellAuth() {
       return;
     }
     
+    // supabase.auth kontrolü
+    if (!supabase.auth) {
+      console.warn('Supabase auth yüklenmedi');
+      return;
+    }
+    
     // Supabase auth state change listener
     supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_OUT' || !session?.user) {
