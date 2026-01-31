@@ -108,6 +108,95 @@
       margin-top: 10px;
     }
 
+    /* Mahal planlama dikkat butonu */
+    .mahal-planlama-btn-wrap {
+      display: flex;
+      justify-content: center;
+    }
+    .mahal-planlama-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      border: 2px solid #c0392b;
+      background: #e74c3c;
+      color: #fff;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 3px 10px rgba(231, 76, 60, 0.4);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .mahal-planlama-btn:hover {
+      background: #c0392b;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 14px rgba(231, 76, 60, 0.5);
+    }
+    .mahal-planlama-btn:active {
+      transform: translateY(0);
+    }
+    .mahal-planlama-emoji {
+      font-size: 20px;
+      line-height: 1;
+    }
+    .mahal-planlama-text {
+      text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+
+    /* Mahal planlama popup */
+    .mahal-planlama-modal {
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(0,0,0,0.7);
+    }
+    .mahal-planlama-modal:not(.open) {
+      display: none;
+    }
+    .mahal-planlama-modal.open {
+      display: flex;
+    }
+    .mahal-planlama-sheet {
+      position: relative;
+      max-width: 95vw;
+      max-height: 90vh;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      overflow: auto;
+      padding-top: 48px;
+    }
+    .mahal-planlama-close {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 36px;
+      height: 36px;
+      border: none;
+      background: rgba(0,0,0,0.6);
+      color: #fff;
+      font-size: 24px;
+      line-height: 1;
+      border-radius: 50%;
+      cursor: pointer;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      transition: background 0.2s;
+    }
+    .mahal-planlama-close:hover {
+      background: #e74c3c;
+    }
+    .mahal-planlama-img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      border-radius: 0 0 12px 12px;
+    }
+
     /* --- 1. MOBİL GÖRÜNÜM (Timeline) --- */
     .timeline-view {
       display: block;
@@ -171,6 +260,14 @@
       text-transform: uppercase;
       color: #7f8c8d;
       font-weight: 600;
+    }
+
+    .dc-month {
+      font-size: 10px;
+      color: var(--accent);
+      font-weight: 600;
+      text-transform: capitalize;
+      margin-top: 2px;
     }
 
     .dc-info {
@@ -291,9 +388,23 @@
         color: #2c3e50;
       }
 
+      .cc-header-right {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 1px;
+      }
+
       .cc-day {
         font-size: 12px;
         color: #95a5a6;
+      }
+
+      .cc-month {
+        font-size: 10px;
+        color: var(--accent);
+        font-weight: 600;
+        text-transform: capitalize;
       }
 
       .cc-badges {
@@ -716,6 +827,13 @@
 
   <div class="main-container">
 
+    <div class="mahal-planlama-btn-wrap" style="margin-bottom:12px;">
+      <button type="button" id="btnMahalPlanlama" class="mahal-planlama-btn" onclick="openMahalPlanlamaPopup()" title="Mahal planlama görseli">
+        <span class="mahal-planlama-emoji">⚠️</span>
+        <span class="mahal-planlama-text">Mahal planlaması</span>
+      </button>
+    </div>
+
     <div id="mobileView" class="timeline-view">
       <div style="text-align:center; padding:20px; color:#999">Yükleniyor...</div>
     </div>
@@ -723,6 +841,15 @@
     <div id="desktopView" class="calendar-view">
     </div>
 
+  </div>
+
+  <!-- Mahal planlama görseli popup -->
+  <div id="mahalPlanlamaModal" class="modal mahal-planlama-modal" onclick="closeMahalPlanlamaPopupOnOverlay(event)">
+    <div class="mahal-planlama-sheet" onclick="event.stopPropagation()">
+      <button type="button" class="mahal-planlama-close" onclick="closeMahalPlanlamaPopup()" title="Kapat">&times;</button>
+      <img id="mahalPlanlamaImg" src="../img/mahalplanlama.jpeg" alt="Mahal planlama" class="mahal-planlama-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+      <div id="mahalPlanlamaFallback" style="display:none; padding:20px; text-align:center; color:#666;">Görsel yüklenemedi. (img/mahalplanlama.jpeg)</div>
+    </div>
   </div>
 
   <!-- Gün Kayıtları Önizleme Modalı -->
@@ -2732,10 +2859,12 @@
         const dStr = dateStr;
         card.onclick = () => showDayRecords(dStr);
 
+        const ayAdi = current.toLocaleDateString('tr-TR', { month: 'long' });
         card.innerHTML = `
           <div class="dc-date">
             <span class="dc-day-num">${current.getDate()}</span>
             <span class="dc-day-name">${current.toLocaleDateString('tr-TR', { weekday: 'short' })}</span>
+            <span class="dc-month">${ayAdi}</span>
           </div>
           <div class="dc-info">
             <div class="dc-ramazan">${dayCounter}. GÜN</div>
@@ -2838,10 +2967,14 @@
           sahurText += `, ${sahurIstirakEtmeyen}`;
         }
 
+        const ayAdi = current.toLocaleDateString('tr-TR', { month: 'long' });
         cell.innerHTML = `
           <div class="cc-header">
              <span class="cc-num">${current.getDate()}</span>
-             <span class="cc-day">${current.toLocaleDateString('tr-TR', { weekday: 'short' })}</span>
+             <div class="cc-header-right">
+               <span class="cc-day">${current.toLocaleDateString('tr-TR', { weekday: 'short' })}</span>
+               <span class="cc-month">${ayAdi}</span>
+             </div>
           </div>
           <div class="cc-badges">
              <div class="cc-badge cc-iftar ${iftarMax !== null && iftarCount >= iftarMax ? 'cc-full' : ''}">🌙 İftar: ${iftarText}</div>
@@ -2927,6 +3060,20 @@
     function closeDayRecordsModal() {
       qs('#dayRecordsModal').classList.remove('open');
       selectedDateForForm = null;
+    }
+
+    function openMahalPlanlamaPopup() {
+      const modal = qs('#mahalPlanlamaModal');
+      if (modal) modal.classList.add('open');
+    }
+
+    function closeMahalPlanlamaPopup() {
+      const modal = qs('#mahalPlanlamaModal');
+      if (modal) modal.classList.remove('open');
+    }
+
+    function closeMahalPlanlamaPopupOnOverlay(event) {
+      if (event.target.id === 'mahalPlanlamaModal') closeMahalPlanlamaPopup();
     }
 
     function openFormModalFromDay() {
@@ -3216,6 +3363,8 @@
           }
         }
 
+        // ay: tarihten ay numarası (1-12)
+        const ay = tarihISO ? new Date(tarihISO.slice(0, 10)).getMonth() + 1 : null;
         const data = {
           id: generateUUID(), // CRITICAL: Schema requires ID
           tarih: tarihISO,
@@ -3224,13 +3373,18 @@
           sahip: previewData.sahip.trim(), // Trim added
           musafiradedi: previewData.musafirAdedi,
           mahalid: previewData.mahalId || null,
+          mahal: previewData.mahal || null,
+          ay,
           istirak: previewData.istirak,
           notlar: previewData.not || null,
           personeluid: previewData.personelUid,
           personel: previewData.personel,
           personeladi: previewData.personelAdi,
+          kaydedenpersonel: (typeof currentPersonelAdi !== 'undefined' ? currentPersonelAdi : null) || previewData.personelAdi || null,
+          kaydedenpersoneluid: (typeof currentUser !== 'undefined' && currentUser ? currentUser.id : null) || previewData.personelUid || null,
           yil: previewData.yil,
-          createdat: new Date().toISOString()
+          createdat: new Date().toISOString(),
+          updatedat: new Date().toISOString()
         };
 
         const { error } = await window.supabase.from('ramazan_kayitlari').insert(data);
@@ -5219,12 +5373,18 @@
         }
 
         const yilNum = CURRENT_YIL ? (typeof CURRENT_YIL === 'number' ? CURRENT_YIL : parseInt(CURRENT_YIL)) : new Date().getFullYear();
+        const nowISO = new Date().toISOString();
+        const ayNum = new Date().getMonth() + 1;
         const data = {
           id: generateUUID(),
           bagisci: bagisci,
           miktar: miktar,
           odemeyontemi: odeme,
+          odeme: odeme || null,
           aciklama: aciklama || null,
+          not: null,
+          ay: ayNum,
+          tarih: nowISO,
           personeluid: currentUser.id,
           personel: personelAdi,
           kaydedenpersonel: personelAdi,
@@ -5233,15 +5393,17 @@
         };
 
         if (editId) {
-          // Düzenleme
+          // Düzenleme: tarih/ay değişmesin, sadece güncellenen alanlar
           delete data.id;
+          delete data.tarih;
+          delete data.ay;
           data.updatedat = new Date().toISOString();
           await window.supabase.from('teberru_kayitlari').update(data).eq('id', editId);
           showAlert('Teberru kaydı başarıyla güncellendi!', 'success');
           qs('#teberruForm').removeAttribute('data-edit-id');
         } else {
           // Yeni kayıt
-          data.createdat = new Date().toISOString();
+          data.createdat = nowISO;
           await window.supabase.from('teberru_kayitlari').insert(data);
           showAlert('Teberru kaydı başarıyla eklendi!', 'success');
           // Muhasebe uyarısı toast'ı göster
@@ -5344,11 +5506,19 @@
         }
 
         const yilNum = CURRENT_YIL ? (typeof CURRENT_YIL === 'number' ? CURRENT_YIL : parseInt(CURRENT_YIL)) : new Date().getFullYear();
+        const nowISO = new Date().toISOString();
+        const ayNum = new Date().getMonth() + 1;
         // taahhut_kayitlari tablosunda personeladi yok, sadece personel var
         const data = {
+          id: generateUUID(),
           bagisci: bagisci,
           miktar: miktar,
           aciklama: aciklama || null,
+          not: null,
+          ay: ayNum,
+          tarih: nowISO,
+          durum: null,
+          silindi: false,
           personeluid: currentUser.id,
           personel: personelAdi,
           kaydedenpersonel: personelAdi,
@@ -5357,12 +5527,16 @@
         };
 
         if (editId) {
+          delete data.id;
+          delete data.tarih;
+          delete data.ay;
+          delete data.silindi;
           data.updatedat = new Date().toISOString();
           await window.supabase.from('taahhut_kayitlari').update(data).eq('id', editId);
           showAlert('Taahhüt kaydı başarıyla güncellendi!', 'success');
           qs('#taahhutForm').removeAttribute('data-edit-id');
         } else {
-          data.createdat = new Date().toISOString();
+          data.createdat = nowISO;
           await window.supabase.from('taahhut_kayitlari').insert(data);
           showAlert('Taahhüt kaydı başarıyla eklendi!', 'success');
           // Muhasebe uyarısı toast'ı göster

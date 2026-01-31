@@ -120,16 +120,21 @@
   <script>
     try {
         const p = new URLSearchParams(window.location.search);
-        let data = null;
-        if (p.get('key')) { try { const raw = localStorage.getItem(p.get('key')); if(raw) data = JSON.parse(raw); } catch (e) {} }
-        else if (p.get('data')) { try { data = JSON.parse(decodeURIComponent(p.get('data'))); } catch (e) {} }
+        const errorParam = p.get('error');
+        if (errorParam) {
+            const safe = String(errorParam).replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            document.getElementById('raporContent').innerHTML = '<div style="padding:40px 20px;text-align:center;background:#fee;border:2px solid #c00;color:#c00;font-size:18px;font-weight:bold;margin:20px;border-radius:8px">❌ ' + safe + '<br><small style="font-size:14px;font-weight:normal;margin-top:12px;display:block">Raporu tekrar açmayı deneyin veya ana sayfadan Tüm Personel Raporu butonuna tıklayın.</small></div>';
+        } else {
+            let data = null;
+            if (p.get('key')) { try { const raw = localStorage.getItem(p.get('key')); if(raw) data = JSON.parse(raw); } catch (e) {} }
+            else if (p.get('data')) { try { data = JSON.parse(decodeURIComponent(p.get('data'))); } catch (e) {} }
 
-        if (!data) throw new Error("Veri bulunamadı.");
-        if (!data.personeller) throw new Error("Veri yapısı eksik (personeller).");
+            if (!data) throw new Error("Veri bulunamadı.");
+            if (!data.personeller) throw new Error("Veri yapısı eksik (personeller).");
 
-        render(data);
-        setTimeout(() => { window.print(); }, 1500);
-
+            render(data);
+            setTimeout(() => { window.print(); }, 1500);
+        }
     } catch (err) {
         const msg = (err && err.message) ? String(err.message) : 'Bilinmeyen hata';
         const safe = msg.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');

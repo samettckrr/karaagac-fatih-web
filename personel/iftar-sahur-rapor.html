@@ -53,6 +53,14 @@
       overflow: auto;
       padding-bottom: 6px
     }
+    /* Toolbar öğeleri manuel genişlik (istediğiniz px değerini yazın) */
+    #filtreYil { width: auto; min-width: 140px }
+    #filtreTip { width: auto; min-width: 100px }
+    #ara { width: auto; min-width: 140px }
+    #filtreMod { width: auto; min-width: 130px }
+    #btnExport { width: auto; min-width: 130px }
+    #btnDetayliRapor { width: auto; min-width: 280px }
+    #btnTumPersonelRapor { width: auto; min-width: 280px }
 
     .toolbar::-webkit-scrollbar {
       height: 6px
@@ -120,6 +128,15 @@
     tbody tr:hover{background:#f8f9fa}
     .right{text-align:right}
     tbody td:last-child{min-width:200px;max-width:300px;line-height:1.4}
+    /* Taşan metin: alt satıra geçsin (kelime/cümle wrap) */
+    .td-scroll-text {
+      max-width: 200px;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      white-space: normal;
+      line-height: 1.35;
+    }
+    .td-scroll-text.td-scroll-narrow { max-width: 140px; }
     
     .card-list{display:none!important;gap:10px;margin-top:12px}
     .mini-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px}
@@ -130,6 +147,12 @@
     .chip-badge.sahur{background:#d1ecf1;color:#0c5460}
     
     .switcher{display:flex;gap:6px;align-items:center;white-space:nowrap;margin-left:8px}
+    
+    /* Detaylı İstatistikler: sayılar kalın, adet/tutar siyah, tahsilat yeşil, kalan kırmızı */
+    #detayliIstatistikler .stat-adet,
+    #detayliIstatistikler .stat-tutar { font-weight: 700; color: #111; }
+    #detayliIstatistikler .stat-tahsilat { font-weight: 700; color: var(--good); }
+    #detayliIstatistikler .stat-kalan { font-weight: 700; color: var(--bad); }
     
     .avoid-break{page-break-inside:avoid;break-inside:avoid}
     
@@ -150,10 +173,50 @@
       }
     }
 
+    @media (max-width:768px){
+      body{font-size:14px}
+      .wrap{padding:10px}
+      .card{padding:12px;margin:12px 0}
+      .kpi .label{font-size:11px}
+      .kpi .value{font-size:18px}
+      .kpi{padding:8px 10px}
+      /* KPI mobil: 3-3 (İftar|İştirak|Sahur / Tutar|Müsafir|Toplam Kayıt) */
+      #kpiRow{
+        display:grid;
+        grid-template-columns:repeat(3,1fr);
+        gap:10px
+      }
+      #kpiRow .kpi:nth-child(1){order:1}
+      #kpiRow .kpi:nth-child(5){order:2}
+      #kpiRow .kpi:nth-child(2){order:3}
+      #kpiRow .kpi:nth-child(3){order:4}
+      #kpiRow .kpi:nth-child(4){order:5}
+      #kpiRow .kpi:nth-child(6){order:6}
+      thead th{font-size:11px;padding:8px 10px}
+      tbody td{font-size:12px;padding:8px 10px}
+      .chip-badge{font-size:10px;padding:3px 6px}
+      .mini-line{font-size:12px}
+      select,input,button{font-size:13px;height:34px;padding:0 10px}
+      /* Toolbar mobil: 2 sütun grid, filtreler 2’şer, butonlar tam genişlik */
+      .toolbar{
+        display:grid;
+        grid-template-columns:repeat(2,1fr);
+        gap:8px;
+        flex-wrap:unset;
+        padding-bottom:8px
+      }
+      .toolbar > div[style*="flex:1"]{display:none}
+      .toolbar select,.toolbar input{min-width:0;width:100%;box-sizing:border-box}
+      .toolbar button{grid-column:1/-1;width:100%;min-width:0}
+    }
     @media (max-width:540px){
+      body{font-size:13px}
       .table-wrap{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
       .table-wrap table{min-width:800px}
       input{min-width:160px}
+      thead th{font-size:10px;padding:6px 8px}
+      tbody td{font-size:11px;padding:6px 8px}
+      .kpi .value{font-size:16px}
     }
   </style>
 </head>
@@ -204,7 +267,7 @@
 
 <main class="wrap" id="pdf-root">
   <h2 style="margin:12px 0 8px 0;font-size:24px;font-weight:800">Ramazan-ı Şerif</h2>
-  <div class="muted" style="margin-bottom:12px">İftar-Sahur Raporları</div>
+  <div class="muted" style="margin-bottom:12px">2026 Ramazan-ı Şerif</div>
   <div class="toolbar">
     <select id="filtreYil">
       <option value="">Yıl seçiniz...</option>
@@ -220,9 +283,9 @@
       <option value="kendim">Sadece Kendim</option>
     </select>
     <div style="flex:1"></div>
-    <button id="btnExport" class="secondary">CSV Dışa Aktar</button>
-    <button id="btnDetayliRapor" class="good" style="background:var(--good)">📊 Detaylı Personel Raporu (2023-2024-2025)</button>
-    <button id="btnTumPersonelRapor" class="good" style="background:var(--accent)">📋 Tüm Personel Raporu (Yurt Mesulü)</button>
+    <button id="btnExport" class="secondary">CSV İndir</button>
+    <button id="btnDetayliRapor" class="good" style="background:var(--good)">📊 Detaylı Personel Raporu (2023-2025)</button>
+    <button id="btnTumPersonelRapor" class="good" style="background:var(--accent)">📋 Tüm Personel Raporu</button>
   </div>
     <!-- KPI Kartları -->
     <div class="kpi-row" id="kpiRow">
@@ -255,15 +318,15 @@
     <!-- Detaylı İstatistikler -->
     <div class="card" style="margin-top:16px;padding:16px;background:#f9fafb">
       <div id="detayliIstatistikler" style="display:flex;flex-direction:column;gap:8px;font-size:14px;line-height:1.6">
-        <div><strong>Teberru toplam:</strong> <span id="statTeberruToplam">₺0</span> 
-          (<span id="statTeberruNakit">nakit: ₺0</span>, 
-          <span id="statTeberruBanka">banka: ₺0</span>, 
-          <span id="statTeberruPos">pos: ₺0</span>, 
-          <span id="statTeberruSanal">sanal: ₺0</span>)
+        <div><strong>Teberru toplam:</strong> <span id="statTeberruToplam" class="stat-tutar">₺0</span> 
+          (<span id="statTeberruNakit" class="stat-tutar">nakit: ₺0</span>, 
+          <span id="statTeberruBanka" class="stat-tutar">banka: ₺0</span>, 
+          <span id="statTeberruPos" class="stat-tutar">pos: ₺0</span>, 
+          <span id="statTeberruSanal" class="stat-tutar">sanal: ₺0</span>)
         </div>
-        <div><strong>Taahhüt:</strong> <span id="statTaahhut">₺0</span></div>
-        <div><strong>İftar:</strong> <span id="statIftar">0</span></div>
-        <div><strong>Sahur:</strong> <span id="statSahur">0</span></div>
+        <div><strong>Taahhüt:</strong> adet <span id="statTaahhutAdet" class="stat-adet">0</span> · toplam tutar <span id="statTaahhutToplam" class="stat-tutar">₺0</span> · tahsilat <span id="statTaahhutTahsilat" class="stat-tahsilat">₺0</span> · kalan <span id="statTaahhutKalan" class="stat-kalan">₺0</span></div>
+        <div><strong>İftar:</strong> adet <span id="statIftarAdet" class="stat-adet">0</span> · toplam tutar <span id="statIftarToplam" class="stat-tutar">₺0</span> · tahsilat <span id="statIftarTahsilat" class="stat-tahsilat">₺0</span> · kalan <span id="statIftarKalan" class="stat-kalan">₺0</span></div>
+        <div><strong>Sahur:</strong> adet <span id="statSahurAdet" class="stat-adet">0</span> · toplam tutar <span id="statSahurToplam" class="stat-tutar">₺0</span> · tahsilat <span id="statSahurTahsilat" class="stat-tahsilat">₺0</span> · kalan <span id="statSahurKalan" class="stat-kalan">₺0</span></div>
       </div>
     </div>
 
@@ -271,7 +334,6 @@
     <div class="card">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
         <h3 style="margin:0">Detaylı Liste | Seçime Göre</h3>
-        <span class="muted">Veri Firestore'dan gelir; Realtime güncelleme aktif.</span>
       </div>
 
       <div class="table-wrap" id="tableWrap">
@@ -282,6 +344,7 @@
               <th>Tip</th>
               <th>Sahip</th>
               <th class="right">Tutar (₺)</th>
+              <th>Tahsilat / Kalan</th>
               <th>İştirak</th>
               <th>Müsafir</th>
               <th>Mahal</th>
@@ -295,6 +358,7 @@
             <tr>
               <td colspan="3" class="right"><strong>TOPLAM</strong></td>
               <td class="right" id="sumTutar"><strong>₺0</strong></td>
+              <td></td>
               <td colspan="5"></td>
               <td class="right" id="sumMusafir"><strong>0</strong></td>
             </tr>
@@ -416,6 +480,8 @@
     let teberruKayitlari = [];
     let taahhutKayitlari = [];
     let duzenlemeTalepleri = [];
+    let mahallerList = []; // ramazan_mahaller: mahalid -> adi eşleştirmesi için
+    let tahsilatByKayitId = {}; // kayit_id -> toplam tahsilat (iftar/sahur/taahhut için)
     let currentUser = null;
     let currentUserUid = null;
 
@@ -535,13 +601,30 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
       closeDrawerOnDesktop();
       window.addEventListener('resize', closeDrawerOnDesktop);
       
-      hamb.addEventListener('click',()=>{
-        if(window.innerWidth >= 1025) return; // Masaüstünde tıklamayı engelle
+      function toggleDrawer(e) {
+        if (e) { e.preventDefault(); e.stopPropagation(); }
         drawer.classList.toggle('open');
-      }); 
-      document.addEventListener('click',(e)=>{ 
+      }
+      // Hem dokunma hem tıklama: pointerup (mobil + masaüstü) ve click yedek; touchend'de preventDefault ile çift tetikleme önlenir
+      var drawerJustToggledByTouch = false;
+      hamb.addEventListener('touchend', function(e) {
+        e.preventDefault();
+        drawerJustToggledByTouch = true;
+        drawer.classList.toggle('open');
+        setTimeout(function() { drawerJustToggledByTouch = false; }, 350);
+      }, { passive: false });
+      hamb.addEventListener('click', function(e) {
+        if (drawerJustToggledByTouch) return;
+        e.preventDefault();
+        e.stopPropagation();
+        drawer.classList.toggle('open');
+      });
+      document.addEventListener('click', function(e) { 
         if(!drawer.contains(e.target) && !hamb.contains(e.target)) drawer.classList.remove('open'); 
-      }); 
+      });
+      document.addEventListener('touchend', function(e) {
+        if(!drawer.contains(e.target) && !hamb.contains(e.target)) drawer.classList.remove('open');
+      }, { passive: true });
     })();
 
     document.addEventListener('click',(e)=>{
@@ -758,6 +841,12 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
       }
       
       try {
+        // Mahal listesini yükle (mahalid -> adi eşleştirmesi için)
+        try {
+          const { data: mahalData } = await window.supabase.from('ramazan_mahaller').select('id, adi').order('adi', { ascending: true });
+          mahallerList = (mahalData || []).map(m => ({ id: m.id, adi: m.adi }));
+        } catch (_) { mahallerList = []; }
+
         // Önce mevcut verileri yükle
         const { data, error } = await window.supabase
           .from('ramazan_kayitlari')
@@ -767,11 +856,16 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
         
         if (error) throw error;
         
-        kayitlar = (data || []).map(r => ({
-          ...r,
-          musafirAdedi: r.musafiradedi, // compatibility
-          personelUid: r.personeluid // compatibility
-        }));
+        kayitlar = (data || []).map(r => {
+          const mahalAdi = r.mahal || (r.mahalid && mahallerList.find(m => m.id === r.mahalid)?.adi) || '';
+          return {
+            ...r,
+            mahal: mahalAdi,
+            musafirAdedi: r.musafiradedi, // compatibility
+            personelUid: r.personeluid, // compatibility
+            personelAdi: r.personeladi || r.personelAdi || '' // ramazan_kayitlari: sadece personeladi (mail gelmesin)
+          };
+        });
         
         // Realtime subscription (Supabase Realtime)
         const channel = window.supabase
@@ -791,11 +885,16 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
               .order('tarih', { ascending: false });
             
             if (newData) {
-              kayitlar = newData.map(r => ({
-                ...r,
-                musafirAdedi: r.musafiradedi,
-                personelUid: r.personeluid
-              }));
+              kayitlar = newData.map(r => {
+                const mahalAdi = r.mahal || (r.mahalid && mahallerList.find(m => m.id === r.mahalid)?.adi) || '';
+                return {
+                  ...r,
+                  mahal: mahalAdi,
+                  musafirAdedi: r.musafiradedi,
+                  personelUid: r.personeluid,
+                  personelAdi: r.personeladi || r.personelAdi || ''
+                };
+              });
               loadSilinenKayitlar();
               loadTeberruKayitlari();
               loadTaahhutKayitlari();
@@ -811,6 +910,7 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
         loadTeberruKayitlari();
         loadTaahhutKayitlari();
         loadDuzenlemeTalepleri();
+        loadTahsilat();
       } catch (e) {
         console.error('Kayıtlar yüklenemedi:', e);
         kayitlar = [];
@@ -894,7 +994,7 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
           .from('taahhut_kayitlari')
           .select('id, yil, ay, personel, personeluid, bagisci, miktar, aciklama, "not", durum, tarih, silindi, kaydedenpersonel, kaydedenpersoneluid, createdat, updatedat')
           .eq('yil', yil)
-          .eq('silindi', false)
+          .or('silindi.eq.false,silindi.is.null')
           .order('createdat', { ascending: false });
         
         if (error) throw error;
@@ -918,7 +1018,7 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
               .from('taahhut_kayitlari')
               .select('id, yil, ay, personel, personeluid, bagisci, miktar, aciklama, "not", durum, tarih, silindi, kaydedenpersonel, kaydedenpersoneluid, createdat, updatedat')
               .eq('yil', yil)
-              .eq('silindi', false)
+              .or('silindi.eq.false,silindi.is.null')
               .order('createdat', { ascending: false });
             
             if (newData) {
@@ -933,12 +1033,56 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
           .subscribe();
         
         supabaseChannels.push(channel);
-        render();
+        loadTahsilat();
       } catch (e) {
         console.error('Taahhüt kayıtları yüklenemedi:', e);
         taahhutKayitlari = [];
         render();
       }
+    }
+
+    // ===== Tahsilat verilerini yükle (iftar/sahur/taahhüt için) =====
+    async function loadTahsilatForKayitIds(kayitIds) {
+      if (!window.supabase || !kayitIds || kayitIds.length === 0) {
+        return { byId: {}, listById: {} };
+      }
+      const { data, error } = await window.supabase
+        .from('ramazan_tahsilat')
+        .select('id, kayit_id, tutar, tahsilat_tarihi, odeme_tipi, taksit_no, aciklama, createdat')
+        .in('kayit_id', kayitIds)
+        .order('tahsilat_tarihi', { ascending: true });
+
+      const byId = {};
+      const listById = {};
+      kayitIds.forEach(id => { byId[id] = 0; listById[id] = []; });
+      if (error) throw error;
+      if (data) {
+        data.forEach(row => {
+          const kid = row.kayit_id;
+          const tutar = Number(row.tutar) || 0;
+          byId[kid] = (byId[kid] || 0) + tutar;
+          listById[kid] = listById[kid] || [];
+          listById[kid].push({ id: row.id, tutar, tahsilat_tarihi: row.tahsilat_tarihi, odeme_tipi: row.odeme_tipi || 'pesin', taksit_no: row.taksit_no, aciklama: row.aciklama });
+        });
+      }
+      return { byId, listById };
+    }
+
+    async function loadTahsilat() {
+      const ids = [...(kayitlar || []).map(k => k.id), ...(taahhutKayitlari || []).map(k => k.id)];
+      if (ids.length === 0) {
+        tahsilatByKayitId = {};
+        render();
+        return;
+      }
+      try {
+        const { byId } = await loadTahsilatForKayitIds(ids);
+        tahsilatByKayitId = byId;
+      } catch (e) {
+        console.warn('Tahsilat yüklenemedi:', e);
+        tahsilatByKayitId = {};
+      }
+      render();
     }
 
     // ===== SUPABASE: Silinen kayıtları yükle =====
@@ -960,13 +1104,17 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
         
         if (error) throw error;
         
-        silinenKayitlar = (data || []).map(r => ({
-          ...r,
-          silindi: true,
-          silinmeTarihi: r.arsiv_tarihi,
-          musafirAdedi: r.musafiradedi, // compatibility
-          personelUid: r.personeluid // compatibility
-        }));
+        silinenKayitlar = (data || []).map(r => {
+          const mahalAdi = r.mahal || (r.mahalid && mahallerList.find(m => m.id === r.mahalid)?.adi) || '';
+          return {
+            ...r,
+            mahal: mahalAdi,
+            silindi: true,
+            silinmeTarihi: r.arsiv_tarihi,
+            musafirAdedi: r.musafiradedi, // compatibility
+            personelUid: r.personeluid // compatibility
+          };
+        });
         
         render();
       } catch (e) {
@@ -1039,8 +1187,8 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
       let allKayitlar = [...kayitlar, ...silinenKayitlar, ...teberruKayitlari, ...taahhutKayitlari];
       let filtered = [...allKayitlar];
 
-      // Yıl filtresi (zaten yıl bazlı yükleniyor ama yine de kontrol)
-      filtered = filtered.filter(k => k.yil === yil);
+      // Yıl filtresi (DB'de yil bazen string gelir; sayı/string uyumlu kontrol)
+      filtered = filtered.filter(k => Number(k.yil) === yil || k.yil == yil);
 
       // Tip filtresi (iftar/sahur için, teberru/taahhut için ayrı kontrol)
       if (tip) {
@@ -1107,25 +1255,49 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
         .filter(k => (k.odemeYontemi || k.odeme || '').toLowerCase() === 'sanal')
         .reduce((sum, k) => sum + (Number(k.miktar) || 0), 0);
       
-      // Taahhüt toplam
+      // Taahhüt: adet, toplam tutar, tahsilat, kalan
+      const taahhutAdet = filteredTaahhutKayitlari.length;
       const taahhutToplam = filteredTaahhutKayitlari.reduce((sum, k) => sum + (Number(k.miktar) || 0), 0);
-      
+      const taahhutTahsilat = filteredTaahhutKayitlari.reduce((sum, k) => sum + (tahsilatByKayitId[k.id] || 0), 0);
+      const taahhutKalan = taahhutToplam - taahhutTahsilat;
+      // İftar: adet, toplam tutar, tahsilat, kalan (sadece iftar kayıtları, teberru/taahhut değil)
+      const iftarKayitlari = aktifKayitlar.filter(k => k.tip === 'iftar' && !k.kayitTipi);
+      const iftarAdet = iftarKayitlari.length;
+      const iftarToplam = iftarKayitlari.reduce((sum, k) => sum + (Number(k.tutar) || 0), 0);
+      const iftarTahsilat = iftarKayitlari.reduce((sum, k) => sum + (tahsilatByKayitId[k.id] || 0), 0);
+      const iftarKalan = iftarToplam - iftarTahsilat;
+      // Sahur: adet, toplam tutar, tahsilat, kalan
+      const sahurKayitlari = aktifKayitlar.filter(k => k.tip === 'sahur' && !k.kayitTipi);
+      const sahurAdet = sahurKayitlari.length;
+      const sahurToplam = sahurKayitlari.reduce((sum, k) => sum + (Number(k.tutar) || 0), 0);
+      const sahurTahsilat = sahurKayitlari.reduce((sum, k) => sum + (tahsilatByKayitId[k.id] || 0), 0);
+      const sahurKalan = sahurToplam - sahurTahsilat;
+
       // İstatistikleri göster
       qs('#statTeberruToplam').textContent = '₺' + teberruToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 });
       qs('#statTeberruNakit').textContent = 'nakit: ₺' + teberruNakit.toLocaleString('tr-TR', { minimumFractionDigits: 2 });
       qs('#statTeberruBanka').textContent = 'banka: ₺' + teberruBanka.toLocaleString('tr-TR', { minimumFractionDigits: 2 });
       qs('#statTeberruPos').textContent = 'pos: ₺' + teberruPos.toLocaleString('tr-TR', { minimumFractionDigits: 2 });
       qs('#statTeberruSanal').textContent = 'sanal: ₺' + teberruSanal.toLocaleString('tr-TR', { minimumFractionDigits: 2 });
-      qs('#statTaahhut').textContent = '₺' + taahhutToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 });
-      qs('#statIftar').textContent = iftarSayisi;
-      qs('#statSahur').textContent = sahurSayisi;
+      qs('#statTaahhutAdet').textContent = taahhutAdet;
+      qs('#statTaahhutToplam').textContent = '₺' + taahhutToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 });
+      qs('#statTaahhutTahsilat').textContent = '₺' + taahhutTahsilat.toLocaleString('tr-TR', { minimumFractionDigits: 2 });
+      qs('#statTaahhutKalan').textContent = '₺' + taahhutKalan.toLocaleString('tr-TR', { minimumFractionDigits: 2 });
+      qs('#statIftarAdet').textContent = iftarAdet;
+      qs('#statIftarToplam').textContent = '₺' + iftarToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 });
+      qs('#statIftarTahsilat').textContent = '₺' + iftarTahsilat.toLocaleString('tr-TR', { minimumFractionDigits: 2 });
+      qs('#statIftarKalan').textContent = '₺' + iftarKalan.toLocaleString('tr-TR', { minimumFractionDigits: 2 });
+      qs('#statSahurAdet').textContent = sahurAdet;
+      qs('#statSahurToplam').textContent = '₺' + sahurToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 });
+      qs('#statSahurTahsilat').textContent = '₺' + sahurTahsilat.toLocaleString('tr-TR', { minimumFractionDigits: 2 });
+      qs('#statSahurKalan').textContent = '₺' + sahurKalan.toLocaleString('tr-TR', { minimumFractionDigits: 2 });
 
       // Tablo render (kart görünümü kaldırıldı)
       const tbody = qs('#tbody');
       tbody.innerHTML = '';
 
       if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:20px">Kayıt bulunamadı</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:20px">Kayıt bulunamadı</td></tr>';
         qs('#sumTutar').textContent = '₺0';
         qs('#sumMusafir').textContent = '0';
         return;
@@ -1249,16 +1421,28 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
             
             durumHtml = durumParts.join('');
             
+            // Tahsilat özeti (sadece taahhüt için; teberru için "-")
+            const hasTahsilatTaahhut = (k.kayitTipi === 'taahhut') && Number(k.miktar || 0) > 0;
+            const toplamTahsilatT = hasTahsilatTaahhut ? (tahsilatByKayitId[k.id] || 0) : 0;
+            const kayitTutariT = Number(k.miktar || 0);
+            const kalanT = kayitTutariT - toplamTahsilatT;
+            let tahsilatDurumT = '-';
+            if (hasTahsilatTaahhut) {
+              if (toplamTahsilatT >= kayitTutariT) tahsilatDurumT = 'Ödendi';
+              else if (toplamTahsilatT > 0) tahsilatDurumT = `₺${toplamTahsilatT.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} / ₺${kalanT.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} kalan`;
+              else tahsilatDurumT = 'Beklemede';
+            }
             tr.innerHTML = `
               <td>${tarih.getDate()}.${tarih.getMonth() + 1}.${tarih.getFullYear()}</td>
               <td><span class="chip-badge" style="background:${k.kayitTipi === 'teberru' ? '#27ae60' : '#3498db'}; color:white; padding:4px 8px; border-radius:4px; font-size:11px;">${k.kayitTipi === 'teberru' ? '💰 Teberru' : '📋 Taahhüt'}</span></td>
-              <td><strong>${k.bagisci || '-'}</strong></td>
+              <td class="td-scroll-text" title="${(k.bagisci || '-').replace(/"/g, '&quot;')}"><strong>${k.bagisci || '-'}</strong></td>
               <td class="right"><strong>₺${Number(k.miktar || 0).toLocaleString('tr-TR',{minimumFractionDigits:2})}</strong></td>
+              <td style="font-size:12px">${tahsilatDurumT}</td>
               <td>-</td>
               <td>-</td>
               <td>${k.kayitTipi === 'teberru' ? (odemeLabels[k.odemeYontemi] || k.odemeYontemi || '-') : '-'}</td>
-              <td>${k.personelAdi || k.personel || '-'}</td>
-              <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${k.aciklama || ''}">${k.aciklama || '-'}</td>
+              <td class="td-scroll-text" title="${(k.personelAdi || k.kaydedenpersonel || k.personel || '-').replace(/"/g, '&quot;')}">${k.personelAdi || k.kaydedenpersonel || k.kaydedenPersonel || k.personel || '-'}</td>
+              <td class="td-scroll-text" title="${(k.aciklama || k.not || '').replace(/"/g, '&quot;')}">${k.aciklama || k.not || '-'}</td>
               <td>${durumHtml}</td>
             `;
             tbody.appendChild(tr);
@@ -1366,8 +1550,17 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
                 }
               }
               
-              // Güncelleme kontrolü
-              if(k.updatedAt && k.createdAt) {
+              // Güncelleme kontrolü (Supabase veya Firestore)
+              if(k.updatedat && k.createdat) {
+                const createdTime = k.createdat instanceof Date ? k.createdat.getTime() : (typeof k.createdat === 'string' ? new Date(k.createdat).getTime() : 0);
+                const updatedTime = k.updatedat instanceof Date ? k.updatedat.getTime() : (typeof k.updatedat === 'string' ? new Date(k.updatedat).getTime() : 0);
+                if(updatedTime > createdTime + 1000) {
+                  const updateDate = k.updatedat instanceof Date ? k.updatedat : new Date(k.updatedat);
+                  const updateDateStr = updateDate.toLocaleDateString('tr-TR') + ' ' + updateDate.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
+                  durumParts.push(`<div style="margin-top:4px; padding:4px 6px; background:#fff3cd20; border-left:3px solid var(--warn); border-radius:4px; font-size:10px; color:var(--warn); font-weight:600;">⚠️ Değiştirildi</div>`);
+                  durumParts.push(`<small style="color:var(--muted); font-size:8px; display:block; margin-top:2px;">${updateDateStr}</small>`);
+                }
+              } else if(k.updatedAt && k.createdAt) {
                 const createdTime = k.createdAt.toDate ? k.createdAt.toDate().getTime() : (k.createdAt.seconds || 0) * 1000;
                 const updatedTime = k.updatedAt.toDate ? k.updatedAt.toDate().getTime() : (k.updatedAt.seconds || 0) * 1000;
                 if(updatedTime > createdTime) {
@@ -1376,7 +1569,6 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
                   durumParts.push(`<div style="margin-top:4px; padding:4px 6px; background:#fff3cd20; border-left:3px solid var(--warn); border-radius:4px; font-size:10px; color:var(--warn); font-weight:600;">⚠️ Değiştirildi</div>`);
                   durumParts.push(`<small style="color:var(--muted); font-size:8px; display:block; margin-top:2px;">${updateDateStr}</small>`);
                   
-                  // Hangi alanların değiştiğini kontrol et (eğer varsa)
                   if(k.degisiklikGecmisi && Array.isArray(k.degisiklikGecmisi) && k.degisiklikGecmisi.length > 0) {
                     const sonDegisiklik = k.degisiklikGecmisi[k.degisiklikGecmisi.length - 1];
                     if(sonDegisiklik.degisenAlanlar && sonDegisiklik.degisenAlanlar.length > 0) {
@@ -1386,8 +1578,12 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
                 }
               }
               
-              // Oluşturulma tarihi
-              if(k.createdAt) {
+              // Oluşturulma tarihi (Supabase createdat veya Firestore createdAt - teberru gibi)
+              if(k.createdat) {
+                const createdDate = k.createdat instanceof Date ? k.createdat : new Date(k.createdat);
+                const createdDateStr = createdDate.toLocaleDateString('tr-TR') + ' ' + createdDate.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
+                durumParts.push(`<small style="color:var(--muted); font-size:8px; display:block; margin-top:4px; border-top:1px solid var(--border); padding-top:4px;">Oluşturulma: ${createdDateStr}</small>`);
+              } else if(k.createdAt) {
                 const createdDate = k.createdAt.toDate ? k.createdAt.toDate() : new Date(k.createdAt.seconds * 1000);
                 const createdDateStr = createdDate.toLocaleDateString('tr-TR') + ' ' + createdDate.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
                 durumParts.push(`<small style="color:var(--muted); font-size:8px; display:block; margin-top:4px; border-top:1px solid var(--border); padding-top:4px;">Oluşturulma: ${createdDateStr}</small>`);
@@ -1396,16 +1592,28 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
             
             durumHtml = durumParts.join('');
             
+            // Tahsilat özeti (iftar/sahur için)
+            const hasTahsilatIftar = (k.tip === 'iftar' || k.tip === 'sahur') && Number(k.tutar || 0) > 0;
+            const toplamTahsilatI = hasTahsilatIftar ? (tahsilatByKayitId[k.id] || 0) : 0;
+            const kayitTutariI = Number(k.tutar || 0);
+            const kalanI = kayitTutariI - toplamTahsilatI;
+            let tahsilatDurumI = '-';
+            if (hasTahsilatIftar) {
+              if (toplamTahsilatI >= kayitTutariI) tahsilatDurumI = 'Ödendi';
+              else if (toplamTahsilatI > 0) tahsilatDurumI = `₺${toplamTahsilatI.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} / ₺${kalanI.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} kalan`;
+              else tahsilatDurumI = 'Beklemede';
+            }
             tr.innerHTML = `
               <td>${tarih.getDate()}.${tarih.getMonth() + 1}.${tarih.getFullYear()}</td>
               <td><span class="chip-badge ${k.tip}">${k.tip === 'iftar' ? '🌙 İftar' : '🌟 Sahur'}</span></td>
-              <td><strong>${k.sahip || '-'}</strong></td>
+              <td class="td-scroll-text" title="${(k.sahip || '-').replace(/"/g, '&quot;')}"><strong>${k.sahip || '-'}</strong></td>
               <td class="right"><strong>₺${Number(k.tutar || 0).toLocaleString('tr-TR',{minimumFractionDigits:2})}</strong></td>
+              <td style="font-size:12px">${tahsilatDurumI}</td>
               <td>${k.istirak ? '✓ Evet' : '✗ Hayır'}</td>
               <td>${k.musafirAdedi || 0}</td>
-              <td>${k.mahal || '-'}</td>
-              <td>${k.personelAdi || k.personel || '-'}</td>
-              <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${k.not || ''}">${k.not || '-'}</td>
+              <td class="td-scroll-text td-scroll-narrow" title="${(k.mahal || '-').replace(/"/g, '&quot;')}">${k.mahal || '-'}</td>
+              <td class="td-scroll-text" title="${(k.personelAdi || k.personeladi || k.kaydedenpersonel || '-').replace(/"/g, '&quot;')}">${k.personelAdi || k.personeladi || k.kaydedenpersonel || k.kaydedenPersonel || '-'}</td>
+              <td class="td-scroll-text" title="${(k.notlar || k.not || '').replace(/"/g, '&quot;')}">${k.notlar || k.not || '-'}</td>
               <td>${durumHtml}</td>
             `;
             tbody.appendChild(tr);
@@ -1550,8 +1758,13 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
       link.click();
     });
 
-    // Tüm Personel Raporu butonu
+    // Tüm Personel Raporu butonu (popup engelini önlemek için pencere tıklama anında açılır)
     qs('#btnTumPersonelRapor').addEventListener('click', async () => {
+      const reportWindow = window.open('', '_blank');
+      if (!reportWindow) {
+        alert('Pencere açılamadı. Lütfen açılır pencerelere izin verin ve tekrar deneyin.');
+        return;
+      }
       try {
         // Önce detaylı rapor bölümünü aç
         const section = qs('#detayliRaporSection');
@@ -1568,9 +1781,11 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
           analizData = analizPersonelVerileri();
         }
         
-        // Veri kontrolü
+        // Veri kontrolü: yoksa pencereyi rapor sayfasına yönlendir (about:blank kalmasın)
         if (!analizData || !analizData.personeller || Object.keys(analizData.personeller).length === 0) {
-          alert('Personel verisi bulunamadı. Lütfen önce verilerin yüklendiğinden emin olun.');
+          const errMsg = 'Personel verisi bulunamadı. ramazan_veriler tablosunda veri yok veya personel alanı boş.';
+          reportWindow.location.href = `ramazan-tum-personel-yazdir.html?error=${encodeURIComponent(errMsg)}`;
+          alert(errMsg);
           return;
         }
         
@@ -1677,12 +1892,16 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
         const storageKey = 'tumPersonelRaporData_' + Date.now();
         localStorage.setItem(storageKey, JSON.stringify(tumPersonelRaporData));
         
-        // Yeni pencerede aç
-        const printUrl = `ramazanıseriftümraporyazdır.html?key=${storageKey}`;
-        window.open(printUrl, '_blank');
+        // Açılmış pencereyi rapor sayfasına yönlendir (ASCII dosya adı = 404/beyaz sayfa riski azalır)
+        const printUrl = `ramazan-tum-personel-yazdir.html?key=${encodeURIComponent(storageKey)}`;
+        reportWindow.location.href = printUrl;
       } catch (e) {
         console.error('Tüm personel raporu oluşturulurken hata:', e);
-        alert('Rapor oluşturulurken bir hata oluştu: ' + e.message);
+        const errMsg = (e && e.message) ? e.message : 'Rapor oluşturulurken bir hata oluştu.';
+        if (reportWindow && !reportWindow.closed) {
+          reportWindow.location.href = `ramazan-tum-personel-yazdir.html?error=${encodeURIComponent(errMsg)}`;
+        }
+        alert('Rapor oluşturulurken bir hata oluştu: ' + errMsg);
       }
     });
 
@@ -1724,9 +1943,9 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
       return String(str).toLocaleLowerCase('tr-TR').trim();
     }
 
-    let allYearsData = {}; // 2023, 2024, 2025 verileri
+    let allYearsData = {}; // 2023, 2024, 2025 verileri (sadece raporlar: Detaylı / Tüm Personel)
     
-    // ===== SUPABASE: Tüm yılların verilerini yükle (ramazan_veriler tablosundan) =====
+    // ===== RAPORLAR: Detaylı ve Tüm Personel verileri sadece ramazan_veriler tablosundan =====
     async function loadAllYearsData() {
       if (!window.supabase) {
         console.warn('Supabase client hazır değil, analiz verileri yüklenemiyor');
@@ -1740,8 +1959,6 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
       for (const yil of yillar) {
         try {
           const veriler = [];
-          
-          // ramazan_veriler tablosundan veri çek
           const { data: ramazanVerilerData, error: ramazanVerilerError } = await window.supabase
             .from('ramazan_veriler')
             .select('id, createdat, diger, personel, sahip, tip, tutar, yil, yukleyen, updatedat, referans')
@@ -1758,7 +1975,7 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
                 sahip: r.sahip || '',
                 tutar: Number(r.tutar) || 0,
                 personel: r.personel || '',
-                personeluid: '', // ramazan_veriler tablosunda personeluid yok
+                personeluid: '',
                 tarih: r.createdat || null,
                 referans: r.referans || '',
                 diger: r.diger || '',
@@ -1768,13 +1985,7 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
           }
           
           allYearsData[yil] = veriler;
-          console.log(`${yil} yılı için ${veriler.length} kayıt yüklendi (ramazan_veriler: ${ramazanVerilerData?.length || 0})`);
-          
-          // Debug: Personel bilgilerini kontrol et
-          if (veriler.length > 0) {
-            const personelListesi = [...new Set(veriler.map(v => v.personel).filter(p => p))];
-            console.log(`${yil} yılı personel listesi (${personelListesi.length} adet):`, personelListesi.slice(0, 10));
-          }
+          console.log(`${yil} yılı rapor verisi (ramazan_veriler): ${veriler.length} kayıt`);
         } catch (e) {
           console.error(`${yil} yılı verileri yüklenemedi:`, e);
           allYearsData[yil] = [];
@@ -2434,6 +2645,7 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
           console.log('Toplam yüklenen kayıt:', toplamKayit);
           
           if (toplamKayit === 0) {
+            qs('#personelSecimi').innerHTML = '<option value="">Personel Seçiniz...</option>';
             qs('#personelSecilmediMesaj').innerHTML = `
               <div style="text-align:center;padding:40px">
                 <h4 style="color:var(--warn);margin-bottom:12px">⚠️ Veri Bulunamadı</h4>
@@ -2447,6 +2659,7 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
           const personelSayisi = Object.keys(analizData.personeller).length;
           
           if (personelSayisi === 0) {
+            qs('#personelSecimi').innerHTML = '<option value="">Personel Seçiniz...</option>';
             qs('#personelSecilmediMesaj').innerHTML = `
               <div style="text-align:center;padding:40px">
                 <h4 style="color:var(--warn);margin-bottom:12px">⚠️ Personel Verisi Bulunamadı</h4>
@@ -2460,10 +2673,11 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
           doldurPersonelListesi(analizData.personeller);
         } catch (e) {
           console.error('Rapor yüklenirken hata:', e);
+          qs('#personelSecimi').innerHTML = '<option value="">Personel Seçiniz...</option>';
           qs('#personelSecilmediMesaj').innerHTML = `
             <div style="text-align:center;padding:40px">
               <h4 style="color:var(--bad);margin-bottom:12px">❌ Hata Oluştu</h4>
-              <p class="muted">Veriler yüklenirken bir hata oluştu.</p>
+              <p class="muted">Veriler yüklenirken bir hata oluştu: ${(e && e.message) ? e.message : ''}</p>
             </div>
           `;
         }

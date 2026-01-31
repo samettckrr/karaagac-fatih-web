@@ -454,6 +454,20 @@ CREATE TABLE public.ramazan_kayitlari (
   tarih timestamp with time zone,
   CONSTRAINT ramazan_kayitlari_pkey PRIMARY KEY (id)
 );
+CREATE TABLE public.ramazan_tahsilat (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  kayit_id text NOT NULL,
+  kayit_tipi text NOT NULL DEFAULT 'iftar-sahur' CHECK (kayit_tipi IN ('iftar-sahur', 'taahhut')),
+  tutar numeric NOT NULL CHECK (tutar >= 0),
+  tahsilat_tarihi date NOT NULL,
+  odeme_tipi text NOT NULL CHECK (odeme_tipi IN ('pesin', 'taksit')),
+  taksit_no integer,
+  aciklama text,
+  createdat timestamp with time zone DEFAULT now(),
+  kaydedenpersonel text,
+  kaydedenpersoneluid text,
+  CONSTRAINT ramazan_tahsilat_pkey PRIMARY KEY (id)
+);
 CREATE TABLE public.ramazan_mahaller (
   id text NOT NULL,
   adi text,

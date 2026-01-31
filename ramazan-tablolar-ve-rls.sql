@@ -105,6 +105,7 @@ ALTER TABLE public.ramazan_menuler ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ramazan_yillar ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ramazan_ayarlar ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ramazan_secenekler ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ramazan_tahsilat ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.kullanicilar ENABLE ROW LEVEL SECURITY;
 
 -- ============================================
@@ -133,6 +134,30 @@ CREATE POLICY "ramazan_kayitlari_update" ON public.ramazan_kayitlari
 -- Silme: Tüm kullanıcılar silebilir (authenticated)
 DROP POLICY IF EXISTS "ramazan_kayitlari_delete" ON public.ramazan_kayitlari;
 CREATE POLICY "ramazan_kayitlari_delete" ON public.ramazan_kayitlari
+  FOR DELETE
+  USING (auth.role() = 'authenticated');
+
+-- ============================================
+-- ramazan_tahsilat (Tahsilat Hareketleri)
+-- ============================================
+DROP POLICY IF EXISTS "ramazan_tahsilat_select" ON public.ramazan_tahsilat;
+CREATE POLICY "ramazan_tahsilat_select" ON public.ramazan_tahsilat
+  FOR SELECT
+  USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "ramazan_tahsilat_insert" ON public.ramazan_tahsilat;
+CREATE POLICY "ramazan_tahsilat_insert" ON public.ramazan_tahsilat
+  FOR INSERT
+  WITH CHECK (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "ramazan_tahsilat_update" ON public.ramazan_tahsilat;
+CREATE POLICY "ramazan_tahsilat_update" ON public.ramazan_tahsilat
+  FOR UPDATE
+  USING (auth.role() = 'authenticated')
+  WITH CHECK (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "ramazan_tahsilat_delete" ON public.ramazan_tahsilat;
+CREATE POLICY "ramazan_tahsilat_delete" ON public.ramazan_tahsilat
   FOR DELETE
   USING (auth.role() = 'authenticated');
 

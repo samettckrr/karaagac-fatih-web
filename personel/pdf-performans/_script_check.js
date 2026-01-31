@@ -1,443 +1,4 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-  <meta charset="UTF-8" />
-  <title>Personel Performans Raporu</title>
-  <style>
-    html { overflow-x: hidden; }
-    body { 
-      margin: 0; 
-      font-family: Calibri, Candara, 'Segoe UI', Arial, sans-serif; 
-      background-color: #f1f1f1; 
-      color: #000;
-      overflow-x: hidden;
-      word-wrap: break-word;
-    }
-    .sayfa {
-      width: 100%;
-      max-width: 800px;
-      margin: 20px auto;
-      background-color: white;
-      padding: 30px 40px;
-      box-sizing: border-box;
-      border: 1px solid #ccc;
-      page-break-after: auto;
-      transition: opacity 0.25s ease-out, box-shadow 0.25s ease-out;
-      overflow-x: hidden;
-      overflow-wrap: break-word;
-    }
-    .kapak-sayfa {
-      text-align: center;
-      padding: 80px 40px;
-      min-height: 600px;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
-      align-items: center;
-    }
-    .kapak-baslik {
-      font-size: 54px;
-      font-weight: bold;
-      color: #1a472a;
-      margin-bottom: 30px;
-      letter-spacing: 3px;
-      margin-top: 100px;
-    }
-    .kapak-alt-baslik {
-      font-size: 22px;
-      color: #2d5016;
-      margin-bottom: 60px;
-      font-weight: 600;
-    }
-    .kapak-personel-ismi {
-      font-size: 30px;
-      font-weight: bold;
-      color: #1a472a;
-      margin-bottom: 40px;
-      margin-top: 20px;
-    }
-    .kapak-tarih {
-      font-size: 12px;
-      color: #555;
-      margin-top: auto;
-      padding-top: 40px;
-    }
-    .baslik { 
-      display: flex; 
-      justify-content: space-between; 
-      align-items: center; 
-      margin-bottom: 28px;
-      padding-bottom: 18px;
-      border-bottom: 2px solid #2f4f30;
-    }
-    .baslik-sag {
-      text-align: right;
-      font-size: 11px;
-      color: #555;
-      line-height: 1.4;
-    }
-    .baslik-sol h1 { 
-      font-size: 20px; 
-      margin: 0 0 4px 0; 
-      color: #2f4f30;
-    }
-    .baslik-sol h2 { 
-      font-size: 15px; 
-      font-weight: normal; 
-      margin: 0; 
-      color: #666;
-    }
-    .filtre-bilgi {
-      font-size: 12px;
-      color: #666;
-      margin-bottom: 15px;
-      padding: 8px 10px;
-      background: #f8f9fa;
-      border-radius: 5px;
-    }
-    .kpi-container {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 15px;
-      margin-bottom: 25px;
-    }
-    .kpi-item {
-      background: #f8f9fa;
-      border: 1px solid #ddd;
-      padding: 12px;
-      border-radius: 5px;
-      text-align: center;
-    }
-    .kpi-item .lbl {
-      font-size: 11px;
-      color: #666;
-      margin-bottom: 5px;
-    }
-    .kpi-item .val {
-      font-size: 18px;
-      font-weight: bold;
-      color: #2f4f30;
-    }
-    .kpi-item .val.iyi { color: #2f4f30; }
-    .kpi-item .val.kotu { color: #000; }
 
-    .alt-baslik {
-      font-size: 16px;
-      font-weight: 600;
-      margin: 28px 0 18px 0;
-      color: #2f4f30;
-      border-bottom: 1px solid #ddd;
-      padding-bottom: 8px;
-    }
-
-    .personel-kimlik {
-      display: grid;
-      grid-template-columns: 1.3fr 1.7fr;
-      gap: 15px;
-      font-size: 12px;
-      margin-bottom: 20px;
-    }
-    .personel-kimlik .etiket {
-      font-weight: 600;
-      color: #444;
-      width: 130px;
-      display: inline-block;
-    }
-    .personel-kimlik p {
-      margin: 4px 0;
-      color: #333;
-    }
-    .personel-not {
-      font-size: 11px;
-      color: #666;
-      margin-top: 8px;
-    }
-    .rapor-bolumu {
-      margin-top: 32px;
-      padding: 18px 15px;
-      background: #f8f9fa;
-      border-radius: 5px;
-      border: 1px solid #ddd;
-      max-width: 100%;
-      overflow-wrap: break-word;
-    }
-    .rapor-bolumu h3 {
-      margin: 0 0 15px 0;
-      font-size: 16px;
-      color: #2f4f30;
-      border-bottom: 1px solid #ddd;
-      padding-bottom: 8px;
-    }
-    .rapor-bolumu p {
-      margin: 8px 0;
-      font-size: 12px;
-      line-height: 1.6;
-      color: #333;
-    }
-    .yil-ozetleri {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      margin-top: 10px;
-    }
-    .yil-kutu {
-      background: #fff;
-      border-radius: 6px;
-      border: 1px solid #ddd;
-      padding: 10px 12px;
-      font-size: 11px;
-    }
-    .yil-kutu h4 {
-      margin: 0 0 6px 0;
-      font-size: 12px;
-      color: #1f2937;
-    }
-    .yil-kutu ul {
-      margin: 0;
-      padding-left: 16px;
-    }
-    .yil-kutu li {
-      margin: 2px 0;
-    }
-    .yorum-listesi {
-      margin: 8px 0 0 0;
-      padding-left: 18px;
-      font-size: 12px;
-    }
-    .yorum-listesi li {
-      margin: 4px 0;
-    }
-    .yorum-etiket {
-      font-weight: 600;
-      color: #111827;
-    }
-    .tablo {
-      width: 100%;
-      max-width: 100%;
-      border-collapse: collapse;
-      margin: 15px 0;
-      font-size: 12px;
-      table-layout: fixed;
-    }
-    .tablo th, .tablo td {
-      border: 1px solid #ddd;
-      padding: 6px 8px;
-      text-align: left;
-      word-wrap: break-word;
-      overflow-wrap: break-word;
-    }
-    .tablo th {
-      background-color: #2f4f30;
-      color: #fff;
-      font-weight: 600;
-    }
-    .tablo.tablo--mavi thead th { background-color: #3d5a80; }
-    .tablo.tablo--kahve thead th { background-color: #5c4a3a; }
-    .tablo.tablo--mor thead th { background-color: #4a3d6a; }
-    .tablo.tablo--kira thead th { background-color: #6b4a2e; }
-    .tablo.tablo--hedef thead th { background-color: #2d5a4a; }
-    .tablo tr:nth-child(even) {
-      background-color: #f8f9fa;
-    }
-    .tablo .sayi {
-      text-align: right;
-      font-family: Calibri, Candara, 'Segoe UI', Arial, sans-serif;
-    }
-    .artis-pozitif {
-      color: #006400;
-      font-weight: 600;
-    }
-    .artis-negatif {
-      color: #8b0000;
-      font-weight: 600;
-    }
-    .artis-nor {
-      color: #1e3a8a;
-      font-weight: 600;
-    }
-    .sayfa-ayirici {
-      page-break-before: always;
-      margin-top: 48px;
-      padding-top: 28px;
-      border-top: 3px solid #2f4f30;
-      transition: margin-top 0.2s ease-out, padding-top 0.2s ease-out;
-    }
-    .sayfa > div:not(:first-child) {
-      transition: opacity 0.2s ease-out;
-    }
-    .btn-alani { 
-      text-align: center; 
-      margin-top: 30px; 
-    }
-    button {
-      padding: 10px 20px; 
-      background-color: #4a637d;
-      border: none; 
-      color: white; 
-      font-size: 15px;
-      border-radius: 5px; 
-      cursor: pointer;
-    }
-    button:hover { 
-      background-color: #3b526b; 
-    }
-    @media print {
-      html, body { overflow-x: hidden; }
-      body { 
-        background-color: white; 
-        font-family: Calibri, Candara, Arial, sans-serif;
-      }
-      .btn-alani { display: none; }
-      .sayfa { 
-        border: none; 
-        margin: 0; 
-        padding: 20px; 
-        max-width: 100%;
-        overflow: visible;
-      }
-      .sayfa-ayirici { page-break-before: always; }
-      .tablo { page-break-inside: auto; }
-      .tablo tr { page-break-inside: avoid; page-break-after: auto; }
-      .rapor-bolumu { page-break-inside: avoid; }
-    }
-  </style>
-</head>
-<body>
-  <div class="sayfa" id="pdfAlani">
-    <!-- 1. SAYFA: KAPAK -->
-    <div class="kapak-sayfa">
-      <div class="kapak-baslik">KARAAĞAÇ FATİH</div>
-      <div class="kapak-alt-baslik">PERSONEL PERFORMANS ANALİZİ (2023-2025)</div>
-      <div class="kapak-personel-ismi" id="personelIsmiKapak">
-        Personel bilgileri yükleniyor...
-      </div>
-      <div class="rapor-bolumu" id="personelKimlikKapak" style="margin-top: 30px; text-align: left; max-width: 600px;">
-        <h3>Personel Kimlik Bilgileri</h3>
-        <div class="personel-kimlik" id="personelKimlikKapakIcerik">
-          <p>Personel bilgileri yükleniyor...</p>
-        </div>
-      </div>
-      <div class="kapak-tarih">Rapor Tarihi: <span id="raporTarihiKapak"></span></div>
-    </div>
-
-    <!-- 2. SAYFA: GENEL BAKIŞ VE YILLIK PERFORMANS -->
-    <div class="sayfa-ayirici">
-      <div class="baslik">
-        <div class="baslik-sol">
-          <h1>KARAAĞAÇ FATİH DAİMİ TEKÂMÜLALTI</h1>
-          <h2>Personel Performans Ölçüm Raporu (2023 - 2025)</h2>
-        </div>
-        <div class="baslik-sag">
-          <div><strong>Rapor Tarihi:</strong> <span id="raporTarihi"></span></div>
-        </div>
-      </div>
-
-      <div class="filtre-bilgi" id="filtreBilgi" style="display: none;">
-        Filtreler yükleniyor...
-      </div>
-
-      <div class="alt-baslik">Genel Bakış Tablosu</div>
-      <div class="rapor-bolumu">
-        <table class="tablo tablo--genel" id="genelBakışTablosu">
-          <thead>
-            <tr>
-              <th>Metrik</th>
-              <th class="sayi">Tutar</th>
-            </tr>
-          </thead>
-          <tbody id="genelBakışTablosuBody">
-            <tr><td colspan="2">Veriler yükleniyor...</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="alt-baslik" style="margin-top: 30px;">Yıllık Performans Özeti Tablosu</div>
-      <div class="rapor-bolumu">
-        <table class="tablo tablo--mavi" id="yillikPerformansTablosu">
-          <thead>
-            <tr>
-              <th>Yıl</th>
-              <th class="sayi">Toplam Ödeme</th>
-              <th class="sayi">Toplam Teberru</th>
-              <th class="sayi">Toplam Ramazan-ı Şerif</th>
-              <th class="sayi">Toplam Hedef Tutar</th>
-              <th class="sayi">Toplam Hedef</th>
-              <th class="sayi">Hedef Ulaşma Oranı</th>
-              <th class="sayi">Net Performans</th>
-            </tr>
-          </thead>
-          <tbody id="yillikPerformansTablosuBody">
-            <tr><td colspan="8">Veriler yükleniyor...</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="rapor-bolumu" id="odemeAnalizBolumu">
-        <h3>Yıllara Göre</h3>
-        <div id="odemeYillikAnaliz">Ödeme verileri yükleniyor...</div>
-        
-        <h3 style="margin-top: 20px;">Hedefler ve Artışları</h3>
-        <div id="hedefArtislari">Hedef analizi hazırlanıyor...</div>
-        
-        <h3 style="margin-top: 20px;">Hedef Tutar Artışları</h3>
-        <div id="hedefTutarArtislari">Hedef tutar analizi hazırlanıyor...</div>
-      </div>
-    </div>
-
-    <!-- 3. SAYFA: ÖDEME TİP ARTIŞLARI, PERSONEL ÖDEMELERİ VE ANALİZ -->
-    <div class="sayfa-ayirici">
-      <div class="baslik">
-        <div class="baslik-sol">
-          <h1>KARAAĞAÇ FATİH DAİMİ TEKÂMÜLALTI</h1>
-          <h2>Personel Performans Ölçüm Raporu (2023 - 2025)</h2>
-        </div>
-      </div>
-
-      <div class="alt-baslik">Ödeme Tiplerinin Artışları (Yüzdelik ve Tutar)</div>
-      <div class="rapor-bolumu">
-        <div id="odemeTipArtislari">Artış analizi hazırlanıyor...</div>
-      </div>
-
-      <div class="alt-baslik" style="margin-top: 30px;">Personel Ödemeleri (2023-2025) ve Genel Analiz</div>
-      <div class="rapor-bolumu" id="yorumBolumu">
-        <h3>Genel Yorumlar</h3>
-        <ul class="yorum-listesi" id="yorumListesi">
-          <li>Yorumlar hazırlanıyor...</li>
-        </ul>
-      </div>
-
-      <div class="alt-baslik">6. 2026 Gider ve Hedef Planlaması</div>
-      <div class="rapor-bolumu" id="projeksiyonBolumu">
-        <h3>2026 Personel Gideri ve Hedef Önerileri</h3>
-        <div id="projeksiyonMetni">Projeksyon hesaplanıyor...</div>
-        
-        <h3 style="margin-top: 20px;">2026 Ödeme Toplamı vs Ramazan-ı Şerif Hedefi Karşılaştırması</h3>
-        <div id="ramazanKarsilastirma">Karşılaştırma hazırlanıyor...</div>
-        
-        <h3 style="margin-top: 20px;">Toplam Bütçeye Göre Tipe Göre Yüzdelik Pay</h3>
-        <div id="butcePayAnalizi">Bütçe pay analizi hazırlanıyor...</div>
-        
-        <h3 style="margin-top: 20px;">Kira Artışı ile Alakalı Analiz ve Yönlendirme Planlama</h3>
-        <div id="kiraAnalizi">Kira analizi hazırlanıyor...</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="btn-alani">
-    <button onclick="pdfCiktisiAl()">PDF Çıktısı Al</button>
-  </div>
-
-  <!-- Supabase -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="../../src/supabase.js"></script>
-  <script src="../../src/supabase-auth-wrapper.js"></script>
-  <script src="../../src/supabase-db-wrapper.js"></script>
-  <script src="../../js/ortak.js"></script>
-  
-  <!-- html2pdf -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-
-  <script>
     document.addEventListener('DOMContentLoaded', function () {
       function waitForSupabaseAndOrtak(callback) {
         // window.supabase'in bir client instance olduğunu kontrol et (from metodu olmalı)
@@ -459,14 +20,31 @@
           }
           return el;
         };
-        const fmt = n => (n==null||isNaN(n)) ? '₺0' : '₺' + Number(n).toLocaleString('tr-TR',{maximumFractionDigits:0});
+        const fmt = n => (n==null||isNaN(n)) ? '₺0' : '₺' + Number(n).toLocaleString('tr-TR',{maximumFractionDigits:2});
         const basHarfBuyuk = (str) => {
           if (!str) return '';
           return str.split(' ').map(kelime => {
             return kelime.charAt(0).toUpperCase() + kelime.slice(1).toLowerCase();
           }).join(' ');
         };
-        const normalizeIsim = (str) => str ? String(str).toLocaleLowerCase('tr-TR').trim().replace(/ı/g, 'i').replace(/ğ/g, 'g').replace(/ş/g, 's').replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c') : '';
+        const normalizeIsim = (isim) => {
+          if (!isim) return '';
+          return isim
+            .toLowerCase()
+            .replace(/ı/g, 'i')
+            .replace(/ş/g, 's')
+            .replace(/ğ/g, 'g')
+            .replace(/ü/g, 'u')
+            .replace(/ö/g, 'o')
+            .replace(/ç/g, 'c')
+            .replace(/İ/g, 'i')
+            .replace(/Ş/g, 's')
+            .replace(/Ğ/g, 'g')
+            .replace(/Ü/g, 'u')
+            .replace(/Ö/g, 'o')
+            .replace(/Ç/g, 'c')
+            .trim();
+        };
 
         // Rapor tarihi
         const bugun = new Date();
@@ -595,24 +173,6 @@
             toplam: 299100
           });
           
-          return map;
-        })();
-
-        // 2026 Yeni güncel aylık kira ve artış ayı (personel-detay.md'den – /12 değil, md'de yazan aylık tutarlar)
-        const KIRA_2026_AYLIK_DETAY = (() => {
-          const map = {};
-          const ekle = (ad, aylik, artisAyi) => {
-            map[normalizeIsim(ad)] = { aylik, artisAyi };
-          };
-          ekle('MUHSİN ÇELİK', 25000, 'Kasım');      // Kasım-Aralık tahmini 25.000₺/ay
-          ekle('SERHAN DURAK', 23000, 'Ağustos');   // Ağustos-Aralık 23.000₺/ay
-          ekle('FARUK NAFİZ ÖZGAN', 23000, 'Ağustos');
-          ekle('İBRAHİM AY', 23000, 'Ağustos');      // tahmini diğer personel gibi
-          ekle('KEREM KOCAOĞLU', 19000, 'Ağustos'); // Ağustos-Aralık 19.000₺/ay
-          ekle('MAHMUT SOLMAZ', 17000, 'Ocak');     // Ocak itibariyle artış, max 17.000₺/ay
-          ekle('SAMET ÇAKIR', 0, '-');              // kira yok
-          ekle('MEHMET TAHA KESKİN', 0, '-');
-          ekle('AHMETALİ EMRE ŞAHİN', 0, '-');
           return map;
         })();
 
@@ -770,7 +330,7 @@
 
         async function yukleVeriler() {
           try {
-            let toplamOdeme, toplamHedefTutar, toplamTeberru, toplamHedef, toplamRamazan, toplamKurban, tumYillar, toplamHedefOrani, toplamNetPerformans;
+            {
             const sb = getSupabase();
             if (!sb) {
               console.error('Supabase client hazır değil');
@@ -780,27 +340,20 @@
             let personelUid = personel;
             let personelAdi = '';
 
-            // Personel adını UID ile eşleştir: önce kullanicilar (adsoyad), sonra personel-detay.md haritası, en son personel_odeme_takvim
-            if (personelUid) {
-              const { data: kullaniciData } = await sb.from('kullanicilar')
-                .select('adsoyad')
-                .eq('id', personelUid)
-                .limit(1)
-                .maybeSingle();
-              if (kullaniciData?.adsoyad) {
-                personelAdi = kullaniciData.adsoyad;
-              }
-              if (!personelAdi) {
-                const uidKey = personelUid.toLowerCase();
+            // Personel adını al - önce UID map'ten, sonra veritabanından
+            if(personelUid) {
+              // UID'den direkt isim bul
+              const uidKey = personelUid.toLowerCase();
+              if (PERSONEL_UID_MAP[personelUid] || PERSONEL_DETAYLARI[uidKey]) {
                 personelAdi = PERSONEL_UID_MAP[personelUid] || PERSONEL_DETAYLARI[uidKey]?.ad;
-              }
-              if (!personelAdi) {
+              } else {
+                // Veritabanından al
                 const { data: personelData } = await sb.from('personel_odeme_takvim')
                   .select('personel_adi_soyadi')
                   .eq('personel_uid', personelUid)
                   .limit(1)
-                  .maybeSingle();
-                if (personelData?.personel_adi_soyadi) {
+                  .single();
+                if(personelData) {
                   personelAdi = personelData.personel_adi_soyadi;
                 }
               }
@@ -856,17 +409,16 @@
             for (const yil of yillar) {
               const yilInt = parseInt(yil, 10);
 
-              // Ödeme verileri (tüm kayıtlar – limit yok, filtreye göre)
-              let odemeQuery = sb.from('personel_odeme_takvim').select('*').eq('yil', yilInt).range(0, 9999);
+              // Ödeme verileri
+              let odemeQuery = sb.from('personel_odeme_takvim').select('*').eq('yil', yilInt);
               if (personelUid) odemeQuery = odemeQuery.eq('personel_uid', personelUid);
               const { data: odemeData, error: odemeError } = await odemeQuery;
               if (odemeError) throw odemeError;
 
-              // Teberru verileri (yıl aralığında tüm kayıtlar)
+              // Teberru verileri
               let teberruQuery = sb.from('gecmis_teberru_kayitlari').select('*')
                 .gte('vade_tarihi', `${yilInt}-01-01`)
-                .lt('vade_tarihi', `${yilInt + 1}-01-01`)
-                .range(0, 9999);
+                .lt('vade_tarihi', `${yilInt + 1}-01-01`);
               const { data: teberruAllData, error: teberruError } = await teberruQuery;
               if (teberruError) throw teberruError;
 
@@ -879,18 +431,16 @@
                 });
               }
 
-              // Ramazan-ı Şerif verileri (kategori + tip birleştirilmiş, tüm kayıtlar)
+              // Ramazan-ı Şerif verileri (kategori + tip birleştirilmiş)
               let ramazanKategoriQuery = sb.from('arsiv_hedefler').select('*')
                 .eq('kategori', 'Ramazan-ı Şerif')
-                .eq('yil', yilInt)
-                .range(0, 9999);
+                .eq('yil', yilInt);
               if (personelUid) ramazanKategoriQuery = ramazanKategoriQuery.eq('uid', personelUid);
               const { data: ramazanKategoriData } = await ramazanKategoriQuery;
 
               let ramazanTipQuery = sb.from('arsiv_hedefler').select('*')
                 .eq('tip', 'Ramazan-ı Şerif')
-                .eq('yil', yilInt)
-                .range(0, 9999);
+                .eq('yil', yilInt);
               if (personelUid) ramazanTipQuery = ramazanTipQuery.eq('uid', personelUid);
               const { data: ramazanTipData } = await ramazanTipQuery;
 
@@ -898,16 +448,15 @@
               const ramazanTip = ramazanTipData || [];
               const ramazanData = [...new Map([...ramazanKategori, ...ramazanTip].map(v => [v.id, v])).values()];
 
-              // Kurban çalışmaları (kategori "Kurban", tüm kayıtlar)
+              // Kurban çalışmaları (kategori "Kurban" varsayımıyla)
               let kurbanQuery = sb.from('arsiv_hedefler').select('*')
                 .eq('kategori', 'Kurban')
-                .eq('yil', yilInt)
-                .range(0, 9999);
+                .eq('yil', yilInt);
               if (personelUid) kurbanQuery = kurbanQuery.eq('uid', personelUid);
               const { data: kurbanData } = await kurbanQuery;
 
-              // Hedef verileri (tüm kayıtlar)
-              let hedefQuery = sb.from('arsiv_hedefler').select('*').eq('yil', yilInt).range(0, 9999);
+              // Hedef verileri
+              let hedefQuery = sb.from('arsiv_hedefler').select('*').eq('yil', yilInt);
               if (personelUid) hedefQuery = hedefQuery.eq('uid', personelUid);
               const { data: hedefData, error: hedefError } = await hedefQuery;
               if (hedefError) throw hedefError;
@@ -942,17 +491,17 @@
             }
 
             // 3) Genel KPIs (2023-2025 toplamları)
-            tumYillar = Object.values(yilBazli);
-            toplamOdeme = tumYillar.reduce((s, y) => s + y.odemeToplam, 0);
-            toplamTeberru = tumYillar.reduce((s, y) => s + y.teberruToplam, 0);
-            toplamHedef = tumYillar.reduce((s, y) => s + y.hedefToplam, 0);
-            toplamHedefTutar = tumYillar.reduce((s, y) => s + y.hedefTutarToplam, 0);
-            toplamRamazan = tumYillar.reduce((s, y) => s + y.ramazanToplam, 0);
-            toplamKurban = tumYillar.reduce((s, y) => s + y.kurbanToplam, 0);
+            const tumYillar = Object.values(yilBazli);
+            const toplamOdeme = tumYillar.reduce((s, y) => s + y.odemeToplam, 0);
+            const toplamTeberru = tumYillar.reduce((s, y) => s + y.teberruToplam, 0);
+            const toplamHedef = tumYillar.reduce((s, y) => s + y.hedefToplam, 0);
+            const toplamHedefTutar = tumYillar.reduce((s, y) => s + y.hedefTutarToplam, 0);
+            const toplamRamazan = tumYillar.reduce((s, y) => s + y.ramazanToplam, 0);
+            const toplamKurban = tumYillar.reduce((s, y) => s + y.kurbanToplam, 0);
 
-            toplamHedefOrani = toplamHedef > 0 ? (toplamHedefTutar / toplamHedef) * 100 : 0;
+            const toplamHedefOrani = toplamHedef > 0 ? (toplamHedefTutar / toplamHedef) * 100 : 0;
             // Net Performans = TOPLAM HEDEF TUTAR - TOPLAM ÖDEME (personel-detay.md'deki formüle göre)
-            toplamNetPerformans = toplamHedefTutar - toplamOdeme;
+            const toplamNetPerformans = toplamHedefTutar - toplamOdeme;
 
             // Genel Bakış Tablosu
             const genelBakışTablosuBody = $('genelBakışTablosuBody');
@@ -1032,7 +581,7 @@
             // Yıllara Göre Ödeme Analizi
             const odemeYillikAnalizEl = $('odemeYillikAnaliz');
             if (odemeYillikAnalizEl) {
-              let yillikOdemeHtml = '<table class="tablo tablo--mor"><thead><tr><th>Yıl</th><th class="sayi">Toplam Ödeme</th></tr></thead><tbody>';
+              let yillikOdemeHtml = '<table class="tablo"><thead><tr><th>Yıl</th><th class="sayi">Toplam Ödeme</th></tr></thead><tbody>';
               tumYillar.forEach(y => {
                 yillikOdemeHtml += `<tr><td>${y.yil}</td><td class="sayi">${fmt(y.odemeToplam)}</td></tr>`;
               });
@@ -1059,7 +608,7 @@
                 });
               });
 
-              let tipArtisHtml = '<table class="tablo tablo--kahve"><thead><tr><th>Ödeme Tipi</th><th class="sayi">2023</th><th class="sayi">2024</th><th class="sayi">2025</th><th class="sayi">2023-2024 Artış</th><th class="sayi">2024-2025 Artış</th></tr></thead><tbody>';
+              let tipArtisHtml = '<table class="tablo"><thead><tr><th>Ödeme Tipi</th><th class="sayi">2023</th><th class="sayi">2024</th><th class="sayi">2025</th><th class="sayi">2023-2024 Artış</th><th class="sayi">2024-2025 Artış</th></tr></thead><tbody>';
               Object.keys(odemeTipleri).forEach(tip => {
                 const v2023 = odemeTipleri[tip][2023] || 0;
                 const v2024 = odemeTipleri[tip][2024] || 0;
@@ -1091,7 +640,7 @@
               const artis24_25 = h2024 > 0 ? ((h2025 - h2024) / h2024 * 100) : 0;
               
               hedefArtislariEl.innerHTML = `
-                <table class="tablo tablo--hedef">
+                <table class="tablo">
                   <thead>
                     <tr><th>Yıl</th><th class="sayi">Toplam Hedef</th><th class="sayi">Yıllık Artış</th></tr>
                   </thead>
@@ -1114,7 +663,7 @@
               const artis24_25 = ht2024 > 0 ? ((ht2025 - ht2024) / ht2024 * 100) : 0;
               
               hedefTutarArtislariEl.innerHTML = `
-                <table class="tablo tablo--hedef">
+                <table class="tablo">
                   <thead>
                     <tr><th>Yıl</th><th class="sayi">Toplam Hedef Tutar</th><th class="sayi">Yıllık Artış</th></tr>
                   </thead>
@@ -1262,7 +811,7 @@
               const personelGiderleri = PLANLANAN_2026_GIDERLER_TIP[projeksiyonDetayKey] || null;
 
               if (personelGiderleri) {
-                let butceHtml = '<table class="tablo tablo--mor"><thead><tr><th>Ödeme Tipi</th><th class="sayi">Bu Personelin Gideri</th><th class="sayi">Toplam Bütçe (Tüm Personeller)</th><th class="sayi">Bütçedeki Pay (%)</th></tr></thead><tbody>';
+                let butceHtml = '<table class="tablo"><thead><tr><th>Ödeme Tipi</th><th class="sayi">Bu Personelin Gideri</th><th class="sayi">Toplam Bütçe (Tüm Personeller)</th><th class="sayi">Bütçedeki Pay (%)</th></tr></thead><tbody>';
                 
                 const tipler = [
                   { key: 'hediye', label: 'Hediye', butceKey: 'Hediye' },
@@ -1327,10 +876,16 @@
               const kira2026Planlanan = personelGiderleri ? personelGiderleri.kira : 0;
               const artis25_26 = k2025 > 0 ? ((kira2026Planlanan - k2025) / k2025 * 100) : 0;
 
-              // Yeni güncel aylık kira ve artış ayı (personel-detay.md'den – /12 değil, md'de yazan aylık tutar ve hangi ay başlıyor)
-              const kiraDetay = KIRA_2026_AYLIK_DETAY[projeksiyonDetayKey];
-              const kiraAylikGuncel = kiraDetay ? kiraDetay.aylik : (kira2026Planlanan > 0 ? Math.round(kira2026Planlanan / 12) : 0);
-              const kiraArtisAyi = kiraDetay && kiraDetay.artisAyi ? kiraDetay.artisAyi : (personelGiderleri && personelGiderleri.kira > 0 ? 'Temmuz-Ağustos' : '-');
+              // Kira artış ayı tahmini (personel-detay.md'ye göre genelde Temmuz-Ağustos arası)
+              let kiraArtisAyi = 'Temmuz-Ağustos';
+              if (personelGiderleri && personelGiderleri.kira > 0) {
+                // MUHSİN ÇELİK için Ekim sonrası, diğerleri için Temmuz sonrası
+                if (projeksiyonDetayKey === normalizeIsim('MUHSİN ÇELİK')) {
+                  kiraArtisAyi = 'Kasım';
+                } else {
+                  kiraArtisAyi = 'Ağustos';
+                }
+              }
 
               // Maksimum kira artışı (bütçe planlamasına göre)
               const toplamButceKira = 1295160; // personel-detay.md'den
@@ -1338,7 +893,7 @@
               const maksimumKiraArtisi = kira2026Planlanan;
 
               kiraAnaliziEl.innerHTML = `
-                <table class="tablo tablo--kira">
+                <table class="tablo">
                   <thead>
                     <tr><th>Yıl</th><th class="sayi">Toplam Kira Ödemesi</th><th class="sayi">Yıllık Artış</th></tr>
                   </thead>
@@ -1353,21 +908,17 @@
                     </tr>
                   </tbody>
                 </table>
-                <p style="margin-top: 12px; font-size: 13px; font-weight: 600; color: #2f4f30;">
-                  2026 Toplam Kira: <strong>${fmt(kira2026Planlanan)}</strong> &nbsp;|&nbsp; Yeni Güncel Aylık Kira: <strong>${kiraAylikGuncel > 0 ? fmt(kiraAylikGuncel) : '-'}</strong>${kiraArtisAyi !== '-' ? ' (Artış ' + kiraArtisAyi + ' ayından itibaren)' : ''}
+                <p style="margin-top: 15px; font-size: 12px; line-height: 1.6;">
+                  <strong>2026 Yılı Kira Artışı Planlaması:</strong><br>
+                  2026 yılında kira artışınız <strong>${kiraArtisAyi}</strong> ayında olacaktır. Bütçe planlamasına göre kira artışınız 
+                  <strong>${fmt(maksimumKiraArtisi)}</strong> maximum bu kadar olmalıdır. Bu tutar, toplam bütçe planlamasındaki kira 
+                  kaleminin yaklaşık <strong>${personelKiraPayi.toFixed(2)}%</strong>'ini oluşturmaktadır.
                 </p>
-                <p style="margin-top: 15px; font-size: 12px; line-height: 1.7;">
-                  <strong>2026 Yılı Kira Artışı Planlaması (Kurum Bütçe / Proje Planlaması):</strong><br>
-                  Bu kısım, kurum bütçe planlaması ile ilgili bir proje planlamasıdır. Gösterilen tutarlar, kira artışına dair kurumca görülen <strong>maksimum tahmini bütçe</strong> çerçevesindedir.
-                  ${kiraArtisAyi !== '-' ? '2026 yılında kira artışının <strong>' + kiraArtisAyi + '</strong> ayından itibaren geçerli olması öngörülmektedir; bu tarihten sonra aylık kira ödemeniz yukarıdaki <strong>Yeni Güncel Aylık Kira</strong> tutarına yükselecektir. ' : ''}
-                  Kurum 2026 bütçe planlamasına göre sizin için kira kaleminde öngörülen <strong>yıllık toplam tahmini bütçe</strong> <strong>${fmt(maksimumKiraArtisi)}</strong> olup, bu tutar tüm personel için ayrılan toplam kira bütçesinin yaklaşık <strong>%${personelKiraPayi.toFixed(2)}</strong> payına karşılık gelmektedir.
+                <p style="margin-top: 10px; font-size: 11px; color: #555; font-style: italic;">
+                  Not: Kira artışları; personel giderlerinin en önemli kalemlerinden biridir. Planlanan tutarın aşılmaması için 
+                  düzenli takip ve bütçe kontrolü önemlidir.
                 </p>
-                <div style="margin-top: 14px; padding: 12px 14px; background: #f8e8e0; border-left: 4px solid #8b2500; font-size: 12px; line-height: 1.6; color: #2c2c2c;">
-                  <strong style="color: #8b2500;">Önemli:</strong> Kira artışları personel giderlerinin en büyük kalemlerinden biridir. Planlanan tutarın aşılmaması için aylık kira takibi ve bütçe kontrolünün düzenli yapılması önemle tavsiye edilir.
-                </div>
               `;
-            }
-
             }
 
           } catch (e) {
@@ -1375,6 +926,9 @@
             const hataMesaji = '<p style="color: #000;">Hata: ' + (e.message || String(e)) + '</p>';
             
             // Sadece var olan elementlere eriş
+            const kpiEl = $('kpiContainer');
+            if (kpiEl) kpiEl.innerHTML = '';
+            
             const genelBakışEl = $('genelBakışTablosuBody');
             if (genelBakışEl) genelBakışEl.innerHTML = '<tr><td colspan="2">' + hataMesaji + '</td></tr>';
             
@@ -1424,6 +978,4 @@
 
       html2pdf().set(opt).from(element).save();
     }
-  </script>
-</body>
-</html>
+  
