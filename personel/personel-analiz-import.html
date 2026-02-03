@@ -379,7 +379,7 @@
             <input type="file" id="fileOdeme" accept=".csv" />
             <div style="font-size: 48px; margin-bottom: 12px;">📤</div>
             <div style="font-weight: 600; margin-bottom: 8px;">CSV Dosyası Seçin veya Sürükleyin</div>
-            <div class="hint">personel_uid, personel_adi_soyadi, yil, ay, tip, tutar, verildigi_tarih — tip: hediye, kira, cocuk, yakacak, ikramiye, elbise, asker, yeni_dogan, yol_yardimi, dugun</div>
+            <div class="hint">personel_uid, personel_adi_soyadi, yil, ay, tip, tutar, verildigi_tarih — tip: hediye, kira, cocuk, yakacak, ikramiye, elbise, asker, yeni_dogan, yol_yardimi, dugun, sigorta (sigorta için verildigi_tarih boş bırakılır, otomatik null)</div>
           </div>
           <div class="file-info" id="infoOdeme" style="display: none;"></div>
           <div class="csv-paste-wrap">
@@ -570,7 +570,7 @@
     const CSV_SCHEMAS = {
       odeme: {
         required: ['personel_uid', 'personel_adi_soyadi', 'yil', 'ay', 'tip', 'tutar', 'verildigi_tarih'],
-        tipValues: ['hediye', 'kira', 'cocuk', 'yakacak', 'ikramiye', 'elbise', 'asker', 'yeni_dogan', 'yol_yardimi', 'dugun'],
+        tipValues: ['hediye', 'kira', 'cocuk', 'yakacak', 'ikramiye', 'elbise', 'asker', 'yeni_dogan', 'yol_yardimi', 'dugun', 'sigorta'],
         table: 'personel_odeme_takvim'
       },
       hedef: {
@@ -908,7 +908,7 @@
         'yakacak': 'yakacak', 'ikramiye': 'ikramiye', 'elbise': 'elbise', 'asker': 'asker',
         'yeni doğan': 'yeni_dogan', 'yeni_dogan': 'yeni_dogan',
         'yol yardımı': 'yol_yardimi', 'yol yardimi': 'yol_yardimi', 'yol_yardimi': 'yol_yardimi',
-        'düğün': 'dugun', 'dugun': 'dugun'
+        'düğün': 'dugun', 'dugun': 'dugun', 'sigorta': 'sigorta'
       };
       return tipMap[normalized] || normalized;
     }
@@ -926,6 +926,8 @@
 
       for (const field of schema.required) {
         if (isEmptyRequired(row[field])) {
+          // Sigorta tipinde verildigi_tarih zorunlu değil (otomatik null)
+          if (type === 'odeme' && field === 'verildigi_tarih' && normalizeTip(row.tip) === 'sigorta') continue;
           errors.push({ row: rowNum, field, message: `${field} boş olamaz` });
         }
       }
@@ -934,6 +936,7 @@
         const yil = parseInt(row.yil, 10);
         const ay = parseInt(row.ay, 10);
         const tutar = parseTutar(row.tutar);
+        const normalizedTip = normalizeTip(row.tip);
 
         if (isNaN(yil) || yil < 2020 || yil > 2030) {
           errors.push({ row: rowNum, field: 'yil', message: 'Yıl geçersiz (2020-2030 arası olmalı)' });
@@ -944,13 +947,15 @@
         if (isNaN(tutar) || tutar < 0) {
           errors.push({ row: rowNum, field: 'tutar', message: 'Tutar geçersiz' });
         }
-        const normalizedTip = normalizeTip(row.tip);
         if (!normalizedTip || !schema.tipValues.includes(normalizedTip)) {
           errors.push({ row: rowNum, field: 'tip', message: `Tip geçersiz: "${row.tip}" (Beklenen: ${schema.tipValues.join(', ')})` });
         }
-        const normalizedDate = normalizeDate(row.verildigi_tarih);
-        if (!normalizedDate) {
-          errors.push({ row: rowNum, field: 'verildigi_tarih', message: 'Tarih formatı geçersiz (DD MM YYYY veya YYYY-MM-DD)' });
+        // Sigorta dışı tiplerde verildigi_tarih zorunlu ve geçerli format olmalı
+        if (normalizedTip !== 'sigorta') {
+          const normalizedDate = normalizeDate(row.verildigi_tarih);
+          if (!normalizedDate) {
+            errors.push({ row: rowNum, field: 'verildigi_tarih', message: 'Tarih formatı geçersiz (DD MM YYYY veya YYYY-MM-DD)' });
+          }
         }
       } else if (type === 'hedef') {
         const yil = parseInt(row.yil, 10);
@@ -991,9 +996,10 @@
     // Transform row to database format
     function transformRow(type, row) {
       if (type === 'odeme') {
-        // Tip ve tarih normalizasyonu
+        // Tip ve tarih normalizasyonu; sigorta için verildigi_tarih otomatik null
         const normalizedTip = normalizeTip(row.tip) || String(row.tip || '').trim().toLocaleLowerCase('tr-TR');
-        const normalizedDate = normalizeDate(row.verildigi_tarih) || String(row.verildigi_tarih || '').trim();
+        const isSigorta = normalizedTip === 'sigorta';
+        const normalizedDate = isSigorta ? null : (normalizeDate(row.verildigi_tarih) || String(row.verildigi_tarih || '').trim());
 
         return {
           personel_uid: String(row.personel_uid || '').trim(),
@@ -1002,7 +1008,7 @@
           ay: parseInt(row.ay, 10),
           tip: normalizedTip,
           tutar: parseTutar(row.tutar),
-          verildigi_tarih: normalizedDate
+          verildigi_tarih: isSigorta ? null : normalizedDate
         };
       } else if (type === 'hedef') {
         const h = parseTutar(row.hedef);
@@ -1333,6 +1339,7 @@
         csv += `uuid-123${sep}Ahmet Yılmaz${sep}2023${sep}1${sep}hediye${sep}5000,00${sep}2023-02-05\n`;
         csv += `uuid-123${sep}Ahmet Yılmaz${sep}2023${sep}1${sep}kira${sep}2000,00${sep}2023-01-03\n`;
         csv += `uuid-123${sep}Ahmet Yılmaz${sep}2023${sep}6${sep}dugun${sep}3000,00${sep}2023-06-20\n`;
+        csv += `uuid-456${sep}Mehmet Demir${sep}2023${sep}2${sep}sigorta${sep}1200,00${sep}\n`;
         csv += `uuid-456${sep}Mehmet Demir${sep}2023${sep}2${sep}hediye${sep}5500,00${sep}2023-03-05\n`;
       } else if (type === 'hedef') {
         csv = `personel${sep}uid${sep}yil${sep}sira${sep}kategori${sep}tip${sep}hedef${sep}tutar${sep}kurban_adedi\n`;

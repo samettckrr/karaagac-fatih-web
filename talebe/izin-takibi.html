@@ -12,9 +12,11 @@
   :root{
     --gap-lg:20px; --gap:14px; --gap-sm:10px;
   }
-  /* Body - app-shell.css'den gelecek (arka plan, padding, font vs.) */
+  /* Body - app-shell.css ile uyumlu (hedef-grafik, iftar-sahur-yonetim gibi) */
   body{
     padding-top:var(--appbar-h) !important;
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 
   /* Appbar - app-shell.css ile uyumlu */
@@ -226,46 +228,104 @@
   .option-card.active{ outline:2px solid color-mix(in oklab, var(--brand) 45%, transparent); background:rgba(14,165,233,.12) }
 </style>
 
-<!-- Firebase (compat) -->
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
-<script src="../js/firebase/firebase-init.js"></script>
-<script defer src="../js/ortak.js"></script>
+  <!-- Supabase (Auth + sayfa manifesti için) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="../src/supabase.js"></script>
+  <script src="../src/supabase-auth-wrapper.js"></script>
+  <script src="../src/supabase-db-wrapper.js"></script>
+
+  <script>
+    // window.auth'u Supabase Auth Wrapper ile initialize et (ortak.js için gerekli)
+    (function() {
+      function initAuth() {
+        if (typeof window.getSupabaseAuth === 'function') {
+          window.auth = window.getSupabaseAuth();
+          return true;
+        }
+        return false;
+      }
+      function waitAndTriggerInit() {
+        if (typeof window.auth !== 'undefined' && window.auth && typeof window.initAppShellAuth === 'function') {
+          try { window.initAppShellAuth(); } catch (e) { console.error('initAppShellAuth hatası:', e); }
+        } else if (typeof window.initAppShellAuth === 'function') {
+          setTimeout(waitAndTriggerInit, 100);
+        }
+      }
+      if (!initAuth()) {
+        let retries = 0;
+        const interval = setInterval(function() {
+          retries++;
+          if (initAuth() || retries >= 50) {
+            clearInterval(interval);
+            if (window.auth) setTimeout(waitAndTriggerInit, 200);
+          }
+        }, 100);
+      } else {
+        setTimeout(waitAndTriggerInit, 200);
+      }
+    })();
+  </script>
+
+  <!-- Firebase Firestore (izinler, yoklama, talebeler verisi için - Supabase şemasında yok) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDyzADuLzkszFMTnfKwiWgsVnY7CxDngv0",
+      authDomain: "karaagacfthdaimi.firebaseapp.com",
+      projectId: "karaagacfthdaimi",
+      storageBucket: "karaagacfthdaimi.firebasestorage.app",
+      messagingSenderId: "688702235131",
+      appId: "1:688702235131:web:1ad367ea6fb5136e83ab5e"
+    };
+    if (typeof firebase !== 'undefined' && !firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+      window.db = firebase.firestore();
+    }
+  </script>
+
+  <!-- Ortak JS (navigation, toast, sayfa manifesti) -->
+  <script src="../js/ortak.js"></script>
 </head>
 <body>
 
-<!-- APPBAR -->
-<div class="appbar">
-  <div class="brand" onclick="location.href='../panel.html'">
-    <img src="../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
-  </div>
-  <nav class="nav-center"><ul class="nav-list" id="navMain"></ul></nav>
-  <div class="nav-right">
-    <button class="btn hamb" id="hamburger" title="Menü">☰</button>
-    <div class="nav-item">
-      <button class="iconbtn" id="btnNotif" title="Bildirimler">🔔
-        <span class="badge" id="notifBadge" style="display:none">0</span>
-      </button>
-      <div class="dropdown drop-right" id="notifDropdown">
-        <div class="muted" style="padding:6px 8px">Son bildirimler</div>
-        <div id="notifList" style="max-height:300px;overflow:auto"></div>
+  <!-- ÜST APPBAR (hedef-grafik / iftar-sahur-yonetim ile aynı yapı) -->
+  <div class="appbar">
+    <div class="brand" onclick="location.href='../panel.html'">
+      <img src="../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
+    </div>
+    <nav class="nav-center">
+      <ul class="nav-list" id="navMain"></ul>
+    </nav>
+    <div class="nav-right">
+      <button class="btn hamb" id="hamburger" title="Menü">☰</button>
+
+      <!-- Bildirim -->
+      <div class="nav-item">
+        <button class="iconbtn" id="btnNotif" title="Bildirimler">🔔
+          <span class="badge" id="notifBadge" style="display:none">0</span>
+        </button>
+        <div class="dropdown drop-right" id="notifDropdown" aria-label="Bildirim listesi">
+          <div class="muted" style="padding:6px 8px">Son bildirimler</div>
+          <div id="notifList" class="list" style="max-height:300px;overflow:auto"></div>
+        </div>
+      </div>
+
+      <!-- Profil -->
+      <div class="nav-item">
+        <button class="iconbtn" id="btnProfile" title="Profil">
+          <span class="avatar"></span> <span id="profName" class="muted">Profil</span>
+        </button>
+        <div class="dropdown drop-right" id="profDropdown" aria-label="Profil menüsü">
+          <a href="../diger/kullanici-yonetimi.html">👤 Profil</a>
+          <a href="../diger/sistem-ayarlari.html">⚙️ Sistem Ayarları</a>
+          <a href="#" id="btnLogout">🚪 Çıkış Yap</a>
+        </div>
       </div>
     </div>
-    <div class="nav-item">
-      <button class="iconbtn" id="btnProfile" title="Profil">
-        <span class="avatar"></span> <span id="profName" class="muted">Profil</span>
-      </button>
-      <div class="dropdown drop-right" id="profDropdown">
-        <a href="../diger/kullanici-yonetimi.html" >👤 Profil</a>
-        <a href="../diger/sistem-ayarlari.html" >⚙️ Sistem Ayarları</a>
-        <a href="#" id="btnLogout">🚪 Çıkış Yap</a>
-      </div>
-    </div>
   </div>
-</div>
-<aside class="drawer" id="drawer"></aside>
+  <aside class="drawer" id="drawer"></aside>
+  <div class="toast-container" id="toastContainer"></div>
 
 <!-- CONTENT -->
 <main class="container stack-lg">
@@ -582,26 +642,20 @@
   </div>
 </div>
 
-<!-- Toast Container (ortak.js için) -->
-<div class="toast-container" id="toastContainer"></div>
-
 <script>
-// DOMContentLoaded'da çalıştır - ortak.js yüklenene kadar bekle
+// DOMContentLoaded'da çalıştır - Supabase, ortak.js ve Firestore hazır olana kadar bekle
 document.addEventListener('DOMContentLoaded', function(){
-  // Ortak.js yüklenene kadar bekle
-  function waitForOrtak(callback){
-    if(typeof window.norm !== 'undefined' && typeof window.showToast !== 'undefined' && typeof firebase !== 'undefined'){
+  function waitForReady(callback){
+    if(typeof window.norm !== 'undefined' && typeof window.showToast !== 'undefined' && typeof window.db !== 'undefined'){
       callback();
     }else{
-      setTimeout(()=> waitForOrtak(callback), 50);
+      setTimeout(()=> waitForReady(callback), 50);
     }
   }
-  
-  waitForOrtak(()=>{
+
+  waitForReady(()=>{
 /* ===== Helpers ===== */
-const db=firebase.firestore(), auth=firebase.auth();
-    window.db = db;
-    window.auth = auth;
+const db = window.db; // Firebase Firestore (izinler, yoklama, talebeler)
 const userAgent = navigator.userAgent || '';
 const cihazTipi = ()=> (window.innerWidth<700?'mobile':(window.innerWidth<960?'tablet':'desktop'));
 const tsISO = ()=> new Date().toISOString();
@@ -708,29 +762,21 @@ document.addEventListener('keydown',(e)=>{
 
 /* (İzin dışı alt sekmeler kaldırıldı) */
 
-/* ===== Auth & profil - ortak.js'deki initAppShellAuth kullanılacak ===== */
-let currentUser=null, currentUserName='';
-// Ortak.js'deki auth state change'den sonra çalışacak
+/* ===== Auth & profil - ortak.js initAppShellAuth + Supabase ===== */
+let currentUser = null, currentUserName = '';
 window.initPage = async function(){
-  // Sayfa özel init - ortak.js auth tamamlandıktan sonra çalışır
-  currentUser = window.auth?.currentUser || firebase.auth().currentUser || null;
-  // Profil adını ortak.js'den al (profName elementine zaten yazılmış olacak)
-    const profEl = document.getElementById('profName');
-  if(profEl && profEl.textContent){
+  // currentUser: Supabase Auth Wrapper'dan (Firebase uyumlu: uid, email)
+  currentUser = window.auth?.currentUser || null;
+  const profEl = document.getElementById('profName');
+  if (profEl && profEl.textContent) {
     const nameText = profEl.textContent.replace('👤 ', '').trim();
     currentUserName = nameText || '';
-  }else if(currentUser){
-    // Fallback: email'den al
+  } else if (currentUser) {
     const emailPart = currentUser.email?.split('@')[0] || '';
-    currentUserName = emailPart.charAt(0).toUpperCase() + emailPart.slice(1);
-    }
-  // Yetkileri ortak.js'den al (window'dan direkt kullan)
-  // window.CURRENT_ALLOW ve window.CURRENT_DENY ortak.js'de tanımlı
-
-    // İzin yetki durumunu değerlendir
-    applyIzinRights();
-    // Aktif izinleri çek
-    loadAktifIzinler();
+    currentUserName = emailPart ? emailPart.charAt(0).toUpperCase() + emailPart.slice(1) : '';
+  }
+  applyIzinRights();
+  loadAktifIzinler();
 };
 
 /* ===== Bildirimler - ortak.js'deki loadNotifications kullanılacak ===== */
@@ -1874,7 +1920,7 @@ function iznOpenModal(r, origin='islem'){
   const giris = document.getElementById('izn-giris-saat');
   const perWrap = document.getElementById('izn-personel-wrap');
   if(perWrap){ perWrap.style.display = (origin==='duzenle') ? '' : 'none'; }
-  if(selPer && origin==='duzenle'){ selPer.value = r.personel || (currentUserName || (auth.currentUser?.email||'')); }
+  if(selPer && origin==='duzenle'){ selPer.value = r.personel || (currentUserName || (window.auth?.currentUser?.email||'')); }
   if(giris){
     if(origin==='islem'){ giris.value = formatLocalInput(new Date()); }
     else { giris.value = r.islemISO ? formatLocalInput(new Date(r.islemISO)) : ''; }
@@ -1982,7 +2028,7 @@ document.getElementById('iznListeYenile')?.addEventListener('click', ()=> iznRen
       const opts = [];
       qs.forEach(d=>{ const x=d.data()||{}; const ad=(x.adSoyad||'').trim() || (x.email||''); if(ad) opts.push(ad); });
       opts.sort((a,b)=>a.localeCompare(b,'tr'));
-      const me = currentUserName || (auth.currentUser?.email||'');
+      const me = currentUserName || (window.auth?.currentUser?.email||'');
       if(selIzin) selIzin.innerHTML = '<option value="">— Seçiniz —</option>' + [me, ...opts.filter(o=>o!==me)]
         .map(n=>`<option value="${n}">${n}</option>`).join('');
       if(selIslem) selIslem.innerHTML = '<option value="">— Seçiniz —</option>' + [me, ...opts.filter(o=>o!==me)]
@@ -2003,7 +2049,7 @@ document.getElementById('iznt-devre')?.addEventListener('change', async ()=>{
 
 // set default devre for işlem&rapor
 const iznSelDevre = document.getElementById('izn-selDevre'); if(iznSelDevre){ __IZN_STATE.devre = iznSelDevre.value||__IZN_STATE.devre; }
-  }); // waitForOrtak callback kapat
+  }); // waitForReady callback kapat
 }); // DOMContentLoaded kapat
 </script>
 </body>

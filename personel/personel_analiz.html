@@ -458,6 +458,7 @@
                 <option value="yeni_dogan">Yeni Doğan</option>
                 <option value="yol_yardimi">Yol Yardımı</option>
                 <option value="dugun">Düğün</option>
+                <option value="sigorta">Sigorta</option>
               </select>
             </div>
             <div class="f">
@@ -525,11 +526,11 @@
         <div class="odeme-aciklama-grid">
           <div class="aciklama-item">
             <strong>🎁 Hediye Ödemesi</strong>
-            <p>Örnek "Mayıs hediyesi" için ayın takibine (Haziran) bir sonraki ayın 1-5 arasında ödeme yapılması normal vakittir.</p>
+            <p>Örnek "Mayıs hediyesi" için ayın takibine (Haziran) bir sonraki ayın 1-20 arasında ödeme yapılması normal vakittir.</p>
             <div class="ornek">
-              <strong>Örnek:</strong> Mayıs hediyesi için <strong style="color: var(--ok);">normal ödeme: Haziran 1-5 arası</strong><br>
+              <strong>Örnek:</strong> Mayıs hediyesi için <strong style="color: var(--ok);">normal ödeme: Haziran 1-20 arası</strong><br>
               • Mayıs ayında ödeme → <strong style="color: var(--warn);">Erken ödeme</strong><br>
-              • Haziran 6'sından sonra ödeme → <strong style="color: var(--bad);">Gecikmeli ödeme</strong>
+              • Haziran 21'inden sonra ödeme → <strong style="color: var(--bad);">Gecikmeli ödeme</strong>
             </div>
           </div>
 
@@ -545,11 +546,11 @@
 
           <div class="aciklama-item">
             <strong>👶 Çocuk ve Yol Yardımı</strong>
-            <p>Hediye ödemesi gibidir. Örnek "Mayıs çocuk yardımı" için Haziran 1-5 arasında ödeme yapılması normal vakittir.</p>
+            <p>Hediye ödemesi gibidir. Örnek "Mayıs çocuk yardımı" için Haziran 1-20 arasında ödeme yapılması normal vakittir.</p>
             <div class="ornek">
-              <strong>Örnek:</strong> Mayıs çocuk/yol yardımı için <strong style="color: var(--ok);">normal ödeme: Haziran 1-5 arası</strong><br>
+              <strong>Örnek:</strong> Mayıs çocuk/yol yardımı için <strong style="color: var(--ok);">normal ödeme: Haziran 1-20 arası</strong><br>
               • Mayıs ayında ödeme → <strong style="color: var(--warn);">Erken ödeme</strong><br>
-              • Haziran 6'sından sonra ödeme → <strong style="color: var(--bad);">Gecikmeli ödeme</strong>
+              • Haziran 21'inden sonra ödeme → <strong style="color: var(--bad);">Gecikmeli ödeme</strong>
             </div>
           </div>
 
@@ -1012,7 +1013,11 @@
       if (yil) params.append('yil', yil);
       if (personel) params.append('personel', personel);
       
-      window.open(`pdf-performans/personelperformans.html?${params.toString()}`, '_blank');
+      // Tüm personel seçiliyse tüm personel özet raporu, değilse kişi bazlı performans raporu aç
+      const url = personel
+        ? `pdf-performans/personelperformans.html?${params.toString()}`
+        : `pdf-performans/tumPersonelPerformans.html?${params.toString()}`;
+      window.open(url, '_blank');
     };
 
     // DOMContentLoaded'da çalıştır - ortak.js yüklenene kadar bekle
@@ -1256,12 +1261,16 @@
 
         // Ödeme durumu hesaplama fonksiyonu
         function hesaplaDurum(verildigiTarih, yil, ay, tip) {
+          // Sigorta: verildiği tarih kullanılmaz (null), durum hesaplanmaz
+          if (tip === 'sigorta') return { durum: 'Sigorta', renk: 'var(--muted)' };
+          if (verildigiTarih == null || verildigiTarih === '') return { durum: 'Bilinmiyor', renk: 'var(--muted)' };
+
           const odemeTarihi = new Date(verildigiTarih);
           const odemeYil = odemeTarihi.getFullYear();
           const odemeAy = odemeTarihi.getMonth() + 1;
           const odemeGun = odemeTarihi.getDate();
 
-          // Hediye, Çocuk, Yol Yardımı: Sonraki ayın 1-5'i normal
+          // Hediye, Çocuk, Yol Yardımı: Sonraki ayın 1-20'si normal
           const hediyeTipleri = ['hediye', 'cocuk', 'yol_yardimi'];
           // Kira: Aynı ayın 1-5'i normal
           const kiraTipleri = ['kira'];
@@ -1269,7 +1278,7 @@
           const esnekTipleri = ['ikramiye', 'asker', 'yeni_dogan', 'dugun', 'yakacak', 'elbise'];
 
           if (hediyeTipleri.includes(tip)) {
-            // Sonraki ayın 1-5'i normal
+            // Sonraki ayın 1-20'si normal
             const normalBaslangicAy = ay + 1;
             let normalBaslangicYil = yil;
             let nextAy = normalBaslangicAy;
@@ -1279,8 +1288,8 @@
               nextYil++;
             }
 
-            // Ödeme tarihi normal aralıkta mı? (Sonraki ayın 1-5'i)
-            if (odemeYil === nextYil && odemeAy === nextAy && odemeGun >= 1 && odemeGun <= 5) {
+            // Ödeme tarihi normal aralıkta mı? (Sonraki ayın 1-20'si)
+            if (odemeYil === nextYil && odemeAy === nextAy && odemeGun >= 1 && odemeGun <= 20) {
               return { durum: 'Normal', renk: 'var(--ok)' };
             }
 
@@ -1289,9 +1298,9 @@
               return { durum: 'Erken', renk: 'var(--warn)' };
             }
 
-            // Gecikmeli ödeme (sonraki ayın 6'sından sonra)
+            // Gecikmeli ödeme (sonraki ayın 21'inden sonra)
             if (odemeYil > nextYil || (odemeYil === nextYil && odemeAy > nextAy) || 
-                (odemeYil === nextYil && odemeAy === nextAy && odemeGun > 5)) {
+                (odemeYil === nextYil && odemeAy === nextAy && odemeGun > 20)) {
               return { durum: 'Gecikmeli', renk: 'var(--bad)' };
             }
           } else if (kiraTipleri.includes(tip)) {
@@ -1356,7 +1365,8 @@
             asker: 'Asker',
             yeni_dogan: 'Yeni Doğan',
             yol_yardimi: 'Yol Yardımı',
-            dugun: 'Düğün'
+            dugun: 'Düğün',
+            sigorta: 'Sigorta'
           };
 
           const ayLabels = ['', 'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 
@@ -1448,7 +1458,8 @@
             asker: 'Asker',
             yeni_dogan: 'Yeni Doğan',
             yol_yardimi: 'Yol Yardımı',
-            dugun: 'Düğün'
+            dugun: 'Düğün',
+            sigorta: 'Sigorta'
           };
 
           const ayLabels = ['', 'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 

@@ -2,909 +2,483 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8"/>
-  <title>Genel Mizan | Muhasebe</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>Aylık Giderler & Ay Sonu Raporu | Genel Mizan</title>
   <link rel="icon" href="../img/logo.png"/>
+  <link rel="stylesheet" href="../css/app-shell.css" />
 
   <style>
-    /* =====================  AÇIK TEMA & MOBİL ÖNCELİK  ===================== */
-    :root{
-      --bg:#f7fafc; --surface:#ffffff; --text:#0f172a; --muted:#475569; --stroke:#e2e8f0;
-      --brand:#0ea5e9; --brand2:#6366f1; --ok:#16a34a; --warn:#f59e0b; --bad:#ef4444;
-      --radius:14px; --shadow:0 8px 24px rgba(2,6,23,.08);
+    /* Sayfa özel: app-shell.css üst panel/arka plan kullanır */
+    body {
+      padding-top: var(--appbar-h) !important;
+      overflow-x: hidden;
+      overflow-y: auto;
     }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,Segoe UI,Arial}
+    @media (min-width: 1025px) {
+      .drawer { transform: translateX(100%) !important; }
+      .drawer.open { transform: translateX(0) !important; }
+    }
+    .wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 16px;
+      display: grid;
+      gap: 16px;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 768px) {
+      .wrap { grid-template-columns: 1fr 1fr; }
+      .wrap .span-full { grid-column: 1 / -1; }
+    }
+    @media (min-width: 1024px) {
+      .wrap { grid-template-columns: 380px 1fr; gap: 24px; }
+    }
+    @media (max-width: 768px) { .wrap { padding: 12px; gap: 12px; } }
 
-    /* Üst Bar */
-    .appbar{position:sticky;top:0;z-index:5;height:56px;background:#ffffffd9;
-      backdrop-filter:saturate(120%) blur(6px);border-bottom:1px solid var(--stroke);
-      display:flex;align-items:center;justify-content:space-between;padding:0 12px}
-    .appbar h1{margin:0;font-size:17px;font-weight:800}
-    .btn{appearance:none;border:1px solid var(--stroke);background:#fff;border-radius:12px;padding:9px 12px;cursor:pointer;color:var(--text)}
-    .btn:hover{background:#f8fafc}
-    .btn.acc{background:linear-gradient(90deg,var(--brand),var(--brand2));border:0;color:#fff;font-weight:700}
-    .btn.ok{background:linear-gradient(90deg,#22c55e,#16a34a);border:0;color:#fff}
-    .btn.warn{background:linear-gradient(90deg,#fbbf24,#f59e0b);border:0;color:#1f2937}
-    .btn.bad{background:linear-gradient(90deg,#fda4af,#ef4444);border:0;color:#fff}
-
-    /* Yerleşim (mobil öncelik) */
-    .wrap{max-width:1250px;margin:16px auto;padding:0 12px;display:grid;gap:12px}
-    .row{display:grid;gap:12px}
-    /* Küçük ekran: tek sütun; md: 2; lg: 3/4 */
-    @media(min-width:700px){.cols-2{grid-template-columns:1fr 1fr}}
-    @media(min-width:980px){.cols-3{grid-template-columns:1fr 1fr 1fr}}
-    @media(min-width:1180px){.cols-4{grid-template-columns:1fr 1fr 1fr 1fr}}
-
-    /* Kart */
-    .card{background:var(--surface);border:1px solid var(--stroke);border-radius:var(--radius);box-shadow:var(--shadow)}
-    .card .hd{padding:12px;border-bottom:1px solid var(--stroke);display:flex;align-items:center;justify-content:space-between;gap:8px}
-    .card .hd h3{margin:0;font-size:15px}
-    .card .bd{padding:12px}
-    .muted{color:var(--muted)}
-    .hint{font-size:12px;color:var(--muted)}
-    .divider{height:1px;background:var(--stroke);margin:8px 0}
-
-    /* Formlar */
-    label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
-    input,select,textarea{width:100%;padding:10px;border-radius:12px;border:1px solid var(--stroke);background:#fff;color:var(--text)}
-    input[type="date"]{padding:8px 10px}
-    .grid-2{display:grid;gap:10px}
-    @media(min-width:700px){.grid-2{grid-template-columns:1fr 1fr}}
-
-    /* Tablo */
-    table{width:100%;border-collapse:collapse}
-    th,td{padding:9px;border-bottom:1px solid var(--stroke);text-align:left;vertical-align:top}
-    thead th{background:#f1f5f9;font-weight:700}
-    tr:hover{background:#f8fafc}
-    .scroll-x{overflow:auto}
-
-    /* Rozetler */
-    .pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 8px;font-size:12px;border:1px solid var(--stroke)}
-    .pill.gelir{background:#ecfdf5;border-color:#bbf7d0;color:#14532d}
-    .pill.gider{background:#fff1f2;border-color:#fecdd3;color:#7f1d1d}
-    .pill.tah{background:#eef2ff;border-color:#c7d2fe;color:#1e1b4b}
-
-    /* Modal */
-    .modal{position:fixed;inset:0;background:rgba(15,23,42,.35);display:none;align-items:center;justify-content:center;padding:12px}
-    .modal .panel{width:min(880px,100%);max-height:90vh;overflow:auto}
-
-    /* Toast */
-    .toast{position:fixed;right:12px;bottom:12px;display:grid;gap:8px;z-index:9}
-    .toast .t{background:#fff;border:1px solid var(--stroke);border-left:6px solid var(--brand);border-radius:10px;padding:10px 12px;box-shadow:var(--shadow)}
-
-    /* Erişilebilirlik */
-    .sr-only{position:absolute;width:1px;height:1px;margin:-1px;border:0;padding:0;clip:rect(0 0 0 0);overflow:hidden}
+    .card {
+      background: var(--card);
+      border: 1px solid var(--stroke);
+      border-radius: var(--radius, 14px);
+      box-shadow: var(--shadow, 0 4px 16px rgba(15,23,42,.08));
+    }
+    .card .hd {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--stroke);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .card .hd h3 { margin: 0; font-size: 15px; font-weight: 700; }
+    .card .bd { padding: 16px; }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+    label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 6px; }
+    input, select, textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--stroke);
+      background: var(--card);
+      color: var(--text);
+      font-size: 16px;
+    }
+    select { min-height: 44px; cursor: pointer; }
+    .grid-2 { display: grid; gap: 12px; }
+    @media (min-width: 480px) { .grid-2 { grid-template-columns: 1fr 1fr; } }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid var(--stroke); text-align: left; }
+    thead th { background: var(--surface, #f8f8f8); font-weight: 700; font-size: 13px; }
+    tr:hover { background: var(--pill-hover, #f5f5f5); }
+    .scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .text-right { text-align: right; }
+    .rapor-ana-satir { font-weight: 700; background: rgba(59, 130, 246, 0.08); }
+    .rapor-toplam-satir { font-weight: 800; border-top: 2px solid var(--stroke); }
+    .btn { border: 1px solid var(--stroke); background: var(--pill); color: var(--text); border-radius: 10px; padding: 10px 12px; cursor: pointer; font-weight: 600; }
+    .btn:hover { background: var(--pill-hover); }
+    .btn.ok { background: var(--good, #10b981); color: #fff; border-color: transparent; }
+    .btn.bad { background: var(--bad, #ef4444); color: #fff; border-color: transparent; }
+    .kalem-ana { font-weight: 700; background: var(--surface, #f8f8f8); }
+    .kalem-alt { padding-left: 24px; }
+    .divider { height: 1px; background: var(--stroke); margin: 12px 0; }
   </style>
 </head>
 <body>
-  <!-- ============ APPBAR ============ -->
-  <div class="appbar" role="banner">
-    <h1>📚 Genel Mizan (Muhasebe)</h1>
-    <div style="display:flex;gap:8px">
-      <button class="btn" onclick="history.back()">Geri</button>
-      <button class="btn acc" id="btnLogout">Çıkış</button>
+  <!-- ÜST APPBAR (diğer sayfalarla aynı: nav + sayfa manifesti) -->
+  <div class="appbar">
+    <div class="brand" onclick="location.href='../panel.html'">
+      <img src="../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
     </div>
-  </div>
-
-  <main class="wrap">
-
-    <!-- ===== 1) ÖZET: Bugün / Bu Ay / Bu Yıl (aynı düzen) ===== -->
-    <section class="row cols-3" aria-label="Özet">
-      <!-- Ortak kart şablonu: içinde gelir-gider-tahakkuk-son csv -->
-      <article class="card" aria-live="polite">
-        <div class="hd"><h3>Bugün</h3></div>
-        <div class="bd grid-2">
-          <div><div class="muted">Gelir (cash)</div><div id="sumTodayGelir" style="font-weight:800;font-size:18px">₺0</div></div>
-          <div><div class="muted">Gider (cash)</div><div id="sumTodayGider" style="font-weight:800;font-size:18px">₺0</div></div>
-          <div><div class="muted">Açık Tahakkuk</div><div id="sumTodayTah" style="font-weight:800;font-size:18px">₺0</div></div>
-          <div><div class="muted">Son CSV</div><div id="sumTodayCSV" class="pill">—</div></div>
-        </div>
-      </article>
-      <article class="card" aria-live="polite">
-        <div class="hd"><h3>Bu Ay</h3></div>
-        <div class="bd grid-2">
-          <div><div class="muted">Gelir (cash)</div><div id="sumMonthGelir" style="font-weight:800;font-size:18px">₺0</div></div>
-          <div><div class="muted">Gider (cash)</div><div id="sumMonthGider" style="font-weight:800;font-size:18px">₺0</div></div>
-          <div><div class="muted">Açık Tahakkuk</div><div id="sumMonthTah" style="font-weight:800;font-size:18px">₺0</div></div>
-          <div><div class="muted">Son CSV</div><div id="sumMonthCSV" class="pill">—</div></div>
-        </div>
-      </article>
-      <article class="card" aria-live="polite">
-        <div class="hd"><h3>Bu Yıl</h3></div>
-        <div class="bd grid-2">
-          <div><div class="muted">Gelir (cash)</div><div id="sumYearGelir" style="font-weight:800;font-size:18px">₺0</div></div>
-          <div><div class="muted">Gider (cash)</div><div id="sumYearGider" style="font-weight:800;font-size:18px">₺0</div></div>
-          <div><div class="muted">Açık Tahakkuk</div><div id="sumYearTah" style="font-weight:800;font-size:18px">₺0</div></div>
-          <div><div class="muted">Son CSV</div><div id="sumYearCSV" class="pill">—</div></div>
-        </div>
-      </article>
-    </section>
-
-    <!-- ===== 2) Kategori Yöneticisi + Kategori CSV + İşlem CSV ===== -->
-    <section class="row cols-3">
-      <!-- Kategori Yöneticisi -->
-      <article class="card">
-        <div class="hd"><h3>Kategori Yöneticisi</h3></div>
-        <div class="bd">
-          <div class="grid-2">
-            <div><label>Üst Kategori (path)</label><input id="katParent" placeholder="örn. Kurban"/></div>
-            <div><label>Yeni Kategori Adı</label><input id="katAd" placeholder="Büyükbaş, İftar..."/></div>
-            <div>
-              <label>Tip</label>
-              <select id="katTip"><option value="gelir">gelir</option><option value="gider">gider</option><option value="herikisi">herikisi</option></select>
-            </div>
-            <div style="display:flex;align-items:end"><button class="btn ok" id="btnKatEkle">Ekle</button></div>
-          </div>
-          <div class="divider"></div>
-          <p class="hint">Kayıtlı kategoriler</p>
-          <div class="scroll-x" style="max-height:260px">
-            <table id="tblKat">
-              <thead><tr><th>Path</th><th>Tip</th><th>Sil</th></tr></thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </div>
-      </article>
-
-      <!-- Kategori CSV -->
-      <article class="card">
-        <div class="hd"><h3>Kategori CSV Yükleme</h3></div>
-        <div class="bd">
-          <div class="grid-2">
-            <div><label>CSV Dosyası</label><input type="file" id="csvKat" accept=".csv"/></div>
-            <div style="display:flex;gap:8px;align-items:end">
-              <button class="btn acc" id="btnKatImport">Yükle</button>
-              <a class="btn" id="btnKatSample" href="#" download="kategori-sablon.csv">Şablon</a>
-            </div>
-          </div>
-          <div class="divider"></div>
-          <p class="hint">Başlıklar: <b>path,tip</b> (tip: gelir/gider/herikisi)</p>
-          <div id="katImpRes" class="hint">Hazır.</div>
-        </div>
-      </article>
-
-      <!-- İşlem CSV -->
-      <article class="card">
-        <div class="hd"><h3>İşlem CSV Yükleme (Gelir/Gider)</h3></div>
-        <div class="bd">
-          <div class="grid-2">
-            <div><label>CSV Dosyası</label><input type="file" id="csvFile" accept=".csv"/></div>
-            <div style="display:flex;gap:8px;align-items:end">
-              <button class="btn acc" id="btnImport">İçe Aktar</button>
-              <a class="btn" id="btnSample" href="#" download="islem-sablon.csv">Şablon</a>
-            </div>
-          </div>
-          <div class="divider"></div>
-          <p class="hint">Başlıklar: <b>tarih,yil,tip,kategori_path,personel_kodu,bagisci_vendor_kodu,tutar,adet,tahakkuk,etiketler,varlik_kodu,aciklama,iliski_kodu</b></p>
-          <div aria-live="polite" id="importRes" class="hint">Hazır.</div>
-        </div>
-      </article>
-    </section>
-
-    <!-- ===== 3) Hızlı Giriş + Tahakkuk Tahsilat + Personel Yönetimi ===== -->
-    <section class="row cols-3">
-      <!-- Hızlı İşlem Girişi -->
-      <article class="card">
-        <div class="hd"><h3>Hızlı İşlem Girişi</h3></div>
-        <div class="bd">
-          <form id="frmQuick" class="grid-2">
-            <div>
-              <label for="qTip">Tip</label>
-              <select id="qTip" required>
-                <option value="gelir">Gelir</option><option value="gider">Gider</option>
-              </select>
-            </div>
-            <div>
-              <label for="qTarih">Tarih</label>
-              <input type="date" id="qTarih" required/>
-            </div>
-
-            <div class="grid-2" style="grid-column:1/-1">
-              <div>
-                <label for="qKategoriPath">Kategori (Path)</label>
-                <input id="qKategoriPath" placeholder="Örn: Ramazan>İftar" list="katList" required/>
-                <datalist id="katList"></datalist>
-                <div class="hint">Tip’e göre liste (gelir/gider/herikisi) filtrelenir.</div>
-              </div>
-              <div>
-                <label for="qEtiketler">Alt Etiket(ler)</label>
-                <input id="qEtiketler" placeholder="virgül ile: yakıt,şube-2"/>
-              </div>
-            </div>
-
-            <div><label for="qPersonel">Personel</label><input id="qPersonel" placeholder="ID ya da ad soyad" required/></div>
-            <div><label for="qBV">Bağışçı/Tedarikçi</label><input id="qBV" placeholder="Opsiyonel"/></div>
-
-            <div><label for="qTutar">Tutar (₺)</label><input type="number" step="0.01" id="qTutar" required/></div>
-            <div><label for="qAdet">Adet</label><input type="number" step="1" id="qAdet"/></div>
-
-            <div class="grid-2" style="grid-column:1/-1">
-              <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
-                <input type="checkbox" id="qTahakkuk"/><label for="qTahakkuk" style="margin:0">Tahakkuk (kasayı etkilemez)</label>
-              </div>
-              <div>
-                <label for="qIliski">İlişki Kodu</label>
-                <input id="qIliski" placeholder="örn. RF-00001 (tahakkuksa TRF-00001)"/>
-              </div>
-            </div>
-
-            <div style="grid-column:1/-1">
-              <label for="qAciklama">Açıklama</label>
-              <textarea id="qAciklama" rows="2" placeholder="Kısa not"></textarea>
-            </div>
-
-            <div style="grid-column:1/-1;display:flex;gap:8px;justify-content:end">
-              <button class="btn ok" type="submit">Kaydet</button>
-              <button class="btn" type="reset">Temizle</button>
-            </div>
-          </form>
-        </div>
-      </article>
-
-      <!-- Tahakkuk Tahsilat -->
-      <article class="card">
-        <div class="hd"><h3>Tahakkuk Tahsilat</h3></div>
-        <div class="bd grid-2">
-          <div><label>İlişki Kodu</label><input id="tsIliski" placeholder="(örn. TRF-00001)"/></div>
-          <div><label>Tutar (₺)</label><input id="tsTutar" type="number" step="0.01"/></div>
-          <div><label>Kategori (ops.)</label><input id="tsPath" list="katList" placeholder="Tahsil kaydı için kategori"/></div>
-          <div style="display:flex;align-items:end;gap:8px">
-            <button class="btn ok" id="btnTahsil">Tahsil Et</button>
-          </div>
-          <div class="hint" id="tsRes">Açık tahakkuktan düşer + kasa kaydı oluşturur.</div>
-        </div>
-      </article>
-
-      <!-- Personel Yönetimi -->
-      <article class="card">
-        <div class="hd"><h3>Personel Yönetimi</h3></div>
-        <div class="bd">
-          <div class="grid-2">
-            <div><label>Personel ID</label><input id="pId" placeholder="P001" /></div>
-            <div><label>Ad Soyad</label><input id="pAd" placeholder="Ad Soyad"/></div>
-            <div>
-              <label>Durum</label>
-              <select id="pDurum"><option value="aktif">aktif</option><option value="pasif">pasif</option></select>
-            </div>
-            <div style="display:flex;align-items:end;gap:8px">
-              <button class="btn ok" id="btnPerKaydet">Kaydet/Güncelle</button>
-              <button class="btn" id="btnPerTemizle">Temizle</button>
-            </div>
-          </div>
-          <div class="divider"></div>
-          <div class="scroll-x" style="max-height:240px">
-            <table id="tblPer">
-              <thead><tr><th>ID</th><th>Ad Soyad</th><th>Durum</th><th>Sil</th></tr></thead>
-              <tbody></tbody>
-            </table>
-          </div>
-          <p class="hint">İşlem girişlerinde personel ID/ad eşleşmesi için referans.</p>
-        </div>
-      </article>
-    </section>
-
-    <!-- ===== 4) Bütçe Planı + Bütçe Pay Et + İşlem Filtreleri ===== -->
-    <section class="row cols-3">
-      <!-- Bütçe Planı -->
-      <article class="card">
-        <div class="hd"><h3>Bütçe Planı (Oluştur/Güncelle)</h3></div>
-        <div class="bd">
-          <form id="frmButce" class="grid-2">
-            <div><label>Yıl</label><input id="bYil" type="number" placeholder="2026" required/></div>
-            <div><label>Tip</label>
-              <select id="bTip"><option value="gelir">gelir</option><option value="gider">gider</option></select>
-            </div>
-            <div style="grid-column:1/-1"><label>Path</label>
-              <input id="bPath" placeholder="Kurban veya Ramazan>İftar" required list="katList"/>
-            </div>
-            <div><label>Hedef Tutar (₺)</label><input id="bHedef" type="number" step="0.01" required/></div>
-            <div><label>Not (ops.)</label><input id="bNot" placeholder="Açıklama"/></div>
-            <div style="grid-column:1/-1;display:flex;justify-content:end;gap:8px">
-              <button class="btn ok" type="submit">Kaydet</button>
-            </div>
-          </form>
-        </div>
-      </article>
-
-      <!-- Bütçe → Personele Pay Et -->
-      <article class="card">
-        <div class="hd"><h3>Bütçe → Personele Pay Et</h3></div>
-        <div class="bd grid-2">
-          <div><label>Yıl</label><input id="bpYil" type="number" placeholder="2026"/></div>
-          <div><label>Tip</label><select id="bpTip"><option value="gelir">gelir</option><option value="gider">gider</option></select></div>
-          <div><label>Kategori (üst/alt)</label><input id="bpPath" list="katList" placeholder="Ramazan>İftar"/></div>
-          <div><label>Personel ID</label><input id="bpPer" placeholder="P001"/></div>
-          <div><label>Miktar (₺)</label><input id="bpMiktar" type="number" step="0.01"/></div>
-          <div><label>Yüzde (%)</label><input id="bpYuzde" type="number" step="0.01" placeholder="Miktar boşsa yüzdeden hesap"/></div>
-          <div style="grid-column:1/-1;display:flex;justify-content:end"><button class="btn ok" id="btnButcePay">Kaydet</button></div>
-          <div class="hint">Miktar doluysa yüzdeyi sistem hesaplar; yüzde doluysa miktarı sistem hesaplar.</div>
-        </div>
-      </article>
-
-      <!-- İşlem Filtreleri -->
-      <article class="card">
-        <div class="hd"><h3>İşlem Filtreleri</h3></div>
-        <div class="bd grid-2">
-          <div><label>Tarih (Başlangıç)</label><input type="date" id="fStart"/></div>
-          <div><label>Tarih (Bitiş)</label><input type="date" id="fEnd"/></div>
-          <div>
-            <label>Tip</label>
-            <select id="fTip"><option value="">Hepsi</option><option value="gelir">Gelir</option><option value="gider">Gider</option></select>
-          </div>
-          <div><label>Kategori (path)</label><input id="fPath" placeholder="Örn: Kurban>Büyükbaş"/></div>
-          <div><label>Personel</label><input id="fPersonel" placeholder="Ad soyad veya ID"/></div>
-          <div style="display:flex;gap:8px;align-items:end">
-            <button class="btn ok" id="btnFiltreUygula">Uygula</button>
-            <button class="btn" id="btnFiltreTemizle">Temizle</button>
-          </div>
-        </div>
-      </article>
-    </section>
-
-    <!-- ===== 5) Son İşlemler ===== -->
-    <section class="card" aria-label="Son İşlemler">
-      <div class="hd">
-        <h3>Son İşlemler</h3>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button class="btn" id="btnExcel">CSV Dışa Aktar</button>
-          <span class="muted" id="cntInfo">0 kayıt</span>
+    <nav class="nav-center">
+      <ul class="nav-list" id="navMain"></ul>
+    </nav>
+    <div class="nav-right">
+      <button class="btn hamb" id="hamburger" title="Menü">☰</button>
+      <div class="nav-item">
+        <button class="iconbtn" id="btnNotif" title="Bildirimler">🔔
+          <span class="badge" id="notifBadge" style="display:none">0</span>
+        </button>
+        <div class="dropdown drop-right" id="notifDropdown" aria-label="Bildirim listesi">
+          <div class="muted" style="padding:6px 8px">Son bildirimler</div>
+          <div id="notifList" class="list" style="max-height:300px;overflow:auto"></div>
         </div>
       </div>
+      <div class="nav-item">
+        <button class="iconbtn" id="btnProfile" title="Profil">
+          <span class="avatar"></span> <span id="profName" class="muted">Profil</span>
+        </button>
+        <div class="dropdown drop-right" id="profDropdown" aria-label="Profil menüsü">
+          <a href="../diger/kullanici-yonetimi.html">👤 Profil</a>
+          <a href="../diger/sistem-ayarlari.html">⚙️ Sistem Ayarları</a>
+          <a href="#" id="btnLogout">🚪 Çıkış Yap</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <aside class="drawer" id="drawer"></aside>
+
+  <main class="wrap">
+    <header style="margin-bottom: 20px;">
+      <h1 style="margin: 0 0 8px; font-size: 24px; font-weight: 700;">Aylık Giderler & Ay Sonu Raporu</h1>
+      <p class="muted" style="margin: 0;">Hızlı gider girişi, gider kalemleri (İaşe / Domates, Salatalık vb.) ve ay sonu kalem bazlı rapor.</p>
+    </header>
+
+    <!-- Hızlı Gider Girişi -->
+    <section class="card" aria-label="Hızlı gider girişi">
+      <div class="hd"><h3>Hızlı Gider Girişi</h3></div>
       <div class="bd">
-        <div class="sr-only" aria-live="polite" id="liveTable"></div>
-        <div class="scroll-x">
-          <table id="tbl">
+        <form id="frmGider" class="grid-2">
+          <div>
+            <label for="gTarih">Tarih</label>
+            <input type="date" id="gTarih" required/>
+          </div>
+          <div>
+            <label for="gKalem">Gider Kalemi (alt kalem)</label>
+            <select id="gKalem" required>
+              <option value="">Seçin</option>
+            </select>
+            <p class="hint">Sadece alt kalemler listelenir (Domates, Salatalık vb.)</p>
+          </div>
+          <div>
+            <label for="gTutar">Tutar (₺)</label>
+            <input type="number" id="gTutar" step="0.01" min="0" required placeholder="0,00"/>
+          </div>
+          <div>
+            <label for="gAciklama">Açıklama (opsiyonel)</label>
+            <input type="text" id="gAciklama" placeholder="Kısa not"/>
+          </div>
+          <div style="grid-column:1/-1; display:flex; gap:8px; justify-content:flex-end;">
+            <button class="btn" type="reset">Temizle</button>
+            <button class="btn ok" type="submit">Kaydet</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Ay Sonu Raporu -->
+    <section class="card span-full" aria-label="Ay sonu raporu">
+      <div class="hd"><h3>Ay Sonu Raporu</h3></div>
+      <div class="bd">
+        <div class="grid-2" style="margin-bottom:16px;">
+          <div>
+            <label for="rYil">Yıl</label>
+            <input type="number" id="rYil" min="2020" max="2030" placeholder="2025"/>
+          </div>
+          <div>
+            <label for="rAy">Ay</label>
+            <select id="rAy">
+              <option value="1">Ocak</option><option value="2">Şubat</option><option value="3">Mart</option>
+              <option value="4">Nisan</option><option value="5">Mayıs</option><option value="6">Haziran</option>
+              <option value="7">Temmuz</option><option value="8">Ağustos</option><option value="9">Eylül</option>
+              <option value="10">Ekim</option><option value="11">Kasım</option><option value="12">Aralık</option>
+            </select>
+          </div>
+          <div style="display:flex; align-items:flex-end; gap:8px;">
+            <button class="btn ok" id="btnRapor">Raporu Getir</button>
+          </div>
+        </div>
+        <div id="raporAlani" class="scroll-x">
+          <p class="muted" id="raporPlaceholder">Yıl ve ay seçip "Raporu Getir"e tıklayın.</p>
+          <table id="raporTbl" style="display:none;">
             <thead>
-              <tr><th>Tarih</th><th>Tip</th><th>Kategori</th><th>Personel</th><th>Tutar</th><th>Tahakkuk</th><th>İlişki</th><th>Açıklama</th></tr>
+              <tr><th>Kalem</th><th class="text-right">Toplam (₺)</th></tr>
             </thead>
-            <tbody></tbody>
+            <tbody id="raporTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Gider Kalemleri Yönetimi (Ana / Alt kategori ekleme) -->
+    <section class="card span-full" aria-label="Gider kalemleri yönetimi">
+      <div class="hd"><h3>Gider Kalemleri Yönetimi</h3></div>
+      <div class="bd">
+        <div class="grid-2" style="margin-bottom:12px;">
+          <div>
+            <label>Tip</label>
+            <select id="katTip">
+              <option value="ana">Ana kategori (üst)</option>
+              <option value="alt">Alt kategori (bir ana altında)</option>
+            </select>
+          </div>
+          <div id="katParentWrap" style="display:none;">
+            <label for="katParent">Üst kategori</label>
+            <select id="katParent">
+              <option value="">Seçin</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid-2" style="gap:8px; align-items:flex-end;">
+          <div>
+            <label for="katAd">Kalem adı</label>
+            <input type="text" id="katAd" placeholder="örn. İaşe veya Domates"/>
+          </div>
+          <div>
+            <button type="button" class="btn ok" id="btnKatEkle">Ekle</button>
+          </div>
+        </div>
+        <p class="hint">Ana kategori: İaşe, Elektrik vb. Alt kategori: bir ana altında (Domates, Salatalık → İaşe altı). Gider girişinde sadece alt kalemler seçilir.</p>
+        <div class="divider"></div>
+        <div class="scroll-x" style="max-height:280px;">
+          <table id="tblKalem">
+            <thead>
+              <tr><th>Kalem</th><th>Tip</th><th style="width:80px;">İşlem</th></tr>
+            </thead>
+            <tbody id="kalemTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Son Gider Hareketleri -->
+    <section class="card span-full" aria-label="Son hareketler">
+      <div class="hd"><h3>Son Gider Hareketleri</h3><span class="muted" id="sonHareketSayisi">0 kayıt</span></div>
+      <div class="bd">
+        <div class="scroll-x">
+          <table id="tblHareket">
+            <thead>
+              <tr><th>Tarih</th><th>Kalem</th><th class="text-right">Tutar</th><th>Açıklama</th></tr>
+            </thead>
+            <tbody id="hareketTbody"></tbody>
           </table>
         </div>
       </div>
     </section>
   </main>
 
-  <!-- ===== Kategori Modal (opsiyonel genişletme) ===== -->
-  <div class="modal" id="modalKat" role="dialog" aria-modal="true" aria-labelledby="katTitle">
-    <div class="panel card">
-      <div class="hd">
-        <h3 id="katTitle">📂 Kategori Yöneticisi</h3>
-        <button class="btn" onclick="hideKat()">Kapat</button>
-      </div>
-      <div class="bd">
-        <!-- Şimdilik ana sayfadaki yöneticiyi kullanıyoruz; bu modal yedek -->
-        <p class="hint">Modal yedek alan. Ana ekrandaki yöneticiyi kullanabilirsiniz.</p>
-      </div>
-    </div>
-  </div>
+  <div class="toast-container" id="toastContainer"></div>
 
-  <!-- Toast -->
-  <div class="toast" id="toast"></div>
-
-  <!-- Firebase + PapaParse -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-  <script src="../js/firebase/firebase-init.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="../src/supabase.js"></script>
+  <script src="../src/supabase-auth-wrapper.js"></script>
+  <script src="../js/ortak.js"></script>
 
   <script>
-    /* =====================  JS: LOJİK  ===================== */
-    const auth = firebase.auth();
-    const db = window.db;
-    const $ = (id)=>document.getElementById(id);
-    const toastBox = $('toast');
+    (function(){
+      const $ = id => document.getElementById(id);
+      const fmt = n => (n == null || isNaN(n)) ? '₺0' : '₺' + Number(n).toLocaleString('tr-TR', { maximumFractionDigits: 2 });
+      function parseMoney(v){ if (v == null || v === '') return null; return Number(String(v).replace(/[₺\s.]/g, '').replace(',', '.')); }
+      function showToast(type, title, msg){ if (typeof window.showToast === 'function') window.showToast(type, title, msg); }
 
-    function toast(msg){const d=document.createElement('div');d.className='t';d.textContent=msg;toastBox.appendChild(d);setTimeout(()=>d.remove(),3500)}
-    const fmt = n => (n==null||isNaN(n)) ? '₺0' : '₺' + Number(n).toLocaleString('tr-TR',{maximumFractionDigits:2});
-    const toDateInput = d => new Date(d).toISOString().slice(0,10);
-    function parseMoney(v){ if(v==null||v==='') return null; return Number(String(v).replace(/[₺\s\.]/g,'').replace(',', '.')); }
-
-    // SHA-256 → hex (idempotent satır anahtarı)
-    async function sha256Hex(s){
-      const enc=new TextEncoder().encode(s);const buf=await crypto.subtle.digest('SHA-256',enc);
-      return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-    }
-    async function rowUID(o){ const raw=`${o.yil}|${o.tip}|${o.path}|${o.tarih}|${o.tutar||''}|${o.bv||''}|${o.iliski||''}`; return sha256Hex(raw); }
-
-    /* ---- Yetki + sayfa log ---- */
-    auth.onAuthStateChanged(async (u)=>{
-      if(!u){ location.href='../index.html'; return; }
-      await db.collection('sayfa_loglari').add({sayfa:'genelmizan', uid:u.uid, zaman:new Date(), ua:navigator.userAgent});
-      initPage();
-    });
-    $('btnLogout').onclick = ()=> auth.signOut();
-
-    /* =====================  KATEGORİLER  ===================== */
-    const tblKatBody = ()=>$('tblKat').querySelector('tbody');
-
-    async function loadKategoriler(){
-      const body = tblKatBody(); body.innerHTML='<tr><td colspan="3" class="muted">Yükleniyor...</td></tr>';
-      const snap = await db.collection('kategoriler').orderBy('path').get();
-      const rows=[];
-      snap.forEach(doc=>{
-        const d=doc.data();
-        rows.push(`<tr><td>${d.path}</td><td>${d.tip}</td><td><button class="btn bad" onclick="silKat('${doc.id}','${d.path}')">Sil</button></td></tr>`);
-      });
-      body.innerHTML = rows.join('') || '<tr><td colspan="3" class="muted">Kategori yok</td></tr>';
-      // datalist
-      const dl=$('katList'); dl.innerHTML='';
-      snap.forEach(doc=>{ const d=doc.data(); const o=document.createElement('option'); o.value=d.path; dl.appendChild(o); });
-    }
-    async function silKat(id, path){
-      if(!confirm(`Silinsin mi?\n${path}`)) return;
-      await db.collection('kategoriler').doc(id).delete();
-      toast('Kategori silindi'); loadKategoriler();
-    }
-    $('btnKatEkle').onclick = async ()=>{
-      const parent=$('katParent').value.trim();
-      const ad=$('katAd').value.trim();
-      const tip=$('katTip').value;
-      if(!ad){toast('Kategori adı gerekli');return}
-      const path = parent ? `${parent}>${ad}` : ad;
-      const dup = await db.collection('kategoriler').where('path','==',path).limit(1).get();
-      if(!dup.empty){toast('Bu path zaten var');return}
-      await db.collection('kategoriler').add({ad,tip,parent_id:null,path,seviye:path.split('>').length-1,aktif:true,sira:0});
-      $('katAd').value='';
-      toast('Kategori eklendi'); loadKategoriler();
-    };
-
-    // Tip'e göre kategori listesi filtreleme
-    async function updateKatDatalistForTip(formTip){
-      const q = await db.collection('kategoriler').get();
-      const dl=$('katList'); dl.innerHTML='';
-      q.forEach(doc=>{
-        const d=doc.data();
-        if(d.tip==='herikisi' || d.tip===formTip){
-          const o=document.createElement('option'); o.value=d.path; dl.appendChild(o);
-        }
-      });
-    }
-    window.silKat = silKat; // inline onclick için
-
-    /* =====================  PERSONEL  ===================== */
-    async function loadPersoneller(){
-      const body=$('tblPer').querySelector('tbody'); body.innerHTML='<tr><td colspan="4" class="muted">Yükleniyor...</td></tr>';
-      const snap = await db.collection('personeller').orderBy('personel_id').get();
-      const rows=[];
-      snap.forEach(doc=>{
-        const d=doc.data();
-        rows.push(`<tr>
-          <td>${d.personel_id||'-'}</td>
-          <td>${d.ad||'-'}</td>
-          <td>${d.durum||'-'}</td>
-          <td><button class="btn bad" onclick="silPer('${doc.id}')">Sil</button></td>
-        </tr>`);
-      });
-      body.innerHTML = rows.join('') || '<tr><td colspan="4" class="muted">Kayıt yok</td></tr>';
-    }
-    async function silPer(id){
-      if(!confirm('Personel silinsin mi?')) return;
-      await db.collection('personeller').doc(id).delete();
-      toast('Personel silindi'); loadPersoneller();
-    }
-    window.silPer = silPer;
-
-    $('btnPerKaydet').onclick = async ()=>{
-      const id=$('pId').value.trim(); const ad=$('pAd').value.trim(); const durum=$('pDurum').value;
-      if(!id || !ad){ toast('ID ve Ad Soyad gerekli'); return; }
-      await db.collection('personeller').doc(id).set({personel_id:id, ad, durum, guncel_at:new Date()},{merge:true});
-      toast('Personel kaydedildi/güncellendi'); $('pAd').value=''; $('pId').value='';
-      loadPersoneller();
-    };
-    $('btnPerTemizle').onclick = ()=>{ $('pId').value=''; $('pAd').value=''; $('pDurum').value='aktif'; };
-
-    /* =====================  İLİŞKİ KODU & TAHAKKUK UZLAŞTIRMA  ===================== */
-    function initialsFromPath(path){
-      // "Ramazan-ı Şerif>İftar" -> "RF" (ilk iki segmentin ilk harfi)
-      const segs = String(path||'').split('>').map(s=>s.trim()).filter(Boolean);
-      const letters = segs.map(s=>{
-        const clean = s.replace(/[^A-Za-zÇĞİÖŞÜçğıöşü]/g,' ').trim().split(/\s+/)[0]||'';
-        return clean[0] ? clean[0].toUpperCase() : '';
-      }).join('');
-      return letters.slice(0,2) || 'XX';
-    }
-    async function nextIliskiCode(prefix){
-      const id = `iliski_${prefix}`;
-      const ref = db.collection('sayaclar').doc(id);
-      const n = await db.runTransaction(async (trx)=>{
-        const snap = await trx.get(ref);
-        const cur = snap.exists ? (snap.data().seq||0) : 0;
-        const next = cur+1;
-        trx.set(ref,{seq:next, updated_at:new Date()},{merge:true});
-        return next;
-      });
-      return `${prefix}-${String(n).padStart(5,'0')}`;
-    }
-    async function reconcileAccrualsByIliski(iliskiId, tahsilTutar, tip='gelir') {
-      if(!iliskiId || !tahsilTutar || tahsilTutar <= 0) return {applied:0, items:[], kalan:tahsilTutar};
-      const q = await db.collection('islemler')
-        .where('tahakkuk','==',true)
-        .where('durum','==','acik')
-        .where('tip','==',tip)
-        .where('iliski_id','==',iliskiId)
-        .orderBy('tarih','asc').get();
-
-      let kalan = tahsilTutar; const items=[];
-      for(const doc of q.docs){
-        if(kalan<=0) break;
-        await db.runTransaction(async (trx)=>{
-          const snap = await trx.get(doc.ref); const cur=snap.data();
-          const bakiye = (cur.kalan_tutar ?? cur.tutar ?? 0) - (cur.tahsilat_toplam||0);
-          if(bakiye<=0) return;
-          const dusulecek = Math.min(kalan, bakiye);
-          kalan -= dusulecek;
-          const yeniToplam = (cur.tahsilat_toplam||0) + dusulecek;
-          const yeniKalan = Math.max(0, (cur.kalan_tutar ?? cur.tutar ?? 0) - yeniToplam);
-          const patch = {tahsilat_toplam:yeniToplam, kalan_tutar:yeniKalan};
-          if(yeniKalan===0){ patch.durum='tamam'; patch.kapandi_at=new Date(); }
-          trx.set(doc.ref, patch, {merge:true});
-          items.push({id:doc.id, dusulen:dusulecek});
+      let kalemList = [];
+      async function loadKalemler() {
+        const sb = window.supabase;
+        if (!sb) return;
+        const { data, error } = await sb.from('gider_kalemleri').select('id, ad, parent_id, sira').eq('aktif', true).order('sira').order('ad');
+        if (error) { showToast('error', 'Hata', 'Kalemler yüklenemedi: ' + error.message); return; }
+        kalemList = data || [];
+        const altKalemler = kalemList.filter(k => k.parent_id != null);
+        const sel = $('gKalem');
+        sel.innerHTML = '<option value="">Seçin</option>';
+        altKalemler.forEach(k => {
+          const opt = document.createElement('option');
+          opt.value = k.id;
+          opt.textContent = k.ad;
+          sel.appendChild(opt);
         });
-      }
-      return {applied: tahsilTutar-kalan, items, kalan};
-    }
-
-    /* =====================  HIZLI İŞLEM GİRİŞİ  ===================== */
-    $('qTarih').value = toDateInput(new Date());
-    $('qTip').addEventListener('change', ()=>updateKatDatalistForTip($('qTip').value));
-
-    $('qKategoriPath').addEventListener('blur', ()=>{
-      // kullanıcı yazdıysa placeholder'da bir önizleme göster
-      const base = initialsFromPath($('qKategoriPath').value);
-      const prefix = ($('qTahakkuk').checked? 'T':'' ) + base;
-      $('qIliski').placeholder = `${prefix}-00000`;
-    });
-
-    $('frmQuick').addEventListener('submit', async (e)=>{
-      e.preventDefault();
-      const tip=$('qTip').value;
-      const tarih=new Date($('qTarih').value||Date.now());
-      const yil=tarih.getFullYear(); const ay=tarih.getMonth()+1;
-      const path=$('qKategoriPath').value.trim();
-      const etiketler=$('qEtiketler').value.trim()? $('qEtiketler').value.split(',').map(s=>s.trim()).filter(Boolean):[];
-      const personel=$('qPersonel').value.trim(); const bv=$('qBV').value.trim();
-      const tutar=parseMoney($('qTutar').value); const adet=Number($('qAdet').value||0)||null;
-      const tahakkuk=$('qTahakkuk').checked; let iliski=$('qIliski').value.trim();
-      const aciklama=$('qAciklama').value.trim()||null;
-
-      if(!path || !tutar){toast('Kategori ve tutar zorunlu');return}
-
-      // otomatik ilişki kodu
-      if(!iliski){
-        const base = initialsFromPath(path);
-        const prefix = (tahakkuk? 'T' : '') + base; // örn: TRF
-        iliski = await nextIliskiCode(prefix);
+        updateKatParentDropdown();
+        loadKalemTable();
       }
 
-      const uid=await rowUID({yil,tip,path,tarih:tarih.toISOString().slice(0,10),tutar,bv,iliski});
-      const doc={
-        tarih,yil,ay,hafta:Number(new Intl.DateTimeFormat('tr-TR',{week:'numeric'}).format(tarih))||0,
-        gun:tarih.toISOString().slice(0,10),
-        tip,kategori_path:path,kategori_id:null,
-        personel_id:personel||null,bagisci_vendor_id:bv||null,
-        tutar,adet,para_birimi:'TRY',
-        tahakkuk, durum:tahakkuk?'acik':'tamam',
-        iliski_id: iliski||null, etiketler, varlik_id:null,
-        kaynak:'form', row_uid:uid, aciklama
+      function updateKatParentDropdown() {
+        const tip = $('katTip').value;
+        const wrap = $('katParentWrap');
+        const sel = $('katParent');
+        if (tip === 'alt') {
+          wrap.style.display = '';
+          const anaList = kalemList.filter(k => k.parent_id == null);
+          sel.innerHTML = '<option value="">Seçin</option>';
+          anaList.forEach(k => {
+            const opt = document.createElement('option');
+            opt.value = k.id;
+            opt.textContent = k.ad;
+            sel.appendChild(opt);
+          });
+        } else {
+          wrap.style.display = 'none';
+          sel.innerHTML = '<option value="">Seçin</option>';
+        }
+      }
+
+      function loadKalemTable() {
+        const tbody = $('kalemTbody');
+        if (!tbody) return;
+        const anaList = kalemList.filter(k => k.parent_id == null).sort((a, b) => (a.sira || 0) - (b.sira || 0) || (a.ad || '').localeCompare(b.ad || ''));
+        const altByParent = {};
+        kalemList.filter(k => k.parent_id != null).forEach(k => {
+          const pid = k.parent_id;
+          if (!altByParent[pid]) altByParent[pid] = [];
+          altByParent[pid].push(k);
+        });
+        Object.keys(altByParent).forEach(pid => altByParent[pid].sort((a, b) => (a.sira || 0) - (b.sira || 0) || (a.ad || '').localeCompare(b.ad || '')));
+        const rows = [];
+        anaList.forEach(ana => {
+          rows.push(`<tr class="kalem-ana"><td>${escapeHtml(ana.ad)}</td><td>Ana</td><td><button type="button" class="btn bad" data-id="${ana.id}" data-pasif>Pasif yap</button></td></tr>`);
+          (altByParent[ana.id] || []).forEach(alt => {
+            rows.push(`<tr class="kalem-alt"><td>${escapeHtml(alt.ad)}</td><td>Alt</td><td><button type="button" class="btn bad" data-id="${alt.id}" data-pasif>Pasif yap</button></td></tr>`);
+          });
+        });
+        tbody.innerHTML = rows.length ? rows.join('') : '<tr><td colspan="3" class="muted">Henüz kalem yok. Üstte ana veya alt kategori ekleyin.</td></tr>';
+      }
+
+      $('kalemTbody') && $('kalemTbody').addEventListener('click', function(e) {
+        const btn = e.target.closest('button[data-pasif]');
+        if (btn && btn.dataset.id) pasifYap(btn.dataset.id);
+      });
+
+      function escapeHtml(s) {
+        if (s == null) return '';
+        const d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+      }
+
+      async function pasifYap(id) {
+        if (!confirm('Bu kalemi pasif yapmak istediğinize emin misiniz? Gider girişinde listelenmez.')) return;
+        const sb = window.supabase;
+        if (!sb) return;
+        const { error } = await sb.from('gider_kalemleri').update({ aktif: false }).eq('id', id);
+        if (error) { showToast('error', 'Hata', error.message); return; }
+        showToast('success', 'Tamam', 'Kalem pasif yapıldı');
+        await loadKalemler();
+      }
+
+      $('katTip').addEventListener('change', updateKatParentDropdown);
+
+      $('btnKatEkle').addEventListener('click', async () => {
+        const sb = window.supabase;
+        if (!sb) return;
+        const ad = ($('katAd').value || '').trim();
+        if (!ad) { showToast('warning', 'Uyarı', 'Kalem adı girin'); return; }
+        const tip = $('katTip').value;
+        const parent_id = tip === 'alt' ? ($('katParent').value || null) : null;
+        if (tip === 'alt' && !parent_id) { showToast('warning', 'Uyarı', 'Üst kategori seçin'); return; }
+        const { error } = await sb.from('gider_kalemleri').insert({ ad, parent_id: parent_id || null, sira: 0, aktif: true });
+        if (error) { showToast('error', 'Hata', error.message); return; }
+        showToast('success', 'Tamam', 'Kalem eklendi');
+        $('katAd').value = '';
+        await loadKalemler();
+      });
+
+      async function loadSonHareketler() {
+        const sb = window.supabase;
+        if (!sb) return;
+        const { data, error } = await sb.from('aylik_giderler')
+          .select('id, tarih, tutar, aciklama, gider_kalemleri(ad)')
+          .order('tarih', { ascending: false })
+          .order('created_at', { ascending: false })
+          .limit(50);
+        if (error) { showToast('error', 'Hata', 'Hareketler yüklenemedi'); return; }
+        const rows = (data || []).map(r => {
+          const ad = r.gider_kalemleri?.ad || '—';
+          const acik = (r.aciklama || '').replace(/</g, '&lt;');
+          return `<tr><td>${(r.tarih || '').slice(0, 10)}</td><td>${ad}</td><td class="text-right">${fmt(r.tutar)}</td><td>${acik}</td></tr>`;
+        });
+        $('hareketTbody').innerHTML = rows.length ? rows.join('') : '<tr><td colspan="4" class="muted">Henüz kayıt yok</td></tr>';
+        $('sonHareketSayisi').textContent = rows.length + ' kayıt';
+      }
+
+      async function loadRapor(yil, ay) {
+        const sb = window.supabase;
+        if (!sb) return;
+        const { data: hareketler, error: errH } = await sb.from('aylik_giderler')
+          .select('kalem_id, tutar, gider_kalemleri(id, ad, parent_id)')
+          .eq('yil', yil)
+          .eq('ay', ay);
+        if (errH) { showToast('error', 'Hata', 'Rapor yüklenemedi: ' + errH.message); return; }
+
+        const byKalem = {};
+        (hareketler || []).forEach(h => {
+          const kid = h.kalem_id;
+          if (!byKalem[kid]) byKalem[kid] = { ad: h.gider_kalemleri?.ad || '—', parent_id: h.gider_kalemleri?.parent_id, toplam: 0 };
+          byKalem[kid].toplam += Number(h.tutar || 0);
+        });
+
+        const anaByParent = {};
+        Object.entries(byKalem).forEach(([kid, v]) => {
+          if (v.parent_id) {
+            const pid = v.parent_id;
+            if (!anaByParent[pid]) anaByParent[pid] = 0;
+            anaByParent[pid] += v.toplam;
+          }
+        });
+
+        const anaAdlar = {};
+        kalemList.filter(k => k.parent_id == null).forEach(k => { anaAdlar[k.id] = k.ad; });
+
+        const tbody = $('raporTbody');
+        tbody.innerHTML = '';
+        let genelToplam = 0;
+
+        Object.entries(byKalem).forEach(([kid, v]) => {
+          genelToplam += v.toplam;
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${v.ad}</td><td class="text-right">${fmt(v.toplam)}</td>`;
+          tbody.appendChild(tr);
+        });
+        Object.entries(anaByParent).forEach(([pid, toplam]) => {
+          const ad = anaAdlar[pid] || 'Ana kategori';
+          const tr = document.createElement('tr');
+          tr.className = 'rapor-ana-satir';
+          tr.innerHTML = `<td>${ad} (toplam)</td><td class="text-right">${fmt(toplam)}</td>`;
+          tbody.appendChild(tr);
+        });
+        if (Object.keys(byKalem).length > 0) {
+          const tr = document.createElement('tr');
+          tr.className = 'rapor-toplam-satir';
+          tr.innerHTML = `<td>Genel toplam</td><td class="text-right">${fmt(genelToplam)}</td>`;
+          tbody.appendChild(tr);
+        }
+
+        $('raporPlaceholder').style.display = tbody.children.length ? 'none' : 'block';
+        $('raporTbl').style.display = tbody.children.length ? 'table' : 'none';
+      }
+
+      $('btnRapor').onclick = async () => {
+        const yil = Number($('rYil').value);
+        const ay = Number($('rAy').value);
+        if (!yil || !ay) { showToast('warning', 'Uyarı', 'Yıl ve ay seçin'); return; }
+        await loadRapor(yil, ay);
+        showToast('success', 'Rapor', 'Rapor güncellendi');
       };
 
-      // tahakkuksa başlangıç metrikleri
-      if (tahakkuk) {
-        doc.tahsilat_toplam = 0;
-        doc.kalan_tutar = tutar;
-        doc.kapandi_at = null;
+      $('frmGider').addEventListener('submit', async e => {
+        e.preventDefault();
+        const sb = window.supabase;
+        if (!sb) { showToast('error', 'Hata', 'Bağlantı yok'); return; }
+        const tarih = $('gTarih').value;
+        const kalem_id = $('gKalem').value;
+        const tutar = parseMoney($('gTutar').value);
+        const aciklama = ($('gAciklama').value || '').trim() || null;
+        if (!tarih || !kalem_id || tutar == null || tutar < 0) { showToast('error', 'Hata', 'Tarih, kalem ve tutar gerekli'); return; }
+        const d = new Date(tarih);
+        const yil = d.getFullYear();
+        const ay = d.getMonth() + 1;
+        const { error } = await sb.from('aylik_giderler').insert({ yil, ay, kalem_id, tutar, tarih, aciklama });
+        if (error) { showToast('error', 'Hata', 'Kayıt hatası: ' + error.message); return; }
+        showToast('success', 'Başarılı', 'Kaydedildi');
+        e.target.reset();
+        $('gTarih').value = new Date().toISOString().slice(0, 10);
+        await loadSonHareketler();
+      });
+
+      async function initPageContent() {
+        const now = new Date();
+        $('gTarih').value = now.toISOString().slice(0, 10);
+        $('rYil').value = now.getFullYear();
+        $('rAy').value = String(now.getMonth() + 1);
+        await loadKalemler();
+        await loadSonHareketler();
       }
 
-      await db.collection('islemler').doc(uid).set(doc,{merge:true});
-
-      // eğer tahakkuk DEĞİL ve iliski varsa; girilen tahsilatı açık tahakkuklardan düş
-      if(!tahakkuk && iliski){
-        const rec = await reconcileAccrualsByIliski(iliski, tutar, tip);
-        await db.collection('islemler').doc(uid).set({tahakkuk_settle:rec.items},{merge:true});
-        if(rec.kalan>0){ toast(`Uyarı: ${fmt(rec.kalan)} tahsil açık tahakkukla eşleşmedi`); }
-      }
-
-      toast('Kaydedildi');
-      e.target.reset(); $('qTarih').value = toDateInput(new Date());
-      await Promise.all([refreshSummary(), loadSonIslemler()]);
-    });
-
-    /* =====================  TAHAKKUK TAHSİLAT BUTONU  ===================== */
-    $('btnTahsil').onclick = async ()=>{
-      const il = $('tsIliski').value.trim();
-      const tutar = parseMoney($('tsTutar').value);
-      const path = $('tsPath').value.trim() || 'Tahsilatlar';
-      if(!il || !tutar){ toast('İlişki ve tutar gerekli'); return; }
-      const tarih = new Date(); const yil=tarih.getFullYear(); const ay=tarih.getMonth()+1;
-
-      // Önce reconcile
-      const rec = await reconcileAccrualsByIliski(il, tutar, 'gelir');
-
-      // Sonra kasa geliri
-      const uid = await rowUID({yil, tip:'gelir', path, tarih:tarih.toISOString().slice(0,10), tutar, bv:'', iliski:il});
-      await db.collection('islemler').doc(uid).set({
-        tarih, yil, ay, hafta:Number(new Intl.DateTimeFormat('tr-TR',{week:'numeric'}).format(tarih))||0,
-        gun:tarih.toISOString().slice(0,10), tip:'gelir', kategori_path:path,
-        personel_id:null, bagisci_vendor_id:null, tutar, para_birimi:'TRY',
-        tahakkuk:false, durum:'tamam', iliski_id:il, etiketler:['tahsil'], varlik_id:null,
-        kaynak:'form', row_uid:uid, aciklama:'Tahakkuk tahsilat', tahakkuk_settle:rec.items
-      },{merge:true});
-
-      $('tsRes').textContent = `Mahsup: ${fmt(rec.applied)} • Kalan: ${fmt(rec.kalan)}`;
-      toast('Tahsil kaydedildi & mahsup edildi');
-      $('tsIliski').value=''; $('tsTutar').value=''; $('tsPath').value='';
-      await Promise.all([refreshSummary(), loadSonIslemler()]);
-    };
-
-    /* =====================  CSV: İŞLEM & KATEGORİ  ===================== */
-    // İşlem CSV şablonu
-    $('btnSample').addEventListener('click',(e)=>{
-      e.preventDefault();
-      const head='tarih,yil,tip,kategori_path,personel_kodu,bagisci_vendor_kodu,tutar,adet,tahakkuk,etiketler,varlik_kodu,aciklama,iliski_kodu\n';
-      const sample=[
-        '2025-03-20,2025,gelir,"Ramazan>İftar",P001,B123,15555,,true,,,"İftar taahhüdü","TRF-00001"',
-        '2025-04-05,2025,gelir,"Ramazan>İftar",P001,B123,15555,,false,,,"Tahsilat","TRF-00001"',
-        '2025-02-12,2025,gider,"İaşe>Yemekhane",,V045,3250,,false,,,"Pazar alışverişi",'
-      ].join('\n');
-      downloadCSV('islem-sablon.csv', head+sample);
-    });
-
-    // İşlem CSV içe aktar
-    $('btnImport').onclick = ()=>{
-      const file=$('csvFile').files[0]; if(!file){toast('CSV dosyası seç');return}
-      Papa.parse(file,{
-        header:true,skipEmptyLines:true,
-        complete: async ({data,errors})=>{
-          if(errors.length){ $('importRes').textContent='CSV hata: '+errors[0].message; toast('CSV hata'); return;}
-          let done=0,total=data.length; const chunkSize=400;
-          for(let i=0;i<data.length;i+=chunkSize){
-            const chunk=data.slice(i,i+chunkSize); const batch=db.batch();
-            for(const r of chunk){
-              const tarih=new Date(r.tarih||Date.now()); const yil=Number(r.yil||tarih.getFullYear());
-              const tip=(r.tip||'').trim(); const path=(r.kategori_path||'').trim(); const tutar=parseMoney(r.tutar);
-              if(!yil||!tip||!path||!tutar) continue;
-              const uid=await rowUID({yil,tip,path,tarih:tarih.toISOString().slice(0,10),tutar,bv:r.bagisci_vendor_kodu||'',iliski:r.iliski_kodu||''});
-              const ref=db.collection('islemler').doc(uid);
-              const tah = String(r.tahakkuk).toLowerCase()==='true';
-              batch.set(ref,{
-                tarih,yil,ay:tarih.getMonth()+1,hafta:Number(new Intl.DateTimeFormat('tr-TR',{week:'numeric'}).format(tarih))||0,
-                gun:tarih.toISOString().slice(0,10),
-                tip,kategori_path:path,kategori_id:null,
-                personel_id:(r.personel_kodu||null),bagisci_vendor_id:(r.bagisci_vendor_kodu||null),
-                tutar,adet:r.adet?Number(r.adet):null,para_birimi:'TRY',
-                tahakkuk:tah, durum:tah?'acik':'tamam',
-                iliski_id:r.iliski_kodu||null,
-                etiketler:r.etiketler?String(r.etiketler).split(',').map(s=>s.trim()).filter(Boolean):[],
-                varlik_id:r.varlik_kodu||null,
-                kaynak:'csv',row_uid:uid,aciklama:r.aciklama||null,
-                ...(tah ? {tahsilat_toplam:0, kalan_tutar:tutar, kapandi_at:null} : {})
-              },{merge:true});
-            }
-            await batch.commit(); done+=chunk.length;
-            $('importRes').textContent=`Aktarıldı: ${done}/${total}`;
-          }
-          await db.collection('sayfa_loglari').add({sayfa:'genelmizan_csv',adet:data.length,zaman:new Date()});
-          toast('CSV içe aktarım tamam');
-          window.lastCSVAt = new Date(); // özet kartlarında kullan
-          await Promise.all([refreshSummary(), loadSonIslemler()]);
+      window.initPage = async function() {
+        try {
+          await initPageContent();
+        } catch (e) {
+          console.error('initPage hatası:', e);
+          showToast('error', 'Hata', (e && e.message) || 'Sayfa yüklenirken hata.');
         }
-      });
-    };
-
-    // Kategori CSV şablonu
-    $('btnKatSample').addEventListener('click',(e)=>{
-      e.preventDefault();
-      const head='path,tip\n';
-      const sample=[
-        'Ramazan-ı Şerif,herikisi',
-        'Ramazan-ı Şerif>İftar,gelir',
-        'Ramazan-ı Şerif>Sahur,gelir',
-        'Kurban,herikisi',
-        'Kurban>Büyükbaş,gelir'
-      ].join('\n');
-      downloadCSV('kategori-sablon.csv', head+sample);
-    });
-
-    // Kategori CSV yükleme
-    $('btnKatImport').onclick = ()=>{
-      const file=$('csvKat').files[0]; if(!file){toast('CSV dosyası seç');return}
-      Papa.parse(file,{
-        header:true,skipEmptyLines:true,
-        complete: async ({data,errors})=>{
-          if(errors.length){ $('katImpRes').textContent='CSV hata: '+errors[0].message; toast('CSV hata'); return;}
-          let done=0,total=data.length; const batch=db.batch();
-          for(const r of data){
-            const path=(r.path||'').trim(); const tip=(r.tip||'').trim();
-            if(!path || !tip) continue;
-            const ref = db.collection('kategoriler').doc(path);
-            batch.set(ref,{path, tip, aktif:true, seviye:path.split('>').length-1, sira:0},{merge:true});
-            done++;
-          }
-          await batch.commit();
-          $('katImpRes').textContent = `Yüklendi: ${done}/${total}`;
-          toast('Kategori CSV yüklendi'); loadKategoriler();
-        }
-      });
-    };
-
-    function downloadCSV(name, content){
-      const blob=new Blob([content],{type:'text/csv;charset=utf-8'});
-      const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; a.click(); URL.revokeObjectURL(url);
-    }
-
-    /* =====================  BÜTÇE  ===================== */
-    async function getBudget(yil, path, tip){
-      const doc = await db.collection('butce_planlari').doc(String(yil)).get();
-      if(!doc.exists) return null;
-      const d=doc.data();
-      if(Array.isArray(d.kalemler)){
-        if(path){
-          const list = d.kalemler.filter(k=>k.tip===tip && String(k.path).startsWith(path));
-          if(!list.length) return null;
-          return {hedef_tutar: list.reduce((a,b)=>a+(b.hedef_tutar||0),0), paths:list.map(k=>k.path)};
-        }else{
-          const toplam = d.kalemler.filter(k=>k.tip===tip).reduce((a,b)=>a+(b.hedef_tutar||0),0);
-          return {path:'*', tip, hedef_tutar:toplam};
-        }
-      }
-      return null;
-    }
-
-    // Bütçe oluştur/güncelle
-    $('frmButce').addEventListener('submit', async (e)=>{
-      e.preventDefault();
-      const yil = Number($('bYil').value);
-      const tip = $('bTip').value;
-      const path = $('bPath').value.trim();
-      const hedef = parseMoney($('bHedef').value);
-      const not = $('bNot').value.trim() || null;
-      if(!yil || !path || !hedef){ toast('Yıl/Path/Hedef gereklidir'); return; }
-
-      const docRef = db.collection('butce_planlari').doc(String(yil));
-      await db.runTransaction(async (trx)=>{
-        const snap = await trx.get(docRef);
-        const base = snap.exists ? snap.data() : {kalemler:[], versiyon:0};
-        const arr = base.kalemler || [];
-        const idx = arr.findIndex(k=>k.path===path && k.tip===tip);
-        const yeni = {path, tip, hedef_tutar:hedef, not};
-        if(idx>=0) arr[idx] = {...arr[idx], ...yeni};
-        else arr.push(yeni);
-        trx.set(docRef, {kalemler:arr, versiyon:(base.versiyon||0)+1, published_at:new Date()}, {merge:true});
-      });
-      toast('Bütçe kalemi eklendi/güncellendi');
-      e.target.reset();
-      refreshSummary(); // yıl toplamları değişebilir
-    });
-
-    // Personele pay
-    $('btnButcePay').onclick = async ()=>{
-      const yil=Number($('bpYil').value), tip=$('bpTip').value, path=$('bpPath').value.trim(), per=$('bpPer').value.trim();
-      let miktar=parseMoney($('bpMiktar').value), yuzde=Number($('bpYuzde').value||0);
-      if(!yil || !path || !per || (!miktar && !yuzde)){ toast('Zorunlu alanlar eksik'); return; }
-      const b = await getBudget(yil, path, tip);
-      if(!b){ toast('Önce kategori için bütçe hedefi giriniz'); return; }
-      if(!miktar && yuzde){ miktar = b.hedef_tutar * (yuzde/100); }
-      if(miktar && !yuzde){ yuzde = (miktar / b.hedef_tutar)*100; }
-      await db.collection('butce_planlari').doc(String(yil))
-        .collection('personel_pay').doc(`${tip}:${path}:${per}`).set({
-          tip, path, personel_id:per, miktar, yuzde, updated_at:new Date()
-        },{merge:true});
-      toast('Personel hedefi kaydedildi');
-      $('bpPer').value=''; $('bpMiktar').value=''; $('bpYuzde').value='';
-    };
-
-    /* =====================  FİLTRE + LİSTE  ===================== */
-    async function loadSonIslemler(){
-      const fs=$('fStart').value, fe=$('fEnd').value, fTip=$('fTip').value, fPath=$('fPath').value.trim(), fPer=$('fPersonel').value.trim();
-      let ref=db.collection('islemler');
-      // Firestore’da bir aralığa göre filtre kullanıyorsak aynı alana orderBy gerekli
-      if(fs) ref=ref.where('gun','>=',fs);
-      if(fe) ref=ref.where('gun','<=',fe);
-      ref=ref.orderBy('gun','desc').limit(800);
-
-      const snap=await ref.get(); const rows=[]; let count=0;
-      snap.forEach(doc=>{
-        const d=doc.data();
-        if(fTip && d.tip!==fTip) return;
-        if(fPath && !String(d.kategori_path||'').startsWith(fPath)) return;
-        if(fPer && String(d.personel_id||'').toLowerCase().indexOf(fPer.toLowerCase())===-1) return;
-        count++;
-        rows.push(`<tr>
-          <td>${(d.gun||'').slice(0,10)}</td>
-          <td><span class="pill ${d.tip}">${d.tip}</span></td>
-          <td>${d.kategori_path||'-'}</td>
-          <td>${d.personel_id||'-'}</td>
-          <td>${fmt(d.tutar)}</td>
-          <td>${d.tahakkuk?'<span class="pill tah">tahakkuk</span>':'-'}</td>
-          <td>${d.iliski_id||'-'}</td>
-          <td>${d.aciklama? d.aciklama.replace(/</g,'&lt;') : ''}</td>
-        </tr>`);
-      });
-      $('tbl').querySelector('tbody').innerHTML = rows.join('') || `<tr><td colspan="8" class="muted">Kayıt bulunamadı</td></tr>`;
-      $('cntInfo').textContent = `${count} kayıt`;
-      $('liveTable').textContent = `Tablo güncellendi, ${count} kayıt.`;
-    }
-    $('btnFiltreUygula').onclick = loadSonIslemler;
-    $('btnFiltreTemizle').onclick = ()=>{['fStart','fEnd','fTip','fPath','fPersonel'].forEach(id=>$(id).value=''); loadSonIslemler();};
-
-    // CSV dışa aktar (listede görülenler)
-    $('btnExcel').onclick = ()=>{
-      const rows=[['tarih','tip','kategori','personel','tutar','tahakkuk','iliski','aciklama']];
-      document.querySelectorAll('#tbl tbody tr').forEach(tr=>{
-        rows.push([...tr.children].map(td=>td.textContent.trim()));
-      });
-      const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-      downloadCSV('genelmizan-export.csv', csv);
-    };
-
-    /* =====================  ÖZETLER (Bugün/Ay/Yıl)  ===================== */
-    async function refreshSummary(){
-      const today = new Date().toISOString().slice(0,10);
-      const now = new Date();
-      const y = now.getFullYear();
-      const m = String(now.getMonth()+1).padStart(2,'0');
-      const monthStart = `${y}-${m}-01`;
-      const yearStart = `${y}-01-01`;
-
-      // Yardımcı: cash toplam (gelir/gider), açık tahakkuk toplamı
-      async function sumsBetween(start, end){
-        let gelir=0, gider=0;
-        // cash (tahakkuk=false)
-        let ref = db.collection('islemler').where('tahakkuk','==',false);
-        if(start) ref=ref.where('gun','>=',start);
-        if(end) ref=ref.where('gun','<=',end);
-        const cash = await ref.get();
-        cash.forEach(s=>{const x=s.data(); if(x.tip==='gelir') gelir+=x.tutar||0; else if(x.tip==='gider') gider+=x.tutar||0;});
-        // açık tahakkuk (kalan üzerinden)
-        const acc = await db.collection('islemler').where('tahakkuk','==',true).where('durum','==','acik').get();
-        let tah=0; acc.forEach(d=>{
-          const x=d.data();
-          const kalan = (x.kalan_tutar != null) ? x.kalan_tutar : Math.max(0,(x.tutar||0) - (x.tahsilat_toplam||0));
-          tah += kalan;
-        });
-        return {gelir,gider,tah};
-      }
-
-      const [tS, mS, yS] = await Promise.all([
-        sumsBetween(today, today),
-        sumsBetween(monthStart, today),
-        sumsBetween(yearStart, today),
-      ]);
-
-      $('sumTodayGelir').textContent=fmt(tS.gelir);
-      $('sumTodayGider').textContent=fmt(tS.gider);
-      $('sumTodayTah').textContent=fmt(tS.tah);
-      $('sumTodayCSV').textContent = window.lastCSVAt ? new Date(window.lastCSVAt).toLocaleString('tr-TR') : '—';
-
-      $('sumMonthGelir').textContent=fmt(mS.gelir);
-      $('sumMonthGider').textContent=fmt(mS.gider);
-      $('sumMonthTah').textContent=fmt(mS.tah);
-      $('sumMonthCSV').textContent = window.lastCSVAt ? new Date(window.lastCSVAt).toLocaleString('tr-TR') : '—';
-
-      $('sumYearGelir').textContent=fmt(yS.gelir);
-      $('sumYearGider').textContent=fmt(yS.gider);
-      $('sumYearTah').textContent=fmt(yS.tah);
-      $('sumYearCSV').textContent = window.lastCSVAt ? new Date(window.lastCSVAt).toLocaleString('tr-TR') : '—';
-    }
-
-    /* =====================  INIT ===================== */
-    async function initPage(){
-      // Son 30 gün default filtre
-      const now=new Date(); const s=new Date(now); s.setDate(now.getDate()-30);
-      $('fStart').value=toDateInput(s); $('fEnd').value=toDateInput(now);
-
-      // Varsayılanlar
-      await Promise.all([
-        loadKategoriler(),
-        loadPersoneller()
-      ]);
-      await updateKatDatalistForTip($('qTip').value);
-      await refreshSummary();
-      await loadSonIslemler();
-    }
+      };
+    })();
   </script>
 </body>
 </html>

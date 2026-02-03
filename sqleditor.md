@@ -138,6 +138,46 @@ CREATE TABLE public.izin_oturumlari (
   updatedby text,
   CONSTRAINT izin_oturumlari_pkey PRIMARY KEY (id)
 );
+CREATE TABLE public.izinler (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  talebe text,
+  talebeuid text,
+  devre text,
+  baslatan text,
+  baslangic timestamp with time zone NOT NULL,
+  planlanandonus timestamp with time zone,
+  aciklama text,
+  durum text NOT NULL DEFAULT 'aktif' CHECK (durum IN ('aktif', 'dondu', 'iptal')),
+  uid text,
+  createdby text,
+  cihaz text,
+  useragent text,
+  createdat timestamp with time zone DEFAULT now(),
+  iptalat timestamp with time zone,
+  iptalby text,
+  donusat timestamp with time zone,
+  donusnot text,
+  updatedat timestamp with time zone,
+  updatedby text,
+  CONSTRAINT izinler_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.yoklama (
+  devre text NOT NULL,
+  gun date NOT NULL,
+  talebeuid text NOT NULL,
+  durum text DEFAULT 'none' CHECK (durum IN ('geldi', 'gelmedi', 'izinli', 'none')),
+  personel text,
+  personeluid text,
+  donussaatiso text,
+  islemiso timestamp with time zone,
+  islemisostr text,
+  izinbitisiso timestamp with time zone,
+  izinveren text,
+  izinaciklama text,
+  createdat timestamp with time zone DEFAULT now(),
+  updatedat timestamp with time zone DEFAULT now(),
+  CONSTRAINT yoklama_pkey PRIMARY KEY (devre, gun, talebeuid)
+);
 CREATE TABLE public.kantin_alinimlar (
   id text NOT NULL,
   urunler jsonb,
