@@ -227,12 +227,40 @@
     }
   </style>
 
-  <!-- Firebase (compat) -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
-  <script src="../../js/firebase/firebase-init.js"></script>
+  <!-- Supabase (Auth + sayfa manifesti / nav için) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="../../src/supabase.js"></script>
+  <script src="../../src/supabase-auth-wrapper.js"></script>
+  <script>
+    (function(){
+      function initAuth(){
+        if (typeof window.getSupabaseAuth === 'function') {
+          window.auth = window.getSupabaseAuth();
+          return true;
+        }
+        return false;
+      }
+      function waitAndTriggerInit(){
+        if (typeof window.auth !== 'undefined' && window.auth && typeof window.initAppShellAuth === 'function') {
+          try { window.initAppShellAuth(); } catch(e) { console.error('initAppShellAuth hatası:', e); }
+        } else if (typeof window.initAppShellAuth === 'function') {
+          setTimeout(waitAndTriggerInit, 100);
+        }
+      }
+      if (!initAuth()) {
+        var retries = 0, maxRetries = 50;
+        var iv = setInterval(function(){
+          retries++;
+          if (initAuth() || retries >= maxRetries) {
+            clearInterval(iv);
+            if (window.auth) setTimeout(waitAndTriggerInit, 200);
+          }
+        }, 100);
+      } else {
+        setTimeout(waitAndTriggerInit, 200);
+      }
+    })();
+  </script>
   <!-- Ortak JavaScript -->
   <script src="../../js/ortak.js"></script>
 </head>
@@ -500,45 +528,54 @@
     document.getElementById('todayText').textContent=`${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()} • ${days[d.getDay()]}`;
   })();
 
-  /* Firebase & helpers - ortak.js'den geliyor */
-  // db ve auth ortak.js'den geliyor (window.db, window.auth)
-  // Ortak.js'de zaten tanımlanmış, bu yüzden window'dan kullan
-  // Eğer window.db ve window.auth yoksa, burada tanımla
-  if(typeof window.db === 'undefined'){
-    window.db = firebase.firestore();
+  /* Supabase client asenkron yüklendiği için hazır olana kadar beklenir */
+  var sb = null;
+  function getSb() {
+    var s = window.supabase;
+    return (s && typeof s.from === 'function') ? s : null;
   }
-  if(typeof window.auth === 'undefined'){
-    window.auth = firebase.auth();
+  function getSbReady(maxWaitMs) {
+    maxWaitMs = maxWaitMs || 5000;
+    return new Promise(function(resolve) {
+      if (getSb()) { resolve(getSb()); return; }
+      var elapsed = 0;
+      var iv = setInterval(function() {
+        if (getSb()) { clearInterval(iv); resolve(getSb()); return; }
+        elapsed += 100;
+        if (elapsed >= maxWaitMs) { clearInterval(iv); resolve(null); }
+      }, 100);
+    });
   }
-  // Referans al - ortak.js'de const db tanımlanmış (local scope), bu yüzden burada da tanımlayabiliriz
-  // Ama çakışmayı önlemek için window'dan direkt kullan
-  const db = window.db;
-  const auth = window.auth;
-  try{
-    // Settings'i sadece bir kez ayarla (firebase-init.js'de zaten ayarlanmış olabilir)
-    if(!db._settingsApplied){
-      db.settings({ cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED }, { merge: true });
-      db._settingsApplied = true;
-    }
-    // Persistence'ı sessizce etkinleştir (deprecated uyarısı gelecekte kaldırılacak)
-    db.enablePersistence({ synchronizeTabs: true }).catch(()=>{ /* ignore */ });
-  }catch(_){}
+  function sbOrThrow() {
+    var c = sb || getSb();
+    if (!c) throw new Error('Veritabanı bağlantısı hazır değil');
+    return c;
+  }
   const $=(id)=>document.getElementById(id);
-  // Toast fonksiyonu ortak.js'den geliyor (window.showToast)
-  // Geriye uyumluluk için eski toast fonksiyonu
-  function toast(msg){ 
+  function toast(msg, type, title){
+    type = type || 'info';
+    title = title || (type === 'error' ? 'Hata' : type === 'warning' ? 'Uyarı' : 'Bilgi');
     if(typeof window.showToast === 'function'){
-      window.showToast('info', 'Bilgi', msg);
+      window.showToast(type, title, msg);
     } else {
-      console.log('Toast:', msg);
+      console.log('Toast:', title, msg);
     }
   }
 
-  const PATHS={ users:'kullanicilar', manifest:'sayfa_manifesti', talebeler:'talebeler', main:'takrir takibi', byDate:'takrir takibi tarih', index:'takrir_index' };
+  window.addEventListener('offline', () => {
+    if (typeof window.showToast === 'function') window.showToast('warning', 'Bağlantı yok', 'İnternet bağlantısı kesildi. Veriler kaydedilemeyebilir.');
+  });
+  window.addEventListener('online', () => {
+    if (typeof window.showToast === 'function') window.showToast('info', 'Bağlantı var', 'İnternet bağlantısı yeniden kuruldu.');
+  });
 
   const STAT_NONE='none', STAT_VERDI='verdi', STAT_VEREMEDI='veremedi', STAT_YARIM='yarım kaldı';
-  // norm fonksiyonu ortak.js'den geliyor (window.norm) - zaten tanımlı, tekrar tanımlamaya gerek yok
-  // const norm zaten ortak.js'de tanımlı, direkt window.norm kullanabiliriz veya referans alabiliriz
+  function durumToDb(s) {
+    if (s === STAT_VERDI) return 'verdi';
+    if (s === STAT_VEREMEDI) return 'veremedi';
+    if (s === STAT_YARIM) return 'yarim';
+    return null;
+  }
 
   function rowClassByStat(s){
     if(s===STAT_VERDI) return 'st-verdi';
@@ -600,87 +637,52 @@
   function loadingLabel(t){ if(__loading.lbl) __loading.lbl.textContent=t; }
   function loadingEnd(){ if(__loading.timer){ clearInterval(__loading.timer); __loading.timer=null; } if(__loading.bar){ setLoading(100);} if(__loading.box){ const b=__loading.box; setTimeout(()=>b.remove(),350);} __loading={ box:null, bar:null, pct:null, lbl:null, timer:null, softCap:85, value:0 }; }
 
-async function startRealtimeListener() {
+function startRealtimeListener() {
   if (!state.kitap || !state.ders) return () => {};
-  const dersKey = encodeURIComponent(`${state.kitap}__${state.ders}`);
-  const dersDay = (state.dersKayitISO || new Date().toISOString()).slice(0,10);
-  const colRef  = db.collection(PATHS.byDate).doc(state.devre).collection(dersDay);
-
-  return colRef.onSnapshot(async (snapshot) => {
-    // alt belgeleri paralel oku
-    const tasks = snapshot.docChanges().map(async (change) => {
-      // silinmişse/parent kaldırılmışsa boşalt
-      if (change.type === 'removed') {
-        const uid = change.doc.id;
-        if (state.durumMap[uid]) state.durumMap[uid] = { durum: STAT_NONE, islemISO: null, personel: '—' };
-        return;
-      }
-
-      const dersDoc = await change.doc.ref.collection('dersler').doc(dersKey).get();
-      if (!dersDoc.exists) return;
-      const x   = dersDoc.data() || {};
-      const uid = change.doc.id;
-
-      state.durumMap[uid] = {
-        durum:   canonStat(x.durum),
-        personel:x.personel,
-        islemISO:x.islemISO?.toDate ? x.islemISO.toDate().toISOString() : null
-      };
-    });
-
-    await Promise.all(tasks);
-    renderTalebeListDebounced();
-  });
+  let stopped = false;
+  const poll = async () => {
+    if (stopped || !state.kitap || !state.ders) return;
+    try {
+      const map = await readStatuses({ devre: state.devre, kitap: state.kitap, ders: state.ders, dersISO: state.dersKayitISO });
+      state.durumMap = map;
+      renderTalebeListDebounced();
+    } catch (e) {
+      console.warn('Takrir poll hatası:', e);
+    }
+  };
+  const interval = setInterval(poll, 4000);
+  poll();
+  return () => { stopped = true; clearInterval(interval); };
 }
 
-  /* Index & data ops */
-  async function ensureIndexForDevre(devre){
-    const ref = db.collection(PATHS.index).doc(devre);
-    const doc = await ref.get();
-    if(!doc.exists) await ref.set({ kitaplar: [] });
-  }
+  /* Index & data ops - Supabase takrir_index */
   async function listKitaplar(devre){
-    await ensureIndexForDevre(devre);
-    const snap = await db.collection(PATHS.index).doc(devre).get();
-    const arr = (snap.exists && Array.isArray(snap.data().kitaplar)) ? snap.data().kitaplar : [];
+    const { data, error } = await sbOrThrow().from('takrir_index').select('kitap').eq('devre', devre).not('kitap', 'is', null);
+    if (error) throw error;
+    const arr = [...new Set((data || []).map(r => r.kitap).filter(Boolean))];
     return arr.sort((a,b)=>a.localeCompare(b,'tr'));
   }
 
-let __ME  = '';      // oturum adı buraya yazılacak
-let __UID = null;    // uid buraya yazılacak
-
-async function getAuthUserSafe(){
-  // auth.currentUser yoksa kısa süre bekleyip tekrar dene
-  if (firebase.auth().currentUser) return firebase.auth().currentUser;
-
-  await new Promise(r => setTimeout(r, 60));
-  if (firebase.auth().currentUser) return firebase.auth().currentUser;
-
-  // yine yoksa bir kez daha dene
-  await new Promise(r => setTimeout(r, 120));
-  return firebase.auth().currentUser || null;
-}
+let __ME  = '';
+let __UID = null;
 
 async function ensureUserCtx(){
-  const u = await getAuthUserSafe();
-  if (!u) throw new Error('no-auth');
+  const { data: { session }, error } = typeof window.getSessionWithRetry === 'function'
+    ? await window.getSessionWithRetry()
+    : await sbOrThrow().auth.getSession();
+  if (error || !session?.user) throw new Error('no-auth');
+  const u = session.user;
+  __UID = u.id;
 
-  // UID
-  __UID = u.uid;
-
-  // İsim öncelik: kullanicilar/{uid}.adSoyad -> displayName -> mail prefix -> '—'
   if (!__ME) {
     try {
-      const snap = await db.collection('kullanicilar').doc(u.uid).get();
-      const d = snap.exists ? (snap.data() || {}) : {};
-      __ME = (d.adSoyad && String(d.adSoyad).trim())
-         || (u.displayName && String(u.displayName).trim())
+      const { data: d } = await sbOrThrow().from('kullanicilar').select('adsoyad').eq('id', u.id).maybeSingle();
+      __ME = (d?.adsoyad && String(d.adsoyad).trim())
+         || (u.user_metadata?.adsoyad && String(u.user_metadata.adsoyad).trim())
          || (u.email ? String(u.email).split('@')[0] : '')
          || '—';
     } catch (_) {
-      __ME = (u.displayName && String(u.displayName).trim())
-         || (u.email ? String(u.email).split('@')[0] : '')
-         || '—';
+      __ME = (u.email ? String(u.email).split('@')[0] : '') || '—';
     }
   }
   return { uid: __UID, name: __ME };
@@ -696,281 +698,128 @@ function getDeviceInfo(){
   return `${ua} | ${plt} | ${lng} | ${scr}`;
 }
 
-// --- GÜNCELLE: addKitap ---
 async function addKitap(devre, kitap){
   if (!kitap) return;
-  const { uid, name } = await ensureUserCtx();   // <-- kritik
-  const nowISO = new Date().toISOString();
-  const device = getDeviceInfo();
-
-  // index
-  await ensureIndexForDevre(devre);
-  await db.collection(PATHS.index).doc(devre)
-    .set({
-      kitaplar: firebase.firestore.FieldValue.arrayUnion(kitap),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge:true });
-
-  // müfredat meta
-  await db.collection(PATHS.main).doc(devre).collection(kitap).doc('_meta')
-    .set({
-      created: nowISO,                 // geriye uyum
-      createdClientISO: nowISO,
-      createdServerTS: firebase.firestore.FieldValue.serverTimestamp(),
-      createdBy: name,                 // <-- oturum adı
-      createdUid: uid,                 // <-- oturum uid
-      createdDevice: device
-    }, { merge:true });
+  const { uid, name } = await ensureUserCtx();
+  const { error } = await sbOrThrow().from('takrir_index').insert({
+    devre,
+    kitap,
+    ders_adi: '_meta',
+    created_by: name,
+    created_by_uid: uid
+  });
+  if (error) throw error;
 }
   async function listDerslerWithMeta(devre, kitap){
-    if(!kitap) return [];
-    const qs = await db.collection(PATHS.main).doc(devre).collection(kitap).get();
-    const rows=[];
-    qs.forEach(doc=>{
-      if(doc.id==='_meta') return;
-      const x=doc.data()||{};
-      if(x.created || x.ilkKayitISO || Object.keys(x).length){
-        rows.push({ad:doc.id, ilkKayitISO:x.ilkKayitISO||x.created||null, ilkKayitBy:x.ilkKayitBy||null});
-      }
-    });
+    if (!kitap) return [];
+    const { data, error } = await sbOrThrow().from('takrir_index')
+      .select('ders_adi, created_at, created_by')
+      .eq('devre', devre).eq('kitap', kitap)
+      .not('ders_adi', 'is', null)
+      .neq('ders_adi', '_meta');
+    if (error) throw error;
+    const rows = (data || []).map(r => ({
+      ad: r.ders_adi,
+      ilkKayitISO: r.created_at ? new Date(r.created_at).toISOString() : null,
+      ilkKayitBy: r.created_by || null
+    }));
     rows.sort((a,b)=>((b.ilkKayitISO||'').localeCompare(a.ilkKayitISO||'')));
     return rows;
   }
-// --- GÜNCELLE: addDers ---
 async function addDers(devre, kitap, ders){
   if (!ders) return;
-  const { uid, name } = await ensureUserCtx();   // <-- kritik
-  const nowISO = new Date().toISOString();
-  const device = getDeviceInfo();
-
-  // index/ders
-  await db.collection(PATHS.index).doc(devre)
-    .collection('dersler').doc(kitap)
-    .set({
-      dersler: firebase.firestore.FieldValue.arrayUnion(ders),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge:true });
-
-  // ders dokümanı
-  await db.collection(PATHS.main).doc(devre).collection(kitap).doc(ders)
-    .set({
-      created: nowISO,
-      ilkKayitISO: nowISO,
-      ilkKayitBy: name,                // <-- oturum adı
-      createdClientISO: nowISO,
-      createdServerTS: firebase.firestore.FieldValue.serverTimestamp(),
-      createdBy: name,                 // aynı değeri ayrıca tut
-      createdUid: uid,                 // <-- oturum uid
-      createdDevice: device
-    }, { merge:true });
-
-  state.dersKayitISO = nowISO;
+  const { uid, name } = await ensureUserCtx();
+  const { error } = await sbOrThrow().from('takrir_index').insert({
+    devre,
+    kitap,
+    ders_adi: ders,
+    created_by: name,
+    created_by_uid: uid
+  });
+  if (error) throw error;
+  state.dersKayitISO = new Date().toISOString();
 }
 
   async function loadTalebeler(devre){
-    const list=[]; const base=db.collection(PATHS.talebeler).doc(devre).collection('öğrenciler');
-    const qs=await base.get();
-    qs.forEach(d=>{ const x=d.data()||{}; list.push({ uid:d.id, ad:x.kullAd||'—' }); });
-    return list.sort((a,b)=>a.ad.localeCompare(b.ad,'tr'));
+    const { data, error } = await sbOrThrow().from('talebeler').select('id, talebe_adi').eq('devre', devre).order('talebe_adi', { ascending: true });
+    if (error) throw error;
+    return (data || []).map(r => ({ uid: r.id, ad: r.talebe_adi || '—' }));
   }
-async function writeStatusFast({devre, kitap, ders, uid, durum, personel, personelUid, device, dersGun}) {
-  if(!devre || !kitap || !ders || !uid) throw new Error('invalid-params');
-
+async function writeStatusFast({ devre, kitap, ders, uid, durum, personel, personelUid, talebeAd, dersGun }) {
+  if (!devre || !kitap || !ders || !uid) throw new Error('invalid-params');
   const dersDay = (/^\d{4}-\d{2}-\d{2}$/.test(dersGun) ? dersGun : new Date().toLocaleDateString('sv-SE'));
-  const opDay   = new Date().toLocaleDateString('sv-SE');
-  const dersKey = encodeURIComponent(`${kitap}__${ders}`);
-  const nowISOClient = new Date().toISOString();
+  const dbDurum = durumToDb(canonStat(durum));
 
-  const batch = db.batch();
-
-  // 1) ana doc
-  const mainRef = db.collection(PATHS.main).doc(devre).collection(kitap).doc(ders)
-    .collection('talebeler').doc(uid);
-  batch.set(mainRef, {
-    durum, personel,
-    ...(personelUid ? { personelUid } : {}),
-    ...(device ? { device } : {}),
-    dersGunu: dersDay,
-    islemISO: firebase.firestore.FieldValue.serverTimestamp()
-  }, { merge:true });
-
-  // 2) tarih / dersGünü / uid
-  const byDateDocLesson = db.collection(PATHS.byDate).doc(devre).collection(dersDay).doc(uid);
-  batch.set(byDateDocLesson, {
-    _exists:true,
-    kayitlar: firebase.firestore.FieldValue.arrayUnion({
-      kitap, ders, durum, personel,
-      ...(personelUid ? { personelUid } : {}),
-      ...(device ? { device } : {}),
-      islemISOStr: nowISOClient
-    })
-  }, { merge:true });
-
-  // 2a) alt dersler
-  const byDateLessonRef = byDateDocLesson.collection('dersler').doc(dersKey);
-  batch.set(byDateLessonRef, {
-    kitap, ders, durum, personel,
-    ...(personelUid ? { personelUid } : {}),
-    ...(device ? { device } : {}),
-    dersGun: dersDay,
-    islemISO: firebase.firestore.FieldValue.serverTimestamp()
-  }, { merge:true });
-
-  // 3) işlem günü / uid / dersler/{dersKey}
-  const byDateDocOp = db.collection(PATHS.byDate).doc(devre).collection(opDay).doc(uid);
-  batch.set(byDateDocOp, {_exists:true}, { merge:true });
-
-  const byDateOpRef = byDateDocOp.collection('dersler').doc(dersKey);
-  batch.set(byDateOpRef, {
-    kitap, ders, durum, personel,
-    ...(personelUid ? { personelUid } : {}),
-    ...(device ? { device } : {}),
-    dersGun: dersDay,
-    opGun: opDay,
-    islemISO: firebase.firestore.FieldValue.serverTimestamp()
-  }, { merge:true });
-
-  await batch.commit();
+  const { error } = await sbOrThrow().from('ders_kayitlari').insert({
+    devre,
+    kitap,
+    ders_adi: ders,
+    ders_gunu: dersDay,
+    talebe_uid: uid,
+    talebe_adi: talebeAd || null,
+    ders_verme_durumu: dbDurum,
+    ders_verme_tarihi: new Date().toISOString(),
+    ders_veren_personel: personel || null,
+    ders_veren_personel_uid: personelUid || null,
+    kaydeden_personel: personel || null,
+    kaydeden_personel_uid: personelUid || null
+  });
+  if (error) throw error;
 
   // UI için hemen döndür (serverTimestamp’i bekletme)
-  return { dersDay, opDay, dersKey, islemISOClient: nowISOClient };
+  return { dersDay, islemISOClient: new Date().toISOString() };
 }
 
-  async function readStatuses({devre, kitap, ders, dersISO}){
-    const tKey = (dersISO||'').slice(0,10); if(!tKey) return {};
-    const col = db.collection(PATHS.byDate).doc(devre).collection(tKey);
-    const qs = await col.get();
-
-    const out={}; const dersKey=encodeURIComponent(`${kitap}__${ders}`);
-    for (const d of qs.docs){
-      const data=d.data()||{};
-      try{
-        const dersDoc=await col.doc(d.id).collection('dersler').doc(dersKey).get();
-        if(dersDoc.exists){
-          const x=dersDoc.data()||{};
-          if(x.durum){
-            const iso = x.islemISO?.toDate ? x.islemISO.toDate().toISOString() : (x.islemISOStr || null);
-            out[d.id] = {durum:canonStat(x.durum), islemISO:iso, personel:x.personel||'—'};
-            continue;
-          }
-        }
-      }catch(_){}
-      if(Array.isArray(data.kayitlar)){
-        const relevant=data.kayitlar.filter(x=>x.kitap===kitap && x.ders===ders).sort((a,b)=>(String(b.islemISOStr||'').localeCompare(String(a.islemISOStr||''))));
-        if(relevant[0]){ out[d.id] = {durum:canonStat(relevant[0].durum), islemISO:relevant[0].islemISOStr||null, personel:relevant[0].personel||'—'}; continue; }
-      }
-      const mapKey=`${kitap} | ${ders}`;
-      if(data[mapKey]?.durum){ out[d.id] = {durum:canonStat(data[mapKey].durum), islemISO:data[mapKey].islemISO||null, personel:data[mapKey].personel||'—'}; }
-    }
+  async function readStatuses({ devre, kitap, ders, dersISO }){
+    const tKey = (dersISO||'').slice(0,10);
+    if (!tKey) return {};
+    const { data: rows, error } = await sbOrThrow().from('ders_kayitlari')
+      .select('talebe_uid, ders_verme_durumu, ders_verme_tarihi, ders_veren_personel')
+      .eq('devre', devre).eq('kitap', kitap).eq('ders_adi', ders).eq('ders_gunu', tKey)
+      .order('ders_verme_tarihi', { ascending: false });
+    if (error) throw error;
+    const out = {};
+    const seen = new Set();
+    (rows || []).forEach(r => {
+      if (seen.has(r.talebe_uid)) return;
+      seen.add(r.talebe_uid);
+      const iso = r.ders_verme_tarihi ? (typeof r.ders_verme_tarihi === 'string' ? r.ders_verme_tarihi : new Date(r.ders_verme_tarihi).toISOString()) : null;
+      out[r.talebe_uid] = { durum: canonStat(r.ders_verme_durumu), islemISO: iso, personel: r.ders_veren_personel || '—' };
+    });
     return out;
   }
 
-  // Bir talebe için bir kitaptaki tüm derslerin durumlarını oku
-  async function readTalebeStatuses({devre, kitap, talebeUid}){
-    if(!devre || !kitap || !talebeUid) return {};
-    const out = {};
-    
-    // Kitaptaki tüm dersleri al
+  async function getDersKayitISO(devre, kitap, ders){
+    const { data } = await sbOrThrow().from('takrir_index').select('created_at').eq('devre', devre).eq('kitap', kitap).eq('ders_adi', ders).limit(1).maybeSingle();
+    if (!data?.created_at) return new Date().toISOString();
+    return new Date(data.created_at).toISOString();
+  }
+
+  async function readTalebeStatuses({ devre, kitap, talebeUid }){
+    if (!devre || !kitap || !talebeUid) return {};
     const dersler = await listDerslerWithMeta(devre, kitap);
-    const dersKeyMap = {}; // dersKey -> ders adı mapping
-    
-    // Tüm derslerin kayıt tarihlerini topla
-    const tarihler = new Set();
-    dersler.forEach(dersItem => {
-      const ders = dersItem.ad;
-      const dersKey = encodeURIComponent(`${kitap}__${ders}`);
-      dersKeyMap[dersKey] = ders;
-      const dersGun = (dersItem.ilkKayitISO || new Date().toISOString()).slice(0,10);
-      tarihler.add(dersGun);
+    const { data: rows, error } = await sbOrThrow().from('ders_kayitlari')
+      .select('ders_adi, ders_verme_durumu, ders_verme_tarihi, ders_veren_personel, ders_gunu')
+      .eq('devre', devre).eq('kitap', kitap).eq('talebe_uid', talebeUid)
+      .order('ders_verme_tarihi', { ascending: false });
+    if (error) throw error;
+    const byDers = {};
+    (rows || []).forEach(r => {
+      if (byDers[r.ders_adi]) return;
+      const iso = r.ders_verme_tarihi ? (typeof r.ders_verme_tarihi === 'string' ? r.ders_verme_tarihi : new Date(r.ders_verme_tarihi).toISOString()) : null;
+      byDers[r.ders_adi] = { durum: r.ders_verme_durumu, islemISO: iso, personel: r.ders_veren_personel || '—', dersGun: r.ders_gunu };
     });
-    
-    // Bugün de ekle (işlem günü kayıtları için)
-    tarihler.add(new Date().toISOString().slice(0,10));
-    
-    // Tüm ilgili tarihlerdeki kayıtları topla
-    const allRecords = [];
-    for(const dateStr of tarihler){
-      try{
-        const dateDoc = await db.collection(PATHS.byDate).doc(devre).collection(dateStr).doc(talebeUid).get();
-        if(dateDoc.exists){
-          // dersler alt koleksiyonundan oku
-          const derslerSnap = await dateDoc.ref.collection('dersler').get();
-          derslerSnap.forEach(dersDoc => {
-            const dersKey = dersDoc.id;
-            if(dersKeyMap[dersKey]){
-              const x = dersDoc.data() || {};
-              if(x.kitap === kitap && x.ders){
-                allRecords.push({
-                  ders: x.ders,
-                  dersKey,
-                  durum: x.durum,
-                  islemISO: x.islemISO?.toDate ? x.islemISO.toDate().toISOString() : (x.islemISOStr || null),
-                  personel: x.personel || '—',
-                  dersGun: x.dersGun || dateStr,
-                  dateStr
-                });
-              }
-            }
-          });
-          
-          // kayitlar array'inden de oku (eski format desteği)
-          const data = dateDoc.data() || {};
-          if(Array.isArray(data.kayitlar)){
-            data.kayitlar.forEach(kayit => {
-              if(kayit.kitap === kitap && kayit.ders && dersler.some(d => d.ad === kayit.ders)){
-                allRecords.push({
-                  ders: kayit.ders,
-                  dersKey: encodeURIComponent(`${kitap}__${kayit.ders}`),
-                  durum: kayit.durum,
-                  islemISO: kayit.islemISOStr || null,
-                  personel: kayit.personel || '—',
-                  dersGun: dateStr,
-                  dateStr
-                });
-              }
-            });
-          }
-        }
-      }catch(e){
-        console.warn(`Tarih ${dateStr} için hata:`, e);
-      }
-    }
-    
-    // Her ders için en son kaydı bul
+    const out = {};
     dersler.forEach(dersItem => {
       const ders = dersItem.ad;
       const dersGun = (dersItem.ilkKayitISO || new Date().toISOString()).slice(0,10);
-      
-      // Bu derse ait kayıtları bul ve en son olanı seç
-      const dersRecords = allRecords
-        .filter(r => r.ders === ders)
-        .sort((a,b) => {
-          // Önce ders gününe göre (en yeni ders günü önce)
-          const dateCompare = (b.dersGun || '').localeCompare(a.dersGun || '');
-          if(dateCompare !== 0) return dateCompare;
-          // Sonra işlem tarihine göre (en yeni işlem önce)
-          return (b.islemISO || '').localeCompare(a.islemISO || '');
-        });
-      
-      if(dersRecords.length > 0){
-        const latest = dersRecords[0];
-        out[ders] = {
-          durum: canonStat(latest.durum),
-          islemISO: latest.islemISO,
-          personel: latest.personel,
-          dersGun: latest.dersGun || dersGun
-        };
+      const rec = byDers[ders];
+      if (rec) {
+        out[ders] = { durum: canonStat(rec.durum), islemISO: rec.islemISO, personel: rec.personel, dersGun: rec.dersGun || dersGun };
       } else {
-        // Hiç kayıt yok
-        out[ders] = {
-          durum: STAT_NONE,
-          islemISO: null,
-          personel: '—',
-          dersGun: dersGun
-        };
+        out[ders] = { durum: STAT_NONE, islemISO: null, personel: '—', dersGun: dersGun };
       }
     });
-    
     return out;
   }
 
@@ -1082,9 +931,7 @@ async function writeStatusFast({devre, kitap, ders, uid, durum, personel, person
   async function showRapor(){
     if (!state.dersKayitISO) {
       try {
-        const mdoc = await db.collection(PATHS.main).doc(state.devre).collection(state.kitap).doc(state.ders).get();
-        const m = mdoc.exists ? mdoc.data() : {};
-        state.dersKayitISO = m.ilkKayitISO || m.created || new Date().toISOString();
+        state.dersKayitISO = await getDersKayitISO(state.devre, state.kitap, state.ders);
       } catch(_) {
         state.dersKayitISO = new Date().toISOString();
       }
@@ -1148,9 +995,7 @@ async function writeStatusFast({devre, kitap, ders, uid, durum, personel, person
   async function showIslem(){
     if (!state.dersKayitISO) {
       try {
-        const mdoc = await db.collection(PATHS.main).doc(state.devre).collection(state.kitap).doc(state.ders).get();
-        const m = mdoc.exists ? mdoc.data() : {};
-        state.dersKayitISO = m.ilkKayitISO || m.created || new Date().toISOString();
+        state.dersKayitISO = await getDersKayitISO(state.devre, state.kitap, state.ders);
       } catch(_) {
         state.dersKayitISO = new Date().toISOString();
       }
@@ -1276,6 +1121,30 @@ async function writeStatusFast({devre, kitap, ders, uid, durum, personel, person
   window._takrirUnsub = null;
 }
 
+  const TAKRIR_CHANNEL = 'takrir_durumu_sync';
+  let bc = null;
+  try {
+    bc = new BroadcastChannel(TAKRIR_CHANNEL);
+    bc.onmessage = (e) => {
+      if (e.data?.type !== 'takrir_updated') return;
+      if (state.mode === 'islem' && state.talebeler?.length && state.devre && state.kitap && state.ders) {
+        readStatuses({ devre: state.devre, kitap: state.kitap, ders: state.ders, dersISO: state.dersKayitISO }).then((map) => {
+          state.durumMap = map;
+          renderTalebeListDebounced();
+        }).catch(() => {});
+      }
+    };
+  } catch (_) {}
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    if (state.mode !== 'islem' || !state.talebeler?.length || !state.kitap || !state.ders) return;
+    readStatuses({ devre: state.devre, kitap: state.kitap, ders: state.ders, dersISO: state.dersKayitISO }).then((map) => {
+      state.durumMap = map;
+      renderTalebeListDebounced();
+    }).catch(() => {});
+  });
+
   function renderTalebeList(){
     const box=$('talebeList'); box.innerHTML='';
     const sort=$('selSort').value;
@@ -1345,15 +1214,12 @@ $('mSave').addEventListener('click', async () => {
       return;
     }
 
-    // Ders kayıt tarihini bul
     let dersKayitISO = null;
     if(isTalebeView && state.talebeDersDurumMap[ders]?.dersGun){
       dersKayitISO = state.talebeDersDurumMap[ders].dersGun + 'T00:00:00Z';
     } else {
       try {
-        const mdoc = await db.collection(PATHS.main).doc(state.devre).collection(state.kitap).doc(ders).get();
-        const m = mdoc.exists ? mdoc.data() : {};
-        dersKayitISO = m.ilkKayitISO || m.created || new Date().toISOString();
+        dersKayitISO = await getDersKayitISO(state.devre, state.kitap, ders);
       } catch(_) {
         dersKayitISO = new Date().toISOString();
       }
@@ -1361,7 +1227,6 @@ $('mSave').addEventListener('click', async () => {
     const sabitGun = dersKayitISO ? dersKayitISO.slice(0,10) : new Date().toISOString().slice(0,10);
     
     const { uid: meUid, name: meName } = await ensureUserCtx();
-    const device = getDeviceInfo();
 
     // 1) Optimistic UI: anında yansıt
     const nowISO = new Date().toISOString();
@@ -1430,14 +1295,15 @@ $('mSave').addEventListener('click', async () => {
     await writeStatusFast({
       devre: state.devre, kitap: state.kitap, ders: ders,
       uid: modalCtx.uid, durum,
-      personel: meName, personelUid: meUid, device,
+      personel: meName, personelUid: meUid, talebeAd: modalCtx.ad || state.talebeAd,
       dersGun: sabitGun
     });
+    try { if (bc) bc.postMessage({ type: 'takrir_updated' }); } catch(_) {}
 
     toast('Kaydedildi');
   }catch(err){
     console.error(err);
-    toast('Kaydedilemedi');  // İstersen roll-back yapabilirsin
+    toast(err?.message || 'Kayıt kaydedilemedi.', 'error');
   }
 });
 
@@ -1486,11 +1352,10 @@ $('mSave').addEventListener('click', async () => {
       for(const kitap of kitaplar){
         const item=document.createElement('div');
         item.className='ayarlar-item';
-        const metaDoc=await db.collection(PATHS.main).doc(state.devre).collection(kitap).doc('_meta').get();
-        const meta=metaDoc.exists?metaDoc.data():{};
-        const createdBy=meta.createdBy||meta.ilkKayitBy||'—';
-        const createdDate=meta.created||meta.ilkKayitISO||meta.createdClientISO||'—';
-        const dateStr=createdDate!=='—'?createdDate.slice(0,10):'—';
+        const { data: meta } = await sbOrThrow().from('takrir_index').select('created_by, created_at').eq('devre', state.devre).eq('kitap', kitap).eq('ders_adi', '_meta').limit(1).maybeSingle();
+        const createdBy = meta?.created_by || '—';
+        const createdDate = meta?.created_at || '—';
+        const dateStr = createdDate !== '—' ? (typeof createdDate === 'string' ? createdDate.slice(0,10) : new Date(createdDate).toISOString().slice(0,10)) : '—';
         
         item.innerHTML=`
           <div class="ayarlar-item-content">
@@ -1519,6 +1384,7 @@ $('mSave').addEventListener('click', async () => {
     }catch(e){
       console.error(e);
       list.innerHTML='<div style="color:var(--danger); padding:12px">Hata: '+e.message+'</div>';
+      toast('Kitap listesi yüklenemedi: '+e.message, 'error');
     }
   }
 
@@ -1595,190 +1461,29 @@ $('mSave').addEventListener('click', async () => {
   function ayarlarEditDers(kitap, ders, createdBy, createdDate){
     openDuzenlemeModal('ders', ders, kitap, { createdBy, createdDate });
   }
-  // Tarih bazlı kayıtlarda kitap adını güncelle
-  async function updateKitapNameInByDate(devre, oldKitap, newKitap){
-    loadingLabel('Tarih kayıtları taranıyor...');
-    let totalUpdated = 0;
-    const BATCH_SIZE = 400;
-    let currentBatch = db.batch();
-    let batchCount = 0;
-
-    // Son 2 yıl içindeki tüm tarihleri tara (yaklaşık 730 gün)
-    const today = new Date();
-    const startDate = new Date(today);
-    startDate.setFullYear(today.getFullYear() - 2);
-    
-    const dates = [];
-    for(let d = new Date(startDate); d <= today; d.setDate(d.getDate() + 1)){
-      dates.push(d.toISOString().slice(0,10));
-    }
-
-    for(let i = 0; i < dates.length; i++){
-      const dateStr = dates[i];
-      if(i % 50 === 0){
-        loadingLabel(`Tarih kayıtları taranıyor... (${i}/${dates.length})`);
-        bumpLoading(40 + (i / dates.length) * 40);
-      }
-
-      try{
-        const dateCol = db.collection(PATHS.byDate).doc(devre).collection(dateStr);
-        const dateDocs = await dateCol.get();
-        
-        for(const dateDoc of dateDocs.docs){
-          const data = dateDoc.data() || {};
-          let needsUpdate = false;
-          const updateData = {};
-
-          // kayitlar array'ini güncelle
-          if(Array.isArray(data.kayitlar)){
-            const updatedKayitlar = data.kayitlar.map(kayit=>{
-              if(kayit.kitap === oldKitap){
-                needsUpdate = true;
-                return {...kayit, kitap: newKitap};
-              }
-              return kayit;
-            });
-            if(needsUpdate){
-              updateData.kayitlar = updatedKayitlar;
-            }
-          }
-
-          // Ana dokümanı güncelle
-          if(needsUpdate){
-            currentBatch.update(dateDoc.ref, updateData);
-            batchCount++;
-          }
-
-          // dersler alt koleksiyonunu güncelle
-          const derslerCol = dateDoc.ref.collection('dersler');
-          const derslerSnap = await derslerCol.get();
-          for(const dersDoc of derslerSnap.docs){
-            const dersData = dersDoc.data() || {};
-            if(dersData.kitap === oldKitap){
-              // Yeni dersKey oluştur
-              const newDersKey = encodeURIComponent(`${newKitap}__${dersData.ders}`);
-              const newDersRef = derslerCol.doc(newDersKey);
-              currentBatch.set(newDersRef, {
-                ...dersData,
-                kitap: newKitap
-              }, {merge: true});
-              currentBatch.delete(dersDoc.ref);
-              batchCount++;
-              totalUpdated++;
-            }
-          }
-
-          if(batchCount >= BATCH_SIZE){
-            await currentBatch.commit();
-            currentBatch = db.batch();
-            batchCount = 0;
-            await new Promise(r => setTimeout(r, 200)); // Rate limit için bekle
-          }
-        }
-      }catch(e){
-        console.warn(`Tarih ${dateStr} için hata:`, e);
-      }
-    }
-
-    if(batchCount > 0){
-      await currentBatch.commit();
-    }
-    return totalUpdated;
-  }
-
   async function ayarlarSaveKitap(oldName, newName){
     if(!newName) newName = ($('duzenlemeInput')?.value||'').trim();
     if(!newName || newName===oldName){
-      ayarlarCancelEditKitap();
+      closeDuzenlemeModal();
       return;
     }
     if(!confirm(`"${oldName}" kitabını "${newName}" olarak değiştirmek istediğinizden emin misiniz? Tüm tarih kayıtları da güncellenecektir.`)) return;
-    
     try{
       await ensureUserCtx();
       loadingStart('Kitap güncelleniyor...', 85);
       toast('Güncelleniyor...');
-      
-      // Yeni kitap adıyla meta kopyala
-      const oldMeta=await db.collection(PATHS.main).doc(state.devre).collection(oldName).doc('_meta').get();
-      if(oldMeta.exists){
-        const metaData=oldMeta.data();
-        await db.collection(PATHS.main).doc(state.devre).collection(newName).doc('_meta').set({
-          ...metaData,
-          updated:new Date().toISOString(),
-          updatedBy:__ME,
-          updatedUid:__UID,
-          renamedFrom:oldName
-        });
-      }else{
-        await db.collection(PATHS.main).doc(state.devre).collection(newName).doc('_meta').set({
-          created:new Date().toISOString(),
-          createdBy:__ME,
-          createdUid:__UID,
-          renamedFrom:oldName
-        },{merge:true});
-      }
-
-      bumpLoading(15);
-      loadingLabel('Dersler taşınıyor...');
-
-      // Tüm dersleri taşı
-      const derslerSnap=await db.collection(PATHS.main).doc(state.devre).collection(oldName).get();
-      const batch=db.batch();
-      derslerSnap.forEach(doc=>{
-        if(doc.id==='_meta') return;
-        const newRef=db.collection(PATHS.main).doc(state.devre).collection(newName).doc(doc.id);
-        batch.set(newRef,doc.data());
-      });
-      await batch.commit();
-
-      bumpLoading(30);
-      loadingLabel('Index güncelleniyor...');
-
-      // Index güncelle
-      await db.collection(PATHS.index).doc(state.devre).update({
-        kitaplar:firebase.firestore.FieldValue.arrayRemove(oldName)
-      });
-      await db.collection(PATHS.index).doc(state.devre).update({
-        kitaplar:firebase.firestore.FieldValue.arrayUnion(newName)
-      });
-
-      bumpLoading(45);
-      loadingLabel('Tarih kayıtları güncelleniyor...');
-
-      // Tarih bazlı kayıtları güncelle
-      const updatedCount = await updateKitapNameInByDate(state.devre, oldName, newName);
-      
-      bumpLoading(75);
-      loadingLabel('Eski kayıtlar temizleniyor...');
-
-      // Eski kitabı sil
-      const deleteBatch=db.batch();
-      derslerSnap.forEach(doc=>{
-        deleteBatch.delete(doc.ref);
-      });
-      deleteBatch.delete(db.collection(PATHS.main).doc(state.devre).collection(oldName).doc('_meta'));
-      await deleteBatch.commit();
-
-      // Index dersler güncelle
-      const dersIndexRef=db.collection(PATHS.index).doc(state.devre).collection('dersler').doc(oldName);
-      const dersIndexSnap=await dersIndexRef.get();
-      if(dersIndexSnap.exists){
-        const dersData=dersIndexSnap.data();
-        await db.collection(PATHS.index).doc(state.devre).collection('dersler').doc(newName).set(dersData);
-        await dersIndexRef.delete();
-      }
-
+      bumpLoading(20);
+      await sbOrThrow().from('takrir_index').update({ kitap: newName }).eq('devre', state.devre).eq('kitap', oldName);
+      await sbOrThrow().from('ders_kayitlari').update({ kitap: newName }).eq('devre', state.devre).eq('kitap', oldName);
       bumpLoading(100);
-      toast(`Kitap güncellendi (${updatedCount} tarih kaydı güncellendi)`);
-      // Sadece listeyi yenile
+      toast('Kitap güncellendi.');
       await loadAyarlarKitaplar();
       await refreshKitap(true);
       if(state.kitap===oldName) state.kitap=newName;
       loadingEnd();
     }catch(e){
       console.error(e);
-      toast('Güncellenemedi: '+e.message);
+      toast('Güncellenemedi: '+e.message, 'error');
       loadingEnd();
     }
   };
@@ -1787,28 +1492,15 @@ $('mSave').addEventListener('click', async () => {
     try{
       await ensureUserCtx();
       toast('Siliniyor...');
-      
-      // Index'ten çıkar
-      await db.collection(PATHS.index).doc(state.devre).update({
-        kitaplar:firebase.firestore.FieldValue.arrayRemove(kitap)
-      });
-      
-      // Dersler index'ini sil
-      await db.collection(PATHS.index).doc(state.devre).collection('dersler').doc(kitap).delete().catch(()=>{});
-      
-      // Kitap ve dersleri sil
-      const snap=await db.collection(PATHS.main).doc(state.devre).collection(kitap).get();
-      const batch=db.batch();
-      snap.forEach(doc=>batch.delete(doc.ref));
-      await batch.commit();
-      
+      await sbOrThrow().from('ders_kayitlari').delete().eq('devre', state.devre).eq('kitap', kitap);
+      await sbOrThrow().from('takrir_index').delete().eq('devre', state.devre).eq('kitap', kitap);
       toast('Kitap silindi');
       await loadAyarlarKitaplar();
       await refreshKitap(true);
       if(state.kitap===kitap){ state.kitap=''; state.ders=''; }
     }catch(e){
       console.error(e);
-      toast('Silinemedi: '+e.message);
+      toast('Silinemedi: '+e.message, 'error');
     }
   };
 
@@ -1826,7 +1518,7 @@ $('mSave').addEventListener('click', async () => {
       await refreshKitap(false);
     }catch(e){
       console.error(e);
-      toast('Eklenemedi: '+e.message);
+      toast('Eklenemedi: '+e.message, 'error');
     }
   }
   $('ayarlarBtnKitapEkle').addEventListener('click', async (e)=>{
@@ -1903,183 +1595,44 @@ $('mSave').addEventListener('click', async () => {
     }catch(e){
       console.error(e);
       list.innerHTML='<div style="color:var(--danger); padding:12px">Hata: '+e.message+'</div>';
+      toast('Ders listesi yüklenemedi: '+e.message, 'error');
     }
-  }
-
-  // Tarih bazlı kayıtlarda ders adını güncelle
-  async function updateDersNameInByDate(devre, kitap, oldDers, newDers){
-    loadingLabel('Tarih kayıtları taranıyor...');
-    let totalUpdated = 0;
-    const BATCH_SIZE = 400;
-    let currentBatch = db.batch();
-    let batchCount = 0;
-    const oldDersKey = encodeURIComponent(`${kitap}__${oldDers}`);
-    const newDersKey = encodeURIComponent(`${kitap}__${newDers}`);
-
-    // Son 2 yıl içindeki tüm tarihleri tara
-    const today = new Date();
-    const startDate = new Date(today);
-    startDate.setFullYear(today.getFullYear() - 2);
-    
-    const dates = [];
-    for(let d = new Date(startDate); d <= today; d.setDate(d.getDate() + 1)){
-      dates.push(d.toISOString().slice(0,10));
-    }
-
-    for(let i = 0; i < dates.length; i++){
-      const dateStr = dates[i];
-      if(i % 50 === 0){
-        loadingLabel(`Tarih kayıtları taranıyor... (${i}/${dates.length})`);
-        bumpLoading(40 + (i / dates.length) * 40);
-      }
-
-      try{
-        const dateCol = db.collection(PATHS.byDate).doc(devre).collection(dateStr);
-        const dateDocs = await dateCol.get();
-        
-        for(const dateDoc of dateDocs.docs){
-          const data = dateDoc.data() || {};
-          let needsUpdate = false;
-          const updateData = {};
-
-          // kayitlar array'ini güncelle
-          if(Array.isArray(data.kayitlar)){
-            const updatedKayitlar = data.kayitlar.map(kayit=>{
-              if(kayit.kitap === kitap && kayit.ders === oldDers){
-                needsUpdate = true;
-                return {...kayit, ders: newDers};
-              }
-              return kayit;
-            });
-            if(needsUpdate){
-              updateData.kayitlar = updatedKayitlar;
-            }
-          }
-
-          // Ana dokümanı güncelle
-          if(needsUpdate){
-            currentBatch.update(dateDoc.ref, updateData);
-            batchCount++;
-          }
-
-          // dersler alt koleksiyonunu güncelle
-          const derslerCol = dateDoc.ref.collection('dersler');
-          const oldDersDoc = await derslerCol.doc(oldDersKey).get();
-          if(oldDersDoc.exists){
-            const dersData = oldDersDoc.data() || {};
-            if(dersData.kitap === kitap && dersData.ders === oldDers){
-              const newDersRef = derslerCol.doc(newDersKey);
-              currentBatch.set(newDersRef, {
-                ...dersData,
-                ders: newDers
-              }, {merge: true});
-              currentBatch.delete(oldDersDoc.ref);
-              batchCount++;
-              totalUpdated++;
-            }
-          }
-
-          if(batchCount >= BATCH_SIZE){
-            await currentBatch.commit();
-            currentBatch = db.batch();
-            batchCount = 0;
-            await new Promise(r => setTimeout(r, 200)); // Rate limit için bekle
-          }
-        }
-      }catch(e){
-        console.warn(`Tarih ${dateStr} için hata:`, e);
-      }
-    }
-
-    if(batchCount > 0){
-      await currentBatch.commit();
-    }
-    return totalUpdated;
   }
 
   async function ayarlarSaveDers(kitap, oldName, newName){
     if(!newName) newName = ($('duzenlemeInput')?.value||'').trim();
-    if(!newName || newName===oldName){
-      return;
-    }
-    // Modal'da zaten onay alındı, burada tekrar sormaya gerek yok
-    
+    if(!newName || newName===oldName) return;
     try{
       await ensureUserCtx();
       loadingStart('Ders güncelleniyor...', 85);
       toast('Güncelleniyor...');
-      
-      bumpLoading(10);
-      loadingLabel('Ders dokümanı güncelleniyor...');
-      
-      // Ders dokümanını kopyala ve güncelle
-      const oldDoc=await db.collection(PATHS.main).doc(state.devre).collection(kitap).doc(oldName).get();
-      if(oldDoc.exists){
-        const oldData=oldDoc.data();
-        await db.collection(PATHS.main).doc(state.devre).collection(kitap).doc(newName).set({
-          ...oldData,
-          ilkKayitISO:oldData.ilkKayitISO||oldData.created||new Date().toISOString(),
-          ilkKayitBy:oldData.ilkKayitBy||oldData.createdBy||__ME,
-          updated:new Date().toISOString(),
-          updatedBy:__ME,
-          updatedUid:__UID,
-          renamedFrom:oldName
-        });
-        await oldDoc.ref.delete();
-      }
-
-      bumpLoading(25);
-      loadingLabel('Index güncelleniyor...');
-
-      // Index dersler güncelle
-      const dersIndexRef=db.collection(PATHS.index).doc(state.devre).collection('dersler').doc(kitap);
-      await dersIndexRef.update({
-        dersler:firebase.firestore.FieldValue.arrayRemove(oldName)
-      });
-      await dersIndexRef.update({
-        dersler:firebase.firestore.FieldValue.arrayUnion(newName)
-      });
-
-      bumpLoading(40);
-      loadingLabel('Tarih kayıtları güncelleniyor...');
-
-      // Tarih bazlı kayıtları güncelle
-      const updatedCount = await updateDersNameInByDate(state.devre, kitap, oldName, newName);
-
-      bumpLoading(95);
-      toast(`Ders güncellendi (${updatedCount} tarih kaydı güncellendi)`);
-      // Sadece güncellenen item'ı yenile
+      await sbOrThrow().from('takrir_index').update({ ders_adi: newName }).eq('devre', state.devre).eq('kitap', kitap).eq('ders_adi', oldName);
+      await sbOrThrow().from('ders_kayitlari').update({ ders_adi: newName }).eq('devre', state.devre).eq('kitap', kitap).eq('ders_adi', oldName);
+      toast('Ders güncellendi');
       await loadAyarlarDersler(kitap);
       await refreshDers();
       if(state.ders===oldName) state.ders=newName;
       loadingEnd();
     }catch(e){
       console.error(e);
-      toast('Güncellenemedi: '+e.message);
+      toast('Güncellenemedi: '+e.message, 'error');
       loadingEnd();
     }
-  };
+  }
   async function ayarlarDeleteDers(kitap, ders){
     if(!confirm(`"${ders}" dersini silmek istediğinizden emin misiniz? Bu işlem geri alınamaz!`)) return;
     try{
       await ensureUserCtx();
       toast('Siliniyor...');
-      
-      // Index'ten çıkar
-      await db.collection(PATHS.index).doc(state.devre).collection('dersler').doc(kitap).update({
-        dersler:firebase.firestore.FieldValue.arrayRemove(ders)
-      });
-      
-      // Ders dokümanını sil
-      await db.collection(PATHS.main).doc(state.devre).collection(kitap).doc(ders).delete();
-      
+      await sbOrThrow().from('ders_kayitlari').delete().eq('devre', state.devre).eq('kitap', kitap).eq('ders_adi', ders);
+      await sbOrThrow().from('takrir_index').delete().eq('devre', state.devre).eq('kitap', kitap).eq('ders_adi', ders);
       toast('Ders silindi');
       await loadAyarlarDersler(kitap);
       await refreshDers();
       if(state.ders===ders) state.ders='';
     }catch(e){
       console.error(e);
-      toast('Silinemedi: '+e.message);
+      toast('Silinemedi: '+e.message, 'error');
     }
   };
 
@@ -2097,7 +1650,7 @@ $('mSave').addEventListener('click', async () => {
       await refreshDers();
     }catch(e){
       console.error(e);
-      toast('Eklenemedi: '+e.message);
+      toast('Eklenemedi: '+e.message, 'error');
     }
   }
   $('ayarlarBtnDersEkle').addEventListener('click', async (e)=>{
@@ -2207,15 +1760,17 @@ $('selTalebe').addEventListener('change', async ()=>{
     state.mode=currentMode;
     
     if(state.mode === 'talebe'){
-      // Talebe görünümü
       if(!state.kitap){ $('goMsg').textContent='Kitap seçiniz.'; return; }
       if(!state.talebeUid){ $('goMsg').textContent='Talebe seçiniz.'; return; }
       loadingStart('Veriler getiriliyor…', 88);
       try{
         await showTalebeView();
+      } catch(e){
+        console.error(e);
+        toast(e?.message || 'Veriler yüklenemedi.', 'error');
+        $('goMsg').textContent = 'Yüklenemedi.';
       } finally { loadingEnd(); }
     } else {
-      // Normal görünüm (rapor/islem)
       if(!state.kitap){ $('goMsg').textContent='Kitap seçiniz.'; return; }
       if(!state.ders){ $('goMsg').textContent='Ders seçiniz.'; return; }
       loadingStart('Veriler getiriliyor…', 88);
@@ -2226,9 +1781,13 @@ $('selTalebe').addEventListener('change', async ()=>{
         } else {
           await showIslem();
         }
+      } catch(e){
+        console.error(e);
+        toast(e?.message || 'Veriler yüklenemedi.', 'error');
+        $('goMsg').textContent = 'Yüklenemedi.';
       } finally { loadingEnd(); }
     }
-});
+  });
 
   // Ekle butonları
   $('btnKitapEkleToggle').addEventListener('click', ()=>{ const w=$('kitapEkleWrap'); w.style.display=w.style.display==='none'?'flex':'none'; });
@@ -2241,7 +1800,12 @@ $('btnKitapKaydet').addEventListener('click', async ()=>{
     $('kitapMsg').textContent='Kaydediliyor...';
     await addKitap(state.devre, kitap);
     $('inpKitap').value=''; $('kitapMsg').textContent='Eklendi.'; await refreshKitap(false);
-  }catch(e){ console.error(e); $('kitapMsg').textContent = (e.message==='no-auth'?'Giriş gerekli.':'Hata (yetki/bağlantı).'); }
+  }catch(e){
+    console.error(e);
+    const msg = e.message === 'no-auth' ? 'Giriş gerekli. Lütfen giriş yapıp sayfayı yenileyin.' : (e.message || 'Hata (yetki/bağlantı).');
+    $('kitapMsg').textContent = msg;
+    if (e.message === 'no-auth' && typeof window.showToast === 'function') window.showToast('error', 'Oturum', 'Giriş yapıp sayfayı yenileyin.');
+  }
 });
 
 $('btnDersKaydet').addEventListener('click', async ()=>{
@@ -2253,7 +1817,12 @@ $('btnDersKaydet').addEventListener('click', async ()=>{
     $('dersMsg').textContent='Kaydediliyor...';
     await addDers(state.devre, state.kitap, ders);
     $('inpDers').value=''; $('dersMsg').textContent='Eklendi.'; await refreshDers();
-  }catch(e){ console.error(e); $('dersMsg').textContent = (e.message==='no-auth'?'Giriş gerekli.':'Hata (yetki/bağlantı).'); }
+  }catch(e){
+    console.error(e);
+    const msg = e.message === 'no-auth' ? 'Giriş gerekli. Lütfen giriş yapıp sayfayı yenileyin.' : (e.message || 'Hata (yetki/bağlantı).');
+    $('dersMsg').textContent = msg;
+    if (e.message === 'no-auth' && typeof window.showToast === 'function') window.showToast('error', 'Oturum', 'Giriş yapıp sayfayı yenileyin.');
+  }
 });
   $('selSort').addEventListener('change', ()=>renderTalebeList());
   $('btnListeYenile').addEventListener('click', ()=>renderTalebeList());
@@ -2265,18 +1834,20 @@ $('btnDersKaydet').addEventListener('click', async ()=>{
   // Sayfa-özel init fonksiyonu (ortak.js'den çağrılacak)
   window.initPage = async function(){
     try{
-      // CURRENT_ALLOW ve CURRENT_DENY ortak.js'den geliyor - zaten tanımlı, direkt window'dan kullanabiliriz
-      // window.CURRENT_ALLOW ve window.CURRENT_DENY zaten ortak.js'de set edilmiş
-      
-      // Başlangıç değerleri
+      if (!sb) sb = await getSbReady(5000);
+      if (!sb) {
+        if (typeof window.showToast === 'function') window.showToast('error', 'Hata', 'Veritabanı bağlantısı kurulamadı. Sayfayı yenileyin.');
+        return;
+      }
       state.devre = $('selDevre').value;
       await refreshKitap(true);
       await refreshTalebe();
-    }catch(e){ 
-      console.error(e); 
-      if(typeof window.showToast === 'function'){
-        window.showToast('error', 'Hata', 'Veriler yüklenirken hata.');
-      }
+    }catch(e){
+      console.error(e);
+      const msg = e.message === 'no-auth'
+        ? 'Oturum bulunamadı. Giriş yapıp sayfayı yenileyin.'
+        : (e.message || 'Veriler yüklenirken hata. Ağ bağlantısını kontrol edin veya tek sekme kullanın.');
+      if (typeof window.showToast === 'function') window.showToast('error', 'Hata', msg);
     }
   };
 </script>

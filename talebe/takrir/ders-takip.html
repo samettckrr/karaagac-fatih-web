@@ -9,40 +9,37 @@
   <!-- Ortak CSS -->
   <link rel="stylesheet" href="../../css/app-shell.css" />
   
-  <!-- Supabase (Auth + Database için) - ÖNCE YÜKLENMELİ -->
+  <!-- Supabase (Auth + üst panel / sayfa manifesti için) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="../../src/supabase.js"></script>
+  <script src="../../src/supabase-auth-wrapper.js"></script>
   <script>
-    // Supabase client'ın yüklendiğinden emin ol
-    (function() {
-      const SUPABASE_URL = 'https://lmwfibippjvqctccxiwb.supabase.co';
-      const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxtd2ZpYmlwcGp2cWN0Y2N4aXdiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NjE2NzA1NCwiZXhwIjoyMDgxNzQzMDU0fQ.lzoudrJx_V4RdCCxPRfgLA1riWNKZ3HyFzeqRynYHeQ';
-      
-      function initSupabase() {
-        if (typeof supabase !== 'undefined' && typeof supabase.createClient === 'function') {
-          window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    (function(){
+      function initAuth(){
+        if (typeof window.getSupabaseAuth === 'function') {
+          window.auth = window.getSupabaseAuth();
           return true;
         }
         return false;
       }
-      
-      // Hemen dene
-      if (!initSupabase()) {
-        // Eğer yüklenmediyse, biraz bekle ve tekrar dene
-        let retries = 0;
-        const maxRetries = 10;
-        const checkInterval = setInterval(() => {
+      function waitAndTriggerInit(){
+        if (typeof window.auth !== 'undefined' && window.auth && typeof window.initAppShellAuth === 'function') {
+          try { window.initAppShellAuth(); } catch(e) { console.error('initAppShellAuth hatası:', e); }
+        } else if (typeof window.initAppShellAuth === 'function') {
+          setTimeout(waitAndTriggerInit, 100);
+        }
+      }
+      if (!initAuth()) {
+        var retries = 0, maxRetries = 50;
+        var iv = setInterval(function(){
           retries++;
-          if (initSupabase() || retries >= maxRetries) {
-            clearInterval(checkInterval);
-            if (window.supabase) {
-              console.log('✅ Supabase client hazır');
-            } else {
-              console.error('❌ Supabase client yüklenemedi');
-            }
+          if (initAuth() || retries >= maxRetries) {
+            clearInterval(iv);
+            if (window.auth) setTimeout(waitAndTriggerInit, 200);
           }
         }, 100);
       } else {
-        console.log('✅ Supabase client hazır');
+        setTimeout(waitAndTriggerInit, 200);
       }
     })();
   </script>
@@ -1675,24 +1672,42 @@
   // DÜZENLE MODAL FONKSİYONLARI
   // ============================================
   
+  // Zaman aşımı ile promise (asılmayı önlemek için)
+  function promiseWithTimeout(promise, ms, fallbackError) {
+    let timeoutId;
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => reject(fallbackError || new Error('Zaman aşımı')), ms);
+    });
+    return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
+  }
+
   // Düzenle modalını aç
   async function handleDuzenle() {
     const modal = document.getElementById('duzenleModal');
     if (!modal) return;
     
+    // Önce select'leri temizle – "Yükleniyor" takılı kalmasın
+    const duzenleKitapDevre = document.getElementById('duzenleKitapDevre');
+    const duzenleDersDevre = document.getElementById('duzenleDersDevre');
+    const kitapSec = document.getElementById('duzenleKitapSec');
+    const dersKitap = document.getElementById('duzenleDersKitap');
+    const dersSec = document.getElementById('duzenleDersSec');
+    if (duzenleKitapDevre) duzenleKitapDevre.value = '';
+    if (duzenleDersDevre) duzenleDersDevre.value = '';
+    if (kitapSec) kitapSec.innerHTML = '<option value="">Önce devre seçiniz</option>';
+    if (dersKitap) dersKitap.innerHTML = '<option value="">Önce devre seçiniz</option>';
+    if (dersSec) dersSec.innerHTML = '<option value="">Önce kitap seçiniz</option>';
+    
     modal.classList.add('active');
     document.body.classList.add('modal-open');
     
-    // Varsayılan olarak Kitap Düzenle sekmesini göster
     switchDuzenleTab('kitap');
     
-    // Formları temizle
     const kitapForm = document.getElementById('duzenleKitapForm');
     const dersForm = document.getElementById('duzenleDersForm');
     if (kitapForm) kitapForm.reset();
     if (dersForm) dersForm.reset();
     
-    // Hata mesajlarını gizle
     const kitapHata = document.getElementById('kitapDuzenleHata');
     const dersHata = document.getElementById('dersDuzenleHata');
     if (kitapHata) {
@@ -1790,12 +1805,15 @@
     kitapSelect.innerHTML = '<option value="">Yükleniyor...</option>';
     
     try {
-      const kitaplar = await window.dersTakipAPI.takrirKitaplarGetir(devre);
+      const apiPromise = window.dersTakipAPI && typeof window.dersTakipAPI.takrirKitaplarGetir === 'function'
+        ? window.dersTakipAPI.takrirKitaplarGetir(devre)
+        : Promise.reject(new Error('API hazır değil'));
+      const kitaplar = await promiseWithTimeout(apiPromise, 15000, new Error('Zaman aşımı'));
       kitapSelect.innerHTML = '<option value="">Seçiniz</option>' +
-        kitaplar.map(k => `<option value="${k}">${k}</option>`).join('');
+        (Array.isArray(kitaplar) ? kitaplar : []).map(k => `<option value="${k}">${k}</option>`).join('');
     } catch (error) {
       console.error('Kitaplar yüklenemedi:', error);
-      kitapSelect.innerHTML = '<option value="">Hata oluştu</option>';
+      kitapSelect.innerHTML = '<option value="">Hata: ' + (error && error.message ? error.message : 'yüklenemedi') + '</option>';
     }
   }
   
@@ -1803,27 +1821,29 @@
   async function loadDuzenleDersKitaplar() {
     const devreEl = document.getElementById('duzenleDersDevre');
     const kitapSelect = document.getElementById('duzenleDersKitap');
+    const dersSelect = document.getElementById('duzenleDersSec');
     if (!devreEl || !kitapSelect) return;
     
     const devre = devreEl.value;
     if (!devre) {
       kitapSelect.innerHTML = '<option value="">Önce devre seçiniz</option>';
+      if (dersSelect) dersSelect.innerHTML = '<option value="">Önce kitap seçiniz</option>';
       return;
     }
     
     kitapSelect.innerHTML = '<option value="">Yükleniyor...</option>';
+    if (dersSelect) dersSelect.innerHTML = '<option value="">Önce kitap seçiniz</option>';
     
     try {
-      const kitaplar = await window.dersTakipAPI.takrirKitaplarGetir(devre);
+      const apiPromise = window.dersTakipAPI && typeof window.dersTakipAPI.takrirKitaplarGetir === 'function'
+        ? window.dersTakipAPI.takrirKitaplarGetir(devre)
+        : Promise.reject(new Error('API hazır değil'));
+      const kitaplar = await promiseWithTimeout(apiPromise, 15000, new Error('Zaman aşımı'));
       kitapSelect.innerHTML = '<option value="">Seçiniz</option>' +
-        kitaplar.map(k => `<option value="${k}">${k}</option>`).join('');
-      
-      // Ders select'ini sıfırla
-      const dersSelect = document.getElementById('duzenleDersSec');
-      if (dersSelect) dersSelect.innerHTML = '<option value="">Önce kitap seçiniz</option>';
+        (Array.isArray(kitaplar) ? kitaplar : []).map(k => `<option value="${k}">${k}</option>`).join('');
     } catch (error) {
       console.error('Kitaplar yüklenemedi:', error);
-      kitapSelect.innerHTML = '<option value="">Hata oluştu</option>';
+      kitapSelect.innerHTML = '<option value="">Hata: ' + (error && error.message ? error.message : 'yüklenemedi') + '</option>';
     }
   }
   
@@ -1845,12 +1865,15 @@
     dersSelect.innerHTML = '<option value="">Yükleniyor...</option>';
     
     try {
-      const dersler = await window.dersTakipAPI.takrirDerslerGetir(devre, kitap);
+      const apiPromise = window.dersTakipAPI && typeof window.dersTakipAPI.takrirDerslerGetir === 'function'
+        ? window.dersTakipAPI.takrirDerslerGetir(devre, kitap)
+        : Promise.reject(new Error('API hazır değil'));
+      const dersler = await promiseWithTimeout(apiPromise, 15000, new Error('Zaman aşımı'));
       dersSelect.innerHTML = '<option value="">Seçiniz</option>' +
-        dersler.map(d => `<option value="${d}">${d}</option>`).join('');
+        (Array.isArray(dersler) ? dersler : []).map(d => `<option value="${d}">${d}</option>`).join('');
     } catch (error) {
       console.error('Dersler yüklenemedi:', error);
-      dersSelect.innerHTML = '<option value="">Hata oluştu</option>';
+      dersSelect.innerHTML = '<option value="">Hata: ' + (error && error.message ? error.message : 'yüklenemedi') + '</option>';
     }
   }
   
@@ -2156,15 +2179,23 @@
     const kitapSelect = document.getElementById('dersEkleKitap');
     if (!kitapSelect) return;
     
+    if (!devre) {
+      kitapSelect.innerHTML = '<option value="">Önce devre seçiniz</option>';
+      return;
+    }
+    
     kitapSelect.innerHTML = '<option value="">Yükleniyor...</option>';
     
     try {
-      const kitaplar = await window.dersTakipAPI.takrirKitaplarGetir(devre);
+      const apiPromise = window.dersTakipAPI && typeof window.dersTakipAPI.takrirKitaplarGetir === 'function'
+        ? window.dersTakipAPI.takrirKitaplarGetir(devre)
+        : Promise.reject(new Error('API hazır değil'));
+      const kitaplar = await promiseWithTimeout(apiPromise, 15000, new Error('Zaman aşımı'));
       kitapSelect.innerHTML = '<option value="">Seçiniz</option>' +
-        kitaplar.map(k => `<option value="${k}">${k}</option>`).join('');
+        (Array.isArray(kitaplar) ? kitaplar : []).map(k => `<option value="${k}">${k}</option>`).join('');
     } catch (error) {
       console.error('Kitaplar yüklenemedi:', error);
-      kitapSelect.innerHTML = '<option value="">Hata oluştu</option>';
+      kitapSelect.innerHTML = '<option value="">Hata: ' + (error && error.message ? error.message : 'yüklenemedi') + '</option>';
     }
   }
 

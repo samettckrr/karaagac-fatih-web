@@ -30,6 +30,18 @@ CREATE TABLE public.arsiv_hedefler (
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT arsiv_hedefler_pkey PRIMARY KEY (id)
 );
+CREATE TABLE public.aylik_giderler (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  yil integer NOT NULL,
+  ay integer NOT NULL CHECK (ay >= 1 AND ay <= 12),
+  kalem_id uuid NOT NULL,
+  tutar numeric NOT NULL CHECK (tutar >= 0::numeric),
+  tarih date NOT NULL,
+  aciklama text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT aylik_giderler_pkey PRIMARY KEY (id),
+  CONSTRAINT aylik_giderler_kalem_id_fkey FOREIGN KEY (kalem_id) REFERENCES public.gider_kalemleri(id)
+);
 CREATE TABLE public.bildirimler (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   baslik text NOT NULL,
@@ -107,6 +119,16 @@ CREATE TABLE public.gecmis_teberru_kayitlari (
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT gecmis_teberru_kayitlari_pkey PRIMARY KEY (id)
 );
+CREATE TABLE public.gider_kalemleri (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  ad text NOT NULL,
+  parent_id uuid,
+  sira integer NOT NULL DEFAULT 0,
+  aktif boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT gider_kalemleri_pkey PRIMARY KEY (id),
+  CONSTRAINT gider_kalemleri_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.gider_kalemleri(id)
+);
 CREATE TABLE public.hedefler (
   id text NOT NULL,
   hedef numeric,
@@ -147,7 +169,7 @@ CREATE TABLE public.izinler (
   baslangic timestamp with time zone NOT NULL,
   planlanandonus timestamp with time zone,
   aciklama text,
-  durum text NOT NULL DEFAULT 'aktif' CHECK (durum IN ('aktif', 'dondu', 'iptal')),
+  durum text NOT NULL DEFAULT 'aktif'::text CHECK (durum = ANY (ARRAY['aktif'::text, 'dondu'::text, 'iptal'::text])),
   uid text,
   createdby text,
   cihaz text,
@@ -160,23 +182,6 @@ CREATE TABLE public.izinler (
   updatedat timestamp with time zone,
   updatedby text,
   CONSTRAINT izinler_pkey PRIMARY KEY (id)
-);
-CREATE TABLE public.yoklama (
-  devre text NOT NULL,
-  gun date NOT NULL,
-  talebeuid text NOT NULL,
-  durum text DEFAULT 'none' CHECK (durum IN ('geldi', 'gelmedi', 'izinli', 'none')),
-  personel text,
-  personeluid text,
-  donussaatiso text,
-  islemiso timestamp with time zone,
-  islemisostr text,
-  izinbitisiso timestamp with time zone,
-  izinveren text,
-  izinaciklama text,
-  createdat timestamp with time zone DEFAULT now(),
-  updatedat timestamp with time zone DEFAULT now(),
-  CONSTRAINT yoklama_pkey PRIMARY KEY (devre, gun, talebeuid)
 );
 CREATE TABLE public.kantin_alinimlar (
   id text NOT NULL,
@@ -412,9 +417,9 @@ CREATE TABLE public.personel_odeme_takvim (
   personel_adi_soyadi text NOT NULL,
   yil integer NOT NULL,
   ay integer NOT NULL CHECK (ay >= 1 AND ay <= 12),
-  tip text NOT NULL CHECK (tip = ANY (ARRAY['hediye'::text, 'kira'::text, 'cocuk'::text, 'yakacak'::text, 'ikramiye'::text, 'elbise'::text, 'asker'::text, 'yeni_dogan'::text, 'yol_yardimi'::text])),
+  tip text NOT NULL CHECK (tip = ANY (ARRAY['hediye'::text, 'kira'::text, 'cocuk'::text, 'yakacak'::text, 'ikramiye'::text, 'elbise'::text, 'asker'::text, 'yeni_dogan'::text, 'yol_yardimi'::text, 'dugun'::text, 'sigorta'::text])),
   tutar numeric NOT NULL CHECK (tutar >= 0::numeric),
-  verildigi_tarih date NOT NULL,
+  verildigi_tarih date,
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT personel_odeme_takvim_pkey PRIMARY KEY (id)
 );
@@ -494,20 +499,6 @@ CREATE TABLE public.ramazan_kayitlari (
   tarih timestamp with time zone,
   CONSTRAINT ramazan_kayitlari_pkey PRIMARY KEY (id)
 );
-CREATE TABLE public.ramazan_tahsilat (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  kayit_id text NOT NULL,
-  kayit_tipi text NOT NULL DEFAULT 'iftar-sahur' CHECK (kayit_tipi IN ('iftar-sahur', 'taahhut')),
-  tutar numeric NOT NULL CHECK (tutar >= 0),
-  tahsilat_tarihi date NOT NULL,
-  odeme_tipi text NOT NULL CHECK (odeme_tipi IN ('pesin', 'taksit')),
-  taksit_no integer,
-  aciklama text,
-  createdat timestamp with time zone DEFAULT now(),
-  kaydedenpersonel text,
-  kaydedenpersoneluid text,
-  CONSTRAINT ramazan_tahsilat_pkey PRIMARY KEY (id)
-);
 CREATE TABLE public.ramazan_mahaller (
   id text NOT NULL,
   adi text,
@@ -537,6 +528,20 @@ CREATE TABLE public.ramazan_secenekler (
   aktif boolean,
   tip text,
   CONSTRAINT ramazan_secenekler_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.ramazan_tahsilat (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  kayit_id text NOT NULL,
+  tutar numeric NOT NULL CHECK (tutar >= 0::numeric),
+  tahsilat_tarihi date NOT NULL,
+  odeme_tipi text NOT NULL CHECK (odeme_tipi = ANY (ARRAY['pesin'::text, 'taksit'::text])),
+  taksit_no integer,
+  aciklama text,
+  createdat timestamp with time zone DEFAULT now(),
+  kaydedenpersonel text,
+  kaydedenpersoneluid text,
+  kayit_tipi text DEFAULT 'iftar-sahur'::text,
+  CONSTRAINT ramazan_tahsilat_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.ramazan_veriler (
   id text NOT NULL,
@@ -716,6 +721,23 @@ CREATE TABLE public.veriler (
   yil integer,
   CONSTRAINT veriler_pkey PRIMARY KEY (id)
 );
+CREATE TABLE public.yoklama (
+  devre text NOT NULL,
+  gun date NOT NULL,
+  talebeuid text NOT NULL,
+  durum text DEFAULT 'none'::text CHECK (durum = ANY (ARRAY['geldi'::text, 'gelmedi'::text, 'izinli'::text, 'none'::text])),
+  personel text,
+  personeluid text,
+  donussaatiso text,
+  islemiso timestamp with time zone,
+  islemisostr text,
+  izinbitisiso timestamp with time zone,
+  izinveren text,
+  izinaciklama text,
+  createdat timestamp with time zone DEFAULT now(),
+  updatedat timestamp with time zone DEFAULT now(),
+  CONSTRAINT yoklama_pkey PRIMARY KEY (devre, gun, talebeuid)
+);
 
 
 
@@ -740,4 +762,24 @@ aidat_kitap_select               SELECT	            public
 aidat_kitap_update                UPDATE	          public
 
 sadece ben aidat_kitap tablosundan bir örnek bıraktım, tüm tablolar şuan böyle
+
+
+---
+## Tablo kontrolü (kod ile karşılaştırma)
+
+**Kodda kullanılan tüm Supabase tabloları bu şemada mevcut.** Eksik tablo yok.
+
+| Kullanılan tablolar (projede .from('...')) | sqleditor.md'de |
+|--------------------------------------------|-----------------|
+| kullanicilar, sayfa_manifesti, kullanici_bildirimleri | Var |
+| gider_kalemleri, aylik_giderler | Var |
+| personel_odeme_takvim, gecmis_teberru_kayitlari, arsiv_hedefler | Var |
+| ramazan_* (yillar, mahaller, kayitlari, kapasite, secenekler, ayarlar, tahsilat, arsiv, veriler, hedefler, menuler) | Var |
+| teberru_kayitlari, teberru_arsiv, taahhut_kayitlari, taahhut_arsiv | Var |
+| duzenleme_talepleri, hedefler, butceihvan | Var |
+
+**Notlar:**
+- **RLS:** Sadece `aidat_kitap` için örnek politikalar yazılmış. Diğer tüm tablolar için de aynı mantıkla (SELECT, INSERT, UPDATE, DELETE) RLS politikaları eklenmeli.
+- **sayfa_manifesti:** Kolon adı `order` — PostgreSQL'de reserved word. Tabloyu oluştururken `"order"` (tırnaklı) kullanın veya kolonu `sira` / `sort_order` yapın. Kod (ortak.js) şu an `.order('order', …)` kullanıyor.
+- **Takrir (Firebase'den geçince):** `takrir_index` ve `ders_kayitlari` şemada var. İsteğe bağlı: kitap meta bilgisi için `takrir_kitap_meta` (devre, kitap, created_by, created_at) eklenebilir; yoksa ilk ders kaydından türetilebilir.
 
