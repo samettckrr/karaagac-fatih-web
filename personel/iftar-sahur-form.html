@@ -3130,7 +3130,9 @@
         else alert('Yıl seçimi yapılmamış.');
         return;
       }
+      var newWin = null;
       try {
+        newWin = window.open('about:blank', '_blank');
         if (!kayitlar || kayitlar.length === 0) {
           if (typeof loadKayitlar === 'function') await loadKayitlar({ skipMyRecords: true });
         }
@@ -3237,15 +3239,22 @@
         };
         var key = 'ramazantablo_' + Date.now();
         try { localStorage.setItem(key, JSON.stringify(payload)); } catch (e) { key = null; }
+        var tabloUrl = '';
         if (key) {
-          window.open('../sablonlar/ramazantablo.html?key=' + encodeURIComponent(key) + '&yil=' + CURRENT_YIL, '_blank');
+          tabloUrl = '../sablonlar/ramazantablo.html?key=' + encodeURIComponent(key) + '&yil=' + CURRENT_YIL;
         } else {
           var dataEnc = encodeURIComponent(JSON.stringify(payload));
-          if (dataEnc.length > 1800) { if (typeof showAlert === 'function') showAlert('Veri çok büyük, tablo açılamadı.', 'error'); else alert('Veri çok büyük, tablo açılamadı.'); return; }
-          window.open('../sablonlar/ramazantablo.html?data=' + dataEnc + '&yil=' + CURRENT_YIL, '_blank');
+          if (dataEnc.length > 1800) { if (typeof showAlert === 'function') showAlert('Veri çok büyük, tablo açılamadı.', 'error'); else alert('Veri çok büyük, tablo açılamadı.'); if (newWin) newWin.close(); return; }
+          tabloUrl = '../sablonlar/ramazantablo.html?data=' + dataEnc + '&yil=' + CURRENT_YIL;
+        }
+        if (newWin && !newWin.closed) {
+          newWin.location.href = tabloUrl;
+        } else {
+          window.open(tabloUrl, '_blank');
         }
       } catch (err) {
         console.error('Tablo Gör hatası:', err);
+        if (newWin && !newWin.closed) newWin.close();
         if (typeof showAlert === 'function') showAlert('Tablo açılırken hata oluştu.', 'error');
         else alert('Tablo açılırken hata oluştu.');
       }
