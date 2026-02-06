@@ -341,6 +341,89 @@
       color: var(--ink)
     }
 
+    /* Talep Onay modal: Eski / Yeni karşılaştırma */
+    .talep-onay-sheet {
+      max-width: 720px;
+    }
+    .talep-onay-ust {
+      margin: 0 0 16px 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .talep-onay-karsilastirma {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .talep-onay-kolon {
+      border-radius: 12px;
+      padding: 12px;
+      border: 1px solid var(--border);
+    }
+    .talep-onay-eski {
+      background: #f8f9fa;
+      border-color: #dee2e6;
+    }
+    .talep-onay-yeni {
+      background: #e8f5e9;
+      border-color: #a5d6a7;
+    }
+    .talep-onay-kolon h4 {
+      margin: 0 0 10px 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+    .talep-onay-icerik {
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .talep-onay-satir {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 4px 0;
+      border-bottom: 1px solid rgba(0,0,0,.06);
+    }
+    .talep-onay-satir:last-child {
+      border-bottom: none;
+    }
+    .talep-onay-satir .label {
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+    .talep-onay-satir .value {
+      text-align: right;
+      word-break: break-word;
+    }
+    .talep-onay-aciklama-wrap {
+      margin-bottom: 16px;
+      padding: 10px 12px;
+      background: #fffde7;
+      border: 1px solid #f9a825;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+    .talep-onay-aciklama-wrap strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--ink);
+    }
+    .talep-onay-aciklama {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      max-height: 80px;
+      overflow-y: auto;
+    }
+    @media (max-width: 600px) {
+      .talep-onay-karsilastirma {
+        grid-template-columns: 1fr;
+      }
+    }
+
     .form-grid {
       display: grid;
       gap: 14px
@@ -1986,6 +2069,32 @@
     </div>
   </div>
 
+  <!-- Modal: Talep Onayı (Eski / Yeni karşılaştırmalı) -->
+  <div class="modal" id="modalTalepOnay">
+    <div class="sheet talep-onay-sheet">
+      <h3>Talep Onayı</h3>
+      <p class="talep-onay-ust">Bu talebi onaylamak istediğinizden emin misiniz?</p>
+      <div class="talep-onay-karsilastirma">
+        <div class="talep-onay-kolon talep-onay-eski">
+          <h4>Mevcut veri</h4>
+          <div id="talepOnayEskiContent" class="talep-onay-icerik"></div>
+        </div>
+        <div class="talep-onay-kolon talep-onay-yeni">
+          <h4>Yeni veri</h4>
+          <div id="talepOnayYeniContent" class="talep-onay-icerik"></div>
+        </div>
+      </div>
+      <div class="talep-onay-aciklama-wrap">
+        <strong>Açıklama:</strong>
+        <div id="talepOnayAciklama" class="talep-onay-aciklama"></div>
+      </div>
+      <div class="actions">
+        <button type="button" class="secondary" onclick="closeTalepOnayModal(false)">İptal</button>
+        <button type="button" class="good" onclick="closeTalepOnayModal(true)">Onayla</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: Uyarı/Bilgi -->
   <div class="modal" id="modalAlert">
     <div class="sheet" style="max-width:500px">
@@ -2533,6 +2642,28 @@
         window.closeAlertModal = closeAlertModal;
         window.showPromptModal = showPromptModal;
         window.closePromptModal = closePromptModal;
+
+        let talepOnayCallback = null;
+        function showTalepOnayModal(eskiHtml, yeniHtml, aciklama) {
+          return new Promise((resolve) => {
+            talepOnayCallback = resolve;
+            qs('#talepOnayEskiContent').innerHTML = eskiHtml;
+            qs('#talepOnayYeniContent').innerHTML = yeniHtml;
+            const aciklamaEl = qs('#talepOnayAciklama');
+            aciklamaEl.textContent = aciklama || '-';
+            qs('#modalTalepOnay').classList.add('show');
+            document.body.classList.add('modal-open');
+          });
+        }
+        function closeTalepOnayModal(result) {
+          qs('#modalTalepOnay').classList.remove('show');
+          document.body.classList.remove('modal-open');
+          if (talepOnayCallback) {
+            talepOnayCallback(result);
+            talepOnayCallback = null;
+          }
+        }
+        window.closeTalepOnayModal = closeTalepOnayModal;
 
         // Progress Bar
         function showProgress(percent) {
@@ -9814,7 +9945,18 @@
 
         // ===== TALEPLER YÖNETİMİ =====
 
+        function escapeHtml(str) {
+          if (str == null) return '';
+          const s = String(str);
+          return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+        function talepOnayRow(label, value) {
+          return '<div class="talep-onay-satir"><span class="label">' + escapeHtml(label) + '</span><span class="value">' + escapeHtml(String(value ?? '')) + '</span></div>';
+        }
+
         let talepler = [];
+        /** Talepler sekmesinde seçilen yıla göre yüklenen kayıtlar (Sahip, Mahal vb. boş kalmaması için) */
+        let kayitlarForTalepler = [];
 
         // Açıklamadan bilgileri parse et
         function parseAciklama(aciklama) {
@@ -9857,6 +9999,105 @@
           return result;
         }
 
+        /** Talepler sekmesindeki seçili yıla göre kayıtları yükler; böylece tabloda Sahip/Mahal/Tarih vb. boş kalmaz. */
+        async function loadKayitlarForTaleplerYil(yil) {
+          const yilNum = parseInt(yil, 10);
+          if (isNaN(yilNum)) {
+            kayitlarForTalepler = [];
+            return;
+          }
+          try {
+            const supabase = getSupabase();
+            if (!supabase) {
+              kayitlarForTalepler = [];
+              return;
+            }
+            let mahallerForKayitlar = mahalList && mahalList.length ? mahalList.map(m => ({ id: m.id, adi: m.adi })) : [];
+            if (mahallerForKayitlar.length === 0) {
+              try {
+                const { data: mahalData } = await supabase.from('ramazan_mahaller').select('id, adi').order('adi', { ascending: true });
+                mahallerForKayitlar = (mahalData || []).map(m => ({ id: m.id, adi: m.adi }));
+              } catch (_) {}
+            }
+            let iftarSahurKayitlar = [];
+            try {
+              const { data: ramazanKayitData, error: ramazanError } = await supabase
+                .from('ramazan_kayitlari')
+                .select('*')
+                .eq('yil', yilNum);
+              if (!ramazanError && ramazanKayitData) {
+                iftarSahurKayitlar = ramazanKayitData.map(d => {
+                  const created_at = d.createdAt || d.createdat;
+                  let tarih = null;
+                  if (d.tarih) tarih = typeof d.tarih === 'string' ? new Date(d.tarih) : new Date(d.tarih);
+                  else if (created_at) tarih = typeof created_at === 'string' ? new Date(created_at) : new Date(created_at);
+                  else tarih = new Date();
+                  const personelVal = d.personel || d.personelAdi || d.personeladi || '';
+                  const mahalidVal = d.mahalid || d.mahalId || null;
+                  const mahalAdiResolved = d.mahal || (mahalidVal && mahallerForKayitlar.find(m => m.id === mahalidVal)?.adi) || null;
+                  return {
+                    id: d.id,
+                    ...d,
+                    tarih, kayitTipi: 'iftar-sahur', personel: personelVal,
+                    personelAdi: d.personeladi || d.personelAdi || personelVal,
+                    musafirAdedi: d.musafiradedi || d.musafirAdedi || 0,
+                    mahal: mahalAdiResolved, mahalid: mahalidVal,
+                    createdAt: created_at, updatedAt: d.updatedat || d.updatedAt
+                  };
+                });
+              }
+            } catch (e) { console.warn('Talepler: iftar-sahur kayıtları yüklenemedi', e); }
+            let teberruKayitlar = [];
+            try {
+              const { data: teberruData, error: teberruError } = await supabase
+                .from('teberru_kayitlari').select('*').eq('yil', yilNum).order('createdat', { ascending: false });
+              if (!teberruError && teberruData) {
+                teberruKayitlar = teberruData.map(d => {
+                  const created_at = d.createdAt || d.createdat;
+                  let tarih = null;
+                  if (d.tarih) tarih = typeof d.tarih === 'string' ? new Date(d.tarih) : new Date(d.tarih);
+                  else if (created_at) tarih = typeof created_at === 'string' ? new Date(created_at) : new Date(created_at);
+                  else tarih = new Date();
+                  return {
+                    id: d.id, ...d, tip: 'teberru', sahip: d.bagisci || '', tutar: d.miktar || 0,
+                    tarih, yil: d.yil || (tarih ? tarih.getFullYear() : yilNum),
+                    kayitTipi: 'teberru', personel: d.personel || d.kaydedenpersonel || '',
+                    createdAt: created_at, updatedAt: d.updatedAt || d.updatedat
+                  };
+                });
+              }
+            } catch (e) { console.warn('Talepler: teberru kayıtları yüklenemedi', e); }
+            let taahhutKayitlar = [];
+            try {
+              const { data: taahhutData, error: taahhutError } = await supabase
+                .from('taahhut_kayitlari').select('*').eq('yil', yilNum).order('createdat', { ascending: false });
+              if (!taahhutError && taahhutData) {
+                taahhutKayitlar = taahhutData.map(d => {
+                  const created_at = d.createdAt || d.createdat;
+                  let tarih = null;
+                  if (d.tarih) tarih = typeof d.tarih === 'string' ? new Date(d.tarih) : new Date(d.tarih);
+                  else if (created_at) tarih = typeof created_at === 'string' ? new Date(created_at) : new Date(created_at);
+                  else tarih = new Date();
+                  return {
+                    id: d.id, ...d, tip: 'taahhut', sahip: d.bagisci || '', tutar: d.miktar || 0,
+                    tarih, yil: d.yil || (tarih ? tarih.getFullYear() : yilNum),
+                    kayitTipi: 'taahhut', personel: d.personel || d.kaydedenpersonel || '',
+                    createdAt: created_at, updatedAt: d.updatedAt || d.updatedat
+                  };
+                });
+              }
+            } catch (e) { console.warn('Talepler: taahhut kayıtları yüklenemedi', e); }
+            kayitlarForTalepler = [...iftarSahurKayitlar, ...teberruKayitlar, ...taahhutKayitlar];
+            kayitlarForTalepler.sort((a, b) => {
+              const getT = (k) => (k.tarih ? (typeof k.tarih === 'string' ? new Date(k.tarih) : k.tarih) : (k.createdAt ? new Date(k.createdAt) : new Date(0)));
+              return getT(b).getTime() - getT(a).getTime();
+            });
+          } catch (e) {
+            console.warn('Talepler: kayıtlar yüklenemedi', e);
+            kayitlarForTalepler = [];
+          }
+        }
+
         async function loadTalepler() {
           const yil = qs('#taleplerFiltreYil')?.value || qs('#filtreYil')?.value || '2025';
           try {
@@ -9867,6 +10108,7 @@
               renderTalepler();
               return;
             }
+            await loadKayitlarForTaleplerYil(yil);
 
             const { data, error } = await supabase
               .from('duzenleme_talepleri')
@@ -9926,11 +10168,13 @@
           if (tip) filtered = filtered.filter(t => t.talepTipi === tip);
 
           const ara = qs('#taleplerAraInput')?.value.trim() || '';
+          const kayitlarTalepler = kayitlarForTalepler.length ? kayitlarForTalepler : kayitlar;
           if (ara) {
-            filtered = filtered.filter(t =>
-              turkishIncludes(t.personelAdi || '', ara) ||
-              turkishIncludes(t.aciklama || '', ara)
-            );
+            filtered = filtered.filter(t => {
+              if (turkishIncludes(t.personelAdi || '', ara) || turkishIncludes(t.aciklama || '', ara)) return true;
+              const kayit = kayitlarTalepler.find(k => k.id === t.kayitId);
+              return !!(kayit && turkishIncludes((kayit.sahip || '').toString(), ara));
+            });
           }
 
           if (filtered.length === 0) {
@@ -9990,24 +10234,29 @@
             let istirakBilgisi = '-';
 
             if (t.kayitId) {
-              if (t.kayitTipi === 'iftar-sahur') {
-                const kayit = kayitlar.find(k => k.id === t.kayitId);
-                if (kayit) {
+              const kayit = kayitlarTalepler.find(k => k.id === t.kayitId);
+              if (kayit) {
+                if (t.kayitTipi === 'iftar-sahur') {
                   sahipBilgisi = kayit.sahip || '-';
                   musafirAdedi = kayit.musafirAdedi || kayit.musafiradedi || 0;
                   mahalAdi = kayit.mahal || '-';
                   tutarBilgisi = kayit.tutar ? `₺${Number(kayit.tutar).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}` : '-';
                   istirakBilgisi = kayit.istirak ? '✓ Evet' : '✗ Hayır';
                   kayitTip = kayit.tip === 'iftar' ? '🌙 İftar' : '🌟 Sahur';
-
-                  // Mevcut tarih (Supabase formatı - Firestore formatı kontrolü yok)
                   if (kayit.tarih) {
-                    const tarih = typeof kayit.tarih === 'string' 
-                      ? new Date(kayit.tarih) 
-                      : (kayit.tarih instanceof Date ? kayit.tarih : new Date(kayit.tarih));
-                    if (!isNaN(tarih.getTime())) {
-                      mevcutTarihStr = `${tarih.getDate()}.${tarih.getMonth() + 1}.${tarih.getFullYear()}`;
-                    }
+                    const tarih = typeof kayit.tarih === 'string' ? new Date(kayit.tarih) : (kayit.tarih instanceof Date ? kayit.tarih : new Date(kayit.tarih));
+                    if (!isNaN(tarih.getTime())) mevcutTarihStr = `${tarih.getDate()}.${tarih.getMonth() + 1}.${tarih.getFullYear()}`;
+                  }
+                } else if (t.kayitTipi === 'taahhut' || t.kayitTipi === 'teberru') {
+                  sahipBilgisi = kayit.sahip || '-';
+                  tutarBilgisi = kayit.tutar != null ? `₺${Number(kayit.tutar).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}` : '-';
+                  kayitTip = t.kayitTipi === 'taahhut' ? '📝 Taahhüt' : '💰 Teberru';
+                  musafirAdedi = '-';
+                  istirakBilgisi = '-';
+                  mahalAdi = kayit.mahal || '-';
+                  if (kayit.tarih) {
+                    const tarih = typeof kayit.tarih === 'string' ? new Date(kayit.tarih) : (kayit.tarih instanceof Date ? kayit.tarih : new Date(kayit.tarih));
+                    if (!isNaN(tarih.getTime())) mevcutTarihStr = `${tarih.getDate()}.${tarih.getMonth() + 1}.${tarih.getFullYear()}`;
                   }
                 }
               }
@@ -10025,7 +10274,7 @@
           <td>${istirakBilgisi}</td>
           <td>${mahalAdi}</td>
           <td>${t.personelAdi || '-'}</td>
-          <td style="max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${t.aciklama || ''}">${t.aciklama || '-'}</td>
+          <td style="max-width:280px; max-height:120px; overflow-y:auto; overflow-x:hidden; white-space:normal; word-wrap:break-word;">${t.aciklama || '-'}</td>
           <td>${yeniTarihStr}</td>
           <td>${durumBadge}</td>
           <td>
@@ -10052,45 +10301,53 @@
             'sil': 'Sil'
           }[talep.talepTipi] || talep.talepTipi;
 
-          // Kayıt bilgilerini hazırla
-          let kayitBilgileri = '';
-          if (talep.kayitTipi === 'iftar-sahur') {
-            const kayit = kayitlar.find(k => k.id === talep.kayitId);
-            if (kayit) {
-              let tarihStr = '-';
-              if (kayit.tarih) {
-                const tarih = typeof kayit.tarih === 'string' 
-                  ? new Date(kayit.tarih) 
-                  : (kayit.tarih instanceof Date ? kayit.tarih : new Date(kayit.tarih));
-                if (!isNaN(tarih.getTime())) {
-                  tarihStr = `${tarih.getDate()}.${tarih.getMonth() + 1}.${tarih.getFullYear()}`;
-                }
-              }
+          const kayitlarOnay = kayitlarForTalepler.length ? kayitlarForTalepler : kayitlar;
+          const kayit = talep.kayitId ? kayitlarOnay.find(k => k.id === talep.kayitId) : null;
 
-              kayitBilgileri = `
-Mevcut Kayıt Bilgileri:
-• Tarih: ${tarihStr}
-• Tip: ${kayit.tip === 'iftar' ? '🌙 İftar' : '🌟 Sahur'}
-• Sahip: ${kayit.sahip || '-'}
-• Müsafir: ${kayit.musafirAdedi || kayit.musafiradedi || 0}
-• Tutar: ${kayit.tutar ? `₺${Number(kayit.tutar).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}` : '-'}
-• İştirak: ${kayit.istirak ? 'Evet' : 'Hayır'}
-• Mahal: ${kayit.mahal || '-'}
-`;
+          const formatTarihStr = (dateVal) => {
+            if (!dateVal) return '-';
+            const d = typeof dateVal === 'string' ? new Date(dateVal) : (dateVal instanceof Date ? dateVal : new Date(dateVal));
+            return isNaN(d.getTime()) ? '-' : `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`;
+          };
 
-              if (talep.yeniTarih) {
-                const yeniTarih = new Date(talep.yeniTarih);
-                kayitBilgileri += `• Yeni Tarih: ${yeniTarih.getDate()}.${yeniTarih.getMonth() + 1}.${yeniTarih.getFullYear()}\n`;
+          let eskiHtml = '';
+          let yeniHtml = '';
+
+          if (kayit) {
+            if (talep.kayitTipi === 'iftar-sahur') {
+              eskiHtml = talepOnayRow('Tarih', formatTarihStr(kayit.tarih))
+                + talepOnayRow('Tip', kayit.tip === 'iftar' ? 'İftar' : 'Sahur')
+                + talepOnayRow('Sahip', kayit.sahip || '-')
+                + talepOnayRow('Müsafir', kayit.musafirAdedi ?? kayit.musafiradedi ?? 0)
+                + talepOnayRow('Tutar', kayit.tutar != null ? '₺' + Number(kayit.tutar).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) : '-')
+                + talepOnayRow('İştirak', kayit.istirak ? 'Evet' : 'Hayır')
+                + talepOnayRow('Mahal', kayit.mahal || '-');
+
+              if (talep.talepTipi === 'yer_degistir') {
+                yeniHtml = talepOnayRow('Yeni Tarih', formatTarihStr(talep.yeniTarih));
+                if (talep.mahalId && kayit.mahalId !== talep.mahalId) yeniHtml += talepOnayRow('Yeni Mahal', '(Seçilen mahal)');
+              } else if (talep.talepTipi === 'duzenle') {
+                const g = parseAciklama(talep.aciklama || '');
+                yeniHtml = talepOnayRow('Güncelleme', 'Açıklamaya göre');
+                if (g.musafirAdedi != null) yeniHtml += talepOnayRow('Müsafir', g.musafirAdedi);
+                if (g.tutar != null) yeniHtml += talepOnayRow('Tutar', '₺' + Number(g.tutar).toLocaleString('tr-TR', { minimumFractionDigits: 2 }));
+                if (g.sahip) yeniHtml += talepOnayRow('Sahip', g.sahip);
+                if (g.mahalAdi) yeniHtml += talepOnayRow('Mahal', g.mahalAdi);
+              } else if (talep.talepTipi === 'sil') {
+                yeniHtml = '<div class="talep-onay-satir"><span class="value" style="color:var(--bad);font-weight:600;">Kayıt silinecek</span></div>';
               }
+            } else if (talep.kayitTipi === 'taahhut' || talep.kayitTipi === 'teberru') {
+              eskiHtml = talepOnayRow('Sahip', kayit.sahip || '-')
+                + talepOnayRow('Tutar', kayit.tutar != null ? '₺' + Number(kayit.tutar).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) : '-')
+                + talepOnayRow('Tarih', formatTarihStr(kayit.tarih));
+              yeniHtml = '<div class="talep-onay-satir"><span class="value">Talep onaylandı olarak işaretlenecek</span></div>';
             }
           }
 
-          const confirmed = await showConfirmModal(
-            'Talep Onayı',
-            `Bu talebi onaylamak istediğinizden emin misiniz?\n\nTalep Tipi: ${talepTipiLabel}\n${kayitBilgileri}\nAçıklama: ${talep.aciklama || '-'}`,
-            'Onayla',
-            'good'
-          );
+          if (!eskiHtml) eskiHtml = talepOnayRow('Kayıt', 'Bulunamadı');
+          if (!yeniHtml) yeniHtml = talepOnayRow('İşlem', talepTipiLabel);
+
+          const confirmed = await showTalepOnayModal(eskiHtml, yeniHtml, talep.aciklama);
 
           if (!confirmed) {
             return;
@@ -10105,16 +10362,32 @@ Mevcut Kayıt Bilgileri:
             }
 
             if (talep.kayitTipi === 'iftar-sahur') {
-              const kayit = kayitlar.find(k => k.id === talep.kayitId);
+              const kayit = kayitlarOnay.find(k => k.id === talep.kayitId);
               if (!kayit) {
                 showAlertModal('Hata', 'Kayıt bulunamadı!');
                 return;
               }
 
               if (talep.talepTipi === 'yer_degistir' && talep.yeniTarih) {
-                // Yer değiştirme - Tarih güncelle
-                const yeniTarihParts = talep.yeniTarih.split('-');
-                const yeniTarih = new Date(yeniTarihParts[0], yeniTarihParts[1] - 1, yeniTarihParts[2], 12, 0, 0);
+                // Yer değiştirme - Tarih güncelle (YYYY-MM-DD veya ISO veya DD.MM.YYYY destekle)
+                let yeniTarih = null;
+                const raw = String(talep.yeniTarih).trim();
+                if (raw.includes('-')) {
+                  const parts = raw.split('-');
+                  const y = parseInt(parts[0], 10);
+                  const m = parseInt(parts[1], 10) - 1;
+                  const d = parseInt(parts[2], 10);
+                  if (!isNaN(y) && !isNaN(m) && !isNaN(d)) yeniTarih = new Date(y, m, d, 12, 0, 0);
+                }
+                if (!yeniTarih || isNaN(yeniTarih.getTime())) yeniTarih = new Date(raw);
+                if (!yeniTarih || isNaN(yeniTarih.getTime())) {
+                  const dmY = raw.match(/^(\d{1,2})[.\/](\d{1,2})[.\/](\d{4})$/);
+                  if (dmY) yeniTarih = new Date(parseInt(dmY[3], 10), parseInt(dmY[2], 10) - 1, parseInt(dmY[1], 10), 12, 0, 0);
+                }
+                if (!yeniTarih || isNaN(yeniTarih.getTime())) {
+                  showAlertModal('Hata', 'Geçersiz yeni tarih: ' + raw);
+                  return;
+                }
                 const yil = yeniTarih.getFullYear();
                 const ay = yeniTarih.getMonth() + 1;
 

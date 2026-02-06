@@ -827,10 +827,14 @@
 
   <div class="main-container">
 
-    <div class="mahal-planlama-btn-wrap" style="margin-bottom:12px;">
+    <div class="mahal-planlama-btn-wrap" style="margin-bottom:12px; display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
       <button type="button" id="btnMahalPlanlama" class="mahal-planlama-btn" onclick="openMahalPlanlamaPopup()" title="Mahal planlama görseli">
         <span class="mahal-planlama-emoji">⚠️</span>
         <span class="mahal-planlama-text">Mahal Planlaması</span>
+      </button>
+      <button type="button" class="mahal-planlama-btn" onclick="openTabloGor()" title="Personele özel Ramazan tablosu (A4 yatay)">
+        <span class="mahal-planlama-emoji">📋</span>
+        <span class="mahal-planlama-text">Tablo Gör</span>
       </button>
     </div>
 
@@ -1145,9 +1149,7 @@
       <div id="updateModalContent" style="line-height:1.6; color:#555; margin-bottom:20px; font-size:14px;">
         <p style="margin:0 0 12px 0;">Yapılan değişiklikler/yenilikler:</p>
         <ul style="margin:0; padding-left:20px; text-align:left;">
-          <li style="margin-bottom:8px;">Teberru kısmında > "Tahsilat" butonu, </li>
-          <li style="margin-bottom:8px;">İftar-Sahur kayıtları için "Davetiye" özelliği,</li>
-          <li style="margin-bottom:8px;">Ana sayfaya "Mahal Planlaması" görseli eklendi,</li>
+          <li style="margin-bottom:8px;">"Tablo Gör" butonu eklendi; bu buton ile tüm iftar-sahur kayıtlarınızı (toplam tutar, tahsilat, kalan) takvim şeklinde görebilirsiniz.</li>
         </ul>
         <p style="margin:0 0 12px 0;">aktif hale getirildi.</p>
       </div>
@@ -1922,7 +1924,7 @@
       }
     }
 
-    const UPDATE_VERSION = '2025-01-31';
+    const UPDATE_VERSION = '2025-02-06';
 
     function showUpdateModalIfNeeded() {
       const key = `iftarSahurUpdateViewCount_${UPDATE_VERSION}`;
@@ -3068,12 +3070,8 @@
           const tipLabel = k.tip === 'iftar' ? '🌙 İftar' : '🌟 Sahur';
           const mahalId = k.mahalId || k.mahalid;
           const mahalName = mahalId ? (mahaller.find(m => m.id === mahalId)?.adi || '') : '';
-          // Eğer not'ta "Muhasebe" varsa, kaydeden olarak "Muhasebe" göster
           const kayitPersonelAdi = k.personelAdi || k.personeladi;
-          let personelName = kayitPersonelAdi || k.personel || 'Bilinmiyor';
-          if (k.not && k.not.includes('Muhasebe')) {
-            personelName = 'Muhasebe';
-          }
+          const personelName = kayitPersonelAdi || k.personel || 'Bilinmiyor';
           const musafirAdedi = k.musafirAdedi || k.musafiradedi || 0;
           return `
                 <div style="background:#f8f9fa; padding:12px; border-radius:8px; border-left:3px solid ${k.tip === 'iftar' ? 'var(--accent)' : '#3498db'};">
@@ -3119,6 +3117,138 @@
 
     function closeMahalPlanlamaPopupOnOverlay(event) {
       if (event.target.id === 'mahalPlanlamaModal') closeMahalPlanlamaPopup();
+    }
+
+    async function openTabloGor() {
+      if (!currentUser && !currentPersonelAdi) {
+        if (typeof showAlert === 'function') showAlert('Tablo görüntülemek için giriş yapmanız gerekmektedir.', 'error');
+        else alert('Tablo görüntülemek için giriş yapmanız gerekmektedir.');
+        return;
+      }
+      if (!CURRENT_YIL) {
+        if (typeof showAlert === 'function') showAlert('Yıl seçimi yapılmamış.', 'error');
+        else alert('Yıl seçimi yapılmamış.');
+        return;
+      }
+      try {
+        if (!kayitlar || kayitlar.length === 0) {
+          if (typeof loadKayitlar === 'function') await loadKayitlar({ skipMyRecords: true });
+        }
+        var kayitlarList = kayitlar || [];
+        var myKayitlar = kayitlarList.filter(function (k) {
+          if (k.silindi) return false;
+          if (k.tip !== 'iftar' && k.tip !== 'sahur') return false;
+          if (currentUser && currentUser.id) {
+            var uid = k.personelUid || k.personeluid;
+            if (uid && uid === currentUser.id) return true;
+            var kaydedenUid = k.kaydedenpersoneluid || k.kaydedenPersonelUid;
+            if (kaydedenUid && kaydedenUid === currentUser.id) return true;
+          }
+          if (currentPersonelAdi && currentPersonelAdi !== 'Kullanıcı' && currentPersonelAdi !== 'Bilinmiyor' && !currentPersonelAdi.includes('@')) {
+            var n = normalizePersonelName(currentPersonelAdi);
+            if (!n) return false;
+            if (n === normalizePersonelName(k.personeladi || k.personelAdi || '')) return true;
+            if (n === normalizePersonelName(k.personel || '')) return true;
+            if (n === normalizePersonelName(k.sahip || '')) return true;
+            if (n === normalizePersonelName(k.kaydedenpersonel || k.kaydedenPersonel || '')) return true;
+          }
+          return false;
+        });
+
+        function tarihStr(kayit) {
+          var t = kayit.tarih;
+          if (!t) return null;
+          var d = null;
+          if (t.toDate) d = t.toDate();
+          else if (t.seconds) d = new Date(t.seconds * 1000);
+          else if (typeof t === 'string') d = new Date(t);
+          else if (t instanceof Date) d = t;
+          if (!d || isNaN(d.getTime())) return null;
+          if (typeof formatDateLocal === 'function') return formatDateLocal(d);
+          var y = d.getFullYear(), m = d.getMonth() + 1, day = d.getDate();
+          return y + '-' + (m < 10 ? '0' : '') + m + '-' + (day < 10 ? '0' : '') + day;
+        }
+
+        function sortKey(k) {
+          var c = k.createdat || k.createdAt;
+          if (c && c.seconds) return c.seconds;
+          if (c) return new Date(c).getTime();
+          return (k.id || '').toString();
+        }
+        var gunlukVeriler = {};
+        var byDate = {};
+        myKayitlar.forEach(function(k) {
+          var ds = tarihStr(k);
+          if (!ds) return;
+          if (!byDate[ds]) byDate[ds] = { iftar: [], sahur: [], musafir: 0, tutar: 0 };
+          var b = byDate[ds];
+          var sahip = (k.sahip || k.bagisci || '').toString().trim() || '';
+          if (k.tip === 'iftar') b.iftar.push({ sahip: sahip, key: sortKey(k) }); else if (k.tip === 'sahur') b.sahur.push({ sahip: sahip, key: sortKey(k) });
+          b.musafir += Number(k.musafirAdedi || k.musafiradedi || 0) || 0;
+          b.tutar += Number(k.tutar || 0) || 0;
+        });
+        Object.keys(byDate).forEach(function(ds) {
+          var b = byDate[ds];
+          b.iftar.sort(function(a, b) { return (a.key || 0) - (b.key || 0) || 0; });
+          b.sahur.sort(function(a, b) { return (a.key || 0) - (b.key || 0) || 0; });
+          gunlukVeriler[ds] = {
+            iftarlar: b.iftar.map(function(x) { return x.sahip; }),
+            sahurlar: b.sahur.map(function(x) { return x.sahip; }),
+            musafir: b.musafir,
+            tutar: b.tutar,
+            tahsilat: 0
+          };
+        });
+
+        var kayitIds = myKayitlar.map(function(k) { return k.id; }).filter(Boolean);
+        if (kayitIds.length > 0 && window.supabase) {
+          var res = await window.supabase.from('ramazan_tahsilat').select('kayit_id, tutar').in('kayit_id', kayitIds);
+          var tahsilatByKayitId = {};
+          kayitIds.forEach(function(id) { tahsilatByKayitId[id] = 0; });
+          (res.data || []).forEach(function(t) {
+            var kid = t.kayit_id;
+            var tutar = Number(t.tutar) || 0;
+            tahsilatByKayitId[kid] = (tahsilatByKayitId[kid] || 0) + tutar;
+          });
+          myKayitlar.forEach(function(k) {
+            var ds = tarihStr(k);
+            if (ds && gunlukVeriler[ds]) gunlukVeriler[ds].tahsilat += tahsilatByKayitId[k.id] || 0;
+          });
+        }
+
+        var baslangic = null;
+        var bitis = null;
+        if (ramazanAyari && ramazanAyari.baslangic && ramazanAyari.bitis) {
+          baslangic = String(ramazanAyari.baslangic).slice(0, 10);
+          bitis = String(ramazanAyari.bitis).slice(0, 10);
+        } else if (window.supabase && CURRENT_YIL) {
+          var yilRes = await window.supabase.from('ramazan_yillar').select('baslangic, bitis').eq('yil', CURRENT_YIL).maybeSingle();
+          if (yilRes && yilRes.data && yilRes.data.baslangic && yilRes.data.bitis) {
+            baslangic = String(yilRes.data.baslangic).slice(0, 10);
+            bitis = String(yilRes.data.bitis).slice(0, 10);
+          }
+        }
+        var payload = {
+          personelAdi: currentPersonelAdi || '—',
+          yil: CURRENT_YIL,
+          baslangic: baslangic,
+          bitis: bitis,
+          gunlukVeriler: gunlukVeriler
+        };
+        var key = 'ramazantablo_' + Date.now();
+        try { localStorage.setItem(key, JSON.stringify(payload)); } catch (e) { key = null; }
+        if (key) {
+          window.open('../sablonlar/ramazantablo.html?key=' + encodeURIComponent(key) + '&yil=' + CURRENT_YIL, '_blank');
+        } else {
+          var dataEnc = encodeURIComponent(JSON.stringify(payload));
+          if (dataEnc.length > 1800) { if (typeof showAlert === 'function') showAlert('Veri çok büyük, tablo açılamadı.', 'error'); else alert('Veri çok büyük, tablo açılamadı.'); return; }
+          window.open('../sablonlar/ramazantablo.html?data=' + dataEnc + '&yil=' + CURRENT_YIL, '_blank');
+        }
+      } catch (err) {
+        console.error('Tablo Gör hatası:', err);
+        if (typeof showAlert === 'function') showAlert('Tablo açılırken hata oluştu.', 'error');
+        else alert('Tablo açılırken hata oluştu.');
+      }
     }
 
     function openFormModalFromDay() {
@@ -3957,10 +4087,10 @@
           return aTipOrder - bTipOrder;
         }
 
-        // Aynı tipse tarihe göre (eskiden yeniye)
+        // Aynı tipse tarihe göre (yeniden eskiye)
         const aDate = parseDate(a);
         const bDate = parseDate(b);
-        return aDate.getTime() - bDate.getTime();
+        return bDate.getTime() - aDate.getTime();
       });
 
       // KPI hesaplama
@@ -4077,7 +4207,7 @@
             </div>` : ''}
             
             <div style="background:#e8f4f8; padding:8px; border-radius:6px; margin-bottom:10px;">
-              <div style="font-size:11px; color:#17a2b8; font-weight:600;">👤 Kaydeden: ${(k.not && k.not.includes('Muhasebe')) ? 'Muhasebe' : (kayitPersonelAdi || k.personel || 'Bilinmiyor')}</div>
+              <div style="font-size:11px; color:#17a2b8; font-weight:600;">👤 Kaydeden: ${kayitPersonelAdi || k.personel || 'Bilinmiyor'}</div>
             </div>
             
             ${updateInfo}
@@ -4165,7 +4295,7 @@
               </div>` : ''}
               
               <div style="background:#e8f4f8; padding:8px; border-radius:6px; margin-bottom:10px;">
-                <div style="font-size:11px; color:#17a2b8; font-weight:600;">👤 Kaydeden: ${(k.aciklama && k.aciklama.includes('Muhasebe')) || (k.not && k.not.includes('Muhasebe')) ? 'Muhasebe' : (k.personelAdi || k.personeladi || k.personel || k.kaydedenPersonel || k.kaydedenpersonel || 'Bilinmiyor')}</div>
+                <div style="font-size:11px; color:#17a2b8; font-weight:600;">👤 Kaydeden: ${k.personelAdi || k.personeladi || k.personel || k.kaydedenPersonel || k.kaydedenpersonel || 'Bilinmiyor'}</div>
               </div>
               
               ${updateInfo}
@@ -4263,7 +4393,7 @@
               </div>` : ''}
               
               <div style="background:#e8f4f8; padding:8px; border-radius:6px; margin-bottom:10px;">
-                <div style="font-size:11px; color:#17a2b8; font-weight:600;">👤 Kaydeden: ${(k.aciklama && k.aciklama.includes('Muhasebe')) || (k.not && k.not.includes('Muhasebe')) ? 'Muhasebe' : (k.personelAdi || k.personeladi || k.personel || k.kaydedenPersonel || k.kaydedenpersonel || 'Bilinmiyor')}</div>
+                <div style="font-size:11px; color:#17a2b8; font-weight:600;">👤 Kaydeden: ${k.personelAdi || k.personeladi || k.personel || k.kaydedenPersonel || k.kaydedenpersonel || 'Bilinmiyor'}</div>
               </div>
               
               ${updateInfo}
