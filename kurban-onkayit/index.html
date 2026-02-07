@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>2026 Karaağaç Kurban Ön Kayıt</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a472a" />
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html { overflow-x: hidden; }
+    body { margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Arial, sans-serif; background: #f5f5f0; color: #2d2d2d; line-height: 1.6; overflow-x: hidden; }
+    img { max-width: 100%; height: auto; }
+
+    /* Açılış intro overlay */
+    .intro-overlay {
+      position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; padding-top: 8vh;
+      background: linear-gradient(180deg, #0d2b1a 0%, #1a472a 30%, #2d6a3e 100%);
+      transition: opacity 0.6s ease, visibility 0.6s ease;
+    }
+    .intro-overlay.hide { opacity: 0; visibility: hidden; pointer-events: none; }
+    .intro-content { text-align: center; max-width: 90%; }
+    .intro-brand {
+      font-size: 2rem; font-weight: 800; color: #fff; letter-spacing: 0.08em; text-transform: uppercase;
+      text-shadow: 0 2px 20px rgba(0,0,0,0.3);
+      animation: introBrand 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      opacity: 0;
+    }
+    .intro-brand::after {
+      content: ''; display: block; width: 0; height: 3px; margin: 12px auto 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.9), transparent);
+      animation: introLine 0.8s ease-out 0.6s forwards;
+    }
+    .intro-slogan {
+      margin-top: 28px; font-size: 1.05rem; font-weight: 500; color: rgba(255,255,255,0.92); font-style: italic; letter-spacing: 0.03em;
+      line-height: 1.5; max-width: 320px; margin-left: auto; margin-right: auto;
+      animation: introSlogan 1s cubic-bezier(0.22, 1, 0.36, 1) 0.7s forwards;
+      opacity: 0;
+    }
+    @keyframes introBrand {
+      from { opacity: 0; transform: translateY(-20px) scale(0.92); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes introLine {
+      from { width: 0; }
+      to { width: 120px; }
+    }
+    @keyframes introSlogan {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 0.92; transform: translateY(0); }
+    }
+
+    .page { max-width: 560px; margin: 0 auto; padding: 20px 24px 40px; opacity: 0; transition: opacity 0.5s ease; overflow-x: hidden; min-width: 0; }
+    .page.visible { opacity: 1; }
+
+    /* Kurban teması - yeşil tonları */
+    .header { background: linear-gradient(145deg, #1a472a 0%, #2d6a3e 100%); color: #fff; padding: 24px 20px; border-radius: 0 0 20px 20px; margin-bottom: 20px; text-align: center; }
+    .header h1 { margin: 0; font-size: 1.5rem; font-weight: 700; }
+    .header .subtitle { margin: 6px 0 0; font-size: 0.9rem; opacity: 0.9; }
+
+    .section { background: #fff; border-radius: 16px; margin-bottom: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); border: 1px solid #e8e8e4; overflow: hidden; }
+    .section-title { font-size: 1rem; font-weight: 700; color: #1a472a; margin: 0; padding: 16px 20px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; user-select: none; transition: background 0.2s; }
+    .section-title:hover { background: rgba(26,71,42,0.04); }
+    .section-title::after { content: '⌄'; font-size: 1.2rem; color: #1a472a; transition: transform 0.3s ease; }
+    .section.collapsible.collapsed .section-title::after { transform: rotate(-90deg); }
+    .section.collapsible .section-content { max-height: 600px; }
+    .section.collapsible.collapsed .section-content { max-height: 0; }
+    .section-form { background: #fff; border: none; box-shadow: 0 4px 20px rgba(26,71,42,0.12); border-radius: 20px; overflow: visible; }
+    .section-form .section-title { cursor: default; padding: 20px 24px; background: linear-gradient(135deg, #1a472a 0%, #2d6a3e 100%); color: #fff; font-size: 1.05rem; border: none; border-radius: 20px 20px 0 0; }
+    .section-form .section-title:hover { background: linear-gradient(135deg, #1a472a 0%, #2d6a3e 100%); }
+    .section-form .section-title::after { display: none; }
+    .section-content { font-size: 0.9rem; color: #444; padding: 20px 24px 24px; overflow: hidden; transition: max-height 0.4s ease, padding 0.3s ease; }
+    .section.collapsible .section-content { border-top: 1px solid #eee; }
+    .section.collapsible.collapsed .section-content { padding-top: 0; padding-bottom: 0; border-top-color: transparent; }
+
+    .bilgi-list { margin: 0; padding-left: 18px; }
+    .bilgi-list li { margin-bottom: 6px; }
+
+    /* Hadis carousel */
+    .hadis-section { background: linear-gradient(145deg, #1a472a 0%, #2d6a3e 100%); border-radius: 16px; padding: 24px 20px; margin-bottom: 16px; color: #fff; position: relative; }
+    .hadis-header { text-align: center; font-size: 0.95rem; font-weight: 700; margin-bottom: 20px; letter-spacing: 0.03em; opacity: 0.95; }
+    .hadis-carousel { position: relative; touch-action: pan-y; }
+    .hadis-body { text-align: center; padding: 4px 0 20px; min-height: 140px; display: flex; flex-direction: column; justify-content: center; width: 100%; }
+    .hadis-arabic { font-family: 'Traditional Arabic', 'Amiri', serif; font-size: 1.55rem; direction: rtl; margin-bottom: 14px; line-height: 1.8; opacity: 0.95; }
+    .hadis-arabic strong, .hadis-turkish strong { font-weight: 700; }
+    .hadis-turkish { font-size: 1rem; line-height: 1.7; opacity: 0.92; font-style: italic; }
+    .hadis-kitap { font-size: 0.8rem; opacity: 0.75; margin-top: 10px; }
+    .hadis-nav { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 4px; }
+    .hadis-btn { width: 44px; height: 44px; border: none; background: rgba(255,255,255,0.25); color: #fff; border-radius: 50%; font-size: 1.4rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s, transform 0.2s; }
+    .hadis-btn:hover { background: rgba(255,255,255,0.4); transform: scale(1.05); }
+    .hadis-btn:active { transform: scale(0.98); }
+    .hadis-dots { display: flex; justify-content: center; gap: 8px; }
+    .hadis-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.4); transition: background 0.3s, transform 0.3s; cursor: pointer; }
+    .hadis-dot.active { background: #fff; transform: scale(1.2); }
+    .hadis-swipe-hint { position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); font-size: 0.7rem; opacity: 0.7; white-space: nowrap; animation: swipeHint 2s ease-in-out 1s 3; }
+    @keyframes swipeHint {
+      0%, 100% { opacity: 0.5; transform: translateX(-50%) translateY(0); }
+      50% { opacity: 1; transform: translateX(-50%) translateY(-4px); }
+    }
+
+    .section-form .section-content { overflow-x: hidden; padding: 52px 20px 32px; border: none; background: #fff; border-radius: 0 0 20px 20px; }
+    .section-form form { max-width: 100%; min-width: 0; margin: 0 16px; padding-top: 24px; }
+    .form-group { margin-bottom: 20px; min-width: 0; }
+    .form-group:last-of-type { margin-bottom: 0; }
+    .form-group label { display: block; font-size: 0.9rem; font-weight: 600; color: #1a472a; margin-bottom: 8px; letter-spacing: 0.02em; }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; max-width: 100%; min-width: 0; padding: 16px 18px;
+      border: 2px solid #e0e8e4; border-radius: 14px; font-size: 1rem; font-family: inherit;
+      box-sizing: border-box; background: #fff; color: #2d2d2d; transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .form-group input::placeholder, .form-group textarea::placeholder { color: #9ca3af; }
+    .form-group input:hover, .form-group select:hover, .form-group textarea:hover { border-color: #c5d5ce; }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      outline: none; border-color: #2d6a3e; box-shadow: 0 0 0 4px rgba(45,106,62,0.15);
+    }
+    .form-group select { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%231a472a' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 16px center; padding-right: 40px; }
+    .form-group textarea { min-height: 100px; resize: vertical; overflow-wrap: break-word; }
+    .form-group .hint { font-size: 0.8rem; color: #6b7280; margin-top: 6px; }
+
+    .btn-submit { width: 100%; padding: 18px 24px; margin: 20px 0 28px; background: linear-gradient(135deg, #1a472a, #2d6a3e); color: #fff; border: none; border-radius: 16px; font-size: 1.1rem; font-weight: 700; cursor: pointer; transition: opacity 0.2s, transform 0.15s; box-shadow: 0 4px 20px rgba(26,71,42,0.35); }
+    .btn-submit:hover { opacity: 0.92; }
+    .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); padding: 12px 24px; border-radius: 10px; font-size: 0.9rem; font-weight: 500; z-index: 1000; max-width: 90%; }
+    .toast.success { background: #1a472a; color: #fff; }
+    .toast.error { background: #a52a2a; color: #fff; }
+
+    /* Başarı ekranı (kayıt sonrası) */
+    .success-overlay { position: fixed; inset: 0; z-index: 9998; display: none; align-items: center; justify-content: center; padding: 24px; background: #fff; }
+    .success-overlay.visible { display: flex; animation: successFadeIn 0.5s ease; }
+    @keyframes successFadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .success-content { text-align: center; max-width: 400px; }
+    .success-brand { font-size: 1.75rem; font-weight: 800; color: #1a472a; letter-spacing: 0.06em; animation: successSlide 0.6s ease forwards; opacity: 0; }
+    .success-slogan { font-size: 1rem; font-weight: 500; color: #2d6a3e; margin-top: 12px; font-style: italic; animation: successSlide 0.6s ease 0.15s forwards; opacity: 0; }
+    .success-message { font-size: 1.05rem; line-height: 1.7; color: #2d2d2d; margin-top: 32px; padding: 24px 20px; background: #f0f7f2; border-radius: 16px; border-left: 4px solid #1a472a; text-align: left; animation: successSlide 0.6s ease 0.3s forwards; opacity: 0; }
+    .success-buttons { margin-top: 32px; display: flex; flex-direction: column; gap: 12px; animation: successSlide 0.6s ease 0.45s forwards; opacity: 0; }
+    .success-btn { display: block; padding: 14px 24px; border-radius: 12px; font-size: 1rem; font-weight: 600; text-align: center; text-decoration: none; cursor: pointer; transition: opacity 0.2s, transform 0.15s; border: none; font-family: inherit; }
+    .success-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .success-btn-form { background: #e8f0ec; color: #1a472a; border: 2px solid #1a472a; }
+    .success-btn-page { background: linear-gradient(135deg, #1a472a, #2d6a3e); color: #fff; }
+    @keyframes successSlide { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+    .footer-note { text-align: center; margin-top: 8px; padding: 0 10px 28px; }
+    .footer-brand { font-size: 1.25rem; font-weight: 800; color: #1a472a; letter-spacing: 0.05em; }
+    .footer-slogan { font-size: 0.95rem; font-weight: 500; color: #2d6a3e; margin-top: 6px; font-style: italic; opacity: 0.95; }
+  </style>
+</head>
+<body>
+  <div class="success-overlay" id="successOverlay">
+    <div class="success-content">
+      <div class="success-brand">Karaağaç Kurban</div>
+      <div class="success-slogan">Bu Kurbanda Da Emanetiniz Emin Ellerde</div>
+      <p class="success-message">Ön kayıt başvurunuz alınmıştır, en kısa sürede sizler ile iletişime geçeceğiz ve gerekli bilgilendirmeyi yapacağız.</p>
+      <div class="success-buttons">
+        <button type="button" class="success-btn success-btn-form" id="successBackForm">Forma Geri Dön</button>
+        <a href="2026kurban.html" class="success-btn success-btn-page">Karaağaç Kurban</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="intro-overlay" id="introOverlay">
+    <div class="intro-content">
+      <div class="intro-brand">Karaağaç Kurban</div>
+      <p class="intro-slogan">Bu Kurbanda Da Emanetiniz Emin Ellerde</p>
+    </div>
+  </div>
+
+  <div class="page" id="mainPage">
+    <header class="header">
+      <h1>2026 Kurban</h1>
+      <p class="subtitle">Ön Kayıt Formu</p>
+    </header>
+
+    <!-- Hadis-i Şerif Carousel -->
+    <section class="hadis-section">
+      <div class="hadis-header">Hadis-i Şerif</div>
+      <div class="hadis-carousel">
+        <div class="hadis-body">
+          <div class="hadis-arabic" id="hadisArabic"></div>
+          <div class="hadis-turkish" id="hadisTurkish"></div>
+          <div class="hadis-kitap" id="hadisKitap"></div>
+        </div>
+        <div class="hadis-nav">
+          <button type="button" class="hadis-btn" id="hadisPrev" aria-label="Önceki">‹</button>
+          <div class="hadis-dots" id="hadisDots"></div>
+          <button type="button" class="hadis-btn" id="hadisNext" aria-label="Sonraki">›</button>
+        </div>
+      </div>
+      <div class="hadis-swipe-hint" id="hadisSwipeHint">Kaydırarak geç →</div>
+    </section>
+
+    <!-- Dini Bilgilendirme -->
+    <section class="section collapsible" id="sectionDini">
+      <h2 class="section-title">Kurban Hakkında Dini Bilgilendirme</h2>
+      <div class="section-content">
+        <p>Kurban; Allah'ın rızasını kazanmak niyetiyle, belirli bir vakitte, belirli hayvanlardan birini ibadet maksadıyla kesmektir.</p>
+        <ul class="bilgi-list">
+          <li>Bilgilendirme kısmı "Ders Hocaları" tarafından hazırlanmalıdır.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Sistem Bilgilendirme -->
+    <section class="section collapsible collapsed" id="sectionSistem">
+      <h2 class="section-title">Kurban Kesim Sistemimiz Hakkında</h2>
+      <div class="section-content">
+        <p>Kurbanlarımız özenle seçilir, veteriner kontrolünden geçirilir.</p>
+        <p>Tüm hissedarlardan helallik ve vekâlet alınır. Kurbanlarımız İslâmî usullere uygun şekilde profesyonel ekip tarafından kesilir, ehil kasaplar tarafından işlenir.</p>
+        <ul class="bilgi-list">
+          <li>Hassas terazilerimiz ile et ve kemikler eşit şekilde pay edilir.</li>
+          <li>Paketlenerek size teslim edilir. Kurbanın 1. günü teslimat garantilidir.</li>
+        </ul>
+        <p style="margin-top: 12px; font-size: 0.85rem; color: #666;">Son yıllar referans değerleri:</p>
+        <ul class="bilgi-list" style="margin-top: 4px;">
+          <li>2023: 25 büyükbaş · İlk teslimat 08:45 - Son teslimat 13:45</li>
+          <li>2024: 35 büyükbaş · İlk teslimat 08:45 - Son teslimat 15:00</li>
+          <li>2025: 70 büyükbaş · İlk teslimat 08:45 - Son teslimat 17:00</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Ön Kayıt Formu -->
+    <section class="section section-form">
+      <h2 class="section-title">Ön Kayıt Formu</h2>
+      <form id="kurbanForm">
+        <div class="form-group">
+          <label for="ad_soyad">Ad Soyad *</label>
+          <input type="text" id="ad_soyad" name="ad_soyad" required placeholder="Adınız ve soyadınız" />
+        </div>
+        <div class="form-group">
+          <label for="telefon">Telefon *</label>
+          <input type="tel" id="telefon" name="telefon" required placeholder="05XX XXX XX XX" />
+        </div>
+        <div class="form-group">
+          <label for="adet">Kurban/Hisse Adedi *</label>
+          <input type="number" id="adet" name="adet" min="1" max="50" value="1" required />
+        </div>
+        <div class="form-group">
+          <label for="tur">Kurban Türü *</label>
+          <select id="tur" name="tur" required>
+            <option value="">Seçiniz</option>
+            <option value="kucukbas">Küçükbaş</option>
+            <option value="buyukbas">Büyükbaş</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="aciklama">Ek Not / Açıklama</label>
+          <textarea id="aciklama" name="aciklama" placeholder="Varsa eklemek istedikleriniz..."></textarea>
+        </div>
+      </form>
+    </section>
+
+    <button type="submit" form="kurbanForm" class="btn-submit" id="btnSubmit">Ön Kayıt Gönder</button>
+
+    <div class="footer-note">
+      <div class="footer-brand">Karaağaç Kurban</div>
+      <div class="footer-slogan">Bu Kurbanda Da Emanetiniz Emin Ellerde</div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      // Açılış intro: ~2.5 sn sonra fade out, ana sayfa görünür
+      const intro = document.getElementById('introOverlay');
+      const main = document.getElementById('mainPage');
+      setTimeout(function() {
+        intro.classList.add('hide');
+        main.classList.add('visible');
+      }, 3000);
+
+      document.getElementById('successBackForm').addEventListener('click', function() {
+        document.getElementById('successOverlay').classList.remove('visible');
+      });
+
+      // Açılır kapanır bölümler (sadece collapsible olanlar)
+      document.querySelectorAll('.section.collapsible .section-title').forEach(function(t) {
+        t.addEventListener('click', function() {
+          this.closest('.section').classList.toggle('collapsed');
+        });
+      });
+
+      // Hadis-i Şerif carousel (hadis.md - tam metinler, intro kalın)
+      const hadisler = [
+        { arIntro: "قَالَ رَسُولُ اللهِ صَلَّى اللهُ عَلَيْهِ وَسَلَّمَ:", ar: "اِسْتَفْرِهُوا ضَحَايَاكُمْ فَإِنَّهَا مَطَايَاكُمْ عَلَى الصِّرَاطِ", trIntro: "Resûlullah Efendimiz sallallâhü aleyhi ve sellem buyurdular:", tr: "\"Kurbanlarınızı, kuvvetli ve kusursuz olanlarından seçiniz. Muhakkak onlar, Sırât üzerinde sizin bineklerinizdir.\"", kitap: "Münâvî, Feyzu'l-Kadîr" },
+        { arIntro: "قَالَ رَسُولُ اللهِ صَلَّى اللهُ عَلَيْهِ وَسَلَّمَ:", ar: "مَنْ وَجَدَ سَعَةً فَلَمْ يُضَحِّ فَلَا يَقْرَبَنَّ مُصَلَّانَا", trIntro: "Resûlullah Efendimiz sallallâhü aleyhi ve sellem buyurdular:", tr: "\"Kim mal genişliği (imkân) bulur da kurban kesmezse sakın bizim mescidimize yaklaşmasın.\"", kitap: "Müsned-i Ahmed bin Hanbel" },
+        { arIntro: "عَنْ عَائِشَةَ رَضِيَ اللهُ عَنْهَا قَالَتْ:", ar: "قُلْتُ يَا رَسُولَ اللهِ أَسْتَدِينُ وَأُضَحِّي؟ قَالَ: نَعَمْ فَإِنَّهُ دَيْنٌ مَقْضِيٌّ", trIntro: "Hazret-i Âişe radıyallâhü anhâ buyurdu ki:", tr: "\"Resûlullah Efendimiz sallallâhü aleyhi ve sellem'e, 'Borç alıp kurban keseyim mi?' diye suâl ettim, 'Evet, zira bu, ödenmesi (Allâhü Teâlâ tarafından) kefîl olunan (kolaylaştırılan) bir borçtur.' buyurdular.\"", kitap: "Sünen-i Dârekutnî" },
+        { arIntro: "قَالَ رَسُولُ اللهِ صَلَّى اللهُ عَلَيْهِ وَسَلَّمَ:", ar: "مَنْ ضَحَّى طَيِّبَةً بِهَا نَفْسُهُ مُحْتَسِبًا لِأُضْحِيَّتِهِ كَانَتْ لَهُ حِجَابًا مِنَ النَّارِ", trIntro: "Resûlullah Efendimiz sallallâhü aleyhi ve sellem buyurdular:", tr: "\"Kim gönül hoşluğuyla ve sevabını yalnız Allâhü Teâlâ'dan bekleyerek kurbanını keserse, (bu kurban) o kimse için Cehennem ateşinden (koruyan) bir perde olur.\"", kitap: "Taberânî, el-Mu'cemü'l-Kebîr" },
+        { arIntro: "قَالَ رَسُولُ اللهِ صَلَّى اللهُ عَلَيْهِ وَسَلَّمَ:", ar: "مَا أُنْفِقَتِ الْوَرِقُ فِي شَيْءٍ أَحَبَّ إِلَى اللهِ مِنْ نَحِيرٍ يُنْحَرُ فِي يَوْمِ عِيدٍ", trIntro: "Resûlullah Efendimiz sallallâhü aleyhi ve sellem buyurdular:", tr: "\"Kurban Bayramı günü kesilecek kurbanlık için harcanan paradan, Allâhü Teâlâ'ya daha sevimli olan başka bir şeye, para harcanmamıştır.\"", kitap: "Taberânî, el-Mu'cemü'l-Kebîr" },
+        { arIntro: "قَالَ أَصْحَابُ رَسُولِ اللهِ صَلَّى اللهُ عَلَيْهِ وَسَلَّمَ:", ar: "يَا رَسُولَ اللهِ مَا هٰذِهِ الْأَضَاحِيُّ؟ قَالَ: سُنَّةُ أَبِيكُمْ إِبْرَاهِيمَ، قَالُوا: فَمَا لَنَا فِيهَا يَا رَسُولَ اللهِ؟ قَالَ: بِكُلِّ شَعْرَةٍ حَسَنَةٌ", trIntro: "Resûlullah sallallâhü aleyhi ve sellem'in Ashâb'ı:", tr: "'Yâ Resûlallah! Bu kurbanlar nedir?' diye suâl ettiler. Peygamberimiz (s.a.v.), \"Babanız İbrahim (aleyhisselâm)'dan gelen dînî bir vecîbedir.\" buyurdular. 'Yâ Resûlallah! Kurbanda bize ne sevap vardır?' dediler. \"Her bir kılı için bir hasene vardır.\" buyurdular.", kitap: "Sünen-i İbn-i Mâce" },
+        { arIntro: "قَالَ رَسُولُ اللهِ صَلَّى اللهُ عَلَيْهِ وَسَلَّمَ:", ar: "مَا مِنْ عَبْدٍ يُوَجِّهُ بِأُضْحِيَّتِهِ إِلَى الْقِبْلَةِ إِلَّا كَانَ دَمُهَا وَقَرْنُهَا وَصُوفُهَا حَسَنَاتٍ مُحْضَرَاتٍ فِي مِيزَانِهِ يَوْمَ الْقِيَامَةِ", trIntro: "Resûlullah Efendimiz sallallâhü aleyhi ve sellem buyurdular:", tr: "\"Bir kul, kurbanını kesmek üzere kıbleye doğru yatırdığında muhakkak o kurbanının kanı, boynuzu ve yünü, kıyamet günü, Mîzân'ında hazır bulacağı sevaplar olur.\"", kitap: "Kenzü'l-Ummâl" },
+        { arIntro: "قَالَ رَسُولُ اللهِ صَلَّى اللهُ عَلَيْهِ وَسَلَّمَ:", ar: "يَا فَاطِمَةُ قُومِي إِلَى أُضْحِيَّتِكِ فَاشْهَدِيهَا فَإِنَّهُ يُغْفَرُ لَكِ عِنْدَ أَوَّلِ قَطْرَةٍ تَقْطُرُ مِنْ دَمِهَا كُلُّ ذَنْبٍ عَمِلْتِيهِ", trIntro: "Resûlullah Efendimiz sallallâhü aleyhi ve sellem buyurdular:", tr: "\"Ey Fâtıma! Kalk, kurbanının yanında bulun, kesilmesine şâhit ol! Zira işlemiş olduğun (küçük) günahların tamamı, onun kanından yere düşen ilk damla ile affolunur.\"", kitap: "Hâkim, el-Müstedrek" }
+      ];
+      let hadisIdx = 0;
+      const hadisArabic = document.getElementById('hadisArabic');
+      const hadisTurkish = document.getElementById('hadisTurkish');
+      const hadisKitap = document.getElementById('hadisKitap');
+      const hadisDots = document.getElementById('hadisDots');
+      const hadisSwipeHint = document.getElementById('hadisSwipeHint');
+
+      hadisler.forEach(function(_, i) {
+        const d = document.createElement('span');
+        d.className = 'hadis-dot' + (i === 0 ? ' active' : '');
+        d.setAttribute('data-idx', i);
+        hadisDots.appendChild(d);
+      });
+
+      function showHadis(i) {
+        hadisIdx = (i + hadisler.length) % hadisler.length;
+        var h = hadisler[hadisIdx];
+        hadisArabic.innerHTML = '<strong>' + h.arIntro + '</strong> ' + h.ar;
+        hadisTurkish.innerHTML = '<strong>' + h.trIntro + '</strong> ' + h.tr;
+        hadisKitap.textContent = h.kitap ? '(' + h.kitap + ')' : '';
+        hadisDots.querySelectorAll('.hadis-dot').forEach(function(d, j) {
+          d.classList.toggle('active', j === hadisIdx);
+        });
+      }
+      showHadis(0);
+
+      document.getElementById('hadisPrev').addEventListener('click', function() { showHadis(hadisIdx - 1); });
+      document.getElementById('hadisNext').addEventListener('click', function() { showHadis(hadisIdx + 1); });
+      hadisDots.addEventListener('click', function(e) {
+        const idx = e.target.getAttribute('data-idx');
+        if (idx != null) showHadis(parseInt(idx, 10));
+      });
+
+      var hadisTouchStart = 0, hadisTouchEnd = 0;
+      document.querySelector('.hadis-carousel').addEventListener('touchstart', function(e) { hadisTouchStart = e.changedTouches[0].screenX; }, { passive: true });
+      document.querySelector('.hadis-carousel').addEventListener('touchend', function(e) {
+        hadisTouchEnd = e.changedTouches[0].screenX;
+        var d = hadisTouchStart - hadisTouchEnd;
+        if (Math.abs(d) > 50) { showHadis(d > 0 ? hadisIdx + 1 : hadisIdx - 1); }
+      }, { passive: true });
+
+      setTimeout(function() { hadisSwipeHint.style.display = 'none'; }, 8000);
+
+      // URL'den ref parametresini al (?ref=kadikoy vb.)
+      const params = new URLSearchParams(window.location.search);
+      const ref = params.get('ref') || '';
+
+      function showToast(msg, type) {
+        const el = document.createElement('div');
+        el.className = 'toast ' + (type || 'success');
+        el.textContent = msg;
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 3000);
+      }
+
+      document.getElementById('kurbanForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('btnSubmit');
+        btn.disabled = true;
+        btn.textContent = 'Gönderiliyor...';
+
+        const ad_soyad = document.getElementById('ad_soyad').value.trim();
+        const telefon = document.getElementById('telefon').value.trim();
+        const adet = parseInt(document.getElementById('adet').value, 10) || 1;
+        const tur = document.getElementById('tur').value;
+        const aciklama = document.getElementById('aciklama').value.trim() || null;
+
+        if (!ad_soyad || !telefon || !tur) {
+          showToast('Lütfen zorunlu alanları doldurun.', 'error');
+          btn.disabled = false;
+          btn.textContent = 'Ön Kayıt Gönder';
+          return;
+        }
+
+        if (adet < 1 || adet > 100) {
+          showToast('Kurban adedi 1-100 arasında olmalıdır.', 'error');
+          btn.disabled = false;
+          btn.textContent = 'Ön Kayıt Gönder';
+          return;
+        }
+
+        try {
+          const sb = window.supabase;
+          if (!sb) {
+            showToast('Bağlantı kurulamadı. Sayfayı yenileyip tekrar deneyin.', 'error');
+            btn.disabled = false;
+            btn.textContent = 'Ön Kayıt Gönder';
+            return;
+          }
+
+          const { error } = await sb.from('kurban_onkayit').insert({
+            ref: ref || null,
+            ad_soyad,
+            telefon,
+            adet,
+            tur,
+            aciklama
+          });
+
+          if (error) throw error;
+          document.getElementById('kurbanForm').reset();
+          document.getElementById('adet').value = 1;
+          document.getElementById('successOverlay').classList.add('visible');
+          window.scrollTo(0, 0);
+        } catch (err) {
+          console.error(err);
+          showToast('Kayıt gönderilemedi. Lütfen tekrar deneyin.', 'error');
+        }
+        btn.disabled = false;
+        btn.textContent = 'Ön Kayıt Gönder';
+      });
+    })();
+  </script>
+</body>
+</html>
