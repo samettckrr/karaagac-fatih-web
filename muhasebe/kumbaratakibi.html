@@ -2313,6 +2313,146 @@ async function iptalZimmet(docId){
 }
 
 /* ===== Toplama Takibi ===== */
+// Modül seviyesi state - tam yenileme yerine yerel güncelleme için
+let toplamaDocs = [];
+let toplamaSortState = { key: null, dir: 'asc' };
+let toplamaFilters = { tur: '', durum: '' };
+
+// Güncellenen doc'u listeye uygula, filtreye göre güncelle veya çıkar
+function toplamaListeGuncelle(updatedDoc) {
+  if (!updatedDoc || toplamaDocs.length === 0) return;
+  const tur = toplamaFilters.tur;
+  const durum = toplamaFilters.durum;
+  const matchesFilter = (doc) => {
+    if (tur && doc.tur !== tur) return false;
+    if (durum === 'toplandi') return doc.toplandi === true;
+    if (durum === 'sayim') return doc.sayimasamasinda === true;
+    if (durum === 'tamamlandi') return doc.tamamlandi === true;
+    if (durum === 'dagitildi') return true; // Orijinal Yükle ile aynı: filtre yok
+    return true;
+  };
+  if (matchesFilter(updatedDoc)) {
+    const idx = toplamaDocs.findIndex(d => d.id === updatedDoc.id);
+    if (idx >= 0) toplamaDocs[idx] = updatedDoc;
+    else toplamaDocs.push(updatedDoc);
+  } else {
+    toplamaDocs = toplamaDocs.filter(d => d.id !== updatedDoc.id);
+  }
+  renderToplamaTable(toplamaDocs, toplamaSortState);
+}
+
+function sortToplamaTable(key) {
+  if (toplamaSortState.key === key) {
+    toplamaSortState.dir = toplamaSortState.dir === 'asc' ? 'desc' : 'asc';
+  } else {
+    toplamaSortState.key = key;
+    toplamaSortState.dir = 'asc';
+  }
+  renderToplamaTable(toplamaDocs, toplamaSortState);
+}
+
+function renderToplamaTable(docs, sortState) {
+  const container = document.getElementById('toplamaListe');
+  if (!container) return;
+  if (!docs || docs.length === 0) {
+    container.innerHTML = '<div class="muted" style="padding:12px">Bu filtreye uygun kayıt bulunamadı.</div>';
+    return;
+  }
+  let sortedData = [...docs];
+  if (sortState && sortState.key) {
+    sortedData.sort((a,b)=>{
+      let valA = a[sortState.key];
+      let valB = b[sortState.key];
+      if (sortState.key === 'numara') {
+        valA = valA || 0;
+        valB = valB || 0;
+      } else if (typeof valA === 'string') {
+        valA = valA.toLowerCase();
+        valB = valB ? valB.toLowerCase() : '';
+      }
+      if (sortState.dir === 'asc') return valA > valB ? 1 : (valA < valB ? -1 : 0);
+      return valA < valB ? 1 : (valA > valB ? -1 : 0);
+    });
+  } else {
+    sortedData.sort((a,b)=>{
+      const numA = a.numara || 0;
+      const numB = b.numara || 0;
+      return numA - numB;
+    });
+  }
+  const sortIcon = (key) => {
+    if (!sortState || sortState.key !== key) return ' ↕️';
+    return sortState.dir === 'asc' ? ' ↑' : ' ↓';
+  };
+  let html = `
+    <table class="table">
+      <thead>
+        <tr>
+          <th class="sortable" data-key="tur" style="cursor:pointer">Tür${sortIcon('tur')}</th>
+          <th class="sortable" data-key="numara" style="cursor:pointer">Numara${sortIcon('numara')}</th>
+          <th class="sortable" data-key="zimmetlipersonel" style="cursor:pointer">Personel${sortIcon('zimmetlipersonel')}</th>
+          <th class="sortable" data-key="verilenkisiadsoyad" style="cursor:pointer">Verilen Kişi${sortIcon('verilenkisiadsoyad')}</th>
+          <th>Durum</th>
+          <th>İçinden Çıkan Miktar</th>
+          <th>İşlem</th>
+          <th>Düzenle</th>
+        </tr>
+      </thead>
+      <tbody>`;
+  sortedData.forEach(doc=>{
+    const turLabel = doc.tur === 'kumbara' ? 'Kumbara' : 'Sadaka';
+    let durumBadge = '<span class="badge success">Dağıtıldı</span>';
+    if (doc.tamamlandi === true) durumBadge = '<span class="badge badge-blue">Tamamlandı</span>';
+    else if (doc.sayimasamasinda === true) durumBadge = '<span class="badge badge-orange">Sayım Aşamasında</span>';
+    else if (doc.toplandi === true) durumBadge = '<span class="badge badge-orange">Toplandı</span>';
+    let islemButonlari = '';
+    if (!doc.toplandi && !doc.sayimasamasinda && !doc.tamamlandi) {
+      islemButonlari = `<button class="table-action-btn btn-success topla-btn" data-id="${doc.id}">📦 Teslim Al</button>`;
+    } else if (doc.toplandi && !doc.sayimasamasinda && !doc.tamamlandi) {
+      islemButonlari = `<button class="table-action-btn btn-edit sayim-btn" data-id="${doc.id}">🔍 Sayıma Al</button>`;
+    } else if (doc.sayimasamasinda && !doc.tamamlandi) {
+      islemButonlari = `<button class="table-action-btn btn-primary miktar-btn" data-id="${doc.id}">💰 Miktar Gir</button>`;
+    }
+    const miktarText = doc.icindencikanmiktar && doc.icindencikanmiktar > 0
+      ? `${doc.icindencikanmiktar.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} ₺`
+      : '<span class="muted">-</span>';
+    html += `
+      <tr data-id="${doc.id}">
+        <td style="vertical-align:middle"><span class="pill">${escapeHtml(turLabel)}</span></td>
+        <td style="vertical-align:middle"><strong>#${doc.numara || '-'}</strong></td>
+        <td style="vertical-align:middle">${escapeHtml(doc.zimmetlipersonel || '-')}</td>
+        <td style="vertical-align:middle">${escapeHtml(doc.verilenkisiadsoyad || '-')}</td>
+        <td style="vertical-align:middle">${durumBadge}</td>
+        <td style="vertical-align:middle">${miktarText}</td>
+        <td style="vertical-align:middle">${islemButonlari}</td>
+        <td style="vertical-align:middle"><button class="table-action-btn btn-edit duzenle-toplama-btn" data-id="${doc.id}">✏️ Düzenle</button></td>
+      </tr>`;
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+  container.querySelectorAll('.sortable').forEach(th=>{
+    th.addEventListener('click', ()=>{ sortToplamaTable(th.dataset.key); });
+  });
+  container.querySelectorAll('.topla-btn').forEach(btn=>{
+    btn.addEventListener('click', async (e)=>{
+      const id = e.target.dataset.id;
+      const confirmed = await window.customConfirm('Bu kumbara/sadaka kutusunu teslim almak istediğinize emin misiniz?');
+      if (confirmed) await toplamaTeslimAl(id);
+    });
+  });
+  container.querySelectorAll('.sayim-btn').forEach(btn=>{
+    btn.addEventListener('click', async (e)=>{
+      await toplamaSayimaAl(e.target.dataset.id);
+    });
+  });
+  container.querySelectorAll('.miktar-btn').forEach(btn=>{
+    btn.addEventListener('click', (e)=> toplamaMiktarGir(e.target.dataset.id));
+  });
+  container.querySelectorAll('.duzenle-toplama-btn').forEach(btn=>{
+    btn.addEventListener('click', (e)=> toplamaDuzenleAc(e.target.dataset.id));
+  });
+}
+
 function initToplamaEventListeners(){
   const btnToplamaYukle = document.getElementById('btnToplamaYukle');
   if(btnToplamaYukle) {
@@ -2351,16 +2491,12 @@ function initToplamaEventListeners(){
     // Durum filtresi (client-side)
     if(durum){
       if(durum === 'dagitildi'){
-        // Sadece dağıtılanlar (tüm kayıtlar zaten dagitildi=true olarak filtrelenmiş)
         docs = docs;
-      } else       if(durum === 'toplandi'){
-        // Toplananlar
+      } else if(durum === 'toplandi'){
         docs = docs.filter(doc => doc.toplandi === true);
       } else if(durum === 'sayim'){
-        // Sayım aşamasında olanlar
         docs = docs.filter(doc => doc.sayimasamasinda === true);
       } else if(durum === 'tamamlandi'){
-        // Tamamlananlar
         docs = docs.filter(doc => doc.tamamlandi === true);
       }
     }
@@ -2376,159 +2512,12 @@ function initToplamaEventListeners(){
       return;
     }
     
-    // Sıralama state'i (try bloğu dışında tanımla)
-    let sortStateToplama = { key: null, dir: 'asc' };
+    // Modül state'ine kaydet - yerel güncellemeler için
+    toplamaFilters = { tur, durum: durum || '' };
+    toplamaDocs = docs;
+    toplamaSortState = { key: null, dir: 'asc' };
     
-    function sortToplamaTable(key) {
-      if(sortStateToplama.key === key) {
-        sortStateToplama.dir = sortStateToplama.dir === 'asc' ? 'desc' : 'asc';
-      } else {
-        sortStateToplama.key = key;
-        sortStateToplama.dir = 'asc';
-      }
-      renderToplamaTable(docs, sortStateToplama);
-    }
-    
-    function renderToplamaTable(docs, sortState) {
-      const container = document.getElementById('toplamaListe');
-      let sortedData = [...docs];
-      
-      if(sortState.key) {
-        sortedData.sort((a,b)=>{
-          let valA = a[sortState.key];
-          let valB = b[sortState.key];
-          
-          if(sortState.key === 'numara') {
-            valA = valA || 0;
-            valB = valB || 0;
-          } else if(typeof valA === 'string') {
-            valA = valA.toLowerCase();
-            valB = valB ? valB.toLowerCase() : '';
-          }
-          
-          if(sortState.dir === 'asc') {
-            return valA > valB ? 1 : (valA < valB ? -1 : 0);
-          } else {
-            return valA < valB ? 1 : (valA > valB ? -1 : 0);
-          }
-        });
-      } else {
-        sortedData.sort((a,b)=>{
-          const numA = a.numara || 0;
-          const numB = b.numara || 0;
-          return numA - numB;
-        });
-      }
-      
-      const sortIcon = (key) => {
-        if(sortState.key !== key) return ' ↕️';
-        return sortState.dir === 'asc' ? ' ↑' : ' ↓';
-      };
-      
-      let html = `
-        <table class="table">
-          <thead>
-            <tr>
-              <th class="sortable" data-key="tur" style="cursor:pointer">Tür${sortIcon('tur')}</th>
-              <th class="sortable" data-key="numara" style="cursor:pointer">Numara${sortIcon('numara')}</th>
-              <th class="sortable" data-key="zimmetlipersonel" style="cursor:pointer">Personel${sortIcon('zimmetlipersonel')}</th>
-              <th class="sortable" data-key="verilenkisiadsoyad" style="cursor:pointer">Verilen Kişi${sortIcon('verilenkisiadsoyad')}</th>
-              <th>Durum</th>
-              <th>İçinden Çıkan Miktar</th>
-              <th>İşlem</th>
-              <th>Düzenle</th>
-            </tr>
-          </thead>
-          <tbody>
-      `;
-      
-      sortedData.forEach(doc=>{
-        const turLabel = doc.tur === 'kumbara' ? 'Kumbara' : 'Sadaka';
-        
-        // Durum badge'i
-        let durumBadge = '<span class="badge success">Dağıtıldı</span>';
-        if(doc.tamamlandi === true){
-          durumBadge = '<span class="badge badge-blue">Tamamlandı</span>';
-        } else if(doc.sayimasamasinda === true){
-          durumBadge = '<span class="badge badge-orange">Sayım Aşamasında</span>';
-        } else if(doc.toplandi === true){
-          durumBadge = '<span class="badge badge-orange">Toplandı</span>';
-        }
-        
-        // İşlem butonları
-        let islemButonlari = '';
-        if(!doc.toplandi && !doc.sayimasamasinda && !doc.tamamlandi){
-          islemButonlari = `<button class="table-action-btn btn-success topla-btn" data-id="${doc.id}">📦 Teslim Al</button>`;
-        } else if(doc.toplandi && !doc.sayimasamasinda && !doc.tamamlandi){
-          islemButonlari = `<button class="table-action-btn btn-edit sayim-btn" data-id="${doc.id}">🔍 Sayıma Al</button>`;
-        } else if(doc.sayimasamasinda && !doc.tamamlandi){
-          islemButonlari = `<button class="table-action-btn btn-primary miktar-btn" data-id="${doc.id}">💰 Miktar Gir</button>`;
-        }
-        
-        // İçinden çıkan miktar
-        const miktarText = doc.icindencikanmiktar && doc.icindencikanmiktar > 0 
-          ? `${doc.icindencikanmiktar.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} ₺`
-          : '<span class="muted">-</span>';
-        
-        html += `
-          <tr data-id="${doc.id}">
-            <td style="vertical-align:middle"><span class="pill">${escapeHtml(turLabel)}</span></td>
-            <td style="vertical-align:middle"><strong>#${doc.numara || '-'}</strong></td>
-            <td style="vertical-align:middle">${escapeHtml(doc.zimmetlipersonel || '-')}</td>
-            <td style="vertical-align:middle">${escapeHtml(doc.verilenkisiadsoyad || '-')}</td>
-            <td style="vertical-align:middle">${durumBadge}</td>
-            <td style="vertical-align:middle">${miktarText}</td>
-            <td style="vertical-align:middle">${islemButonlari}</td>
-            <td style="vertical-align:middle"><button class="table-action-btn btn-edit duzenle-toplama-btn" data-id="${doc.id}">✏️ Düzenle</button></td>
-          </tr>
-        `;
-      });
-      
-      html += '</tbody></table>';
-      container.innerHTML = html;
-      
-      // Sıralama event listener'ları
-      container.querySelectorAll('.sortable').forEach(th=>{
-        th.addEventListener('click', ()=>{
-          const key = th.dataset.key;
-          sortToplamaTable(key);
-        });
-      });
-      
-      // Event listener'lar
-      container.querySelectorAll('.topla-btn').forEach(btn=>{
-        btn.addEventListener('click', async (e)=>{
-          const id = e.target.dataset.id;
-          const confirmed = await window.customConfirm('Bu kumbara/sadaka kutusunu teslim almak istediğinize emin misiniz?');
-          if(confirmed){
-            await toplamaTeslimAl(id);
-          }
-        });
-      });
-      
-      container.querySelectorAll('.sayim-btn').forEach(btn=>{
-        btn.addEventListener('click', async (e)=>{
-          const id = e.target.dataset.id;
-          await toplamaSayimaAl(id);
-        });
-      });
-      
-      container.querySelectorAll('.miktar-btn').forEach(btn=>{
-        btn.addEventListener('click', (e)=>{
-          const id = e.target.dataset.id;
-          toplamaMiktarGir(id);
-        });
-      });
-      
-      container.querySelectorAll('.duzenle-toplama-btn').forEach(btn=>{
-        btn.addEventListener('click', (e)=>{
-          const id = e.target.dataset.id;
-          toplamaDuzenleAc(id);
-        });
-      });
-    }
-    
-        renderToplamaTable(docs, sortStateToplama);
+    renderToplamaTable(toplamaDocs, toplamaSortState);
       } catch(e) {
         console.error(e);
         container.innerHTML = '<div class="muted" style="padding:12px">Hata: ' + e.message + '</div>';
@@ -2559,22 +2548,24 @@ async function toplamaTeslimAl(docId){
       toplayanPersonel = userData?.adsoyad || userEmail || null;
     }
     
-    const { error } = await sb
+    const { data: updated, error } = await sb
       .from('kumbaralar')
       .update({
         toplandi: true,
         toplamatarihi: tsISO(),
         toplayanpersonel: toplayanPersonel,
-        sayimasamasinda: false, // Toplama yapıldığında sayım durumunu sıfırla
+        sayimasamasinda: false,
         updatedat: tsISO(),
         updatedby: userEmail
       })
-      .eq('id', docId);
+      .eq('id', docId)
+      .select('id, tur, numara, zimmetlipersonel, verilenkisiadsoyad, dagitildi, dagitimtarihi, toplandi, toplamatarihi, sayimasamasinda, sayimtarihi, tamamlandi, tamamlanmatarihi, icindencikanmiktar')
+      .single();
     
     if (error) throw error;
     
     toast('✅ Kumbara teslim alındı ve toplandı olarak işaretlendi.', 'success');
-    document.getElementById('btnToplamaYukle').click();
+    if (updated) toplamaListeGuncelle(updated);
   }catch(e){
     console.error(e);
     toast('Teslim alma hatası: ' + (e.message || e), 'error');
@@ -2588,21 +2579,23 @@ async function toplamaSayimaAl(docId){
     const { data: { session } } = await sb.auth.getSession();
     const userEmail = session?.user?.email || null;
     
-    const { error } = await sb
+    const { data: updated, error } = await sb
       .from('kumbaralar')
       .update({
         sayimasamasinda: true,
         sayimtarihi: tsISO(),
-        toplandi: false, // Sayıma geçildiğinde toplandı durumunu sıfırla
+        toplandi: false,
         updatedat: tsISO(),
         updatedby: userEmail
       })
-      .eq('id', docId);
+      .eq('id', docId)
+      .select('id, tur, numara, zimmetlipersonel, verilenkisiadsoyad, dagitildi, dagitimtarihi, toplandi, toplamatarihi, sayimasamasinda, sayimtarihi, tamamlandi, tamamlanmatarihi, icindencikanmiktar')
+      .single();
     
     if (error) throw error;
     
     toast('✅ Kumbara sayım aşamasına alındı.', 'success');
-    document.getElementById('btnToplamaYukle').click();
+    if (updated) toplamaListeGuncelle(updated);
   }catch(e){
     console.error(e);
     toast('Sayıma alma hatası: ' + (e.message || e), 'error');
@@ -2628,17 +2621,19 @@ async function toplamaMiktarGir(docId){
     const { data: { session } } = await sb.auth.getSession();
     const userEmail = session?.user?.email || null;
     
-    const { error: updateError } = await sb
+    const { data: updated, error: updateError } = await sb
       .from('kumbaralar')
       .update({
         icindencikanmiktar: miktarNum,
         tamamlandi: true,
         tamamlanmatarihi: tsISO(),
-        sayimasamasinda: false, // Miktar girildiğinde sayım durumunu sıfırla
+        sayimasamasinda: false,
         updatedat: tsISO(),
         updatedby: userEmail
       })
-      .eq('id', docId);
+      .eq('id', docId)
+      .select('id, tur, numara, zimmetlipersonel, verilenkisiadsoyad, dagitildi, dagitimtarihi, toplandi, toplamatarihi, sayimasamasinda, sayimtarihi, tamamlandi, tamamlanmatarihi, icindencikanmiktar')
+      .single();
     
     if (updateError) throw updateError;
     
@@ -2667,7 +2662,7 @@ async function toplamaMiktarGir(docId){
       if(notifError) console.error('Bildirim kaydedilemedi:', notifError);
     }
     
-    document.getElementById('btnToplamaYukle').click();
+    if (updated) toplamaListeGuncelle(updated);
   }catch(e){
     console.error(e);
     toast('Miktar kaydedilemedi: ' + (e.message || e), 'error');
@@ -2780,7 +2775,7 @@ function initToplamaDuzenleEventListeners(){
     const { data: { session } } = await sb.auth.getSession();
     const userEmail = session?.user?.email || null;
     
-    const { error } = await sb
+    const { data: updated, error } = await sb
       .from('kumbaralar')
       .update({
         toplandi: false,
@@ -2794,13 +2789,15 @@ function initToplamaDuzenleEventListeners(){
         updatedat: tsISO(),
         updatedby: userEmail
       })
-      .eq('id', id);
+      .eq('id', id)
+      .select('id, tur, numara, zimmetlipersonel, verilenkisiadsoyad, dagitildi, dagitimtarihi, toplandi, toplamatarihi, sayimasamasinda, sayimtarihi, tamamlandi, tamamlanmatarihi, icindencikanmiktar')
+      .single();
     
     if (error) throw error;
     
     toast('✅ Durum geri alındı. Kumbara "Dağıtıldı" durumuna döndü.', 'success');
     toplamaDuzenleKapat();
-    document.getElementById('btnToplamaYukle').click();
+    if (updated) toplamaListeGuncelle(updated);
   }catch(e){
     console.error(e);
     toast('Geri alma hatası: ' + (e.message || e), 'error');
@@ -2820,22 +2817,24 @@ document.getElementById('btnGeriAlSayim').addEventListener('click', async ()=>{
     const { data: { session } } = await sb.auth.getSession();
     const userEmail = session?.user?.email || null;
     
-    const { error } = await sb
+    const { data: updated, error } = await sb
       .from('kumbaralar')
       .update({
         sayimasamasinda: false,
         sayimtarihi: null,
-        toplandi: true, // Sayımdan toplandıya geri dön
+        toplandi: true,
         updatedat: tsISO(),
         updatedby: userEmail
       })
-      .eq('id', id);
+      .eq('id', id)
+      .select('id, tur, numara, zimmetlipersonel, verilenkisiadsoyad, dagitildi, dagitimtarihi, toplandi, toplamatarihi, sayimasamasinda, sayimtarihi, tamamlandi, tamamlanmatarihi, icindencikanmiktar')
+      .single();
     
     if (error) throw error;
     
     toast('✅ Durum geri alındı. Kumbara "Toplandı" durumuna döndü.', 'success');
     toplamaDuzenleKapat();
-    document.getElementById('btnToplamaYukle').click();
+    if (updated) toplamaListeGuncelle(updated);
   }catch(e){
     console.error(e);
     toast('Geri alma hatası: ' + (e.message || e), 'error');
@@ -2858,22 +2857,24 @@ document.getElementById('btnGeriAlSayim').addEventListener('click', async ()=>{
     const { data: { session } } = await sb.auth.getSession();
     const userEmail = session?.user?.email || null;
     
-    const { error } = await sb
+    const { data: updated, error } = await sb
       .from('kumbaralar')
       .update({
         tamamlandi: false,
         tamamlanmatarihi: null,
-        sayimasamasinda: true, // Tamamlandıdan sayıma geri dön (miktar korunur)
+        sayimasamasinda: true,
         updatedat: tsISO(),
         updatedby: userEmail
       })
-      .eq('id', id);
+      .eq('id', id)
+      .select('id, tur, numara, zimmetlipersonel, verilenkisiadsoyad, dagitildi, dagitimtarihi, toplandi, toplamatarihi, sayimasamasinda, sayimtarihi, tamamlandi, tamamlanmatarihi, icindencikanmiktar')
+      .single();
     
     if (error) throw error;
     
     toast('✅ Durum geri alındı. Kumbara "Sayım Aşamasında" durumuna döndü. Miktar bilgisi korundu.', 'success');
     toplamaDuzenleKapat();
-    document.getElementById('btnToplamaYukle').click();
+    if (updated) toplamaListeGuncelle(updated);
   }catch(e){
     console.error(e);
     toast('Geri alma hatası: ' + (e.message || e), 'error');
@@ -2921,16 +2922,18 @@ document.getElementById('btnToplamaDuzenleKaydet').addEventListener('click', asy
       if(notifError) console.error('Bildirim kaydedilemedi:', notifError);
     }
     
-    const { error } = await sb
+    const { data: updated, error } = await sb
       .from('kumbaralar')
       .update(updateData)
-      .eq('id', id);
+      .eq('id', id)
+      .select('id, tur, numara, zimmetlipersonel, verilenkisiadsoyad, dagitildi, dagitimtarihi, toplandi, toplamatarihi, sayimasamasinda, sayimtarihi, tamamlandi, tamamlanmatarihi, icindencikanmiktar')
+      .single();
     
     if (error) throw error;
     
     toast(`✅ Miktar güncellendi: ${miktar > 0 ? miktar + ' ₺' : 'Temizlendi'}`, 'success');
     toplamaDuzenleKapat();
-    document.getElementById('btnToplamaYukle').click();
+    if (updated) toplamaListeGuncelle(updated);
   }catch(e){
     console.error(e);
     toast('Güncelleme hatası: ' + (e.message || e), 'error');
@@ -2994,8 +2997,8 @@ async function yukleDashboardRapor(){
         stats.dagitilan++;
       }
       
-      // Toplanan
-      if(row.toplandi === true){
+      // Toplanan: toplandı VEYA sayım aşamasında VEYA miktar girilmiş (tamamlandı) — hepsi toplanmış sayılır
+      if(row.toplandi === true || row.sayimasamasinda === true || row.tamamlandi === true){
         stats.toplanan++;
       }
       

@@ -305,6 +305,18 @@ CREATE TABLE public.kumbaralar (
   tamamlanmatarihi timestamp with time zone,
   CONSTRAINT kumbaralar_pkey PRIMARY KEY (id)
 );
+CREATE TABLE public.kurban_onkayit (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  created_at timestamp with time zone DEFAULT now(),
+  ref text,
+  ad_soyad text NOT NULL,
+  telefon text NOT NULL,
+  email text,
+  adet integer NOT NULL DEFAULT 1 CHECK (adet >= 1 AND adet <= 100),
+  tur text NOT NULL CHECK (tur = ANY (ARRAY['kucukbas'::text, 'buyukbas'::text])),
+  aciklama text,
+  CONSTRAINT kurban_onkayit_pkey PRIMARY KEY (id)
+);
 CREATE TABLE public.muhasebe_alt_kategoriler (
   id text NOT NULL,
   aciklama text,
@@ -698,6 +710,17 @@ CREATE TABLE public.teberru_kayitlari (
   yil integer,
   CONSTRAINT teberru_kayitlari_pkey PRIMARY KEY (id)
 );
+CREATE TABLE public.umre_onkayit (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  created_at timestamp with time zone DEFAULT now(),
+  ref text,
+  ad_soyad text NOT NULL,
+  telefon text NOT NULL,
+  email text,
+  kisiler integer NOT NULL DEFAULT 1 CHECK (kisiler >= 1 AND kisiler <= 20),
+  aciklama text,
+  CONSTRAINT umre_onkayit_pkey PRIMARY KEY (id)
+);
 CREATE TABLE public.veriler (
   id text NOT NULL,
   aciklama text,
@@ -738,48 +761,3 @@ CREATE TABLE public.yoklama (
   updatedat timestamp with time zone DEFAULT now(),
   CONSTRAINT yoklama_pkey PRIMARY KEY (devre, gun, talebeuid)
 );
-
-
-
-
-
-
-
-RLS Politikaları
-
-
-Name	                         Command	          Applied to	    
-
-aidat_kitap_delete               DELETE	            public
-
-
-aidat_kitap_insert               INSERT	            public
-
-
-aidat_kitap_select               SELECT	            public
-
-
-aidat_kitap_update                UPDATE	          public
-
-sadece ben aidat_kitap tablosundan bir örnek bıraktım, tüm tablolar şuan böyle
-
-
----
-## Tablo kontrolü (kod ile karşılaştırma)
-
-**Kodda kullanılan tüm Supabase tabloları bu şemada mevcut.** Eksik tablo yok.
-
-| Kullanılan tablolar (projede .from('...')) | sqleditor.md'de |
-|--------------------------------------------|-----------------|
-| kullanicilar, sayfa_manifesti, kullanici_bildirimleri | Var |
-| gider_kalemleri, aylik_giderler | Var |
-| personel_odeme_takvim, gecmis_teberru_kayitlari, arsiv_hedefler | Var |
-| ramazan_* (yillar, mahaller, kayitlari, kapasite, secenekler, ayarlar, tahsilat, arsiv, veriler, hedefler, menuler) | Var |
-| teberru_kayitlari, teberru_arsiv, taahhut_kayitlari, taahhut_arsiv | Var |
-| duzenleme_talepleri, hedefler, butceihvan | Var |
-
-**Notlar:**
-- **RLS:** Sadece `aidat_kitap` için örnek politikalar yazılmış. Diğer tüm tablolar için de aynı mantıkla (SELECT, INSERT, UPDATE, DELETE) RLS politikaları eklenmeli.
-- **sayfa_manifesti:** Kolon adı `order` — PostgreSQL'de reserved word. Tabloyu oluştururken `"order"` (tırnaklı) kullanın veya kolonu `sira` / `sort_order` yapın. Kod (ortak.js) şu an `.order('order', …)` kullanıyor.
-- **Takrir (Firebase'den geçince):** `takrir_index` ve `ders_kayitlari` şemada var. İsteğe bağlı: kitap meta bilgisi için `takrir_kitap_meta` (devre, kitap, created_by, created_at) eklenebilir; yoksa ilk ders kaydından türetilebilir.
-

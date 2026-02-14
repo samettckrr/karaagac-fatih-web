@@ -1203,8 +1203,8 @@
             <option value="2026">2026</option>
           </select>
           <select id="taleplerFiltreDurum">
-            <option value="">Tüm Durumlar</option>
-            <option value="beklemede" selected>Beklemede</option>
+            <option value="" selected>Otomatik &gt; Tüm Durumlar</option>
+            <option value="beklemede">Beklemede</option>
             <option value="onaylandi">Onaylandı</option>
             <option value="reddedildi">Reddedildi</option>
           </select>
@@ -9955,6 +9955,8 @@
         }
 
         let talepler = [];
+        /** Silinen kayıtlar (ramazan_arsiv tablosundan - talepler tablosunda gösterilir) */
+        let silinenKayitlar = [];
         /** Talepler sekmesinde seçilen yıla göre yüklenen kayıtlar (Sahip, Mahal vb. boş kalmaması için) */
         let kayitlarForTalepler = [];
 
@@ -10142,6 +10144,45 @@
                 ...d  // Diğer alanlar için fallback
               }));
             }
+
+            // Silinen kayıtları ramazan_arsiv tablosundan yükle (talepler tablosunda gösterilecek)
+            try {
+              const { data: arsivData, error: arsivError } = await supabase
+                .from('ramazan_arsiv')
+                .select('*')
+                .eq('yil', parseInt(yil, 10))
+                .order('arsiv_tarihi', { ascending: false });
+              if (!arsivError && arsivData && arsivData.length > 0) {
+                silinenKayitlar = arsivData.map(d => ({
+                  id: d.id,
+                  isArsiv: true,
+                  yil: d.yil,
+                  talepTipi: 'sil',
+                  kayitTipi: 'iftar-sahur',
+                  kayitId: null,
+                  personelAdi: d.personeladi || d.personel || d.silenpersoneladi || d.silen_kisi || '-',
+                  yeniTarih: null,
+                  mahalId: d.mahalid,
+                  aciklama: d.notlar || d.silme_sebebi || '-',
+                  durum: 'silindi_arsiv',
+                  tip: d.tip,
+                  sahip: d.sahip,
+                  tutar: d.tutar,
+                  musafirAdedi: d.musafiradedi ?? d.musafirAdedi ?? 0,
+                  istirak: d.istirak,
+                  mahal: d.mahal,
+                  tarih: d.tarih,
+                  createdAt: d.arsiv_tarihi || d.createdat,
+                  silenKisi: d.silenpersoneladi || d.silen_kisi || null
+                }));
+              } else {
+                silinenKayitlar = [];
+              }
+            } catch (arsivE) {
+              console.warn('Silinen kayıtlar (ramazan_arsiv) yüklenemedi:', arsivE);
+              silinenKayitlar = [];
+            }
+
             renderTalepler();
           } catch (e) {
             console.error('Talepler yüklenemedi:', e);
@@ -10177,7 +10218,21 @@
             });
           }
 
-          if (filtered.length === 0) {
+          // "Otomatik > Tüm Durumlar" seçiliyse silinen kayıtları (ramazan_arsiv) da ekle
+          let filteredSilinen = [];
+          if (durum === '') {
+            filteredSilinen = [...silinenKayitlar];
+            if (tip) filteredSilinen = filteredSilinen.filter(t => t.talepTipi === tip);
+            if (ara) {
+              filteredSilinen = filteredSilinen.filter(t =>
+                turkishIncludes(t.personelAdi || '', ara) ||
+                turkishIncludes((t.sahip || '').toString(), ara) ||
+                turkishIncludes(t.aciklama || '', ara)
+              );
+            }
+          }
+
+          if (filtered.length === 0 && filteredSilinen.length === 0) {
             tbody.innerHTML = '<tr><td colspan="15" style="text-align:center;color:var(--muted);padding:20px">Talep bulunamadı</td></tr>';
             return;
           }
@@ -10214,7 +10269,8 @@
             const durumBadge = {
               'beklemede': '<span style="background:#fff3cd;color:#856404;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">⏳ Beklemede</span>',
               'onaylandi': '<span style="background:#d4edda;color:#155724;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">✓ Onaylandı</span>',
-              'reddedildi': '<span style="background:#f8d7da;color:#721c24;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">✗ Reddedildi</span>'
+              'reddedildi': '<span style="background:#f8d7da;color:#721c24;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">✗ Reddedildi</span>',
+              'silindi_arsiv': '<span style="background:#e2e3e5;color:#383d41;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">📦 Silindi (Arşiv)</span>'
             }[t.durum] || t.durum;
 
             // Yeni tarih
@@ -10278,11 +10334,49 @@
           <td>${yeniTarihStr}</td>
           <td>${durumBadge}</td>
           <td>
-            ${t.durum === 'beklemede' ? `
+            ${t.durum === 'beklemede' && !t.isArsiv ? `
               <button onclick="onaylaTalep('${t.id}')" style="padding:4px 8px;font-size:12px;background:var(--good);color:white;border:none;border-radius:4px;cursor:pointer;margin-right:4px">✓ Onayla</button>
               <button onclick="reddetTalep('${t.id}')" class="danger" style="padding:4px 8px;font-size:12px;background:var(--bad);color:white;border:none;border-radius:4px;cursor:pointer">✗ Reddet</button>
-            ` : '-'}
+            ` : (t.isArsiv ? '-' : '-')}
           </td>
+        `;
+            tbody.appendChild(tr);
+          });
+
+          // Silinen kayıtlar (ramazan_arsiv) satırları
+          filteredSilinen.forEach(t => {
+            const tr = document.createElement('tr');
+            tr.style.background = 'rgba(0,0,0,0.03)';
+            let tarihStr = '-';
+            if (t.createdAt) {
+              const date = typeof t.createdAt === 'string' ? new Date(t.createdAt) : (t.createdAt instanceof Date ? t.createdAt : new Date(t.createdAt));
+              if (!isNaN(date.getTime())) tarihStr = `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()}`;
+            }
+            let mevcutTarihStr = '-';
+            if (t.tarih) {
+              const date = typeof t.tarih === 'string' ? new Date(t.tarih) : (t.tarih instanceof Date ? t.tarih : new Date(t.tarih));
+              if (!isNaN(date.getTime())) mevcutTarihStr = `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()}`;
+            }
+            const kayitTip = t.tip === 'iftar' ? '🌙 İftar' : '🌟 Sahur';
+            const tutarBilgisi = t.tutar != null ? `₺${Number(t.tutar).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}` : '-';
+            const istirakBilgisi = t.istirak ? '✓ Evet' : '✗ Hayır';
+            const durumBadgeSilinen = '<span style="background:#e2e3e5;color:#383d41;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">📦 Silindi (Arşiv)</span>';
+            tr.innerHTML = `
+          <td>${tarihStr}</td>
+          <td>${kayitTip}</td>
+          <td>🗑️ Sil</td>
+          <td>🌙 İftar/Sahur</td>
+          <td><strong>${t.sahip || '-'}</strong></td>
+          <td>${mevcutTarihStr}</td>
+          <td>${t.musafirAdedi ?? '-'}</td>
+          <td>${tutarBilgisi}</td>
+          <td>${istirakBilgisi}</td>
+          <td>${t.mahal || '-'}</td>
+          <td>${t.personelAdi || '-'}</td>
+          <td style="max-width:280px; max-height:120px; overflow-y:auto; overflow-x:hidden; white-space:normal; word-wrap:break-word;">${t.aciklama || '-'}</td>
+          <td>-</td>
+          <td>${durumBadgeSilinen}</td>
+          <td>-</td>
         `;
             tbody.appendChild(tr);
           });
