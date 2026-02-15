@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Personel İzin Takibi | Karaağaç Fatih</title>
+  <link rel="icon" type="image/png" href="../../img/logo.png" />
+  <link rel="stylesheet" href="../../css/app-shell.css" />
+
+  <style>
+    body {
+      padding-top: var(--appbar-h) !important;
+      overflow-x: hidden;
+      overflow-y: auto;
+      font-size: 15px;
+    }
+
+    main.container {
+      max-width: 100%;
+      margin: 0 auto;
+      padding: 24px 16px;
+    }
+
+    .hero {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .hero h1 { margin: 0 0 8px; font-size: 24px; color: var(--text); }
+    .hero h2 { margin: 0; font-size: 16px; font-weight: 500; color: var(--muted); }
+
+    .top-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .yil-select-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .yil-select-wrap label { font-weight: 600; color: var(--text); }
+    .yil-select-wrap select {
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--stroke);
+      background: var(--card);
+      font-size: 15px;
+      min-width: 140px;
+    }
+
+    .izin-kurallari {
+      background: linear-gradient(135deg, var(--card), var(--surface));
+      border-radius: 14px;
+      border: 1px solid var(--stroke);
+      padding: 20px 24px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow);
+    }
+    .izin-kurallari h3 {
+      margin: 0 0 12px;
+      font-size: 16px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .izin-kurallari h3::before {
+      content: '';
+      width: 4px;
+      height: 20px;
+      background: var(--brand);
+      border-radius: 2px;
+    }
+    .izin-kurallari .hak {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--brand);
+      margin-bottom: 10px;
+    }
+    .izin-kurallari ul {
+      margin: 0;
+      padding-left: 20px;
+      color: var(--muted);
+      line-height: 1.8;
+      font-size: 14px;
+    }
+    .izin-kurallari .kullanilan-izinler {
+      margin-top: 14px;
+      padding: 14px 16px;
+      background: #fef08a;
+      border: 1px solid #eab308;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      color: #854d0e;
+    }
+    .izin-kurallari .kullanilan-izinler strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+      color: #713f12;
+    }
+    .izin-kurallari .kullanilan-izinler-liste {
+      color: #854d0e;
+      font-weight: 600;
+    }
+
+    .haftalar-container { margin-bottom: 24px; }
+    .hafta-baslik {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--muted);
+      margin: 20px 0 10px;
+      padding-bottom: 4px;
+    }
+    .hafta-baslik:first-child { margin-top: 0; }
+
+    .gunler-wrap {
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 12px;
+      margin: 0 -8px;
+      scrollbar-width: thin;
+    }
+    .gunler-wrap::-webkit-scrollbar { height: 8px; }
+    .gunler-wrap::-webkit-scrollbar-thumb { background: var(--stroke); border-radius: 4px; }
+
+    .gunler-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(140px, 1fr));
+      gap: 12px;
+      min-width: min(100%, 7 * 152px + 6 * 12px);
+    }
+
+    /* Tablet */
+    @media (max-width: 900px) {
+      .gunler-grid {
+        grid-template-columns: repeat(7, minmax(100px, 1fr));
+        gap: 8px;
+        min-width: 7 * 108px + 6 * 8px;
+      }
+      .gun-kart { min-height: 120px; padding: 10px; }
+      .gun-kart .gun-baslik { font-size: 13px; }
+      .gun-kart .gun-alt { font-size: 11px; }
+      .gun-kart .izinli { font-size: 12px; }
+    }
+
+    /* Mobile - tam genişlik kartlar, dikey liste */
+    @media (max-width: 640px) {
+      body { -webkit-tap-highlight-color: transparent; }
+      main.container {
+        padding: 12px;
+        padding-left: max(12px, env(safe-area-inset-left));
+        padding-right: max(12px, env(safe-area-inset-right));
+        padding-bottom: max(20px, env(safe-area-inset-bottom));
+      }
+      .hero h1 { font-size: 18px; margin-bottom: 0; line-height: 1.35; }
+      .izin-kurallari {
+        padding: 16px;
+        margin-bottom: 16px;
+        border-radius: 12px;
+      }
+      .izin-kurallari h3 { font-size: 15px; }
+      .izin-kurallari .hak { font-size: 14px; margin-bottom: 8px; line-height: 1.4; }
+      .izin-kurallari ul { font-size: 13px; padding-left: 18px; line-height: 1.65; }
+      .izin-kurallari .kullanilan-izinler {
+        padding: 10px 12px;
+        font-size: 13px;
+        margin-top: 10px;
+      }
+      .izin-kurallari .kullanilan-izinler strong { font-size: 12px; }
+      .top-bar { margin-bottom: 12px; }
+      .yil-select-wrap { flex: 1; }
+      .yil-select-wrap select {
+        width: 100%;
+        min-width: 0;
+        padding: 10px 14px;
+        font-size: 16px;
+      }
+      .haftalar-container { margin-bottom: 16px; }
+      .hafta-baslik {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text);
+        margin: 20px 0 12px;
+        padding: 8px 12px;
+        background: var(--surface);
+        border-radius: 8px;
+        border-left: 4px solid var(--brand);
+      }
+      .hafta-baslik:first-child { margin-top: 0; }
+      .gunler-wrap {
+        overflow: visible;
+        margin: 0;
+        padding: 0;
+      }
+      .gunler-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        min-width: 100%;
+      }
+      .gun-kart {
+        min-height: auto;
+        padding: 16px;
+        min-width: 0;
+        width: 100%;
+        touch-action: manipulation;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.06);
+      }
+      .gun-kart .gun-baslik {
+        font-size: 16px;
+        font-weight: 700;
+        margin: 0;
+        padding-bottom: 6px;
+        border: none;
+        border-bottom: 2px solid var(--brand);
+        line-height: 1.3;
+        color: var(--text);
+      }
+      .gun-kart .gun-alt {
+        font-size: 12px;
+        margin: 0;
+        color: var(--muted);
+      }
+      .gun-kart .izinli {
+        font-size: 14px;
+        margin: 0;
+        padding: 10px 12px;
+        min-height: 24px;
+        background: var(--surface);
+        border-radius: 8px;
+        border: 1px solid var(--stroke);
+      }
+      .gun-kart .izinli.bos {
+        background: transparent;
+        border-color: transparent;
+        color: var(--muted);
+      }
+      .gun-kart .izinli.benim {
+        padding: 10px 12px;
+        font-size: 14px;
+        font-weight: 700;
+        border: 1px solid #eab308;
+      }
+      .gun-kart .izinli.slot-ekle, .gun-kart .izinli.slot-kaldir {
+        min-height: 44px;
+        touch-action: manipulation;
+      }
+      .izin-modal-box {
+        width: calc(100% - 24px);
+        max-width: none;
+        margin: 12px;
+        max-height: 85vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      .izin-modal-box .btn-row button {
+        min-height: 48px;
+        padding: 12px 20px;
+        font-size: 15px;
+      }
+    }
+
+    .gun-kart {
+      background: var(--card);
+      border-radius: 12px;
+      border: 1px solid var(--stroke);
+      padding: 14px;
+      box-shadow: var(--shadow);
+      cursor: default;
+      transition: all 0.2s;
+      min-height: 140px;
+      display: flex;
+      flex-direction: column;
+    }
+    .gun-kart:has(.slot-ekle):hover, .gun-kart:has(.slot-kaldir):hover { border-color: var(--stroke); }
+    .gun-kart.gecti { opacity: 0.85; }
+    .gun-kart.dolu { cursor: default; }
+    .gun-kart.dolu:hover { border-color: var(--stroke); box-shadow: var(--shadow); }
+
+    .gun-kart .gun-baslik {
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--text);
+      margin-bottom: 6px;
+      border-bottom: 1px solid var(--stroke);
+      padding-bottom: 6px;
+    }
+    .gun-kart .gun-alt {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    .gun-kart .izinli {
+      font-size: 13px;
+      color: var(--ink);
+      margin: 4px 0;
+      padding: 4px 0;
+      border-radius: 6px;
+    }
+    .gun-kart .izinli.bos { color: var(--muted); font-style: italic; }
+    .gun-kart .izinli.benim { background: #fef08a; color: #854d0e; font-weight: 700; padding: 5px 10px; border-radius: 8px; border: 1px solid #eab308; }
+    .gun-kart .izinli.slot-ekle { cursor: pointer; color: var(--brand); }
+    .gun-kart .izinli.slot-ekle:hover { background: rgba(59,130,246,.1); padding: 5px 8px; margin: 4px -4px; border-radius: 6px; }
+    .gun-kart .izinli.slot-kaldir { cursor: pointer; }
+    .gun-kart .izinli.slot-kaldir:hover { background: rgba(239,68,68,.08); padding: 5px 8px; margin: 4px -4px; border-radius: 6px; }
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.2s;
+    }
+    .modal-overlay.acik { opacity: 1; visibility: visible; pointer-events: auto; }
+    .modal-overlay:not(.acik) { pointer-events: none; }
+    .izin-modal-box {
+      background: #fff;
+      border-radius: 14px;
+      padding: 24px;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 12px 32px rgba(0,0,0,.2);
+      transform: scale(0.95);
+      transition: transform 0.2s;
+      position: relative;
+      z-index: 1;
+      pointer-events: auto;
+    }
+    .modal-overlay.acik .izin-modal-box { transform: scale(1); }
+    .izin-modal-box h3 { margin: 0 0 16px; font-size: 18px; }
+    .izin-modal-box .btn-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+      justify-content: flex-end;
+    }
+    .modal .btn-row button {
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-size: 14px;
+      cursor: pointer;
+      border: 1px solid var(--stroke);
+      background: var(--surface);
+    }
+    .modal .btn-row button.primary {
+      background: var(--brand);
+      color: #fff;
+      border-color: var(--brand);
+    }
+    .modal .btn-row button.primary:hover { background: var(--brand2); }
+    .izin-modal-box .kaldir-btn { color: #fff; border-color: var(--bad); background: var(--bad); }
+    .izin-modal-box .kaldir-btn:hover { background: #dc2626; }
+    .izin-modal-box .personel-select-wrap { margin: 12px 0; }
+    .izin-modal-box .personel-select-wrap label { display: block; margin-bottom: 6px; font-weight: 600; }
+    .izin-modal-box .personel-select-wrap select {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--stroke);
+      font-size: 15px;
+    }
+
+    .loading { text-align: center; padding: 40px; color: var(--muted); }
+    .hata { text-align: center; padding: 24px; color: var(--bad); }
+  </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="../../src/supabase.js"></script>
+  <script src="../../src/supabase-auth-wrapper.js"></script>
+  <script src="../../src/supabase-db-wrapper.js"></script>
+  <script>
+    (function () {
+      function initAuth() {
+        if (typeof window.getSupabaseAuth === 'function') {
+          window.auth = window.getSupabaseAuth();
+          return true;
+        }
+        return false;
+      }
+      function waitAndTriggerInit() {
+        if (typeof window.auth !== 'undefined' && window.auth && typeof window.initAppShellAuth === 'function') {
+          try { window.initAppShellAuth(); } catch (e) { console.error('initAppShellAuth hatası:', e); }
+        } else if (typeof window.initAppShellAuth === 'function') {
+          setTimeout(waitAndTriggerInit, 300);
+        }
+      }
+      function bootstrap() {
+        if (!initAuth()) setTimeout(bootstrap, 200);
+        else setTimeout(waitAndTriggerInit, 200);
+      }
+      bootstrap();
+    })();
+  </script>
+  <script src="../../js/ortak.js"></script>
+</head>
+<body>
+
+  <div class="appbar">
+    <div class="brand" onclick="location.href='../../panel.html'">
+      <img src="../../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
+    </div>
+    <nav class="nav-center"><ul class="nav-list" id="navMain"></ul></nav>
+    <div class="nav-right">
+      <button class="btn hamb" id="hamburger" title="Menü">☰</button>
+      <div class="nav-item">
+        <button class="iconbtn" id="btnNotif" title="Bildirimler">🔔
+          <span class="badge" id="notifBadge" style="display:none">0</span>
+        </button>
+        <div class="dropdown drop-right" id="notifDropdown">
+          <div class="muted" style="padding:6px 8px">Son bildirimler</div>
+          <div id="notifList" style="max-height:300px;overflow:auto"></div>
+        </div>
+      </div>
+      <div class="nav-item">
+        <button class="iconbtn" id="btnProfile" title="Profil">
+          <span class="avatar"></span> <span id="profName" class="muted">Profil</span>
+        </button>
+        <div class="dropdown drop-right" id="profDropdown">
+          <a href="/diger/kullanici-yonetimi.html">👤 Profil</a>
+          <a href="/diger/sistem-ayarlari.html">⚙️ Sistem Ayarları</a>
+          <a href="#" id="btnLogout">🚪 Çıkış Yap</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <aside class="drawer" id="drawer"></aside>
+  <div class="toast-container" id="toastContainer"></div>
+
+  <main class="container">
+    <section class="hero">
+      <h1>Personel Ramazan-ı Şerif İzin Yönetimi</h1>
+    </section>
+
+    <div class="izin-kurallari">
+      <h3>İzin Kuralları</h3>
+      <div class="hak" id="izinHakBilgi">Toplam 3 izin hakkınız var. Kullanılan: 0 — Kullanılmayan: 3</div>
+      <div class="kullanilan-izinler">
+        <strong>Kullanılan izinler:</strong>
+        <span class="kullanilan-izinler-liste" id="kullanilanIzinlerListe">Henüz kullanılmadı.</span>
+      </div>
+      <ul>
+        <li>Cumartesi günü için en fazla <strong>1</strong> izin kullanılabilir.</li>
+        <li>Pazar günü için en fazla <strong>1</strong> izin kullanılabilir. (Yani 2 cumartesi veya 2 pazar izin kullanılamaz.)</li>
+        <li>Üst üste 2 izin kullanılamaz; ardışık günlerde izin alınamaz.</li>
+      </ul>
+    </div>
+
+    <div class="top-bar">
+      <div class="yil-select-wrap">
+        <label>Ramazan Yılı:</label>
+        <select id="yilSelect"></select>
+      </div>
+    </div>
+
+    <div class="haftalar-container" id="haftalarContainer">
+      <div class="loading">Yükleniyor...</div>
+    </div>
+  </main>
+
+  <div class="modal-overlay" id="izinModal">
+    <div class="izin-modal-box" id="izinModalContent">
+      <h3 id="modalBaslik">Bugün izin yaz</h3>
+      <p id="modalTarih" class="muted"></p>
+      <div id="modalPersonelWrap" class="personel-select-wrap" style="display:none">
+        <label>İzin verilecek personel:</label>
+        <select id="modalPersonelSelect"></select>
+      </div>
+      <p id="modalAciklama"><strong id="modalKullanici"></strong> olarak bu gün için izin almak istiyorsunuz.</p>
+      <div class="btn-row">
+        <button type="button" id="modalIptal">İptal</button>
+        <button type="button" class="primary" id="modalOnay">İzin al</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const TOPLAM_IZIN = 3;
+      const CUMARTESI_MAX = 1;
+      const PAZAR_MAX = 1;
+      const ANA_YONETICI = 'Samet Çakır';
+
+      let ramazanYillari = [];
+      let secilenYil = null;
+      let ramazanAyar = null;
+      let tumTarihler = [];
+      let izinKayitlari = [];
+      let personelListesi = [];
+      let currentUserUid = null;
+      let currentUserName = null;
+      let isAnaYonetici = false;
+      let secilenTarih = null;
+      let secilenSira = null;
+      let secilenKaldirKayit = null;
+
+      const qs = id => typeof id === 'string' ? document.getElementById(id) : id;
+
+      function showToast(msg, isError) {
+        if (typeof window.showToast === 'function') {
+          window.showToast(isError ? 'error' : 'success', isError ? 'Hata' : 'Başarılı', msg);
+        } else {
+          alert(msg);
+        }
+      }
+
+      function tarihStrToDate(str) {
+        if (!str) return null;
+        const s = String(str).trim().slice(0, 10);
+        const parts = s.split('-');
+        if (parts.length >= 3) {
+          const y = parseInt(parts[0], 10);
+          const m = parseInt(parts[1], 10) - 1;
+          const day = parseInt(parts[2], 10);
+          if (!isNaN(y) && !isNaN(m) && !isNaN(day)) {
+            const d = new Date(y, m, day, 12, 0, 0);
+            return isNaN(d.getTime()) ? null : d;
+          }
+        }
+        const d = new Date(str);
+        return isNaN(d.getTime()) ? null : d;
+      }
+
+      function gunAdi(date) {
+        const gunler = ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
+        return gunler[date.getDay()];
+      }
+
+      function bugunBaslangic() {
+        const d = new Date();
+        d.setHours(0,0,0,0);
+        return d;
+      }
+
+      function isGecti(dateStr) {
+        const d = tarihStrToDate(dateStr);
+        if (!d) return false;
+        const bugun = bugunBaslangic();
+        d.setHours(0,0,0,0);
+        return d < bugun;
+      }
+
+      function isCumartesi(dateStr) {
+        const d = tarihStrToDate(dateStr);
+        return d && d.getDay() === 6;
+      }
+      function isPazar(dateStr) {
+        const d = tarihStrToDate(dateStr);
+        return d && d.getDay() === 0;
+      }
+
+      function sametGecmisDegistiremez(dateStr) {
+        return false;
+      }
+
+      async function loadRamazanYillari() {
+        const sb = window.supabase;
+        if (!sb) return;
+        const { data, error } = await sb.from('ramazan_yillar')
+          .select('id, yil, aktif, baslangic, bitis, hicriyil')
+          .order('yil', { ascending: false });
+        if (error) {
+          console.error('Ramazan yılları:', error);
+          return;
+        }
+        ramazanYillari = (data || []).map(r => ({
+          ...r,
+          yil: parseInt(r.yil, 10) || r.yil
+        }));
+        const mevcutYil = new Date().getFullYear();
+        let varsayilan = ramazanYillari.find(r => r.aktif)?.yil
+          ?? ramazanYillari.find(r => r.yil === mevcutYil)?.yil
+          ?? ramazanYillari[0]?.yil;
+        secilenYil = varsayilan;
+
+        const sel = qs('yilSelect');
+        sel.innerHTML = '';
+        ramazanYillari.forEach(r => {
+          const opt = document.createElement('option');
+          opt.value = String(r.yil);
+          opt.textContent = r.yil + (r.aktif ? ' (Aktif)' : '');
+          if (r.yil === varsayilan) opt.selected = true;
+          sel.appendChild(opt);
+        });
+
+        sel.addEventListener('change', () => {
+          secilenYil = parseInt(sel.value, 10);
+          loadData();
+        });
+      }
+
+      function getRamazanAyar() {
+        return ramazanYillari.find(r => r.yil === secilenYil) || null;
+      }
+
+      function getTarihListesi() {
+        ramazanAyar = getRamazanAyar();
+        if (!ramazanAyar || !ramazanAyar.baslangic || !ramazanAyar.bitis) return [];
+        const bas = tarihStrToDate(String(ramazanAyar.baslangic).slice(0, 10));
+        const bit = tarihStrToDate(String(ramazanAyar.bitis).slice(0, 10));
+        if (!bas || !bit) return [];
+        const arr = [];
+        const cur = new Date(bas.getFullYear(), bas.getMonth(), bas.getDate());
+        const bitD = new Date(bit.getFullYear(), bit.getMonth(), bit.getDate());
+        while (cur <= bitD) {
+          const y = cur.getFullYear();
+          const m = String(cur.getMonth() + 1).padStart(2, '0');
+          const d = String(cur.getDate()).padStart(2, '0');
+          arr.push(`${y}-${m}-${d}`);
+          cur.setDate(cur.getDate() + 1);
+        }
+        return arr;
+      }
+
+      function getHaftalaraBol() {
+        const haftalar = [];
+        for (let i = 0; i < tumTarihler.length; i += 7) {
+          haftalar.push(tumTarihler.slice(i, i + 7));
+        }
+        return haftalar;
+      }
+
+      function formatTarihLabel(dateStr) {
+        const d = tarihStrToDate(dateStr);
+        if (!d) return dateStr;
+        return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'long' });
+      }
+
+      async function loadIzinKayitlari() {
+        const sb = window.supabase;
+        if (!sb || !secilenYil) return;
+        const { data, error } = await sb.from('personel_ramazan_izin')
+          .select('*')
+          .eq('ramazan_yil', secilenYil);
+        if (error) {
+          console.error('İzin kayıtları:', error);
+          izinKayitlari = [];
+          return;
+        }
+        izinKayitlari = data || [];
+      }
+
+      function getGunIzinleri(dateStr) {
+        return izinKayitlari.filter(k => k.izin_tarihi === dateStr).sort((a,b) => a.sira - b.sira);
+      }
+
+      function getKullaniciIzinleri(uid) {
+        const u = uid || currentUserUid;
+        if (!u) return [];
+        return izinKayitlari.filter(k => k.personel_uid === u);
+      }
+
+      function kuralKontrol(dateStr, isEkleme, targetUid) {
+        const uid = targetUid || currentUserUid;
+        const izinlerim = getKullaniciIzinleri(uid).map(k => k.izin_tarihi);
+        if (izinlerim.length >= TOPLAM_IZIN && isEkleme) return { ok: false, msg: 'Toplam 3 izin hakkı kullanıldı.' };
+
+        const cumartesiSayisi = izinlerim.filter(isCumartesi).length;
+        const pazarSayisi = izinlerim.filter(isPazar).length;
+
+        if (isEkleme) {
+          if (isCumartesi(dateStr) && cumartesiSayisi >= CUMARTESI_MAX) return { ok: false, msg: 'Cumartesi için izin hakkı doldu (max 1).' };
+          if (isPazar(dateStr) && pazarSayisi >= PAZAR_MAX) return { ok: false, msg: 'Pazar için izin hakkı doldu (max 1).' };
+
+          const d = tarihStrToDate(dateStr);
+          if (d) {
+            const pad = n => String(n).padStart(2, '0');
+            const prevD = new Date(d);
+            prevD.setDate(prevD.getDate() - 1);
+            const nextD = new Date(d);
+            nextD.setDate(nextD.getDate() + 1);
+            const prevStr = prevD.getFullYear() + '-' + pad(prevD.getMonth() + 1) + '-' + pad(prevD.getDate());
+            const nextStr = nextD.getFullYear() + '-' + pad(nextD.getMonth() + 1) + '-' + pad(nextD.getDate());
+            if (izinlerim.includes(prevStr) || izinlerim.includes(nextStr)) {
+              return { ok: false, msg: 'Üst üste 2 izin kullanılamaz.' };
+            }
+          }
+        }
+
+        return { ok: true };
+      }
+
+      function updateIzinHakBilgi() {
+        const benim = getKullaniciIzinleri();
+        const kullanilan = benim.length;
+        const kalan = TOPLAM_IZIN - kullanilan;
+        qs('izinHakBilgi').textContent = `Toplam ${TOPLAM_IZIN} izin hakkınız var. Kullanılan: ${kullanilan} — Kullanılmayan: ${kalan}`;
+        const listeEl = qs('kullanilanIzinlerListe');
+        if (listeEl) {
+          listeEl.textContent = benim.length === 0
+            ? 'Henüz kullanılmadı.'
+            : benim.slice().sort((a, b) => (a.izin_tarihi || '').localeCompare(b.izin_tarihi || '')).map(k => formatTarihLabel(k.izin_tarihi)).join(', ');
+        }
+      }
+
+      function renderBirHafta(haftaTarihler, haftaNo) {
+        const hicriYil = ramazanAyar?.hicriyil || '';
+        const miladiYil = secilenYil || '';
+
+        return haftaTarihler.map(dateStr => {
+          const gunIzinleri = getGunIzinleri(dateStr);
+          const d = tarihStrToDate(dateStr);
+          const label = formatTarihLabel(dateStr);
+          const gecti = isGecti(dateStr);
+          const dolu = gunIzinleri.length >= 2;
+          const izin1 = gunIzinleri.find(k => k.sira === 1);
+          const izin2 = gunIzinleri.find(k => k.sira === 2);
+          const izinHakkiKaldi = getKullaniciIzinleri().length < TOPLAM_IZIN;
+          const musait = !dolu && !gecti && currentUserUid && (isAnaYonetici || izinHakkiKaldi);
+          const benimIzin1 = izin1 && izin1.personel_uid === currentUserUid;
+          const benimIzin2 = izin2 && izin2.personel_uid === currentUserUid;
+          const benimKart = benimIzin1 || benimIzin2;
+          const kaldirGoster = benimKart && (isAnaYonetici || !gecti);
+          const izinYazGoster = musait || kaldirGoster || (isAnaYonetici && (izin1 || izin2));
+
+          let sinif = 'gun-kart';
+          if (gecti) sinif += ' gecti';
+          if (dolu && !benimKart && !isAnaYonetici) sinif += ' dolu';
+          if (musait) sinif += ' musait';
+          if (izinYazGoster && isAnaYonetici) sinif += ' yonetici';
+
+          const slot1KaldirYapilabilir = izin1 && (benimIzin1 ? (isAnaYonetici || !gecti) : isAnaYonetici);
+          const slot2KaldirYapilabilir = izin2 && (benimIzin2 ? (isAnaYonetici || !gecti) : isAnaYonetici);
+          const slot1EkleYapilabilir = !izin1 && !gecti && currentUserUid && (isAnaYonetici || izinHakkiKaldi);
+          const slot2EkleYapilabilir = !izin2 && !gecti && currentUserUid && (isAnaYonetici || izinHakkiKaldi);
+
+          const izin1Html = izin1
+            ? `<div class="izinli ${benimIzin1 ? 'benim' : ''} ${slot1KaldirYapilabilir ? 'slot-kaldir' : ''}" data-sira="1" data-slot-type="${slot1KaldirYapilabilir ? 'kaldir' : ''}">İzinli Personel: ${izin1.personel_adi || '-'}</div>`
+            : `<div class="izinli bos ${slot1EkleYapilabilir ? 'slot-ekle' : ''}" data-sira="1" data-slot-type="${slot1EkleYapilabilir ? 'ekle' : ''}">İzinli Personel: ${slot1EkleYapilabilir ? '— İzin ekle' : '—'}</div>`;
+          const izin2Html = izin2
+            ? `<div class="izinli ${benimIzin2 ? 'benim' : ''} ${slot2KaldirYapilabilir ? 'slot-kaldir' : ''}" data-sira="2" data-slot-type="${slot2KaldirYapilabilir ? 'kaldir' : ''}">İzinli Personel: ${izin2.personel_adi || '-'}</div>`
+            : `<div class="izinli bos ${slot2EkleYapilabilir ? 'slot-ekle' : ''}" data-sira="2" data-slot-type="${slot2EkleYapilabilir ? 'ekle' : ''}">İzinli Personel: ${slot2EkleYapilabilir ? '— İzin ekle' : '—'}</div>`;
+
+          return `
+            <div class="${sinif}" data-tarih="${dateStr}">
+              <div class="gun-baslik">${label}</div>
+              <div class="gun-alt">${hicriYil ? hicriYil + ' — ' : ''}${miladiYil}</div>
+              ${izin1Html}
+              ${izin2Html}
+            </div>
+          `;
+        }).join('');
+      }
+
+      function renderHaftalar() {
+        const container = qs('haftalarContainer');
+        const haftalar = getHaftalaraBol();
+        const hicriYil = ramazanAyar?.hicriyil || '';
+        const miladiYil = secilenYil || '';
+
+        if (haftalar.length === 0 || tumTarihler.length === 0) {
+          container.innerHTML = '<div class="hata">Ramazan tarihleri bulunamadı. Lütfen ramazan_yillar tablosunda ilgili yıl için baslangic ve bitis değerlerini kontrol edin.</div>';
+          return;
+        }
+
+        let fullHtml = '';
+        haftalar.forEach((haftaTarihler, idx) => {
+          const ilk = tarihStrToDate(haftaTarihler[0]);
+          const son = tarihStrToDate(haftaTarihler[haftaTarihler.length - 1]);
+          const fmt = d => d ? d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' }) : '';
+          const haftaLbl = `${fmt(ilk)} - ${fmt(son)} ${miladiYil}`;
+          fullHtml += `<div class="hafta-baslik">${haftaLbl}</div>`;
+          fullHtml += '<div class="gunler-wrap"><div class="gunler-grid" data-hafta="' + idx + '">';
+          fullHtml += renderBirHafta(haftaTarihler, idx);
+          fullHtml += '</div></div>';
+        });
+
+        container.innerHTML = fullHtml;
+
+        container.querySelectorAll('.izinli.slot-ekle, .izinli.slot-kaldir').forEach(slot => {
+          slot.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!currentUserUid) return;
+            const kart = slot.closest('.gun-kart');
+            const tarih = kart?.dataset?.tarih;
+            if (!tarih) return;
+            const sira = parseInt(slot.dataset.sira, 10);
+            const slotType = slot.dataset.slotType;
+            const gunIzinleri = getGunIzinleri(tarih);
+
+            if (slotType === 'ekle') {
+              if (!isAnaYonetici) {
+                const kural = kuralKontrol(tarih, true);
+                if (!kural.ok) {
+                  showToast(kural.msg, true);
+                  return;
+                }
+              }
+              acIzinModal(tarih, sira, false);
+            } else if (slotType === 'kaldir') {
+              const izin = gunIzinleri.find(k => k.sira === sira);
+              if (!izin) return;
+              if (!isAnaYonetici && isGecti(tarih)) {
+                showToast('Geçmiş tarihli izin kaldırılamaz.', true);
+                return;
+              }
+              acIzinModal(tarih, sira, true, izin);
+            }
+          };
+        });
+      }
+
+      function acIzinModal(dateStr, sira, kaldirModu, kaldirKayit) {
+        secilenTarih = dateStr;
+        secilenSira = sira;
+        secilenKaldirKayit = kaldirKayit || null;
+
+        const personelWrap = qs('modalPersonelWrap');
+        const personelSelect = qs('modalPersonelSelect');
+        if (isAnaYonetici && !kaldirModu && personelWrap && personelSelect) {
+          personelWrap.style.display = 'block';
+          personelSelect.innerHTML = personelListesi.map(p => 
+            `<option value="${p.id}" ${p.id === currentUserUid ? 'selected' : ''}>${p.adsoyad || p.id}</option>`
+          ).join('');
+          qs('modalAciklama').innerHTML = 'Seçtiğiniz personel için bu gün izin yazılacak.';
+        } else {
+          if (personelWrap) personelWrap.style.display = 'none';
+          if (kaldirModu) {
+            const kisi = kaldirKayit?.personel_adi || currentUserName || 'Kullanıcı';
+            qs('modalAciklama').innerHTML = '<strong>' + kisi + '</strong> adlı personelin bu gündeki izni kaldırılacak.';
+          } else {
+            qs('modalAciklama').innerHTML = '<strong id="modalKullanici">' + (currentUserName || 'Kullanıcı') + '</strong> olarak bu gün için izin almak istiyorsunuz.';
+          }
+        }
+
+        qs('modalBaslik').textContent = kaldirModu ? 'İznini kaldır' : 'Bugün izin yaz';
+        qs('modalTarih').textContent = formatTarihLabel(dateStr);
+        qs('modalOnay').textContent = kaldirModu ? 'İznini kaldır' : 'İzin al';
+        qs('modalOnay').className = kaldirModu ? 'primary kaldir-btn' : 'primary';
+        qs('izinModal').classList.add('acik');
+      }
+
+      function izinModalKapat() {
+        qs('izinModal').classList.remove('acik');
+        secilenTarih = null;
+        secilenSira = null;
+        secilenKaldirKayit = null;
+      }
+
+      async function izinAl() {
+        if (!secilenTarih || !secilenSira || !currentUserUid) return;
+        const sb = window.supabase;
+        if (!sb) return;
+
+        let targetUid = currentUserUid;
+        let targetName = currentUserName;
+        if (isAnaYonetici) {
+          const sel = qs('modalPersonelSelect');
+          if (sel) {
+            targetUid = sel.value;
+            const p = personelListesi.find(x => x.id === targetUid);
+            targetName = p?.adsoyad || targetUid;
+          }
+        }
+        if (!targetName) targetName = targetUid;
+
+        const kural = kuralKontrol(secilenTarih, true, targetUid);
+        if (!kural.ok) {
+          if (isAnaYonetici && targetUid === currentUserUid) {
+            if (!confirm(kural.msg + '\n\nYine de eklemek istiyor musunuz?')) return;
+          } else {
+            showToast(kural.msg, true);
+            return;
+          }
+        }
+
+        try {
+          const { error } = await sb.from('personel_ramazan_izin').insert({
+            personel_uid: targetUid,
+            personel_adi: targetName,
+            ramazan_yil: secilenYil,
+            izin_tarihi: secilenTarih,
+            sira: secilenSira,
+            updated_at: new Date().toISOString()
+          });
+          if (error) throw error;
+          showToast('İzin kaydedildi.');
+          izinModalKapat();
+          await loadIzinKayitlari();
+          updateIzinHakBilgi();
+          renderHaftalar();
+        } catch (e) {
+          console.error(e);
+          showToast(e.message || 'Kayıt hatası', true);
+        }
+      }
+
+      async function izinKaldir() {
+        if (!secilenTarih || !secilenSira || !currentUserUid) return;
+        if (!isAnaYonetici && isGecti(secilenTarih)) {
+          showToast('Geçmiş tarihli izin kaldırılamaz.', true);
+          return;
+        }
+        const sb = window.supabase;
+        if (!sb) return;
+        let kayit = secilenKaldirKayit;
+        if (!kayit) {
+          kayit = izinKayitlari.find(k => k.izin_tarihi === secilenTarih && k.sira === secilenSira && k.personel_uid === currentUserUid);
+        }
+        if (!kayit && isAnaYonetici) {
+          kayit = izinKayitlari.find(k => k.izin_tarihi === secilenTarih && k.sira === secilenSira);
+        }
+        if (!kayit) {
+          showToast('Kayıt bulunamadı.', true);
+          return;
+        }
+        try {
+          const { error } = await sb.from('personel_ramazan_izin').delete().eq('id', kayit.id);
+          if (error) throw error;
+          showToast('İzin kaldırıldı.');
+          izinModalKapat();
+          await loadIzinKayitlari();
+          updateIzinHakBilgi();
+          renderHaftalar();
+        } catch (e) {
+          console.error(e);
+          showToast(e.message || 'Silme hatası', true);
+        }
+      }
+
+      async function loadPersonelListesi() {
+        const sb = window.supabase;
+        if (!sb) return;
+        const { data } = await sb.from('kullanicilar').select('id, adsoyad').order('adsoyad');
+        personelListesi = data || [];
+      }
+
+      async function loadData() {
+        tumTarihler = getTarihListesi();
+        await loadIzinKayitlari();
+        updateIzinHakBilgi();
+        renderHaftalar();
+      }
+
+      async function initPage() {
+        const auth = window.auth;
+        const user = auth?.currentUser;
+        if (!user) {
+          showToast('Oturum gerekli.', true);
+          setTimeout(() => location.replace('../../index.html'), 500);
+          return;
+        }
+        currentUserUid = user.uid || user.id;
+
+        const sb = window.supabase;
+        if (sb) {
+          const { data } = await sb.from('kullanicilar').select('adsoyad').eq('id', currentUserUid).single();
+          currentUserName = (data?.adsoyad || user.user_metadata?.display_name || user.email?.split('@')[0] || 'Kullanıcı').trim();
+          isAnaYonetici = (currentUserName || '').trim() === ANA_YONETICI;
+        } else {
+          currentUserName = user.email?.split('@')[0] || 'Kullanıcı';
+        }
+
+        await loadRamazanYillari();
+        await loadPersonelListesi();
+        ramazanAyar = getRamazanAyar();
+        tumTarihler = getTarihListesi();
+
+        qs('modalIptal').onclick = izinModalKapat;
+        qs('modalOnay').onclick = () => {
+          const kaldirMod = qs('modalOnay').textContent === 'İznini kaldır';
+          if (kaldirMod) izinKaldir();
+          else izinAl();
+        };
+        const modalContent = document.getElementById('izinModalContent');
+        if (modalContent) modalContent.onclick = e => e.stopPropagation();
+        qs('izinModal').onclick = e => { if (e.target === qs('izinModal')) izinModalKapat(); };
+
+        await loadData();
+      }
+
+      window.initPage = initPage;
+    })();
+  </script>
+</body>
+</html>

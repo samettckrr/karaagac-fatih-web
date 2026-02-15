@@ -580,6 +580,18 @@ CREATE TABLE public.ramazan_yillar (
   yil integer,
   CONSTRAINT ramazan_yillar_pkey PRIMARY KEY (id)
 );
+CREATE TABLE public.personel_ramazan_izin (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  personel_uid text NOT NULL,
+  personel_adi text NOT NULL,
+  ramazan_yil integer NOT NULL,
+  izin_tarihi date NOT NULL,
+  sira integer NOT NULL CHECK (sira IN (1, 2)),
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT personel_ramazan_izin_pkey PRIMARY KEY (id),
+  CONSTRAINT personel_ramazan_izin_gunluk_unique UNIQUE (ramazan_yil, izin_tarihi, sira)
+);
 CREATE TABLE public.sayfa_manifesti (
   id text NOT NULL,
   order integer,

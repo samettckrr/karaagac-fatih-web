@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Karaağaç Kurban | Ön Kayıt </title>
+  <link rel="icon" type="image/png" href="../img/logo.png" />
+  <link rel="stylesheet" href="../css/app-shell.css" />
+
+  <style>
+    body {
+      padding-top: var(--appbar-h) !important;
+      overflow-x: hidden;
+      overflow-y: auto;
+      font-size: 15px;
+    }
+
+    main.container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 32px;
+    }
+
+    .hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      background: var(--card);
+      border-radius: 14px;
+      border: 1px solid var(--stroke);
+      padding: 48px 24px;
+      box-shadow: var(--shadow);
+      min-height: 280px;
+    }
+
+    .hero h1 {
+      margin: 0 0 16px;
+      font-size: 26px;
+      color: var(--text);
+    }
+
+    .hero-message {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.6;
+      color: var(--muted);
+      max-width: 520px;
+    }
+
+    .calismalar-card {
+      background: var(--card);
+      border-radius: 14px;
+      border: 1px solid var(--stroke);
+      padding: 24px;
+      box-shadow: var(--shadow);
+      margin-top: 24px;
+    }
+
+    .calismalar-card h2 {
+      margin: 0 0 16px;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .calismalar-card h2::before {
+      content: '';
+      width: 4px;
+      height: 22px;
+      background: var(--brand);
+      border-radius: 2px;
+    }
+
+    .calismalar-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .calismalar-list li {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--stroke);
+      background: linear-gradient(135deg, var(--surface), transparent);
+      font-size: 15px;
+      color: var(--text);
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .calismalar-list li:hover {
+      border-color: var(--brand);
+      transform: translateX(4px);
+    }
+
+    .calismalar-list .num {
+      min-width: 28px;
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--brand), var(--brand2));
+      color: #fff;
+      font-weight: 700;
+      font-size: 13px;
+    }
+  </style>
+
+  <!-- Supabase (Auth + Database) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="../src/supabase.js"></script>
+  <script src="../src/supabase-auth-wrapper.js"></script>
+  <script src="../src/supabase-db-wrapper.js"></script>
+
+  <script>
+    // Supabase Auth wrapper'ı hazırla ve app shell auth'u tetikle
+    (function () {
+      function initAuth() {
+        if (typeof window.getSupabaseAuth === 'function') {
+          window.auth = window.getSupabaseAuth();
+          return true;
+        }
+        return false;
+      }
+
+      function waitAndTriggerInit() {
+        if (typeof window.auth !== 'undefined' && window.auth && typeof window.initAppShellAuth === 'function') {
+          try {
+            window.initAppShellAuth();
+          } catch (e) {
+            console.error('initAppShellAuth hatası:', e);
+          }
+        } else if (typeof window.initAppShellAuth === 'function') {
+          setTimeout(waitAndTriggerInit, 300);
+        }
+      }
+
+      function bootstrap() {
+        if (!initAuth()) {
+          setTimeout(bootstrap, 200);
+        } else {
+          setTimeout(waitAndTriggerInit, 200);
+        }
+      }
+
+      bootstrap();
+    })();
+  </script>
+
+  <!-- Ortak JS (app shell, toast, nav, RLS bilinçli istekler) -->
+  <script src="../js/ortak.js"></script>
+</head>
+<body>
+
+  <!-- APP SHELL BAR -->
+  <div class="appbar">
+    <div class="brand" onclick="location.href='../panel.html'">
+      <img src="../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
+    </div>
+    <nav class="nav-center"><ul class="nav-list" id="navMain"></ul></nav>
+    <div class="nav-right">
+      <button class="btn hamb" id="hamburger" title="Menü">☰</button>
+      <div class="nav-item">
+        <button class="iconbtn" id="btnNotif" title="Bildirimler">🔔
+          <span class="badge" id="notifBadge" style="display:none">0</span>
+        </button>
+        <div class="dropdown drop-right" id="notifDropdown">
+          <div class="muted" style="padding:6px 8px">Son bildirimler</div>
+          <div id="notifList" style="max-height:300px;overflow:auto"></div>
+        </div>
+      </div>
+      <div class="nav-item">
+        <button class="iconbtn" id="btnProfile" title="Profil">
+          <span class="avatar"></span> <span id="profName" class="muted">Profil</span>
+        </button>
+        <div class="dropdown drop-right" id="profDropdown">
+          <a href="/diger/kullanici-yonetimi.html">👤 Profil</a>
+          <a href="/diger/sistem-ayarlari.html">⚙️ Sistem Ayarları</a>
+          <a href="#" id="btnLogout">🚪 Çıkış Yap</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <aside class="drawer" id="drawer"></aside>
+  <!-- TOAST CONTAINER (ortak.js kullanır) -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <main class="container">
+    <section class="hero">
+      <h1>Karaağaç Kurban</h1>
+      <p class="hero-message">
+        Kurban Ön Kayıt Başvuruları
+      </p>
+    </section>
+  </main>
+
+</body>
+</html>
