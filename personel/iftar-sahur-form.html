@@ -318,6 +318,23 @@
       border-left-color: var(--danger);
     }
 
+    .day-card.day-card-today {
+      border: 2px solid var(--accent, #3498db);
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.25);
+      background: linear-gradient(135deg, var(--card) 0%, rgba(52, 152, 219, 0.08) 100%);
+    }
+
+    .day-separator {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(44, 62, 80, 0.5) 20%, rgba(44, 62, 80, 0.5) 80%, transparent);
+      margin: 16px 0;
+    }
+
+    .day-card.day-card-past {
+      opacity: 0.7;
+      filter: grayscale(0.3);
+    }
+
     .dc-date {
       display: flex;
       flex-direction: column;
@@ -1222,6 +1239,12 @@
           </div>
           <input type="hidden" id="editRequestNewMusafir" value="0">
 
+          <div id="editRequestMusafirMahalWrap" style="display:none; margin-top:12px;">
+            <label class="form-label">Mahal Seçiniz (İştirak için zorunlu)</label>
+            <div class="chip-group" id="editRequestMusafirMahalChips" style="flex-wrap:wrap; margin-bottom:8px;"></div>
+            <input type="hidden" id="editRequestNewMahalForMusafir">
+          </div>
+
           <div id="editRequestMusafirWarning"
             style="display:none; padding:10px; background:#fff3cd; border-left:3px solid #ffc107; border-radius:6px; margin-top:10px; font-size:13px;">
             <strong>⚠️ Uyarı:</strong> <span id="editRequestMusafirWarningText"></span>
@@ -1838,6 +1861,7 @@
     let CURRENT_YIL = null;
     let ramazanAyari = null;
     let kayitlar = [];
+    let tahsilatByKayitId = {};
     let tutarSecenekleri = [];
     let currentUser = null;
     let kapasiteAyarlari = { genel: null, gunluk: [] };
@@ -2456,6 +2480,23 @@
           });
         }
 
+        // Tahsilat önbelleği (geçmiş gün kartları için)
+        tahsilatByKayitId = {};
+        const kayitIds = (kayitlar || []).map(k => k.id).filter(Boolean);
+        if (kayitIds.length > 0 && window.supabase) {
+          try {
+            const { data: tahsilatData } = await window.supabase
+              .from('ramazan_tahsilat')
+              .select('kayit_id, tutar')
+              .in('kayit_id', kayitIds);
+            kayitIds.forEach(id => { tahsilatByKayitId[id] = 0; });
+            (tahsilatData || []).forEach(t => {
+              const kid = t.kayit_id;
+              tahsilatByKayitId[kid] = (tahsilatByKayitId[kid] || 0) + (Number(t.tutar) || 0);
+            });
+          } catch (e) { console.warn('Tahsilat önbelleği yüklenemedi:', e); }
+        }
+
         // renderAllViews çağır (Mobil + Masaüstü)
         if (typeof renderAllViews === 'function') renderAllViews();
 
@@ -3060,9 +3101,27 @@
 
       let current = new Date(start);
       let dayCounter = 1;
+      const todayStr = new Date().toISOString().slice(0, 10);
+      let prevDayWasPast = false;
+      let prevDayWasToday = false;
 
       while (current <= end) {
         const dateStr = current.toISOString().slice(0, 10);
+        const isPast = dateStr < todayStr;
+        const isToday = dateStr === todayStr;
+        const isFuture = dateStr > todayStr;
+        if (prevDayWasPast && !isPast) {
+          const sep = document.createElement('div');
+          sep.className = 'day-separator';
+          container.appendChild(sep);
+        }
+        if (prevDayWasToday && isFuture) {
+          const sep = document.createElement('div');
+          sep.className = 'day-separator';
+          container.appendChild(sep);
+        }
+        prevDayWasPast = isPast;
+        prevDayWasToday = isToday;
         let dayRecs = kayitlar.filter(k => {
           // Tarih parse güvenliği
           let kStr = '';
@@ -3138,12 +3197,24 @@
             }).join('')
           : '<span style="color:#95a5a6;">Yok</span>';
 
+        const toplamTutar = dayRecs.reduce((s, k) => s + (parseFloat(k.tutar) || 0), 0);
+        const toplamTahsilat = dayRecs.reduce((s, k) => s + (tahsilatByKayitId[k.id] || 0), 0);
+        const toplamKalan = toplamTutar - toplamTahsilat;
+
         const card = document.createElement('div');
-        card.className = `day-card ${statusClass}`;
+        card.className = `day-card ${statusClass}${isToday ? ' day-card-today' : ''}${isPast ? ' day-card-past' : ''}`;
         const dStr = dateStr;
         card.onclick = () => showDayRecords(dStr);
 
         const ayAdi = current.toLocaleDateString('tr-TR', { month: 'long' });
+        const pastDetailsHtml = isPast
+          ? `<div class="dc-past-finans" style="font-size:12px; color:#7f8c8d; margin-top:6px;">
+               <div>Toplam: <strong>${toplamTutar.toLocaleString('tr-TR')} ₺</strong></div>
+               <div>Tahsilat: <strong>${toplamTahsilat.toLocaleString('tr-TR')} ₺</strong></div>
+               <div>Kalan: <strong>${toplamKalan.toLocaleString('tr-TR')} ₺</strong></div>
+             </div>`
+          : `<div class="dc-musait-kamelya"><span class="dc-musait-label">🏛️ İftar müsait:</span> ${müsaitKamelyaHtml}</div>`;
+
         card.innerHTML = `
           <div class="dc-date">
             <span class="dc-day-num">${current.getDate()}</span>
@@ -3157,7 +3228,7 @@
                <span class="badge-mini" style="background:#f39c12; padding:2px 6px; border-radius:4px; color:white; font-size:10px">İftar: ${iftarText}</span>
                <span class="badge-mini" style="background:#3498db; padding:2px 6px; border-radius:4px; color:white; font-size:10px">Sahur: ${sahurText}</span>
             </div>
-            <div class="dc-musait-kamelya"><span class="dc-musait-label">🏛️ İftar müsait:</span> ${müsaitKamelyaHtml}</div>
+            ${pastDetailsHtml}
           </div>
           <div class="dc-action">+</div>
         `;
@@ -5187,12 +5258,14 @@
         qs('#editRequestDateSelect').style.display = 'none';
         qs('#editRequestMahalSelect').style.display = 'none';
         qs('#editRequestMusafirSelect').style.display = 'block';
+        qs('#editRequestMusafirMahalWrap').style.display = 'none';
+        qs('#editRequestNewMahalForMusafir').value = '';
         qs('#editRequestMahalWarning').style.display = 'none';
         qs('#editRequestMahalOnlyWarning').style.display = 'none';
         qs('#editRequestMusafirWarning').style.display = 'none';
         // Mevcut müsafir adedini ayarla
         if (kayit) {
-          const mevcutMusafir = kayit.musafirAdedi || 0;
+          const mevcutMusafir = kayit.musafirAdedi ?? kayit.musafiradedi ?? 0;
           qs('#editRequestNewMusafir').value = mevcutMusafir;
           qs('#editRequestMusafirVal').innerText = mevcutMusafir;
         }
@@ -5207,10 +5280,12 @@
       }
     }
 
-    // Mahal render fonksiyonu (düzenleme için)
-    function renderEditRequestMahaller(containerId, inputId, kayit) {
+    // Mahal render fonksiyonu (düzenleme için). options: { overrideMusafir, overrideIstirak } (müsafir değiştir - iştirak no→yes)
+    function renderEditRequestMahaller(containerId, inputId, kayit, options) {
       const container = qs(`#${containerId}`);
       if (!container) return;
+      const overrideMusafir = options?.overrideMusafir;
+      const overrideIstirak = options?.overrideIstirak;
       
       // Eğer kayıt yoksa, recordId'den bul
       if (!kayit) {
@@ -5232,7 +5307,8 @@
         return;
       }
 
-      const musafirAdedi = kayit.musafirAdedi ?? kayit.musafiradedi ?? 0;
+      const musafirAdedi = (overrideMusafir !== undefined ? overrideMusafir : (kayit.musafirAdedi ?? kayit.musafiradedi ?? 0));
+      const istirakEffective = overrideIstirak !== undefined ? overrideIstirak : (kayit.istirak === true);
       // SORUN 1 FIX: Tarih formatını YYYY-MM-DD'ye sabitle
       let tarihStr = '';
       if (containerId === 'editRequestMahalChips') {
@@ -5251,7 +5327,7 @@
           }
         }
       } else {
-        // Mahal değiştir modu - mevcut tarih
+        // Mahal değiştir veya müsafir mahal - mevcut tarih
         if (kayit.tarih?.toDate) {
           tarihStr = kayit.tarih.toDate().toISOString().slice(0, 10);
         } else if (typeof kayit.tarih === 'string') {
@@ -5261,7 +5337,7 @@
         }
       }
       const tip = kayit.tip;
-      const istirak = kayit.istirak === true;
+      const istirak = istirakEffective;
 
       container.innerHTML = '';
 
@@ -5314,6 +5390,7 @@
               } else if (containerId === 'editRequestMahalOnlyChips') {
                 checkNewMahalOnly();
               }
+              // editRequestMusafirMahalChips: checkNewMusafir çağırma - re-render seçimi siler
             }, 10);
           };
         }
@@ -5502,12 +5579,26 @@
 
       // İştirak durumu değişikliği uyarısı
       if (istirakDegisti) {
-        if (yeniIstirak) {
-          warningText = `ℹ️ Müsafir adedi ${newMusafirAdedi} yapıldığı için kayıt otomatik olarak "İştirak edecek" olarak değiştirilecek.`;
+        if (yeniIstirak && kayitTipi === 'iftar-sahur') {
+          warningText = `ℹ️ Müsafir adedi ${newMusafirAdedi} yapıldığı için kayıt otomatik olarak "İştirak edecek" olarak değiştirilecek. Mahal seçmeniz gerekmektedir.`;
+          // İştirak no→yes: mahal seçimi göster (sadece iftar-sahur)
+          qs('#editRequestMusafirMahalWrap').style.display = 'block';
+          renderEditRequestMahaller('editRequestMusafirMahalChips', 'editRequestNewMahalForMusafir', kayit, {
+            overrideMusafir: newMusafirAdedi,
+            overrideIstirak: true
+          });
+        } else if (yeniIstirak && kayitTipi !== 'iftar-sahur') {
+          warningText = `ℹ️ Müsafir adedi ${newMusafirAdedi} yapıldığı için kayıt "İştirak edecek" olarak değiştirilecek.`;
+          qs('#editRequestMusafirMahalWrap').style.display = 'none';
         } else {
           warningText = `ℹ️ Müsafir adedi 0 yapıldığı için kayıt otomatik olarak "İştirak etmeyecek" olarak değiştirilecek ve mahal kaldırılacak.`;
+          qs('#editRequestMusafirMahalWrap').style.display = 'none';
+          qs('#editRequestNewMahalForMusafir').value = '';
         }
         hasWarning = true;
+      } else {
+        qs('#editRequestMusafirMahalWrap').style.display = 'none';
+        qs('#editRequestNewMahalForMusafir').value = '';
       }
 
       // Mahal uyumluluğu kontrolü (sadece iştirak edecekse)
@@ -5575,6 +5666,20 @@
 
         const yeniAciklama = qs('#editRequestAciklama').value.trim();
         const talepTipi = qs('#editRequestType').value;
+
+        // Geçmiş ve bugün için sil, mahal değiştir, müsafir değiştir engeli (iftar-sahur)
+        if (kayitTipi === 'iftar-sahur' && (talepTipi === 'sil' || talepTipi === 'mahal_degistir' || talepTipi === 'musafir_degistir')) {
+          let kayitTarihStr = '';
+          if (kayit.tarih?.toDate) kayitTarihStr = kayit.tarih.toDate().toISOString().slice(0, 10);
+          else if (typeof kayit.tarih === 'string') kayitTarihStr = kayit.tarih.includes('T') ? kayit.tarih.split('T')[0] : kayit.tarih.slice(0, 10);
+          else if (kayit.tarih) kayitTarihStr = new Date(kayit.tarih).toISOString().slice(0, 10);
+          if (kayitTarihStr && isDatePastOrToday(kayitTarihStr)) {
+            showAlert('Geçmiş tarih ve bugün için kayıt düzenlenemez veya silinemez. Sadece ileri tarihli kayıtlar için bu işlemler yapılabilir.', 'error');
+            btn.disabled = false;
+            btn.innerText = 'Kaydet ve Kapat';
+            return;
+          }
+        }
 
         // Duzenleme talebi verisi - şema: kayitid, kayittipi, taleptipi, personeladi, yenitarih, mahalid, createdat, updatedat
         // NOT: personeluid kolonu yok, sadece personeladi var (sqleditor.md'ye göre)
@@ -5790,18 +5895,38 @@
           }
 
         } else if (talepTipi === 'musafir_degistir') {
-          const yeniMusafir = parseInt(qs('#editRequestNewMusafir').value);
-          const fark = yeniMusafir - (kayit.musafirAdedi || 0);
+          const yeniMusafir = parseInt(qs('#editRequestNewMusafir').value) || 0;
+          const eskiIstirak = kayit.istirak === true;
+          const yeniIstirak = yeniMusafir > 0;
+          const istirakDegisti = eskiIstirak !== yeniIstirak;
 
+          // İştirak no→yes (iftar-sahur): mahal seçimi zorunlu
+          if (istirakDegisti && yeniIstirak && kayitTipi === 'iftar-sahur') {
+            const newMahalId = qs('#editRequestNewMahalForMusafir')?.value || '';
+            if (!newMahalId) {
+              showAlert('İştirak edecek şekilde değiştirmek için lütfen mahal seçiniz.', 'error');
+              btn.disabled = false;
+              btn.innerText = 'Kaydet ve Kapat';
+              return;
+            }
+          }
+
+          const fark = yeniMusafir - (kayit.musafirAdedi ?? kayit.musafiradedi ?? 0);
           let mahalOk = true;
-          if (kayit.mahalId && fark > 0) {
+          let mahalToCheck = kayit.mahalId ?? kayit.mahalid;
+          if (istirakDegisti && yeniIstirak) {
+            mahalToCheck = qs('#editRequestNewMahalForMusafir')?.value || null;
+          } else if (kayit.mahalId && fark > 0) {
+            mahalToCheck = kayit.mahalId;
+          }
+          if (mahalToCheck && (fark > 0 || (istirakDegisti && yeniIstirak))) {
             let kDateStr;
             if (kayit.tarih && kayit.tarih.toDate) {
               kDateStr = kayit.tarih.toDate().toISOString().slice(0, 10);
             } else {
               kDateStr = new Date(kayit.tarih).toISOString().slice(0, 10);
             }
-            const check = await checkMahalAvailability(kDateStr, kayit.tip, kayit.mahalId, kayit.id);
+            const check = await checkMahalAvailability(kDateStr, kayit.tip, mahalToCheck, kayit.id);
             if (!check.allowed) mahalOk = false;
           }
 
@@ -5825,12 +5950,15 @@
                 const degisiklikNotu = `[${new Date().toLocaleString('tr-TR')}] ${currentPersonelAdi || 'Bilinmiyor'}: Müsafir ${eskiMusafir} → ${yeniMusafir}, Mahal kaldırıldı (${m.adi} - kriter dışı). Açıklama: ${yeniAciklama}`;
                 mevcutNot = mevcutNot ? `${mevcutNot} | ${degisiklikNotu}` : degisiklikNotu;
                 
-                const { error: updateError } = await window.supabase.from('ramazan_kayitlari').update({
+                const mahalNullUp = {
                   musafiradedi: yeniMusafir,
                   mahalid: null,
+                  mahal: null,
                   notlar: mevcutNot,
                   updatedat: new Date().toISOString()
-                }).eq('id', recordId);
+                };
+                if (yeniMusafir === 0) mahalNullUp.istirak = false;
+                const { error: updateError } = await window.supabase.from('ramazan_kayitlari').update(mahalNullUp).eq('id', recordId);
                 
                 if (updateError) {
                   console.error('Güncelleme hatası:', updateError);
@@ -5848,11 +5976,19 @@
               const degisiklikNotu = `[${new Date().toLocaleString('tr-TR')}] ${currentPersonelAdi || 'Bilinmiyor'}: Müsafir ${eskiMusafir} → ${yeniMusafir}. Açıklama: ${yeniAciklama}`;
               mevcutNot = mevcutNot ? `${mevcutNot} | ${degisiklikNotu}` : degisiklikNotu;
               
-              const { error: updateError } = await window.supabase.from('ramazan_kayitlari').update({
+              const upData = {
                 musafiradedi: yeniMusafir,
                 notlar: mevcutNot,
                 updatedat: new Date().toISOString()
-              }).eq('id', recordId);
+              };
+              if (istirakDegisti && yeniIstirak) {
+                const newMahalId = qs('#editRequestNewMahalForMusafir')?.value || null;
+                const mahalAdi = newMahalId ? (mahaller.find(m => m.id === newMahalId)?.adi || null) : null;
+                upData.istirak = true;
+                upData.mahalid = newMahalId;
+                upData.mahal = mahalAdi;
+              }
+              const { error: updateError } = await window.supabase.from('ramazan_kayitlari').update(upData).eq('id', recordId);
               
               if (updateError) {
                 console.error('Güncelleme hatası:', updateError);
@@ -5889,6 +6025,15 @@
       const kayitPersonelUid = kayit?.personelUid ?? kayit?.personeluid;
       if (!kayit || kayitPersonelUid !== currentUser.id) {
         showAlert('Bu kaydı silme yetkiniz yok', 'error');
+        return;
+      }
+      // Geçmiş ve bugün için silme engeli
+      let kayitTarihStr = '';
+      if (kayit.tarih?.toDate) kayitTarihStr = kayit.tarih.toDate().toISOString().slice(0, 10);
+      else if (typeof kayit.tarih === 'string') kayitTarihStr = kayit.tarih.includes('T') ? kayit.tarih.split('T')[0] : kayit.tarih.slice(0, 10);
+      else if (kayit.tarih) kayitTarihStr = new Date(kayit.tarih).toISOString().slice(0, 10);
+      if (kayitTarihStr && isDatePastOrToday(kayitTarihStr)) {
+        showAlert('Geçmiş veya bugüne ait kayıtlar silinemez. Düzenleme talep formundan talep oluşturabilirsiniz.', 'error');
         return;
       }
 

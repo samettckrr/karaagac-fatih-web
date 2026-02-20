@@ -1871,6 +1871,20 @@
           <textarea id="editAciklama" rows="3" placeholder="Açıklama (opsiyonel)"></textarea>
         </div>
 
+        <!-- Not alanı - tüm kayıt tipleri için -->
+        <div class="form-group" id="editGroupNotlar">
+          <label>Not</label>
+          <textarea id="editNotlar" rows="3" placeholder="Not (opsiyonel)"></textarea>
+        </div>
+
+        <!-- Muhasebe yazısı seçimi - oto/manuel -->
+        <div class="form-group" id="editGroupMuhasebe" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <input type="checkbox" id="editMuhasebeNotu" checked />
+            <span>Kayıt yapan/güncelleyen: Muhasebe yazısı eklensin</span>
+          </label>
+        </div>
+
         <div class="actions">
           <button type="button" class="secondary" onclick="closeEditModal()">İptal</button>
           <button type="submit" class="good">Kaydet</button>
@@ -2551,8 +2565,8 @@
         let kayitlar = [];
         let tutarSecenekleri = [];
         let currentYil = new Date().getFullYear();
-        let kayitlarSortKey = '';
-        let kayitlarSortDir = 1; // 1: artan, -1: azalan
+        let kayitlarSortKey = 'islemTarihi';
+        let kayitlarSortDir = -1; // 1: artan, -1: azalan (varsayılan: işlem tarihine göre yeni > eski)
         let tahsilatByKayitId = {};   // kayit_id -> toplam tahsilat tutarı
         let tahsilatListByKayitId = {}; // kayit_id -> tahsilat satırları (tarih, tutar, odeme_tipi, taksit_no)
 
@@ -4295,6 +4309,11 @@
           });
         }
 
+        function stripMuhasebeNotu(text) {
+          if (!text || typeof text !== 'string') return '';
+          return text.replace(/\s*\|\s*Kayıt yapan\/güncelleyen: Muhasebe/g, '').replace(/^Kayıt yapan\/güncelleyen: Muhasebe\s*\|\s*/i, '').trim();
+        }
+
         async function openEditModal(id = null, kayitTipi = 'iftar-sahur') {
           try {
             qs('#editId').value = id || '';
@@ -4383,6 +4402,10 @@
                   }
                 }
 
+                // Not ve muhasebe checkbox (tüm tipler için)
+                qs('#editNotlar').value = stripMuhasebeNotu(k.notlar || k.not || k.aciklama || '');
+                qs('#editMuhasebeNotu').checked = (k.notlar || k.not || k.aciklama || '').includes('Muhasebe');
+
                 // Kayıt tipini sakla (güncelleme için)
                 qs('#editId').setAttribute('data-kayit-tipi', k.kayitTipi || (k.tip === 'teberru' || k.tip === 'taahhut' ? k.tip : 'iftar-sahur'));
                 qs('#editId').setAttribute('data-kayit-koleksiyon', k.kayitKoleksiyon ||
@@ -4395,6 +4418,8 @@
               qs('#editMahal').value = '';
               qs('#editPersonel').value = '';
               qs('#editTip').value = '';
+              qs('#editNotlar').value = '';
+              qs('#editMuhasebeNotu').checked = true;
               qs('#editId').removeAttribute('data-kayit-tipi');
               qs('#editId').removeAttribute('data-kayit-koleksiyon');
             }
@@ -5102,6 +5127,10 @@
               }
             }
 
+            // Not içeriği ve muhasebe seçimi (tüm tipler için)
+            const notIcerik = (qs('#editNotlar')?.value || '').trim();
+            const muhasebeEkle = qs('#editMuhasebeNotu')?.checked ?? true;
+
             // Kayıt tipi ve koleksiyon bilgisini al
             const kayitTipi = qs('#editId').getAttribute('data-kayit-tipi') || (tip === 'teberru' || tip === 'taahhut' ? tip : 'iftar-sahur');
             const kayitKoleksiyon = qs('#editId').getAttribute('data-kayit-koleksiyon') ||
@@ -5189,41 +5218,12 @@
                   data.kaydedenPersonelUid = personelUidFinal;
                 }
 
-                // Not ve açıklama ekle (muhasebe notu + kullanıcı açıklaması)
-                let finalAciklama = '';
-                if (id) {
-                  // Güncelleme - mevcut kaydı al
-                  const tabloAdi = tip === 'teberru' ? 'teberru_kayitlari' : 'veriler';
-                  const { data: existingData, error: fetchError } = await supabase
-                    .from(tabloAdi)
-                    .select('*')
-                    .eq('id', id)
-                    .single();
-
-                  if (!fetchError && existingData) {
-                    let existingNot = existingData.not || existingData.aciklama || '';
-                    // Kullanıcı açıklaması varsa ekle
-                    if (aciklama) {
-                      finalAciklama = aciklama;
-                    } else if (existingNot && !existingNot.includes('Muhasebe')) {
-                      finalAciklama = existingNot;
-                    }
-                    // Muhasebe notunu ekle
-                    if (!finalAciklama.includes('Muhasebe')) {
-                      finalAciklama = finalAciklama ? finalAciklama + ' | ' + muhasebeNotu : muhasebeNotu;
-                    } else {
-                      finalAciklama = finalAciklama.replace(/Kayıt yapan\/güncelleyen: Muhasebe/g, muhasebeNotu);
-                    }
-                  } else {
-                    finalAciklama = aciklama ? aciklama + ' | ' + muhasebeNotu : muhasebeNotu;
-                  }
-                } else {
-                  // Yeni kayıt
-                  finalAciklama = aciklama ? aciklama + ' | ' + muhasebeNotu : muhasebeNotu;
-                  data.createdAt = new Date().toISOString();
-                }
+                // Not ve açıklama (editNotlar + muhasebe seçimine göre)
+                const userNot = notIcerik || aciklama;
+                const finalAciklama = userNot + (muhasebeEkle ? (userNot ? ' | ' : '') + muhasebeNotu : '');
                 data.not = finalAciklama;
                 data.aciklama = finalAciklama;
+                if (!id) data.createdAt = new Date().toISOString();
 
                 // Yeni kayıt için id alanını kesinlikle ekleme
                 // id değişkeni varsa bile data objesine ekleme
@@ -5376,38 +5376,23 @@
                 if (data.personelAdi) { data.personeladi = data.personelAdi; delete data.personelAdi; }
                 // mahalId -> mahalid
                 if (data.mahalId) { data.mahalid = data.mahalId; delete data.mahalId; }
-                // musafirAdedi -> musafiradedi
-                if (data.musafirAdedi) { data.musafiradedi = data.musafirAdedi; delete data.musafirAdedi; }
+                // musafirAdedi -> musafiradedi (0 dahil gönderilmeli - if (data.musafirAdedi) 0 için false döner)
+                if ('musafirAdedi' in data) {
+                  data.musafiradedi = data.musafirAdedi;
+                  delete data.musafirAdedi;
+                }
+
+                // Not (editNotlar + muhasebe seçimine göre)
+                data.notlar = notIcerik + (muhasebeEkle ? (notIcerik ? ' | ' : '') + muhasebeNotu : '');
 
                 if (id) {
-                  // Güncelleme - mevcut kaydı al
-                  const { data: existingData, error: fetchError } = await supabase
-                    .from('ramazan_kayitlari')
-                    .select('*')
-                    .eq('id', id)
-                    .single();
-
-                  let existingNot = '';
-                  if (!fetchError && existingData) {
-                    existingNot = existingData.notlar || '';
-                  }
-
-                  // Eğer muhasebe notu yoksa ekle, varsa güncelle
-                  if (!existingNot.includes('Muhasebe')) {
-                    existingNot = existingNot ? existingNot + ' | ' + muhasebeNotu : muhasebeNotu;
-                  } else {
-                    existingNot = existingNot.replace(/Kayıt yapan\/güncelleyen: Muhasebe/g, muhasebeNotu);
-                  }
-                  data.notlar = existingNot;
-
                   const { error } = await supabase
                     .from('ramazan_kayitlari')
                     .update(data)
                     .eq('id', id);
                   if (error) throw error;
                 } else {
-                  // Yeni kayıt
-                  data.notlar = muhasebeNotu;
+                  // Yeni kayıt (data.notlar zaten yukarıda ayarlandı)
                   data.createdat = new Date().toISOString();
 
                   // Yeni kayıt - UUID oluştur
