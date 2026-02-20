@@ -1140,6 +1140,7 @@
       <button class="tab" data-tab="veri-duzenleme">✏️ Veri Düzenleme</button>
       <button class="tab" data-tab="istatistik">📊 İstatistikler</button>
       <button class="tab" data-tab="export">📤 İçe/Dışa Aktar</button>
+      <button class="tab" data-tab="kontrol">🔍 Kontrol</button>
     </div>
 
     <!-- Tab: Kayıtlar -->
@@ -1782,6 +1783,66 @@
             </small>
           </div>
           <button onclick="importCSV()">İçe Aktar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Kontrol (Muhasebe Takibi) -->
+    <div class="tab-content" id="tab-kontrol">
+      <div class="card">
+        <h3 style="margin:0 0 16px 0">📋 Muhasebe Kayıt Kontrolü</h3>
+        <p class="muted" style="margin-bottom:16px;font-size:13px">
+          Tüm iftar-sahur-teberrü-taahhüt kayıtlarının muhasebe sistemine kayıt edilip edilmediğini kontrol edin.
+        </p>
+        <div class="toolbar" style="flex-wrap:wrap;gap:10px">
+          <select id="kontrolFiltreYil">
+            <option value="2024">2024</option>
+            <option value="2025" selected>2025</option>
+            <option value="2026">2026</option>
+          </select>
+          <select id="kontrolFiltreTip">
+            <option value="">Tüm Tipler</option>
+            <option value="iftar">İftar</option>
+            <option value="sahur">Sahur</option>
+            <option value="teberru">Teberrü</option>
+            <option value="taahhut">Taahhüt</option>
+          </select>
+          <select id="kontrolFiltreDurum">
+            <option value="">Tüm Durumlar</option>
+            <option value="bekliyor" selected>Henüz Kayıtlı Değil</option>
+            <option value="kaydedildi">Kaydedildi</option>
+          </select>
+          <input type="text" id="kontrolAraInput" placeholder="Sahip, Bağışçı ara..." style="flex:1;min-width:200px" />
+          <button onclick="loadKontrolKayitlari()">🔄 Yükle</button>
+          <button class="good" onclick="topluMuhasebeKaydet()" id="btnTopluKaydet" style="display:none">
+            ✅ Seçilenleri Kayıtlı Olarak İşaretle
+          </button>
+        </div>
+
+        <div style="margin:12px 0;padding:10px;background:var(--hover);border-radius:8px;display:flex;gap:16px;flex-wrap:wrap;font-size:13px">
+          <span><strong>Toplam:</strong> <span id="kontrolToplam">0</span></span>
+          <span style="color:var(--warning)"><strong>Bekliyor:</strong> <span id="kontrolBekliyor">0</span></span>
+          <span style="color:var(--good)"><strong>Kaydedildi:</strong> <span id="kontrolKaydedildi">0</span></span>
+        </div>
+
+        <div class="table-wrap">
+          <table id="tblKontrol">
+            <thead>
+              <tr>
+                <th style="width:40px"><input type="checkbox" id="kontrolSelectAll" title="Tümünü Seç" /></th>
+                <th>İşlem Tarihi</th>
+                <th>Tarih</th>
+                <th>Tip</th>
+                <th>Sahip / Bağışçı</th>
+                <th>Tutar (₺)</th>
+                <th>Tahsilat / Kalan</th>
+                <th>Personel</th>
+                <th>Muhasebe Durumu</th>
+                <th style="width:140px">İşlemler</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyKontrol"></tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -2915,6 +2976,10 @@
               if (tabId === 'menu') {
                 // Menü sekmesi açıldığında menüleri yükle
                 if (typeof loadMenuler === 'function') loadMenuler();
+              }
+              if (tabId === 'kontrol') {
+                // Kontrol sekmesi açıldığında kayıtları yükle
+                if (typeof loadKontrolKayitlari === 'function') loadKontrolKayitlari();
               }
             }
           });
@@ -11318,6 +11383,375 @@
         // Yıl değiştiğinde menüleri yeniden yükle
         if (qs('#menuFiltreYil')) {
           qs('#menuFiltreYil').addEventListener('change', loadMenuler);
+        }
+
+        // ====== KONTROL SEKMESİ (MUHASEBE TAKİBİ) ======
+        let kontrolKayitlari = [];
+        let kontrolSeciliKayitlar = new Set();
+
+        async function loadKontrolKayitlari() {
+          const tbody = qs('#tbodyKontrol');
+          if (!tbody) return;
+
+          tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--muted)">Yükleniyor...</td></tr>';
+
+          try {
+            const supabase = getSupabase();
+            if (!supabase) {
+              showToast('error', 'Hata', 'Supabase client hazır değil');
+              return;
+            }
+
+            const yil = qs('#kontrolFiltreYil')?.value || '2025';
+            const tip = qs('#kontrolFiltreTip')?.value || '';
+            const durum = qs('#kontrolFiltreDurum')?.value || '';
+            const aramaMetni = (qs('#kontrolAraInput')?.value || '').toLowerCase().trim();
+
+            // Tüm kayıtları çek (iftar-sahur, teberru, taahhut)
+            let tumKayitlar = [];
+
+            // 1. Ramazan kayıtları (iftar-sahur)
+            let ramazanQuery = supabase.from('ramazan_kayitlari').select('*').eq('yil', parseInt(yil));
+            if (tip === 'iftar' || tip === 'sahur') {
+              ramazanQuery = ramazanQuery.eq('tip', tip);
+            }
+            const { data: ramazanData, error: ramazanError } = await ramazanQuery;
+            if (!ramazanError && ramazanData) {
+              ramazanData.forEach(k => {
+                tumKayitlar.push({
+                  ...k,
+                  kayitTipi: 'ramazan',
+                  sahipBagisci: k.sahip || '-',
+                  toplamTutar: k.tutar || 0
+                });
+              });
+            }
+
+            // 2. Teberru kayıtları
+            if (!tip || tip === 'teberru') {
+              const { data: teberruData, error: teberruError } = await supabase
+                .from('teberru_kayitlari')
+                .select('*')
+                .eq('yil', parseInt(yil));
+              if (!teberruError && teberruData) {
+                teberruData.forEach(k => {
+                  tumKayitlar.push({
+                    ...k,
+                    tip: 'teberru',
+                    kayitTipi: 'teberru',
+                    sahipBagisci: k.bagisci || k.sahip || '-',
+                    toplamTutar: k.miktar || k.tutar || 0
+                  });
+                });
+              }
+            }
+
+            // 3. Taahhüt kayıtları
+            if (!tip || tip === 'taahhut') {
+              const { data: taahhutData, error: taahhutError } = await supabase
+                .from('taahhut_kayitlari')
+                .select('*')
+                .eq('yil', parseInt(yil));
+              if (!taahhutError && taahhutData) {
+                taahhutData.forEach(k => {
+                  tumKayitlar.push({
+                    ...k,
+                    tip: 'taahhut',
+                    kayitTipi: 'taahhut',
+                    sahipBagisci: k.bagisci || k.sahip || '-',
+                    toplamTutar: k.miktar || k.tutar || 0
+                  });
+                });
+              }
+            }
+
+            // Filtreleme - arama metni
+            if (aramaMetni) {
+              tumKayitlar = tumKayitlar.filter(k => {
+                const sahip = (k.sahipBagisci || '').toLowerCase();
+                const personel = (k.personel || '').toLowerCase();
+                return sahip.includes(aramaMetni) || personel.includes(aramaMetni);
+              });
+            }
+
+            // Filtreleme - muhasebe durumu
+            if (durum === 'bekliyor') {
+              tumKayitlar = tumKayitlar.filter(k => !k.muhasebe_kaydedildi);
+            } else if (durum === 'kaydedildi') {
+              tumKayitlar = tumKayitlar.filter(k => k.muhasebe_kaydedildi === true);
+            }
+
+            // İşlem tarihine göre sırala (en yeni en üstte)
+            tumKayitlar.sort((a, b) => {
+              const tarihA = new Date(a.islem_tarihi || a.createdat || a.tarih || 0);
+              const tarihB = new Date(b.islem_tarihi || b.createdat || b.tarih || 0);
+              return tarihB - tarihA;
+            });
+
+            kontrolKayitlari = tumKayitlar;
+
+            // İstatistikleri güncelle
+            const toplam = tumKayitlar.length;
+            const bekliyor = tumKayitlar.filter(k => !k.muhasebe_kaydedildi).length;
+            const kaydedildi = tumKayitlar.filter(k => k.muhasebe_kaydedildi === true).length;
+
+            if (qs('#kontrolToplam')) qs('#kontrolToplam').textContent = toplam;
+            if (qs('#kontrolBekliyor')) qs('#kontrolBekliyor').textContent = bekliyor;
+            if (qs('#kontrolKaydedildi')) qs('#kontrolKaydedildi').textContent = kaydedildi;
+
+            // Tabloyu render et
+            renderKontrolTablosu(tumKayitlar);
+
+            // Seçili kayıtları sıfırla
+            kontrolSeciliKayitlar.clear();
+            updateTopluKaydetButton();
+
+          } catch (e) {
+            console.error('Kontrol kayıtları yüklenemedi:', e);
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--bad)">Yüklenirken hata oluştu</td></tr>';
+          }
+        }
+
+        function renderKontrolTablosu(kayitlar) {
+          const tbody = qs('#tbodyKontrol');
+          if (!tbody) return;
+
+          if (!kayitlar || kayitlar.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--muted)">Kayıt bulunamadı</td></tr>';
+            return;
+          }
+
+          tbody.innerHTML = kayitlar.map(k => {
+            const islemTarihi = k.islem_tarihi || k.createdat;
+            const islemTarihiStr = islemTarihi ? new Date(islemTarihi).toLocaleDateString('tr-TR') : '-';
+
+            let tarihStr = '-';
+            if (k.tarih) {
+              if (k.tarih.toDate) {
+                tarihStr = k.tarih.toDate().toLocaleDateString('tr-TR');
+              } else if (typeof k.tarih === 'string') {
+                tarihStr = new Date(k.tarih).toLocaleDateString('tr-TR');
+              } else {
+                tarihStr = new Date(k.tarih).toLocaleDateString('tr-TR');
+              }
+            }
+
+            const tipLabel = {
+              'iftar': '🌙 İftar',
+              'sahur': '🌅 Sahur',
+              'teberru': '💰 Teberrü',
+              'taahhut': '📝 Taahhüt'
+            }[k.tip] || k.tip;
+
+            const tutar = parseFloat(k.toplamTutar) || 0;
+            const tahsilat = parseFloat(k.tahsilat) || 0;
+            const kalan = tutar - tahsilat;
+
+            const muhasebeKaydedildi = k.muhasebe_kaydedildi === true;
+            const durumBadge = muhasebeKaydedildi
+              ? '<span style="color:var(--good);font-weight:600">✅ Kaydedildi</span>'
+              : '<span style="color:var(--warning);font-weight:600">⏳ Bekliyor</span>';
+
+            const islemlerHtml = muhasebeKaydedildi
+              ? `<button class="bad" onclick="muhasebeKaydetIptal('${k.id}', '${k.kayitTipi}')" title="İptal Et">❌ İptal</button>`
+              : `<button class="good" onclick="muhasebeKaydet('${k.id}', '${k.kayitTipi}')" title="Kayıtlı İşaretle">✅ Kaydet</button>`;
+
+            const checkboxDisabled = muhasebeKaydedildi ? 'disabled' : '';
+            const checkboxChecked = kontrolSeciliKayitlar.has(k.id) ? 'checked' : '';
+
+            return `<tr>
+              <td><input type="checkbox" class="kontrol-checkbox" data-id="${k.id}" data-tip="${k.kayitTipi}" ${checkboxChecked} ${checkboxDisabled} /></td>
+              <td>${islemTarihiStr}</td>
+              <td>${tarihStr}</td>
+              <td>${tipLabel}</td>
+              <td>${k.sahipBagisci}</td>
+              <td style="text-align:right">${tutar.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
+              <td style="text-align:right">${tahsilat.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} / ${kalan.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
+              <td>${k.personel || '-'}</td>
+              <td>${durumBadge}</td>
+              <td>${islemlerHtml}</td>
+            </tr>`;
+          }).join('');
+
+          // Checkbox event listener'ları
+          tbody.querySelectorAll('.kontrol-checkbox').forEach(cb => {
+            cb.addEventListener('change', (e) => {
+              const id = e.target.dataset.id;
+              if (e.target.checked) {
+                kontrolSeciliKayitlar.add(id);
+              } else {
+                kontrolSeciliKayitlar.delete(id);
+              }
+              updateTopluKaydetButton();
+            });
+          });
+        }
+
+        function updateTopluKaydetButton() {
+          const btn = qs('#btnTopluKaydet');
+          if (!btn) return;
+
+          if (kontrolSeciliKayitlar.size > 0) {
+            btn.style.display = 'inline-block';
+            btn.textContent = `✅ Seçilenleri Kaydet (${kontrolSeciliKayitlar.size})`;
+          } else {
+            btn.style.display = 'none';
+          }
+        }
+
+        // Tümünü seç/kaldır
+        if (qs('#kontrolSelectAll')) {
+          qs('#kontrolSelectAll').addEventListener('change', (e) => {
+            const checked = e.target.checked;
+            document.querySelectorAll('.kontrol-checkbox:not(:disabled)').forEach(cb => {
+              cb.checked = checked;
+              const id = cb.dataset.id;
+              if (checked) {
+                kontrolSeciliKayitlar.add(id);
+              } else {
+                kontrolSeciliKayitlar.delete(id);
+              }
+            });
+            updateTopluKaydetButton();
+          });
+        }
+
+        async function muhasebeKaydet(id, kayitTipi) {
+          if (!confirm('Bu kaydı muhasebe sistemine kayıtlı olarak işaretlemek istiyor musunuz?')) return;
+
+          try {
+            const supabase = getSupabase();
+            if (!supabase) {
+              showToast('error', 'Hata', 'Supabase client hazır değil');
+              return;
+            }
+
+            let tablo = 'ramazan_kayitlari';
+            if (kayitTipi === 'teberru') tablo = 'teberru_kayitlari';
+            if (kayitTipi === 'taahhut') tablo = 'taahhut_kayitlari';
+
+            const { error } = await supabase
+              .from(tablo)
+              .update({
+                muhasebe_kaydedildi: true,
+                muhasebe_kayit_tarihi: new Date().toISOString()
+              })
+              .eq('id', id);
+
+            if (error) throw error;
+
+            showToast('success', 'Başarılı', 'Kayıt muhasebe sistemine işaretlendi');
+            await loadKontrolKayitlari();
+          } catch (e) {
+            console.error('Muhasebe kaydet hatası:', e);
+            showToast('error', 'Hata', 'İşlem başarısız: ' + (e.message || e));
+          }
+        }
+
+        async function muhasebeKaydetIptal(id, kayitTipi) {
+          if (!confirm('Bu kaydın muhasebe işaretini kaldırmak istiyor musunuz?')) return;
+
+          try {
+            const supabase = getSupabase();
+            if (!supabase) {
+              showToast('error', 'Hata', 'Supabase client hazır değil');
+              return;
+            }
+
+            let tablo = 'ramazan_kayitlari';
+            if (kayitTipi === 'teberru') tablo = 'teberru_kayitlari';
+            if (kayitTipi === 'taahhut') tablo = 'taahhut_kayitlari';
+
+            const { error } = await supabase
+              .from(tablo)
+              .update({
+                muhasebe_kaydedildi: false,
+                muhasebe_kayit_tarihi: null
+              })
+              .eq('id', id);
+
+            if (error) throw error;
+
+            showToast('success', 'Başarılı', 'Muhasebe işareti kaldırıldı');
+            await loadKontrolKayitlari();
+          } catch (e) {
+            console.error('Muhasebe iptal hatası:', e);
+            showToast('error', 'Hata', 'İşlem başarısız: ' + (e.message || e));
+          }
+        }
+
+        async function topluMuhasebeKaydet() {
+          if (kontrolSeciliKayitlar.size === 0) {
+            showToast('warning', 'Uyarı', 'Lütfen en az bir kayıt seçin');
+            return;
+          }
+
+          if (!confirm(`${kontrolSeciliKayitlar.size} kaydı muhasebe sistemine kayıtlı olarak işaretlemek istiyor musunuz?`)) return;
+
+          try {
+            const supabase = getSupabase();
+            if (!supabase) {
+              showToast('error', 'Hata', 'Supabase client hazır değil');
+              return;
+            }
+
+            // Seçili kayıtları grupla
+            const ramazanIds = [];
+            const teberruIds = [];
+            const taahhutIds = [];
+
+            kontrolSeciliKayitlar.forEach(id => {
+              const kayit = kontrolKayitlari.find(k => k.id === id);
+              if (kayit) {
+                if (kayit.kayitTipi === 'teberru') teberruIds.push(id);
+                else if (kayit.kayitTipi === 'taahhut') taahhutIds.push(id);
+                else ramazanIds.push(id);
+              }
+            });
+
+            const updateData = {
+              muhasebe_kaydedildi: true,
+              muhasebe_kayit_tarihi: new Date().toISOString()
+            };
+
+            // Toplu güncelle
+            if (ramazanIds.length > 0) {
+              const { error } = await supabase.from('ramazan_kayitlari').update(updateData).in('id', ramazanIds);
+              if (error) throw error;
+            }
+            if (teberruIds.length > 0) {
+              const { error } = await supabase.from('teberru_kayitlari').update(updateData).in('id', teberruIds);
+              if (error) throw error;
+            }
+            if (taahhutIds.length > 0) {
+              const { error } = await supabase.from('taahhut_kayitlari').update(updateData).in('id', taahhutIds);
+              if (error) throw error;
+            }
+
+            showToast('success', 'Başarılı', `${kontrolSeciliKayitlar.size} kayıt muhasebe sistemine işaretlendi`);
+            kontrolSeciliKayitlar.clear();
+            await loadKontrolKayitlari();
+          } catch (e) {
+            console.error('Toplu muhasebe kaydet hatası:', e);
+            showToast('error', 'Hata', 'İşlem başarısız: ' + (e.message || e));
+          }
+        }
+
+        // Global fonksiyonlar
+        window.loadKontrolKayitlari = loadKontrolKayitlari;
+        window.muhasebeKaydet = muhasebeKaydet;
+        window.muhasebeKaydetIptal = muhasebeKaydetIptal;
+        window.topluMuhasebeKaydet = topluMuhasebeKaydet;
+
+        // Filtre event listener'ları
+        if (qs('#kontrolFiltreYil')) {
+          qs('#kontrolFiltreYil').addEventListener('change', loadKontrolKayitlari);
+        }
+        if (qs('#kontrolFiltreTip')) {
+          qs('#kontrolFiltreTip').addEventListener('change', loadKontrolKayitlari);
+        }
+        if (qs('#kontrolFiltreDurum')) {
+          qs('#kontrolFiltreDurum').addEventListener('change', loadKontrolKayitlari);
         }
 
       }); // waitForSupabaseAndOrtak callback kapanışı

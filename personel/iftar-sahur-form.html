@@ -1383,16 +1383,15 @@
   <div id="updateModal" class="modal" onclick="if(event.target === this) closeUpdateModal()">
     <div class="modal-sheet" style="max-width:500px;" onclick="event.stopPropagation()">
       <div style="text-align:center; margin-bottom:20px;">
-        <div style="font-size:48px; margin-bottom:10px;">📢 - ✨</div>
-        <h3 style="margin:0 0 10px 0; font-size:20px; color:var(--primary);">Yeni Güncelleme</h3>
+        <div style="font-size:48px; margin-bottom:10px;">⚠️ 📋</div>
+        <h3 style="margin:0 0 10px 0; font-size:20px; color:var(--warning);">Hatırlatma</h3>
       </div>
       <div id="updateModalContent" style="line-height:1.6; color:#555; margin-bottom:20px; font-size:14px;">
-        <p style="margin:0 0 12px 0;">Yapılan değişiklikler/yenilikler:</p>
         <ul style="margin:0; padding-left:20px; text-align:left;">
-          <li style="margin-bottom:8px;"><strong>Boş Kamelya Tespiti</strong> butonu eklendi; seçili kamelyaya ait hangi günlerin boş, hangi günlerin dolu olduğunu ve hangi personele ait olduğunu görebilirsiniz.</li>
-          <li style="margin-bottom:8px;"><strong>Gün Analizi</strong> butonu eklendi; seçili tarihe ait iftar-sahur kayıtları analizini (KPI, detay tablo) görebilirsiniz.</li>
-          <li style="margin-bottom:8px;"><strong>Hata Bildir</strong> butonu eklendi; karşılaştığınız hata veya sorunları detaylı açıklayıp destek talebi gönderebilirsiniz.</li>
-          <li style="margin-bottom:8px;">Gün kartlarına <strong>İftar için müsait kamelyalar</strong> eklendi; her günde hangi kamelyaların müsait olduğunu görebilirsiniz.</li>
+          <li style="margin-bottom:10px;"><strong>Müsafir Adetleri:</strong> Geciktirmeden (sistem kapanmadan) kontrol edip teyit edelim. <strong style="color:var(--danger);">Bir gün öncesi saat 17:00'dan sonra</strong> kayıt eklenemez veya düzenlenemez.</li>
+          <li style="margin-bottom:10px;"><strong>Tahsilat Takibi:</strong> İftar-sahur tahsilatlarımızın takibini yapmayı unutmayalım.</li>
+          <li style="margin-bottom:10px;"><strong>Günlük Tahsilat:</strong> Her gün tahsilat yapılması, yapılamama durumunda takip edilmesi gerekmektedir.</li>
+          <li style="margin-bottom:10px;"><strong>Hedef:</strong> Ramazan-ı Şerif sonuna kadar <strong style="color:var(--danger);">%50 tahsilat</strong> arzu edilmektedir.</li>
         </ul>
       </div>
       <div style="display:flex; gap:10px;">
@@ -2167,12 +2166,12 @@
       }
     }
 
-    const UPDATE_VERSION = '2025-02-20';
+    const UPDATE_VERSION = '2026-02-21';
 
     function showUpdateModalIfNeeded() {
       const key = `iftarSahurUpdateViewCount_${UPDATE_VERSION}`;
       let viewCount = parseInt(localStorage.getItem(key) || '0', 10);
-      if (viewCount >= 2) return;
+      if (viewCount >= 5) return;
       viewCount += 1;
       localStorage.setItem(key, String(viewCount));
       setTimeout(() => {
@@ -3101,7 +3100,8 @@
 
       let current = new Date(start);
       let dayCounter = 1;
-      const todayStr = new Date().toISOString().slice(0, 10);
+      const today = new Date();
+      const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
       let prevDayWasPast = false;
       let prevDayWasToday = false;
 
@@ -3358,11 +3358,25 @@
     function isDatePastOrToday(dateStr) {
       if (!dateStr || typeof dateStr !== 'string') return true;
       const s = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr.slice(0, 10);
-      const today = new Date();
+      const now = new Date();
+      const today = new Date(now);
       today.setHours(0, 0, 0, 0);
       const d = new Date(s + 'T12:00:00');
       d.setHours(0, 0, 0, 0);
-      return d <= today;
+      
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      
+      if (d < today) return true;
+      if (d.getTime() === today.getTime()) return true;
+      if (d.getTime() === tomorrow.getTime()) {
+        const cutoffHour = 17;
+        const cutoffMinute = 30;
+        if (now.getHours() > cutoffHour || (now.getHours() === cutoffHour && now.getMinutes() >= cutoffMinute)) {
+          return true;
+        }
+      }
+      return false;
     }
 
     function showDayRecords(dateStr) {
@@ -3374,11 +3388,27 @@
         return kStr === dateStr;
       });
 
-      // Kayıt sırasına göre sırala (createdAt'e göre)
+      // Sıralama: İftar iştirak edenler > İftar iştirak etmeyenler > Sahur
       dayRecs.sort((a, b) => {
+        const aIsIftar = a.tip === 'iftar';
+        const bIsIftar = b.tip === 'iftar';
+        const aIstirak = a.istirak === true;
+        const bIstirak = b.istirak === true;
+        
+        // Önce tip karşılaştırması (iftar önce)
+        if (aIsIftar && !bIsIftar) return -1;
+        if (!aIsIftar && bIsIftar) return 1;
+        
+        // Aynı tip içinde iştirak durumuna göre (iştirak edenler önce)
+        if (aIsIftar && bIsIftar) {
+          if (aIstirak && !bIstirak) return -1;
+          if (!aIstirak && bIstirak) return 1;
+        }
+        
+        // Aynı grup içinde createdAt'e göre sırala
         const aTime = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (a.createdAt?.seconds || 0) * 1000;
         const bTime = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (b.createdAt?.seconds || 0) * 1000;
-        return aTime - bTime; // En eski en üstte
+        return aTime - bTime;
       });
 
       const content = qs('#dayRecordsContent');
@@ -3388,7 +3418,7 @@
       if (btnAddNew) {
         const pastOrToday = isDatePastOrToday(dateStr);
         btnAddNew.disabled = pastOrToday;
-        btnAddNew.title = pastOrToday ? 'Geçmiş ve bugün için yeni kayıt eklenemez' : '';
+        btnAddNew.title = pastOrToday ? 'Bu tarih için kayıt eklenemez (geçmiş/bugün veya yarın için saat 17:30 geçti)' : '';
         btnAddNew.style.opacity = pastOrToday ? '0.6' : '1';
         btnAddNew.style.cursor = pastOrToday ? 'not-allowed' : 'pointer';
       }
@@ -3866,7 +3896,7 @@
     function openFormModalFromDay() {
       const dateToOpen = selectedDateForForm; // Önce tarihi sakla
       if (dateToOpen && isDatePastOrToday(dateToOpen)) {
-        showAlert('Geçmiş tarih ve bugün için kayıt yapılamaz. Sadece ileri tarih seçebilirsiniz.', 'error');
+        showAlert('Bu tarih için kayıt yapılamaz. Geçmiş, bugün ve yarın (saat 17:30 sonrası) için işlem yapılamaz.', 'error');
         return;
       }
       closeDayRecordsModal();
@@ -3959,7 +3989,7 @@
       }
 
       if (isDatePastOrToday(tarihStr)) {
-        showAlert('Geçmiş tarih ve bugün için kayıt yapılamaz. Sadece ileri tarih seçebilirsiniz.', 'error');
+        showAlert('Bu tarih için kayıt yapılamaz. Geçmiş, bugün ve yarın (saat 17:30 sonrası) için işlem yapılamaz.', 'error');
         return;
       }
 
@@ -5670,11 +5700,15 @@
         // Geçmiş ve bugün için sil, mahal değiştir, müsafir değiştir engeli (iftar-sahur)
         if (kayitTipi === 'iftar-sahur' && (talepTipi === 'sil' || talepTipi === 'mahal_degistir' || talepTipi === 'musafir_degistir')) {
           let kayitTarihStr = '';
-          if (kayit.tarih?.toDate) kayitTarihStr = kayit.tarih.toDate().toISOString().slice(0, 10);
-          else if (typeof kayit.tarih === 'string') kayitTarihStr = kayit.tarih.includes('T') ? kayit.tarih.split('T')[0] : kayit.tarih.slice(0, 10);
-          else if (kayit.tarih) kayitTarihStr = new Date(kayit.tarih).toISOString().slice(0, 10);
+          if (kayit.tarih) {
+            let d;
+            if (kayit.tarih.toDate) d = kayit.tarih.toDate();
+            else if (typeof kayit.tarih === 'string') d = new Date(kayit.tarih);
+            else d = new Date(kayit.tarih);
+            kayitTarihStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+          }
           if (kayitTarihStr && isDatePastOrToday(kayitTarihStr)) {
-            showAlert('Geçmiş tarih ve bugün için kayıt düzenlenemez veya silinemez. Sadece ileri tarihli kayıtlar için bu işlemler yapılabilir.', 'error');
+            showAlert('Bu tarih için kayıt düzenlenemez veya silinemez. Geçmiş, bugün ve yarın (saat 17:30 sonrası) için işlem yapılamaz.', 'error');
             btn.disabled = false;
             btn.innerText = 'Kaydet ve Kapat';
             return;
@@ -5793,7 +5827,7 @@
             return;
           }
           if (isDatePastOrToday(newDateStr)) {
-            showAlert('Geçmiş tarih ve bugün için kayıt yapılamaz. Sadece ileri tarih seçebilirsiniz.', 'error');
+            showAlert('Bu tarih için kayıt yapılamaz. Geçmiş, bugün ve yarın (saat 17:30 sonrası) için işlem yapılamaz.', 'error');
             btn.disabled = false;
             btn.innerText = 'Kaydet ve Kapat';
             return;
@@ -6029,11 +6063,15 @@
       }
       // Geçmiş ve bugün için silme engeli
       let kayitTarihStr = '';
-      if (kayit.tarih?.toDate) kayitTarihStr = kayit.tarih.toDate().toISOString().slice(0, 10);
-      else if (typeof kayit.tarih === 'string') kayitTarihStr = kayit.tarih.includes('T') ? kayit.tarih.split('T')[0] : kayit.tarih.slice(0, 10);
-      else if (kayit.tarih) kayitTarihStr = new Date(kayit.tarih).toISOString().slice(0, 10);
+      if (kayit.tarih) {
+        let d;
+        if (kayit.tarih.toDate) d = kayit.tarih.toDate();
+        else if (typeof kayit.tarih === 'string') d = new Date(kayit.tarih);
+        else d = new Date(kayit.tarih);
+        kayitTarihStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      }
       if (kayitTarihStr && isDatePastOrToday(kayitTarihStr)) {
-        showAlert('Geçmiş veya bugüne ait kayıtlar silinemez. Düzenleme talep formundan talep oluşturabilirsiniz.', 'error');
+        showAlert('Bu tarihe ait kayıtlar silinemez. Geçmiş, bugün ve yarın (saat 17:30 sonrası) için silme yapılamaz. Düzenleme talep formundan talep oluşturabilirsiniz.', 'error');
         return;
       }
 
