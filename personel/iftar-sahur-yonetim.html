@@ -1819,10 +1819,43 @@
           </button>
         </div>
 
-        <div style="margin:12px 0;padding:10px;background:var(--hover);border-radius:8px;display:flex;gap:16px;flex-wrap:wrap;font-size:13px">
-          <span><strong>Toplam:</strong> <span id="kontrolToplam">0</span></span>
-          <span style="color:var(--warning)"><strong>Bekliyor:</strong> <span id="kontrolBekliyor">0</span></span>
-          <span style="color:var(--good)"><strong>Kaydedildi:</strong> <span id="kontrolKaydedildi">0</span></span>
+        <!-- KPI Filtre ve Kartları -->
+        <div style="display:flex;align-items:center;gap:10px;margin:16px 0 8px 0">
+          <span style="font-size:13px;color:var(--muted)">📊 KPI Hesaplama:</span>
+          <select id="kontrolKpiTip" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--card);font-size:13px">
+            <option value="iftar-sahur">İftar + Sahur</option>
+            <option value="iftar-sahur-taahhut" selected>İftar + Sahur + Taahhüt</option>
+            <option value="taahhut">Sadece Taahhüt</option>
+            <option value="tumu">Tümü (Teberrü dahil)</option>
+          </select>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px;margin:0 0 16px 0">
+          <!-- Toplam -->
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center">
+            <div style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">Toplam Kayıt</div>
+            <div style="font-size:28px;font-weight:700;color:var(--text);margin:4px 0" id="kontrolToplam">0</div>
+            <div style="font-size:14px;color:var(--muted)"><span id="kontrolToplamTutar">0,00</span> ₺</div>
+          </div>
+          <!-- Bekliyor -->
+          <div style="background:linear-gradient(135deg, rgba(243,156,18,0.1) 0%, rgba(243,156,18,0.05) 100%);border:1px solid rgba(243,156,18,0.3);border-radius:10px;padding:16px;text-align:center">
+            <div style="font-size:12px;color:var(--warning);text-transform:uppercase;letter-spacing:0.5px">⏳ Bekliyor</div>
+            <div style="font-size:28px;font-weight:700;color:var(--warning);margin:4px 0" id="kontrolBekliyor">0</div>
+            <div style="font-size:14px;color:var(--warning)"><span id="kontrolBekliyorTutar">0,00</span> ₺</div>
+          </div>
+          <!-- Kaydedildi -->
+          <div style="background:linear-gradient(135deg, rgba(39,174,96,0.1) 0%, rgba(39,174,96,0.05) 100%);border:1px solid rgba(39,174,96,0.3);border-radius:10px;padding:16px;text-align:center">
+            <div style="font-size:12px;color:var(--good);text-transform:uppercase;letter-spacing:0.5px">✅ Kaydedildi</div>
+            <div style="font-size:28px;font-weight:700;color:var(--good);margin:4px 0" id="kontrolKaydedildi">0</div>
+            <div style="font-size:14px;color:var(--good)"><span id="kontrolKaydedildiTutar">0,00</span> ₺</div>
+          </div>
+          <!-- Oran -->
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center">
+            <div style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">Kayıt Oranı</div>
+            <div style="font-size:28px;font-weight:700;color:var(--accent);margin:4px 0" id="kontrolOran">%0</div>
+            <div style="width:100%;height:6px;background:var(--hover);border-radius:3px;margin-top:8px;overflow:hidden">
+              <div id="kontrolOranBar" style="width:0%;height:100%;background:var(--good);border-radius:3px;transition:width 0.3s"></div>
+            </div>
+          </div>
         </div>
 
         <div class="table-wrap">
@@ -1830,14 +1863,14 @@
             <thead>
               <tr>
                 <th style="width:40px"><input type="checkbox" id="kontrolSelectAll" title="Tümünü Seç" /></th>
-                <th>İşlem Tarihi</th>
-                <th>Tarih</th>
-                <th>Tip</th>
-                <th>Sahip / Bağışçı</th>
-                <th>Tutar (₺)</th>
-                <th>Tahsilat / Kalan</th>
-                <th>Personel</th>
-                <th>Muhasebe Durumu</th>
+                <th class="th-sortable" data-sort="islemTarihi">İşlem Tarihi</th>
+                <th class="th-sortable" data-sort="tarih">Tarih</th>
+                <th class="th-sortable" data-sort="tip">Tip</th>
+                <th class="th-sortable" data-sort="sahipBagisci">Sahip / Bağışçı</th>
+                <th class="th-sortable" data-sort="tutar">Tutar (₺)</th>
+                <th class="th-sortable" data-sort="tahsilat">Tahsilat / Kalan</th>
+                <th class="th-sortable" data-sort="personel">Personel</th>
+                <th class="th-sortable" data-sort="muhasebeDurum">Muhasebe Durumu</th>
                 <th style="width:140px">İşlemler</th>
               </tr>
             </thead>
@@ -3663,6 +3696,7 @@
             updateYilSelect('taleplerFiltreYil', yillar);
             updateYilSelect('menuFiltreYil', yillar);
             updateYilSelect('hedefYonetimYil', yillar);
+            updateYilSelect('kontrolFiltreYil', yillar);
             
             // Analiz ve düzenleme yılları için özel işlem (tüm yıllar seçeneği var)
             updateYilSelectWithAllOption('analizYil', yillar);
@@ -3698,7 +3732,7 @@
             const yilSelectIds = [
               'filtreYil', 'exportYil', 'kapasiteYil', 'tutarYil', 'calYil',
               'statYil', 'analizYil', 'personelFiltreYil', 'duzenleYil',
-              'hedefYonetimYil', 'taleplerFiltreYil', 'menuFiltreYil'
+              'hedefYonetimYil', 'taleplerFiltreYil', 'menuFiltreYil', 'kontrolFiltreYil'
             ];
             
             yilSelectIds.forEach(selectId => {
@@ -11402,6 +11436,11 @@
               return;
             }
 
+            // Kullanıcılar listesini yükle (personel ismi için)
+            if (!kullanicilarList || kullanicilarList.length === 0) {
+              await loadKullanicilar();
+            }
+
             const yil = qs('#kontrolFiltreYil')?.value || '2025';
             const tip = qs('#kontrolFiltreTip')?.value || '';
             const durum = qs('#kontrolFiltreDurum')?.value || '';
@@ -11410,21 +11449,23 @@
             // Tüm kayıtları çek (iftar-sahur, teberru, taahhut)
             let tumKayitlar = [];
 
-            // 1. Ramazan kayıtları (iftar-sahur)
-            let ramazanQuery = supabase.from('ramazan_kayitlari').select('*').eq('yil', parseInt(yil));
-            if (tip === 'iftar' || tip === 'sahur') {
-              ramazanQuery = ramazanQuery.eq('tip', tip);
-            }
-            const { data: ramazanData, error: ramazanError } = await ramazanQuery;
-            if (!ramazanError && ramazanData) {
-              ramazanData.forEach(k => {
-                tumKayitlar.push({
-                  ...k,
-                  kayitTipi: 'ramazan',
-                  sahipBagisci: k.sahip || '-',
-                  toplamTutar: k.tutar || 0
+            // 1. Ramazan kayıtları (iftar-sahur) - sadece tip boş, iftar veya sahur ise çek
+            if (!tip || tip === 'iftar' || tip === 'sahur') {
+              let ramazanQuery = supabase.from('ramazan_kayitlari').select('*').eq('yil', parseInt(yil));
+              if (tip === 'iftar' || tip === 'sahur') {
+                ramazanQuery = ramazanQuery.eq('tip', tip);
+              }
+              const { data: ramazanData, error: ramazanError } = await ramazanQuery;
+              if (!ramazanError && ramazanData) {
+                ramazanData.forEach(k => {
+                  tumKayitlar.push({
+                    ...k,
+                    kayitTipi: 'ramazan',
+                    sahipBagisci: k.sahip || '-',
+                    toplamTutar: k.tutar || 0
+                  });
                 });
-              });
+              }
             }
 
             // 2. Teberru kayıtları
@@ -11465,6 +11506,30 @@
               }
             }
 
+            // Tahsilat verilerini yükle (iftar, sahur, taahhut için)
+            const tahsilatKayitIds = tumKayitlar
+              .filter(k => k.tip === 'iftar' || k.tip === 'sahur' || k.tip === 'taahhut')
+              .map(k => k.id);
+            
+            let kontrolTahsilatMap = {};
+            if (tahsilatKayitIds.length > 0 && typeof loadTahsilatForKayitIds === 'function') {
+              try {
+                const { byId } = await loadTahsilatForKayitIds(tahsilatKayitIds);
+                kontrolTahsilatMap = byId || {};
+              } catch (err) {
+                console.warn('Kontrol tahsilat yüklenemedi:', err);
+              }
+            }
+
+            // Tahsilat değerlerini kayıtlara ekle
+            tumKayitlar.forEach(k => {
+              if (k.tip === 'iftar' || k.tip === 'sahur' || k.tip === 'taahhut') {
+                k.tahsilatToplam = kontrolTahsilatMap[k.id] || 0;
+              } else {
+                k.tahsilatToplam = 0;
+              }
+            });
+
             // Filtreleme - arama metni
             if (aramaMetni) {
               tumKayitlar = tumKayitlar.filter(k => {
@@ -11490,14 +11555,8 @@
 
             kontrolKayitlari = tumKayitlar;
 
-            // İstatistikleri güncelle
-            const toplam = tumKayitlar.length;
-            const bekliyor = tumKayitlar.filter(k => !k.muhasebe_kaydedildi).length;
-            const kaydedildi = tumKayitlar.filter(k => k.muhasebe_kaydedildi === true).length;
-
-            if (qs('#kontrolToplam')) qs('#kontrolToplam').textContent = toplam;
-            if (qs('#kontrolBekliyor')) qs('#kontrolBekliyor').textContent = bekliyor;
-            if (qs('#kontrolKaydedildi')) qs('#kontrolKaydedildi').textContent = kaydedildi;
+            // KPI İstatistiklerini hesapla ve güncelle
+            updateKontrolKPI(tumKayitlar);
 
             // Tabloyu render et
             renderKontrolTablosu(tumKayitlar);
@@ -11544,7 +11603,7 @@
             }[k.tip] || k.tip;
 
             const tutar = parseFloat(k.toplamTutar) || 0;
-            const tahsilat = parseFloat(k.tahsilat) || 0;
+            const tahsilat = parseFloat(k.tahsilatToplam) || 0;
             const kalan = tutar - tahsilat;
 
             const muhasebeKaydedildi = k.muhasebe_kaydedildi === true;
@@ -11559,6 +11618,17 @@
             const checkboxDisabled = muhasebeKaydedildi ? 'disabled' : '';
             const checkboxChecked = kontrolSeciliKayitlar.has(k.id) ? 'checked' : '';
 
+            // Personel ismini bul (uid veya email → adsoyad)
+            let personelAdi = '-';
+            if (k.personel) {
+              const personelData = kullanicilarList.find(p => 
+                p.id === k.personel || 
+                p.email === k.personel || 
+                p.adsoyad === k.personel
+              );
+              personelAdi = personelData?.adsoyad || personelData?.email || k.personel;
+            }
+
             return `<tr>
               <td><input type="checkbox" class="kontrol-checkbox" data-id="${k.id}" data-tip="${k.kayitTipi}" ${checkboxChecked} ${checkboxDisabled} /></td>
               <td>${islemTarihiStr}</td>
@@ -11567,7 +11637,7 @@
               <td>${k.sahipBagisci}</td>
               <td style="text-align:right">${tutar.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
               <td style="text-align:right">${tahsilat.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} / ${kalan.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
-              <td>${k.personel || '-'}</td>
+              <td>${personelAdi}</td>
               <td>${durumBadge}</td>
               <td>${islemlerHtml}</td>
             </tr>`;
@@ -11617,8 +11687,6 @@
         }
 
         async function muhasebeKaydet(id, kayitTipi) {
-          if (!confirm('Bu kaydı muhasebe sistemine kayıtlı olarak işaretlemek istiyor musunuz?')) return;
-
           try {
             const supabase = getSupabase();
             if (!supabase) {
@@ -11640,8 +11708,17 @@
 
             if (error) throw error;
 
+            // Local state güncelle (sayfa yenilenmeden)
+            const kayit = kontrolKayitlari.find(k => k.id === id);
+            if (kayit) {
+              kayit.muhasebe_kaydedildi = true;
+              kayit.muhasebe_kayit_tarihi = new Date().toISOString();
+            }
+
+            // Tabloyu ve istatistikleri güncelle
+            updateKontrolUI();
+
             showToast('success', 'Başarılı', 'Kayıt muhasebe sistemine işaretlendi');
-            await loadKontrolKayitlari();
           } catch (e) {
             console.error('Muhasebe kaydet hatası:', e);
             showToast('error', 'Hata', 'İşlem başarısız: ' + (e.message || e));
@@ -11649,8 +11726,6 @@
         }
 
         async function muhasebeKaydetIptal(id, kayitTipi) {
-          if (!confirm('Bu kaydın muhasebe işaretini kaldırmak istiyor musunuz?')) return;
-
           try {
             const supabase = getSupabase();
             if (!supabase) {
@@ -11672,8 +11747,17 @@
 
             if (error) throw error;
 
+            // Local state güncelle (sayfa yenilenmeden)
+            const kayit = kontrolKayitlari.find(k => k.id === id);
+            if (kayit) {
+              kayit.muhasebe_kaydedildi = false;
+              kayit.muhasebe_kayit_tarihi = null;
+            }
+
+            // Tabloyu ve istatistikleri güncelle
+            updateKontrolUI();
+
             showToast('success', 'Başarılı', 'Muhasebe işareti kaldırıldı');
-            await loadKontrolKayitlari();
           } catch (e) {
             console.error('Muhasebe iptal hatası:', e);
             showToast('error', 'Hata', 'İşlem başarısız: ' + (e.message || e));
@@ -11685,8 +11769,6 @@
             showToast('warning', 'Uyarı', 'Lütfen en az bir kayıt seçin');
             return;
           }
-
-          if (!confirm(`${kontrolSeciliKayitlar.size} kaydı muhasebe sistemine kayıtlı olarak işaretlemek istiyor musunuz?`)) return;
 
           try {
             const supabase = getSupabase();
@@ -11728,12 +11810,104 @@
               if (error) throw error;
             }
 
-            showToast('success', 'Başarılı', `${kontrolSeciliKayitlar.size} kayıt muhasebe sistemine işaretlendi`);
+            const kaydedilenSayi = kontrolSeciliKayitlar.size;
+
+            // Local state güncelle (sayfa yenilenmeden)
+            kontrolSeciliKayitlar.forEach(id => {
+              const kayit = kontrolKayitlari.find(k => k.id === id);
+              if (kayit) {
+                kayit.muhasebe_kaydedildi = true;
+                kayit.muhasebe_kayit_tarihi = updateData.muhasebe_kayit_tarihi;
+              }
+            });
+
             kontrolSeciliKayitlar.clear();
-            await loadKontrolKayitlari();
+            
+            // Tabloyu ve istatistikleri güncelle
+            updateKontrolUI();
+
+            showToast('success', 'Başarılı', `${kaydedilenSayi} kayıt muhasebe sistemine işaretlendi`);
           } catch (e) {
             console.error('Toplu muhasebe kaydet hatası:', e);
             showToast('error', 'Hata', 'İşlem başarısız: ' + (e.message || e));
+          }
+        }
+
+        // UI güncelleme helper fonksiyonu (sayfa yenilenmeden)
+        // KPI Kartlarını güncelle
+        function updateKontrolKPI(kayitlar) {
+          // KPI tip filtresine göre kayıtları filtrele
+          const kpiTip = qs('#kontrolKpiTip')?.value || 'iftar-sahur-taahhut';
+          let kpiKayitlar = kayitlar;
+
+          switch (kpiTip) {
+            case 'iftar-sahur':
+              kpiKayitlar = kayitlar.filter(k => k.tip === 'iftar' || k.tip === 'sahur');
+              break;
+            case 'iftar-sahur-taahhut':
+              kpiKayitlar = kayitlar.filter(k => k.tip === 'iftar' || k.tip === 'sahur' || k.tip === 'taahhut');
+              break;
+            case 'taahhut':
+              kpiKayitlar = kayitlar.filter(k => k.tip === 'taahhut');
+              break;
+            case 'tumu':
+            default:
+              kpiKayitlar = kayitlar;
+              break;
+          }
+
+          const toplam = kpiKayitlar.length;
+          const bekliyorKayitlar = kpiKayitlar.filter(k => !k.muhasebe_kaydedildi);
+          const kaydedildiKayitlar = kpiKayitlar.filter(k => k.muhasebe_kaydedildi === true);
+          
+          const bekliyor = bekliyorKayitlar.length;
+          const kaydedildi = kaydedildiKayitlar.length;
+
+          // Tutar hesaplamaları
+          const toplamTutar = kpiKayitlar.reduce((sum, k) => sum + (parseFloat(k.toplamTutar) || 0), 0);
+          const bekliyorTutar = bekliyorKayitlar.reduce((sum, k) => sum + (parseFloat(k.toplamTutar) || 0), 0);
+          const kaydedildiTutar = kaydedildiKayitlar.reduce((sum, k) => sum + (parseFloat(k.toplamTutar) || 0), 0);
+
+          // Oran hesapla
+          const oran = toplam > 0 ? Math.round((kaydedildi / toplam) * 100) : 0;
+
+          // DOM güncelle
+          if (qs('#kontrolToplam')) qs('#kontrolToplam').textContent = toplam.toLocaleString('tr-TR');
+          if (qs('#kontrolToplamTutar')) qs('#kontrolToplamTutar').textContent = toplamTutar.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          
+          if (qs('#kontrolBekliyor')) qs('#kontrolBekliyor').textContent = bekliyor.toLocaleString('tr-TR');
+          if (qs('#kontrolBekliyorTutar')) qs('#kontrolBekliyorTutar').textContent = bekliyorTutar.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          
+          if (qs('#kontrolKaydedildi')) qs('#kontrolKaydedildi').textContent = kaydedildi.toLocaleString('tr-TR');
+          if (qs('#kontrolKaydedildiTutar')) qs('#kontrolKaydedildiTutar').textContent = kaydedildiTutar.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          
+          if (qs('#kontrolOran')) qs('#kontrolOran').textContent = `%${oran}`;
+          if (qs('#kontrolOranBar')) qs('#kontrolOranBar').style.width = `${oran}%`;
+        }
+
+        function updateKontrolUI() {
+          // Mevcut filtre durumuna göre kayıtları filtrele
+          const durum = qs('#kontrolFiltreDurum')?.value || '';
+          let filteredKayitlar = [...kontrolKayitlari];
+          
+          if (durum === 'bekliyor') {
+            filteredKayitlar = filteredKayitlar.filter(k => !k.muhasebe_kaydedildi);
+          } else if (durum === 'kaydedildi') {
+            filteredKayitlar = filteredKayitlar.filter(k => k.muhasebe_kaydedildi === true);
+          }
+
+          // KPI kartlarını güncelle
+          updateKontrolKPI(kontrolKayitlari);
+
+          // Tabloyu render et
+          renderKontrolTablosu(filteredKayitlar);
+
+          // Toplu kaydet butonunu güncelle
+          updateTopluKaydetButton();
+
+          // Tümünü seç checkbox'ını sıfırla
+          if (qs('#kontrolSelectAll')) {
+            qs('#kontrolSelectAll').checked = false;
           }
         }
 
@@ -11752,6 +11926,101 @@
         }
         if (qs('#kontrolFiltreDurum')) {
           qs('#kontrolFiltreDurum').addEventListener('change', loadKontrolKayitlari);
+        }
+
+        // KPI tip filtresi değiştiğinde sadece KPI'ı güncelle (tabloyu yenileme)
+        if (qs('#kontrolKpiTip')) {
+          qs('#kontrolKpiTip').addEventListener('change', () => {
+            updateKontrolKPI(kontrolKayitlari);
+          });
+        }
+
+        // Kontrol tablosu sıralama
+        let kontrolSortKey = 'islemTarihi';
+        let kontrolSortAsc = false; // Varsayılan: en yeni en üstte
+
+        function sortKontrolKayitlari(key) {
+          // Aynı sütuna tıklanırsa yönü değiştir
+          if (kontrolSortKey === key) {
+            kontrolSortAsc = !kontrolSortAsc;
+          } else {
+            kontrolSortKey = key;
+            kontrolSortAsc = true;
+          }
+
+          // Sıralama
+          kontrolKayitlari.sort((a, b) => {
+            let valA, valB;
+
+            switch (key) {
+              case 'islemTarihi':
+                valA = new Date(a.islem_tarihi || a.createdat || 0).getTime();
+                valB = new Date(b.islem_tarihi || b.createdat || 0).getTime();
+                break;
+              case 'tarih':
+                valA = a.tarih ? new Date(a.tarih.toDate ? a.tarih.toDate() : a.tarih).getTime() : 0;
+                valB = b.tarih ? new Date(b.tarih.toDate ? b.tarih.toDate() : b.tarih).getTime() : 0;
+                break;
+              case 'tip':
+                valA = (a.tip || '').toLowerCase();
+                valB = (b.tip || '').toLowerCase();
+                break;
+              case 'sahipBagisci':
+                valA = (a.sahipBagisci || '').toLowerCase();
+                valB = (b.sahipBagisci || '').toLowerCase();
+                break;
+              case 'tutar':
+                valA = parseFloat(a.toplamTutar) || 0;
+                valB = parseFloat(b.toplamTutar) || 0;
+                break;
+              case 'tahsilat':
+                valA = parseFloat(a.tahsilatToplam) || 0;
+                valB = parseFloat(b.tahsilatToplam) || 0;
+                break;
+              case 'personel':
+                valA = (a.personel || '').toLowerCase();
+                valB = (b.personel || '').toLowerCase();
+                break;
+              case 'muhasebeDurum':
+                valA = a.muhasebe_kaydedildi ? 1 : 0;
+                valB = b.muhasebe_kaydedildi ? 1 : 0;
+                break;
+              default:
+                valA = a[key] || '';
+                valB = b[key] || '';
+            }
+
+            if (valA < valB) return kontrolSortAsc ? -1 : 1;
+            if (valA > valB) return kontrolSortAsc ? 1 : -1;
+            return 0;
+          });
+
+          // Sütun başlıklarını güncelle
+          const tbl = qs('#tblKontrol');
+          if (tbl) {
+            tbl.querySelectorAll('th.th-sortable').forEach(th => {
+              th.classList.remove('sort-asc', 'sort-desc');
+              if (th.dataset.sort === key) {
+                th.classList.add(kontrolSortAsc ? 'sort-asc' : 'sort-desc');
+              }
+            });
+          }
+
+          // Tabloyu güncelle
+          updateKontrolUI();
+        }
+
+        // Kontrol tablosu sütun başlığı tıklama
+        const tblKontrol = qs('#tblKontrol');
+        if (tblKontrol) {
+          tblKontrol.addEventListener('click', (e) => {
+            const th = e.target.closest('th.th-sortable');
+            if (!th) return;
+            const key = th.dataset.sort;
+            if (key) {
+              sortKontrolKayitlari(key);
+            }
+          });
         }
 
       }); // waitForSupabaseAndOrtak callback kapanışı
