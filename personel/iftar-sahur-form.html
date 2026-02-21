@@ -7107,15 +7107,41 @@
       content.innerHTML = '<div style="text-align:center; padding:30px; color:#999;">Yükleniyor...</div>';
 
       try {
-        // Kullanıcının kayıtlarını filtrele (iftar, sahur, taahhüt - tutar > 0 olanlar)
-        const userKayitlar = kayitlar.filter(k => {
-          const personelMatch = (k.personelUid === currentUser.id) || 
-                                (k.kaydedenPersonelUid === currentUser.id) ||
-                                normalizePersonelName(k.personelAdi || k.personel || '') === normalizePersonelName(currentPersonelAdi);
-          const tipMatch = k.tip === 'iftar' || k.tip === 'sahur' || k.tip === 'taahhut';
-          const tutarMatch = Number(k.tutar || k.miktar || 0) > 0;
+        // IMPERSONATION KONTROLÜ
+        const targetUserId = isImpersonating ? impersonatedUserId : currentUser?.id;
+        const targetUserName = currentPersonelAdi;
+        const normalizedTargetName = normalizePersonelName(targetUserName || '');
+
+        // Taahhüt kayıtlarını yükle (eğer yüklenmemişse)
+        await loadTaahhutKayitlari();
+
+        // Kullanıcının İftar/Sahur kayıtlarını filtrele (tutar > 0 olanlar)
+        const userIftarSahur = kayitlar.filter(k => {
+          const personelMatch = (k.personelUid === targetUserId) || 
+                                (k.kaydedenPersonelUid === targetUserId) ||
+                                normalizePersonelName(k.personelAdi || k.personel || '') === normalizedTargetName;
+          const tipMatch = k.tip === 'iftar' || k.tip === 'sahur';
+          const tutarMatch = Number(k.tutar || 0) > 0;
           return personelMatch && tipMatch && tutarMatch;
         });
+
+        // Taahhüt kayıtlarını dönüştür (aynı yapıya)
+        const userTaahhut = (taahhutKayitlari || []).filter(t => {
+          return Number(t.miktar || 0) > 0;
+        }).map(t => ({
+          id: t.id,
+          tip: 'taahhut',
+          tutar: t.miktar,
+          miktar: t.miktar,
+          sahip: t.bagisci,
+          bagisci: t.bagisci,
+          tarih: t.tarih || t.createdat,
+          personelUid: t.personeluid,
+          personelAdi: t.personel
+        }));
+
+        // Tüm kayıtları birleştir
+        const userKayitlar = [...userIftarSahur, ...userTaahhut];
 
         if (userKayitlar.length === 0) {
           content.innerHTML = `
