@@ -945,9 +945,10 @@
         <select id="selYil" class="year-selector">
           <option value="">Yıl...</option>
         </select>
-        <div id="userBadge" style="display:none; background:rgba(255,255,255,0.25); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,0.3); border-radius:20px; padding:6px 14px; color:white; font-size:13px; font-weight:600; align-items:center; gap:8px;">
+        <div id="userBadge" onclick="openUserSwitchModal()" style="display:none; background:rgba(255,255,255,0.25); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,0.3); border-radius:20px; padding:6px 14px; color:white; font-size:13px; font-weight:600; align-items:center; gap:8px; cursor:pointer; transition:all 0.2s;">
           <span style="font-size:16px;">👤</span>
           <span id="userNameDisplay">Yükleniyor...</span>
+          <span id="userSwitchIcon" style="display:none; font-size:12px; margin-left:4px;">🔄</span>
         </div>
       </div>
     </div>
@@ -957,7 +958,7 @@
     </div>
   </div>
 
-  <div class="main-container">
+  <div class="main-container" style="display:none;">
 
     <div class="mahal-planlama-btn-wrap" style="margin-bottom:12px; display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
       <button type="button" id="btnMahalPlanlama" class="mahal-planlama-btn" onclick="openMahalPlanlamaPopup()" title="Mahal planlama görseli">
@@ -1577,6 +1578,49 @@
     </div>
   </div>
 
+  <!-- Kullanıcı Değiştirme Modalı (Sadece Admin için) -->
+  <div id="userSwitchModal" class="modal" onclick="if(event.target === this) closeUserSwitchModal()">
+    <div class="modal-sheet" style="max-width:500px; max-height:80vh; overflow-y:auto;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; padding-bottom:15px; border-bottom:2px solid var(--border);">
+        <h3 style="margin:0; font-size:18px; font-weight:600; color:var(--primary);">🔄 Kullanıcı Değiştir</h3>
+        <button type="button" onclick="closeUserSwitchModal()" 
+          style="background:none; border:none; font-size:24px; cursor:pointer; color:#999; padding:0; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:50%; transition:all 0.2s;"
+          onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background='none'">×</button>
+      </div>
+      
+      <div style="padding:12px; background:#fff3e0; border-left:4px solid #f57c00; border-radius:8px; margin-bottom:20px;">
+        <p style="margin:0; font-size:13px; color:#e65100; line-height:1.5;">
+          <strong>⚠️ Admin Özelliği:</strong> Başka bir kullanıcının verilerini görüntüleyebilir ve onun adına işlem yapabilirsiniz. 
+          Sayfa yenilendiğinde kendi hesabınıza dönersiniz.
+        </p>
+      </div>
+
+      <div id="currentUserInfo" style="padding:15px; background:#e3f2fd; border-radius:10px; margin-bottom:20px;">
+        <div style="font-size:12px; color:#1565c0; font-weight:600; margin-bottom:5px;">Şu an görüntülenen:</div>
+        <div style="font-size:16px; font-weight:700; color:#0d47a1;" id="currentViewingUser">-</div>
+      </div>
+
+      <div style="margin-bottom:15px;">
+        <input type="text" id="userSearchInput" placeholder="Kullanıcı ara..." 
+          style="width:100%; padding:12px 15px; border:2px solid var(--border); border-radius:10px; font-size:14px; box-sizing:border-box;"
+          oninput="filterUserList(this.value)">
+      </div>
+
+      <div id="userSwitchList" style="max-height:300px; overflow-y:auto;">
+        <div style="text-align:center; padding:30px; color:#999;">
+          <div style="font-size:24px; margin-bottom:10px;">⏳</div>
+          Kullanıcılar yükleniyor...
+        </div>
+      </div>
+
+      <div style="margin-top:20px; padding-top:15px; border-top:1px solid var(--border);">
+        <button type="button" onclick="resetToOriginalUser()" class="full-btn btn-secondary" style="width:100%;">
+          🔙 Kendi Hesabıma Dön
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Tahsilat Modalı (Read-only) -->
   <div id="tahsilatModal" class="modal" onclick="if(event.target === this) closeTahsilatModal()">
     <div class="modal-sheet" style="max-width:700px; max-height:85vh; overflow-y:auto;">
@@ -1638,13 +1682,13 @@
     </div>
   </div>
 
-  <!-- Teberru Girişi Görünümü -->
-  <div id="teberruView" style="display:none;">
+  <!-- Teberru Girişi Görünümü (Analiz) -->
+  <div id="teberruView" style="display:block;">
     <div class="main-container">
-      <h3 style="padding:20px; margin:0; font-size:18px; color:var(--primary);">Teberru Girişi</h3>
+      <h3 style="padding:20px; margin:0; font-size:18px; color:var(--primary);">Veri Girişi ve Analiz</h3>
       <div style="padding:20px; display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:15px;">
-        <button class="full-btn btn-primary" onclick="openTeberruModal()"
-          style="padding:20px; font-size:16px; font-weight:600;">
+        <button class="full-btn btn-primary" onclick="showAlert('Bu işlem muhasebe tarafından yapılabilir, iletişime geçebilirsiniz.', 'warning')"
+          style="padding:20px; font-size:16px; font-weight:600; opacity:0.6; cursor:not-allowed;">
           💰 Teberru
         </button>
         <button class="full-btn btn-primary" onclick="openTaahhutModal()"
@@ -1659,6 +1703,51 @@
           style="padding:20px; font-size:16px; font-weight:600;">
           📊 Analiz
         </button>
+      </div>
+
+      <!-- Tahsilat Detay Tablosu -->
+      <div id="tahsilatDetayContainer" style="padding:0 20px 20px 20px;">
+        <div style="background:white; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.08); overflow:hidden;">
+          <div style="background:linear-gradient(135deg, var(--primary) 0%, #667eea 100%); color:white; padding:15px 20px;">
+            <h4 style="margin:0; font-size:16px; font-weight:600; display:flex; align-items:center; gap:8px;">
+              📊 Tahsilat Özeti
+            </h4>
+          </div>
+          <div style="padding:15px;">
+            <div id="tahsilatDetayLoading" style="text-align:center; padding:30px; color:#999;">
+              <div style="font-size:24px; margin-bottom:10px;">⏳</div>
+              Yükleniyor...
+            </div>
+            <div id="tahsilatDetayContent" style="display:none;">
+              <div style="overflow-x:auto;">
+                <table style="width:100%; border-collapse:collapse; font-size:14px;">
+                  <thead>
+                    <tr style="background:#f8f9fa; border-bottom:2px solid #e9ecef;">
+                      <th style="padding:12px 10px; text-align:left; font-weight:600; color:#495057;">Tip</th>
+                      <th style="padding:12px 10px; text-align:right; font-weight:600; color:#495057;">Tutar</th>
+                      <th style="padding:12px 10px; text-align:right; font-weight:600; color:#495057;">Tahsilat</th>
+                      <th style="padding:12px 10px; text-align:right; font-weight:600; color:#495057;">Kalan</th>
+                      <th style="padding:12px 10px; text-align:right; font-weight:600; color:#495057;">Yüzde</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tahsilatDetayTbody">
+                  </tbody>
+                  <tfoot id="tahsilatDetayTfoot" style="background:#e8f5e9; font-weight:700;">
+                  </tfoot>
+                </table>
+              </div>
+
+              <!-- Hedef Bilgisi -->
+              <div id="tahsilatHedefContainer" style="margin-top:20px; padding:15px; background:linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); border-radius:10px; border-left:4px solid #f57c00;">
+                <div style="font-size:14px; color:#e65100; font-weight:600; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+                  🎯 Ramazan-ı Şerif Hedefi
+                </div>
+                <div id="tahsilatHedefIcerik" style="font-size:13px; color:#5d4037; line-height:1.8;">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1682,7 +1771,7 @@
   </div>
 
   <nav class="bottom-nav">
-    <button class="nav-btn active" onclick="switchView('takvim')">
+    <button class="nav-btn" onclick="switchView('takvim')">
       <svg viewBox="0 0 24 24">
         <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
       </svg>
@@ -1695,12 +1784,12 @@
       </svg>
       <span>Kayıtlarım</span>
     </button>
-    <button class="nav-btn" onclick="switchView('teberru')">
+    <button class="nav-btn active" onclick="switchView('teberru')">
       <svg viewBox="0 0 24 24">
         <path
           d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
       </svg>
-      <span>Teberru</span>
+      <span>Analiz</span>
     </button>
     <button class="nav-btn" onclick="switchView('menu')">
       <svg viewBox="0 0 24 24">
@@ -1874,6 +1963,14 @@
     let isLoadingKayitlar = false;
     let isLoadingMyRecords = false;
 
+    // --- ADMIN IMPERSONATION (Kullanıcı Değiştirme) ---
+    let originalPersonelAdi = null; // Orijinal giriş yapan kullanıcı adı
+    let originalUser = null; // Orijinal giriş yapan kullanıcı objesi
+    let isImpersonating = false; // Başka kullanıcı olarak görüntüleme modu
+    let impersonatedUserId = null; // Impersonation modunda seçilen kullanıcının ID'si
+    let allUsers = []; // Tüm kullanıcılar listesi
+    const ADMIN_USERS = ['Samet Çakır', 'samet çakır', 'SAMET ÇAKIR']; // Admin yetkisi olan kullanıcılar
+
     // Standalone sayfa başlatma fonksiyonu (ortak.js'den bağımsız)
     async function initPage() {
       // Supabase client kontrolü
@@ -1921,15 +2018,30 @@
       window.currentPersonelAdi = currentPersonelAdi;
       window.currentUser = currentUser;
 
+      // Orijinal kullanıcı bilgilerini kaydet (impersonation için)
+      originalPersonelAdi = currentPersonelAdi;
+      originalUser = currentUser;
+      isImpersonating = false;
+
       // Kullanıcı adını header'a yaz
       const updateUserNameDisplay = () => {
         const userNameDisplay = qs('#userNameDisplay');
         const userBadge = qs('#userBadge');
+        const userSwitchIcon = qs('#userSwitchIcon');
         if (userNameDisplay && userBadge) {
           // Profil yoksa email'den isim türetme (repo kuralı) -> Misafir
           const displayName = currentPersonelAdi || 'Misafir';
           userNameDisplay.textContent = displayName;
           userBadge.style.display = 'flex';
+          
+          // Admin kullanıcı ise değiştirme ikonunu göster
+          const isAdmin = ADMIN_USERS.some(admin => 
+            normalizePersonelName(admin) === normalizePersonelName(originalPersonelAdi || '')
+          );
+          if (userSwitchIcon && isAdmin) {
+            userSwitchIcon.style.display = 'inline';
+            userBadge.title = 'Tıklayarak kullanıcı değiştirebilirsiniz';
+          }
         } else {
           setTimeout(updateUserNameDisplay, 100);
         }
@@ -1955,6 +2067,9 @@
       
       // SUPABASE REALTIME: Canlı veri güncellemeleri için subscription
       setupRealtimeSubscription();
+
+      // Sayfa açıldığında varsayılan olarak Analiz sekmesini aç
+      switchView('teberru');
     }
     
     // ============================================
@@ -2605,7 +2720,7 @@
       qs('#alertModal').classList.remove('open');
     }
 
-    // Menü yükleme ve görüntüleme
+    // Menü yükleme ve görüntüleme (yeni sistem: ramazan_gun_menuleri tablosundan)
     async function loadMenuler() {
       const container = qs('#menuDaysList');
       if (container && !CURRENT_YIL) {
@@ -2614,13 +2729,14 @@
       }
 
       try {
+        // Günlere atanmış menüleri yükle
         const { data, error } = await window.supabase
-          .from('ramazan_menuler')
-          .select('id, corba, yemek, diger, icecek, soguk, tip, tarih, yil, updatedat, createdat')
+          .from('ramazan_gun_menuleri')
+          .select('id, tarih, tip, menu_id, menu_ismi, menu_detay, yil')
           .eq('yil', CURRENT_YIL);
 
         if (error) {
-          console.error('Menüler yüklenemedi:', error);
+          console.error('Gün menüleri yüklenemedi:', error);
           menuler = [];
         } else {
           menuler = data || [];
@@ -2655,21 +2771,23 @@
 
       while (current <= end) {
         const dateStr = current.toISOString().slice(0, 10);
+        
+        // Yeni sistem: ramazan_gun_menuleri tablosundan eşleştirme
         const iftarMenu = menuler.find(m => {
           let mTarih = '';
           if (m.tarih) {
-            if (m.tarih.toDate) mTarih = m.tarih.toDate().toISOString().slice(0, 10);
+            if (typeof m.tarih === 'string') mTarih = m.tarih.slice(0, 10);
+            else if (m.tarih.toDate) mTarih = m.tarih.toDate().toISOString().slice(0, 10);
             else if (m.tarih.seconds) mTarih = new Date(m.tarih.seconds * 1000).toISOString().slice(0, 10);
-            else if (typeof m.tarih === 'string') mTarih = m.tarih.slice(0, 10);
           }
           return mTarih === dateStr && m.tip === 'iftar';
         });
         const sahurMenu = menuler.find(m => {
           let mTarih = '';
           if (m.tarih) {
-            if (m.tarih.toDate) mTarih = m.tarih.toDate().toISOString().slice(0, 10);
+            if (typeof m.tarih === 'string') mTarih = m.tarih.slice(0, 10);
+            else if (m.tarih.toDate) mTarih = m.tarih.toDate().toISOString().slice(0, 10);
             else if (m.tarih.seconds) mTarih = new Date(m.tarih.seconds * 1000).toISOString().slice(0, 10);
-            else if (typeof m.tarih === 'string') mTarih = m.tarih.slice(0, 10);
           }
           return mTarih === dateStr && m.tip === 'sahur';
         });
@@ -2688,9 +2806,9 @@
                 <div style="font-weight:700; font-size:16px; color:#2c3e50;">${dayCounter}. Gün</div>
                 <div style="font-size:13px; color:#7f8c8d; margin-top:2px;">${tarihStr} - ${gunAdi}</div>
               </div>
-              <div style="display:flex; gap:8px;">
-                ${iftarMenu ? '<span style="background:var(--accent); color:white; padding:4px 10px; border-radius:6px; font-size:12px; font-weight:600;">🌙 İftar</span>' : ''}
-                ${sahurMenu ? '<span style="background:#3498db; color:white; padding:4px 10px; border-radius:6px; font-size:12px; font-weight:600;">🌟 Sahur</span>' : ''}
+              <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+                ${iftarMenu ? `<span style="background:var(--accent); color:white; padding:4px 10px; border-radius:6px; font-size:12px; font-weight:600;">🌙 ${iftarMenu.menu_ismi || 'İftar'}</span>` : ''}
+                ${sahurMenu ? `<span style="background:#3498db; color:white; padding:4px 10px; border-radius:6px; font-size:12px; font-weight:600;">🌟 ${sahurMenu.menu_ismi || 'Sahur'}</span>` : ''}
                 ${!hasMenu ? '<span style="background:#e0e0e0; color:#666; padding:4px 10px; border-radius:6px; font-size:12px;">Menü yok</span>' : ''}
               </div>
             </div>
@@ -2711,21 +2829,22 @@
         return; // Menü görünümü açık değilse modal açma
       }
 
+      // Yeni sistem: ramazan_gun_menuleri tablosundan eşleştirme
       const iftarMenu = menuler.find(m => {
         let mTarih = '';
         if (m.tarih) {
-          if (m.tarih.toDate) mTarih = m.tarih.toDate().toISOString().slice(0, 10);
+          if (typeof m.tarih === 'string') mTarih = m.tarih.slice(0, 10);
+          else if (m.tarih.toDate) mTarih = m.tarih.toDate().toISOString().slice(0, 10);
           else if (m.tarih.seconds) mTarih = new Date(m.tarih.seconds * 1000).toISOString().slice(0, 10);
-          else if (typeof m.tarih === 'string') mTarih = m.tarih.slice(0, 10);
         }
         return mTarih === dateStr && m.tip === 'iftar';
       });
       const sahurMenu = menuler.find(m => {
         let mTarih = '';
         if (m.tarih) {
-          if (m.tarih.toDate) mTarih = m.tarih.toDate().toISOString().slice(0, 10);
+          if (typeof m.tarih === 'string') mTarih = m.tarih.slice(0, 10);
+          else if (m.tarih.toDate) mTarih = m.tarih.toDate().toISOString().slice(0, 10);
           else if (m.tarih.seconds) mTarih = new Date(m.tarih.seconds * 1000).toISOString().slice(0, 10);
-          else if (typeof m.tarih === 'string') mTarih = m.tarih.slice(0, 10);
         }
         return mTarih === dateStr && m.tip === 'sahur';
       });
@@ -2747,11 +2866,8 @@
       if (iftarMenu) {
         content += `
           <div style="background:#f8f9fa; border-radius:10px; padding:15px;">
-            ${iftarMenu.corba ? `<div style="margin-bottom:12px;"><strong style="color:#495057;">🍲 Çorba:</strong> <span style="color:#6c757d;">${iftarMenu.corba}</span></div>` : ''}
-            ${iftarMenu.yemek ? `<div style="margin-bottom:12px;"><strong style="color:#495057;">🍽️ Yemek:</strong> <span style="color:#6c757d;">${iftarMenu.yemek}</span></div>` : ''}
-            ${iftarMenu.soguk ? `<div style="margin-bottom:12px;"><strong style="color:#495057;">🥗 Soğuk:</strong> <span style="color:#6c757d;">${iftarMenu.soguk}</span></div>` : ''}
-            ${iftarMenu.icecek ? `<div style="margin-bottom:12px;"><strong style="color:#495057;">🥤 İçecek:</strong> <span style="color:#6c757d;">${iftarMenu.icecek}</span></div>` : ''}
-            ${iftarMenu.diger ? `<div style="margin-bottom:12px;"><strong style="color:#495057;">🍰 Diğer:</strong> <span style="color:#6c757d;">${iftarMenu.diger}</span></div>` : ''}
+            <div style="margin-bottom:12px; font-weight:600; color:var(--accent); font-size:15px;">${iftarMenu.menu_ismi || 'İftar Menüsü'}</div>
+            ${iftarMenu.menu_detay ? `<div style="color:#6c757d; line-height:1.7; font-size:14px;">${iftarMenu.menu_detay.split(' • ').map(item => `<div style="margin-bottom:6px;">• ${item}</div>`).join('')}</div>` : '<div style="color:#999; font-style:italic;">Detay girilmemiş</div>'}
           </div>
         `;
       } else {
@@ -2775,11 +2891,8 @@
       if (sahurMenu) {
         content += `
           <div style="background:#f8f9fa; border-radius:10px; padding:15px;">
-            ${sahurMenu.corba ? `<div style="margin-bottom:12px;"><strong style="color:#495057;">🍲 Çorba:</strong> <span style="color:#6c757d;">${sahurMenu.corba}</span></div>` : ''}
-            ${sahurMenu.yemek ? `<div style="margin-bottom:12px;"><strong style="color:#495057;">🍽️ Yemek:</strong> <span style="color:#6c757d;">${sahurMenu.yemek}</span></div>` : ''}
-            ${sahurMenu.soguk ? `<div style="margin-bottom:12px;"><strong style="color:#495057;">🥗 Soğuk:</strong> <span style="color:#6c757d;">${sahurMenu.soguk}</span></div>` : ''}
-            ${sahurMenu.icecek ? `<div style="margin-bottom:12px;"><strong style="color:#495057;">🥤 İçecek:</strong> <span style="color:#6c757d;">${sahurMenu.icecek}</span></div>` : ''}
-            ${sahurMenu.diger ? `<div style="margin-bottom:12px;"><strong style="color:#495057;">🍰 Diğer:</strong> <span style="color:#6c757d;">${sahurMenu.diger}</span></div>` : ''}
+            <div style="margin-bottom:12px; font-weight:600; color:#3498db; font-size:15px;">${sahurMenu.menu_ismi || 'Sahur Menüsü'}</div>
+            ${sahurMenu.menu_detay ? `<div style="color:#6c757d; line-height:1.7; font-size:14px;">${sahurMenu.menu_detay.split(' • ').map(item => `<div style="margin-bottom:6px;">• ${item}</div>`).join('')}</div>` : '<div style="color:#999; font-style:italic;">Detay girilmemiş</div>'}
           </div>
         `;
       } else {
@@ -4280,6 +4393,8 @@
         if (menuView) menuView.style.display = 'none';
         // Menü modalını kapat
         closeMenuDetailModal();
+        // Tahsilat detay tablosunu yükle
+        loadTahsilatDetayTablosu();
       } else if (view === 'menu') {
         menuBtn.classList.add('active');
         if (mainContainer) mainContainer.style.display = 'none';
@@ -4305,23 +4420,27 @@
         const cols = 'id, aciklama, ay, bagisci, createdat, kaydedenpersonel, kaydedenpersoneluid, miktar, not, odeme, odemeyontemi, personel, personeluid, tarih, updatedat, yil';
         const queries = [];
 
+        // IMPERSONATION KONTROLÜ: Başka kullanıcı görüntüleniyorsa sadece o kullanıcının verilerini çek
+        const targetUserId = isImpersonating ? impersonatedUserId : currentUser?.id;
+        const targetUserName = currentPersonelAdi;
+
         // UID tek sorgu (or)
-        if (currentUser?.id) {
+        if (targetUserId) {
           queries.push(
             window.supabase
               .from('teberru_kayitlari')
               .select(cols)
-              .or(`personeluid.eq.${currentUser.id},kaydedenpersoneluid.eq.${currentUser.id}`)
+              .or(`personeluid.eq.${targetUserId},kaydedenpersoneluid.eq.${targetUserId}`)
           );
         }
 
-        // İsim tek sorgu (or) - Profil yoksa deneme
-        if (currentPersonelAdi && currentPersonelAdi !== 'Kullanıcı' && currentPersonelAdi !== 'Bilinmiyor' && !currentPersonelAdi.includes('@')) {
+        // İsim tek sorgu (or) - Profil yoksa deneme (impersonation modunda da kullan)
+        if (targetUserName && targetUserName !== 'Kullanıcı' && targetUserName !== 'Bilinmiyor' && !targetUserName.includes('@')) {
           queries.push(
             window.supabase
               .from('teberru_kayitlari')
               .select(cols)
-              .or(`personel.eq.${currentPersonelAdi},kaydedenpersonel.eq.${currentPersonelAdi}`)
+              .or(`personel.eq.${targetUserName},kaydedenpersonel.eq.${targetUserName}`)
           );
         }
 
@@ -4397,23 +4516,27 @@
         const cols = 'id, yil, ay, personel, personeluid, bagisci, miktar, aciklama, not, durum, tarih, silindi, kaydedenpersonel, kaydedenpersoneluid, createdat, updatedat';
         const queries = [];
 
+        // IMPERSONATION KONTROLÜ: Başka kullanıcı görüntüleniyorsa sadece o kullanıcının verilerini çek
+        const targetUserId = isImpersonating ? impersonatedUserId : currentUser?.id;
+        const targetUserName = currentPersonelAdi;
+
         // UID tek sorgu (or)
-        if (currentUser?.id) {
+        if (targetUserId) {
           queries.push(
             window.supabase
               .from('taahhut_kayitlari')
               .select(cols)
-              .or(`personeluid.eq.${currentUser.id},kaydedenpersoneluid.eq.${currentUser.id}`)
+              .or(`personeluid.eq.${targetUserId},kaydedenpersoneluid.eq.${targetUserId}`)
           );
         }
 
         // İsim tek sorgu (or) - taahhut_kayitlari tablosunda personeladi yok, sadece personel var
-        if (currentPersonelAdi && currentPersonelAdi !== 'Kullanıcı' && currentPersonelAdi !== 'Bilinmiyor' && !currentPersonelAdi.includes('@')) {
+        if (targetUserName && targetUserName !== 'Kullanıcı' && targetUserName !== 'Bilinmiyor' && !targetUserName.includes('@')) {
           queries.push(
             window.supabase
               .from('taahhut_kayitlari')
               .select(cols)
-              .or(`personel.eq.${currentPersonelAdi},kaydedenpersonel.eq.${currentPersonelAdi}`)
+              .or(`personel.eq.${targetUserName},kaydedenpersonel.eq.${targetUserName}`)
           );
         }
 
@@ -4585,6 +4708,10 @@
         currentUserObj: currentUser
       });
 
+      // IMPERSONATION KONTROLÜ: Başka kullanıcı görüntüleniyorsa sadece o kullanıcının verilerini filtrele
+      const targetUserId = isImpersonating ? impersonatedUserId : currentUser?.id;
+      const targetUserName = currentPersonelAdi;
+
       const myKayitlar = (kayitlar || [])
         .filter(k => {
           // Silinen kayıtları gösterme
@@ -4593,50 +4720,50 @@
             return false;
           }
 
-          // 1. Önce personeluid eşleşmesi (eğer currentUser.id varsa)
-          if (currentUser?.id) {
+          // 1. Önce personeluid eşleşmesi (hedef kullanıcı ID'si ile)
+          if (targetUserId) {
             const kayitPersonelUid = k.personelUid || k.personeluid;
-            if (kayitPersonelUid && kayitPersonelUid === currentUser.id) {
-              console.log('✅ UID eşleşti:', k.id, { kayitPersonelUid, currentUserId: currentUser.id });
+            if (kayitPersonelUid && kayitPersonelUid === targetUserId) {
+              console.log('✅ UID eşleşti:', k.id, { kayitPersonelUid, targetUserId });
               return true;
             }
           }
 
-          // 2. Personel adı eşleşmesi (profil varsa)
-          if (currentPersonelAdi && currentPersonelAdi !== 'Kullanıcı' && currentPersonelAdi !== 'Bilinmiyor' && !currentPersonelAdi.includes('@')) {
+          // 2. Personel adı eşleşmesi (hedef kullanıcı adı ile)
+          if (targetUserName && targetUserName !== 'Kullanıcı' && targetUserName !== 'Bilinmiyor' && !targetUserName.includes('@')) {
             const kayitPersonelAdi = (k.personeladi ?? k.personelAdi ?? '') || '';
             const kayitPersonel = (k.personel ?? '') || '';
             const kayitSahip = (k.sahip ?? '') || '';
             
-            // Normalize edilmiş karşılaştırma
-            const normalizedCurrent = normalizePersonelName(currentPersonelAdi);
+            // Normalize edilmiş karşılaştırma (hedef kullanıcı adı ile)
+            const normalizedTarget = normalizePersonelName(targetUserName);
             const normalizedKayitAdi = normalizePersonelName(kayitPersonelAdi);
             const normalizedKayitPersonel = normalizePersonelName(kayitPersonel);
             const normalizedKayitSahip = normalizePersonelName(kayitSahip);
             
-            if (normalizedKayitAdi && normalizedKayitAdi === normalizedCurrent) {
+            if (normalizedKayitAdi && normalizedKayitAdi === normalizedTarget) {
               console.log('✅ Personel adı eşleşti (personelAdi):', k.id, { 
-                currentPersonelAdi, 
+                targetUserName, 
                 kayitPersonelAdi,
-                normalizedCurrent,
+                normalizedTarget,
                 normalizedKayitAdi
               });
               return true;
             }
-            if (normalizedKayitPersonel && normalizedKayitPersonel === normalizedCurrent) {
+            if (normalizedKayitPersonel && normalizedKayitPersonel === normalizedTarget) {
               console.log('✅ Personel adı eşleşti (personel):', k.id, { 
-                currentPersonelAdi, 
+                targetUserName, 
                 kayitPersonel,
-                normalizedCurrent,
+                normalizedTarget,
                 normalizedKayitPersonel
               });
               return true;
             }
-            if (normalizedKayitSahip && normalizedKayitSahip === normalizedCurrent) {
+            if (normalizedKayitSahip && normalizedKayitSahip === normalizedTarget) {
               console.log('✅ Personel adı eşleşti (sahip):', k.id, { 
-                currentPersonelAdi, 
+                targetUserName, 
                 kayitSahip,
-                normalizedCurrent,
+                normalizedTarget,
                 normalizedKayitSahip
               });
               return true;
@@ -6330,8 +6457,209 @@
         closeTeberruModal();
         qs('#teberruForm').reset();
         loadMyRecords();
+        // Tahsilat detay tablosunu yenile
+        loadTahsilatDetayTablosu();
       } catch (err) {
         showAlert('Hata: ' + err.message, 'error');
+      }
+    }
+
+    // Tahsilat Detay Tablosu Fonksiyonu
+    async function loadTahsilatDetayTablosu() {
+      const loadingEl = qs('#tahsilatDetayLoading');
+      const contentEl = qs('#tahsilatDetayContent');
+      const tbodyEl = qs('#tahsilatDetayTbody');
+      const tfootEl = qs('#tahsilatDetayTfoot');
+      const hedefIcerikEl = qs('#tahsilatHedefIcerik');
+
+      if (!loadingEl || !contentEl || !tbodyEl || !tfootEl || !hedefIcerikEl) return;
+
+      loadingEl.style.display = 'block';
+      contentEl.style.display = 'none';
+
+      try {
+        if (!currentUser && !currentPersonelAdi) {
+          throw new Error('Kullanıcı bilgisi bulunamadı');
+        }
+
+        const yilNum = typeof selectedYear !== 'undefined' ? selectedYear : new Date().getFullYear();
+
+        // IMPERSONATION KONTROLÜ: Başka kullanıcı görüntüleniyorsa sadece o kullanıcının verilerini çek
+        const targetUserId = isImpersonating ? impersonatedUserId : currentUser?.id;
+        const targetUserName = currentPersonelAdi;
+
+        // 1. İftar ve Sahur kayıtlarını çek (hedef kullanıcıya ait)
+        let iftarSahurKayitlar = [];
+        if (targetUserId) {
+          const { data: uidData } = await window.supabase
+            .from('ramazan_kayitlari')
+            .select('id, tip, tutar, personeluid, kaydedenpersoneluid')
+            .eq('yil', yilNum)
+            .or(`personeluid.eq.${targetUserId},kaydedenpersoneluid.eq.${targetUserId}`);
+          if (uidData) iftarSahurKayitlar.push(...uidData);
+        }
+        if (targetUserName) {
+          const normalizedName = normalizePersonelName(targetUserName);
+          const { data: nameData } = await window.supabase
+            .from('ramazan_kayitlari')
+            .select('id, tip, tutar, personeladi, kaydedenpersonel')
+            .eq('yil', yilNum);
+          if (nameData) {
+            const filtered = nameData.filter(d => {
+              const p1 = normalizePersonelName(d.personeladi || '');
+              const p2 = normalizePersonelName(d.kaydedenpersonel || '');
+              return (p1 === normalizedName || p2 === normalizedName) && 
+                     !iftarSahurKayitlar.some(k => k.id === d.id);
+            });
+            iftarSahurKayitlar.push(...filtered);
+          }
+        }
+
+        // İftar ve Sahur tutarlarını hesapla
+        let iftarTutar = 0, sahurTutar = 0;
+        const iftarKayitIds = [], sahurKayitIds = [];
+        iftarSahurKayitlar.forEach(k => {
+          if (k.tip === 'iftar') {
+            iftarTutar += Number(k.tutar) || 0;
+            iftarKayitIds.push(k.id);
+          } else if (k.tip === 'sahur') {
+            sahurTutar += Number(k.tutar) || 0;
+            sahurKayitIds.push(k.id);
+          }
+        });
+
+        // 2. Taahhüt kayıtlarını çek (mevcut taahhutKayitlari kullanılabilir)
+        let taahhutTutar = 0;
+        const taahhutKayitIds = [];
+        if (taahhutKayitlari && taahhutKayitlari.length > 0) {
+          taahhutKayitlari.forEach(t => {
+            taahhutTutar += Number(t.miktar) || 0;
+            taahhutKayitIds.push(t.id);
+          });
+        }
+
+        // 3. Tahsilat verilerini çek
+        const allKayitIds = [...iftarKayitIds, ...sahurKayitIds, ...taahhutKayitIds];
+        let tahsilatByKayitId = {};
+        allKayitIds.forEach(id => { tahsilatByKayitId[id] = 0; });
+
+        if (allKayitIds.length > 0 && window.supabase) {
+          const { data: tahsilatData } = await window.supabase
+            .from('ramazan_tahsilat')
+            .select('kayit_id, tutar')
+            .in('kayit_id', allKayitIds);
+          (tahsilatData || []).forEach(t => {
+            tahsilatByKayitId[t.kayit_id] = (tahsilatByKayitId[t.kayit_id] || 0) + (Number(t.tutar) || 0);
+          });
+        }
+
+        // Tahsilat toplamlarını hesapla
+        let iftarTahsilat = 0, sahurTahsilat = 0, taahhutTahsilat = 0;
+        iftarKayitIds.forEach(id => { iftarTahsilat += tahsilatByKayitId[id] || 0; });
+        sahurKayitIds.forEach(id => { sahurTahsilat += tahsilatByKayitId[id] || 0; });
+        taahhutKayitIds.forEach(id => { taahhutTahsilat += tahsilatByKayitId[id] || 0; });
+
+        // Hesaplamalar
+        const iftarKalan = iftarTutar - iftarTahsilat;
+        const sahurKalan = sahurTutar - sahurTahsilat;
+        const taahhutKalan = taahhutTutar - taahhutTahsilat;
+
+        const iftarYuzde = iftarTutar > 0 ? ((iftarTahsilat / iftarTutar) * 100).toFixed(1) : 0;
+        const sahurYuzde = sahurTutar > 0 ? ((sahurTahsilat / sahurTutar) * 100).toFixed(1) : 0;
+        const taahhutYuzde = taahhutTutar > 0 ? ((taahhutTahsilat / taahhutTutar) * 100).toFixed(1) : 0;
+
+        const toplamTutar = iftarTutar + sahurTutar + taahhutTutar;
+        const toplamTahsilat = iftarTahsilat + sahurTahsilat + taahhutTahsilat;
+        const toplamKalan = toplamTutar - toplamTahsilat;
+        const toplamYuzde = toplamTutar > 0 ? ((toplamTahsilat / toplamTutar) * 100).toFixed(1) : 0;
+
+        // Format fonksiyonu
+        const formatPara = (val) => val.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        // Tablo satırlarını oluştur
+        const renderRow = (tip, icon, tutar, tahsilat, kalan, yuzde, color) => `
+          <tr style="border-bottom:1px solid #e9ecef;">
+            <td style="padding:12px 10px; font-weight:500;">
+              <span style="display:inline-flex; align-items:center; gap:6px;">
+                <span style="font-size:16px;">${icon}</span>
+                <span style="color:${color};">${tip}</span>
+              </span>
+            </td>
+            <td style="padding:12px 10px; text-align:right; color:#495057;">₺${formatPara(tutar)}</td>
+            <td style="padding:12px 10px; text-align:right; color:#27ae60; font-weight:600;">₺${formatPara(tahsilat)}</td>
+            <td style="padding:12px 10px; text-align:right; color:${kalan > 0 ? '#e74c3c' : '#27ae60'};">₺${formatPara(kalan)}</td>
+            <td style="padding:12px 10px; text-align:right;">
+              <span style="display:inline-block; padding:4px 8px; background:${parseFloat(yuzde) >= 50 ? '#e8f5e9' : '#fff3e0'}; color:${parseFloat(yuzde) >= 50 ? '#27ae60' : '#f57c00'}; border-radius:12px; font-size:12px; font-weight:600;">
+                %${yuzde}
+              </span>
+            </td>
+          </tr>
+        `;
+
+        tbodyEl.innerHTML = 
+          renderRow('İftar', '🌙', iftarTutar, iftarTahsilat, iftarKalan, iftarYuzde, '#f39c12') +
+          renderRow('Sahur', '🌟', sahurTutar, sahurTahsilat, sahurKalan, sahurYuzde, '#3498db') +
+          renderRow('Taahhüt', '📋', taahhutTutar, taahhutTahsilat, taahhutKalan, taahhutYuzde, '#9b59b6');
+
+        tfootEl.innerHTML = `
+          <tr>
+            <td style="padding:14px 10px; font-weight:700; color:#2c3e50;">
+              <span style="display:inline-flex; align-items:center; gap:6px;">
+                <span style="font-size:16px;">📊</span>
+                TOPLAM
+              </span>
+            </td>
+            <td style="padding:14px 10px; text-align:right; font-weight:700; color:#2c3e50;">₺${formatPara(toplamTutar)}</td>
+            <td style="padding:14px 10px; text-align:right; font-weight:700; color:#27ae60;">₺${formatPara(toplamTahsilat)}</td>
+            <td style="padding:14px 10px; text-align:right; font-weight:700; color:${toplamKalan > 0 ? '#e74c3c' : '#27ae60'};">₺${formatPara(toplamKalan)}</td>
+            <td style="padding:14px 10px; text-align:right;">
+              <span style="display:inline-block; padding:5px 12px; background:${parseFloat(toplamYuzde) >= 50 ? 'linear-gradient(135deg, #27ae60, #2ecc71)' : 'linear-gradient(135deg, #f57c00, #ff9800)'}; color:white; border-radius:15px; font-size:13px; font-weight:700;">
+                %${toplamYuzde}
+              </span>
+            </td>
+          </tr>
+        `;
+
+        // Hedef bilgisi
+        const hedefYuzde50Tutar = toplamTutar * 0.5;
+        const hedefKalan = hedefYuzde50Tutar - toplamTahsilat;
+        const hedefDurum = toplamTahsilat >= hedefYuzde50Tutar;
+
+        hedefIcerikEl.innerHTML = `
+          <div style="margin-bottom:8px;">
+            <strong>Ramazan-ı Şerif sonuna kadar tahsilat hedefiniz:</strong>
+            <span style="color:#e65100; font-weight:700;">%50 = ₺${formatPara(hedefYuzde50Tutar)}</span>
+          </div>
+          <div style="margin-bottom:8px;">
+            <strong>Mevcut tahsilatınız:</strong>
+            <span style="color:#27ae60; font-weight:700;">₺${formatPara(toplamTahsilat)}</span>
+            <span style="margin-left:8px; padding:2px 8px; background:${parseFloat(toplamYuzde) >= 50 ? '#c8e6c9' : '#ffecb3'}; color:${parseFloat(toplamYuzde) >= 50 ? '#2e7d32' : '#e65100'}; border-radius:10px; font-size:12px; font-weight:600;">
+              %${toplamYuzde}
+            </span>
+          </div>
+          ${hedefDurum ? `
+            <div style="padding:10px; background:#c8e6c9; border-radius:8px; color:#2e7d32; font-weight:600; margin-top:10px;">
+              ✅ Tebrikler! Hedefinize ulaştınız. Hedefin üzerinde: <strong>₺${formatPara(toplamTahsilat - hedefYuzde50Tutar)}</strong>
+            </div>
+          ` : `
+            <div style="padding:10px; background:#fff3e0; border-radius:8px; color:#e65100; font-weight:500; margin-top:10px;">
+              ⏳ Hedefe ulaşmanız için kalan miktar: <strong style="color:#d84315;">₺${formatPara(hedefKalan)}</strong>
+            </div>
+          `}
+        `;
+
+        loadingEl.style.display = 'none';
+        contentEl.style.display = 'block';
+
+      } catch (err) {
+        console.error('Tahsilat detay tablosu yüklenemedi:', err);
+        loadingEl.innerHTML = `
+          <div style="color:#e74c3c; font-size:14px;">
+            <div style="font-size:24px; margin-bottom:10px;">⚠️</div>
+            Veriler yüklenirken hata oluştu.<br>
+            <small style="color:#999;">${err.message || ''}</small>
+          </div>
+        `;
       }
     }
 
@@ -6463,6 +6791,8 @@
         closeTaahhutModal();
         qs('#taahhutForm').reset();
         loadMyRecords();
+        // Tahsilat detay tablosunu yenile
+        loadTahsilatDetayTablosu();
       } catch (err) {
         showAlert('Hata: ' + err.message, 'error');
       }
@@ -6910,7 +7240,7 @@
         return;
       }
 
-      console.log('🔍 openAnalizModal başladı:', { currentUser: currentUser?.id, CURRENT_YIL, currentPersonelAdi });
+      console.log('🔍 openAnalizModal başladı:', { currentUser: currentUser?.id, CURRENT_YIL, currentPersonelAdi, isImpersonating });
 
       qs('#analizModal').classList.add('open');
       qs('#analizContent').innerHTML = '<div style="text-align:center; padding:20px; background:#f8f9fa; border-radius:10px;"><div style="font-size:14px; color:#7f8c8d;">Yükleniyor...</div></div>';
@@ -6919,36 +7249,42 @@
         const yilNum = typeof CURRENT_YIL === 'number' ? CURRENT_YIL : parseInt(CURRENT_YIL);
         console.log('📊 Analiz için yıl:', yilNum);
 
-        // İftar-Sahur kayıtları - kullanıcının kendi kayıtlarını yükle
-        // Önce personeluid ile, sonra personel/personeladi ile eşleşen kayıtları bul
-        const { data: iftarSahurDataUid } = await window.supabase
-          .from('ramazan_kayitlari')
-          .select('tutar, tip, personel, personeladi')
-          .eq('personeluid', currentUser.id)
-          .eq('yil', yilNum);
+        // IMPERSONATION KONTROLÜ: Başka kullanıcı görüntüleniyorsa sadece o kullanıcının verilerini çek
+        const targetUserId = isImpersonating ? impersonatedUserId : currentUser?.id;
+        const targetUserName = currentPersonelAdi;
+
+        // İftar-Sahur kayıtları - hedef kullanıcının kayıtlarını yükle
+        let iftarSahurDataUid = [];
+        if (targetUserId) {
+          const { data } = await window.supabase
+            .from('ramazan_kayitlari')
+            .select('tutar, tip, personel, personeladi')
+            .eq('personeluid', targetUserId)
+            .eq('yil', yilNum);
+          iftarSahurDataUid = data || [];
+        }
 
         // Personel adı ile de sorgula (muhasebe kayıtları için)
-        // currentPersonelAdi yüklendikten sonra çalışmalı
         let iftarSahurDataName = [];
-        if (currentPersonelAdi && currentPersonelAdi !== 'Bilinmiyor') {
+        if (targetUserName && targetUserName !== 'Bilinmiyor') {
           const { data: nameData } = await window.supabase
             .from('ramazan_kayitlari')
             .select('tutar, tip, personel, personeladi, personeluid')
             .eq('yil', yilNum)
-            .or(`personel.eq.${currentPersonelAdi},personeladi.eq.${currentPersonelAdi}`);
+            .or(`personel.eq.${targetUserName},personeladi.eq.${targetUserName}`);
           
           if (nameData) {
             // Personeluid ile eşleşenleri hariç tut (zaten yukarıda var)
             iftarSahurDataName = nameData.filter(d => {
               const uid = d.personeluid;
-              return uid !== currentUser.id;
+              return uid !== targetUserId;
             });
           }
         }
 
         // Tüm kayıtları birleştir
         const allIftarSahurData = [
-          ...(iftarSahurDataUid || []),
+          ...iftarSahurDataUid,
           ...iftarSahurDataName
         ];
 
@@ -6978,7 +7314,7 @@
 
 
         // Personel hedefini çek - ramazan_hedefler tablosundan
-        // Kullanıcının kendisine ait hedefi bul (personeluid, personelAdi veya personel ile eşleştirme)
+        // Hedef kullanıcıya ait hedefi bul (personeluid, personelAdi veya personel ile eşleştirme)
         let hedef = 0;
         try {
           // Önce ramazan_hedefler (yeni sistem)
@@ -6992,16 +7328,16 @@
           }
 
           if (hedefDataList && hedefDataList.length > 0) {
-            // Eşleştirme önceliği: personeluid > personeladi > personel
+            // Eşleştirme önceliği: personeluid > personeladi > personel (hedef kullanıcı ile)
             const userTarget = hedefDataList.find(h => {
               // 1. UID eşleşmesi (varsa) - personeluid kontrol et
-              if (h.personeluid && h.personeluid === currentUser.id) {
+              if (h.personeluid && h.personeluid === targetUserId) {
                 return true;
               }
               // 2. İsim eşleşmesi (normalize ederek) - personeladi veya personel alanı ile
-              if (currentPersonelAdi) {
+              if (targetUserName) {
                 const hName = normalizePersonelName(h.personeladi || h.personelAdi || h.personel || '');
-                const cName = normalizePersonelName(currentPersonelAdi || '');
+                const cName = normalizePersonelName(targetUserName || '');
                 if (hName && cName && hName === cName) return true;
               }
               return false;
@@ -7035,12 +7371,12 @@
                 });
                 
                 const userTarget = yilFiltreli.find(h => {
-                  // UID eşleşmesi
-                  if (h.uid === currentUser.id || h.personeluid === currentUser.id) return true;
+                  // UID eşleşmesi (hedef kullanıcı ile)
+                  if (h.uid === targetUserId || h.personeluid === targetUserId) return true;
                   // İsim eşleşmesi
-                  if (currentPersonelAdi) {
+                  if (targetUserName) {
                     const hName = normalizePersonelName(h.personel || '');
-                    const cName = normalizePersonelName(currentPersonelAdi || '');
+                    const cName = normalizePersonelName(targetUserName || '');
                     return hName && cName && hName === cName;
                   }
                   return false;
@@ -7143,6 +7479,218 @@
       qs('#analizModal').classList.remove('open');
     }
 
+    // ============================================
+    // ADMIN IMPERSONATION (Kullanıcı Değiştirme) FONKSİYONLARI
+    // ============================================
+    
+    async function openUserSwitchModal() {
+      // Admin kontrolü - sadece yetkili kullanıcılar açabilir
+      const isAdmin = ADMIN_USERS.some(admin => 
+        normalizePersonelName(admin) === normalizePersonelName(originalPersonelAdi || '')
+      );
+      
+      if (!isAdmin) {
+        // Admin değilse sessizce çık (hiçbir şey yapma)
+        return;
+      }
+
+      const modal = qs('#userSwitchModal');
+      const listContainer = qs('#userSwitchList');
+      const currentViewingEl = qs('#currentViewingUser');
+      const searchInput = qs('#userSearchInput');
+      
+      if (!modal || !listContainer) return;
+
+      // Şu an görüntülenen kullanıcıyı göster
+      if (currentViewingEl) {
+        const viewingName = currentPersonelAdi || 'Bilinmiyor';
+        const isOwnAccount = !isImpersonating;
+        currentViewingEl.innerHTML = `${viewingName} ${isOwnAccount ? '<span style="font-size:11px; color:#43a047;">(Kendi hesabınız)</span>' : '<span style="font-size:11px; color:#f57c00;">(Başka kullanıcı)</span>'}`;
+      }
+
+      // Arama kutusunu temizle
+      if (searchInput) searchInput.value = '';
+
+      modal.classList.add('open');
+
+      // Kullanıcıları yükle
+      listContainer.innerHTML = `
+        <div style="text-align:center; padding:30px; color:#999;">
+          <div style="font-size:24px; margin-bottom:10px;">⏳</div>
+          Kullanıcılar yükleniyor...
+        </div>
+      `;
+
+      try {
+        // Tüm kullanıcıları çek
+        const { data: users, error } = await window.supabase
+          .from('kullanicilar')
+          .select('id, adsoyad, email')
+          .order('adsoyad', { ascending: true });
+
+        if (error) throw error;
+
+        allUsers = users || [];
+
+        if (allUsers.length === 0) {
+          listContainer.innerHTML = `
+            <div style="text-align:center; padding:30px; color:#999;">
+              <div style="font-size:24px; margin-bottom:10px;">📭</div>
+              Kullanıcı bulunamadı
+            </div>
+          `;
+          return;
+        }
+
+        renderUserList(allUsers);
+
+      } catch (err) {
+        console.error('Kullanıcılar yüklenemedi:', err);
+        listContainer.innerHTML = `
+          <div style="text-align:center; padding:30px; color:#e74c3c;">
+            <div style="font-size:24px; margin-bottom:10px;">⚠️</div>
+            Kullanıcılar yüklenirken hata oluştu
+          </div>
+        `;
+      }
+    }
+
+    function renderUserList(users) {
+      const listContainer = qs('#userSwitchList');
+      if (!listContainer) return;
+
+      if (users.length === 0) {
+        listContainer.innerHTML = `
+          <div style="text-align:center; padding:20px; color:#999;">
+            Eşleşen kullanıcı bulunamadı
+          </div>
+        `;
+        return;
+      }
+
+      listContainer.innerHTML = users.map(user => {
+        const isCurrentUser = normalizePersonelName(user.adsoyad || '') === normalizePersonelName(currentPersonelAdi || '');
+        const isOriginalUser = normalizePersonelName(user.adsoyad || '') === normalizePersonelName(originalPersonelAdi || '');
+        
+        return `
+          <div onclick="switchToUser('${user.id}', '${escapeHtml(user.adsoyad || user.email || 'Bilinmiyor')}')" 
+            style="padding:12px 15px; border:1px solid ${isCurrentUser ? 'var(--primary)' : 'var(--border)'}; border-radius:10px; margin-bottom:8px; cursor:pointer; transition:all 0.2s; background:${isCurrentUser ? '#e3f2fd' : 'white'}; display:flex; align-items:center; justify-content:space-between;"
+            onmouseover="this.style.background='${isCurrentUser ? '#bbdefb' : '#f5f5f5'}'" 
+            onmouseout="this.style.background='${isCurrentUser ? '#e3f2fd' : 'white'}'">
+            <div>
+              <div style="font-weight:600; color:#2c3e50; font-size:14px;">
+                ${escapeHtml(user.adsoyad || 'İsimsiz')}
+                ${isOriginalUser ? '<span style="font-size:10px; background:#27ae60; color:white; padding:2px 6px; border-radius:8px; margin-left:6px;">SİZ</span>' : ''}
+              </div>
+              <div style="font-size:12px; color:#7f8c8d; margin-top:2px;">${escapeHtml(user.email || '')}</div>
+            </div>
+            ${isCurrentUser ? '<span style="color:var(--primary); font-size:18px;">✓</span>' : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function filterUserList(searchTerm) {
+      const term = searchTerm.toLowerCase().trim();
+      if (!term) {
+        renderUserList(allUsers);
+        return;
+      }
+      
+      const filtered = allUsers.filter(user => {
+        const name = (user.adsoyad || '').toLowerCase();
+        const email = (user.email || '').toLowerCase();
+        return name.includes(term) || email.includes(term);
+      });
+      
+      renderUserList(filtered);
+    }
+
+    async function switchToUser(userId, userName) {
+      // Kullanıcı değiştir
+      currentPersonelAdi = userName;
+      window.currentPersonelAdi = userName;
+      
+      // Impersonation durumunu güncelle
+      isImpersonating = normalizePersonelName(userName) !== normalizePersonelName(originalPersonelAdi || '');
+      
+      // Seçilen kullanıcının ID'sini sakla (impersonation modunda sorgulamalar için)
+      impersonatedUserId = isImpersonating ? userId : null;
+
+      // Header'ı güncelle
+      const userNameDisplay = qs('#userNameDisplay');
+      const userBadge = qs('#userBadge');
+      if (userNameDisplay) {
+        userNameDisplay.textContent = userName;
+      }
+      
+      // Badge rengini değiştir (impersonation modunda farklı renk)
+      if (userBadge) {
+        if (isImpersonating) {
+          userBadge.style.background = 'rgba(255,152,0,0.4)';
+          userBadge.style.borderColor = 'rgba(255,152,0,0.6)';
+        } else {
+          userBadge.style.background = 'rgba(255,255,255,0.25)';
+          userBadge.style.borderColor = 'rgba(255,255,255,0.3)';
+        }
+      }
+
+      // Şu an görüntülenen kullanıcıyı güncelle
+      const currentViewingEl = qs('#currentViewingUser');
+      if (currentViewingEl) {
+        currentViewingEl.innerHTML = `${userName} ${!isImpersonating ? '<span style="font-size:11px; color:#43a047;">(Kendi hesabınız)</span>' : '<span style="font-size:11px; color:#f57c00;">(Başka kullanıcı)</span>'}`;
+      }
+
+      // Modalı kapat
+      closeUserSwitchModal();
+
+      // Bildirim göster
+      if (isImpersonating) {
+        showToast('info', 'Kullanıcı Değiştirildi', `${userName} olarak görüntülüyorsunuz.`, { duration: 3000 });
+      } else {
+        showToast('success', 'Kendi Hesabınız', 'Kendi hesabınıza döndünüz.', { duration: 2000 });
+      }
+
+      // Verileri yeniden yükle
+      await reloadAllDataForUser();
+    }
+
+    function resetToOriginalUser() {
+      if (!originalPersonelAdi) {
+        showToast('warning', 'Uyarı', 'Orijinal kullanıcı bilgisi bulunamadı.');
+        return;
+      }
+      
+      switchToUser(originalUser?.id, originalPersonelAdi);
+    }
+
+    async function reloadAllDataForUser() {
+      // Yükleniyor göstergesi
+      showToast('info', 'Yükleniyor', 'Veriler güncelleniyor...', { duration: 1500 });
+
+      try {
+        // Teberru ve Taahhüt kayıtlarını yeniden yükle
+        await loadTeberruKayitlari();
+        await loadTaahhutKayitlari();
+        
+        // Kayıtları yeniden yükle
+        await loadMyRecords();
+        
+        // Tahsilat detay tablosunu yeniden yükle
+        await loadTahsilatDetayTablosu();
+        
+        console.log('✅ Kullanıcı verileri yeniden yüklendi:', currentPersonelAdi);
+      } catch (err) {
+        console.error('Veri yükleme hatası:', err);
+        showToast('error', 'Hata', 'Veriler yüklenirken bir hata oluştu.');
+      }
+    }
+
+    function closeUserSwitchModal() {
+      const modal = qs('#userSwitchModal');
+      if (modal) modal.classList.remove('open');
+    }
+
     // Global fonksiyonlar (HTML onclick vb. için)
     window.openTeberruModal = openTeberruModal;
     window.openTaahhutModal = openTaahhutModal;
@@ -7150,6 +7698,12 @@
     window.closeTahsilatModal = closeTahsilatModal;
     window.openAnalizModal = openAnalizModal;
     window.closeAnalizModal = closeAnalizModal;
+    window.loadTahsilatDetayTablosu = loadTahsilatDetayTablosu;
+    window.openUserSwitchModal = openUserSwitchModal;
+    window.closeUserSwitchModal = closeUserSwitchModal;
+    window.switchToUser = switchToUser;
+    window.resetToOriginalUser = resetToOriginalUser;
+    window.filterUserList = filterUserList;
     window.closeTeberruModal = closeTeberruModal;
     window.closeTaahhutModal = closeTaahhutModal;
     window.showTeberruPreview = showTeberruPreview;
