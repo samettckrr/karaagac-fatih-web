@@ -4610,8 +4610,12 @@
       try {
         const yilNum = typeof CURRENT_YIL === 'number' ? CURRENT_YIL : parseInt(CURRENT_YIL);
 
+        // IMPERSONATION KONTROLÜ: Başka kullanıcı görüntüleniyorsa sadece o kullanıcının verilerini çek
+        const targetUserId = isImpersonating ? impersonatedUserId : currentUser?.id;
+        const targetUserName = currentPersonelAdi;
+
         // Personel adını normalize et (karşılaştırma için)
-        const pName = currentPersonelAdi ? normalizePersonelName(currentPersonelAdi) : '';
+        const pName = targetUserName ? normalizePersonelName(targetUserName) : '';
 
         const { data, error } = await window.supabase
           .from('ramazan_veriler')
@@ -4631,8 +4635,8 @@
           const dReferans = d.referans ? normalizePersonelName(d.referans) : '';
 
           // Personel adı eşleşiyorsa veya referans eşleşiyorsa
-          // VEYA imported verinin `personelUid` alanı varsa ve currentUid ile eşleşiyorsa
-          if (d.personelUid === currentUser.id) return true;
+          // VEYA imported verinin `personelUid` alanı varsa ve hedef kullanıcı ID'si ile eşleşiyorsa
+          if (targetUserId && d.personelUid === targetUserId) return true;
 
           // İsim eşleşmeleri (normalize edilmiş)
           if (pName && (dPersonel === pName || dReferans === pName)) return true;
@@ -6380,7 +6384,8 @@
         <div style="margin-bottom:10px;"><strong>Ödeme Yöntemi:</strong> ${odemeLabels[odeme] || odeme}</div>
         ${aciklama ? `<div style="margin-bottom:10px;"><strong>Açıklama:</strong> ${aciklama}</div>` : ''}
         <div style="margin-top:15px; padding-top:15px; border-top:1px solid #eee; font-size:12px; color:#7f8c8d;">
-          <div><strong>Kaydeden:</strong> ${currentPersonelAdi || 'Bilinmiyor'}</div>
+          ${isImpersonating ? `<div><strong>Kimin adına:</strong> ${currentPersonelAdi || 'Bilinmiyor'}</div>` : ''}
+          <div><strong>Kaydeden:</strong> ${originalPersonelAdi || currentPersonelAdi || 'Bilinmiyor'}</div>
           <div><strong>Tarih:</strong> ${new Date().toLocaleString('tr-TR')}</div>
         </div>
       `;
@@ -6416,6 +6421,14 @@
         const yilNum = CURRENT_YIL ? (typeof CURRENT_YIL === 'number' ? CURRENT_YIL : parseInt(CURRENT_YIL)) : new Date().getFullYear();
         const nowISO = new Date().toISOString();
         const ayNum = new Date().getMonth() + 1;
+        // IMPERSONATION: Kayıt kimin adına yapılıyor?
+        // personeluid/personel: Impersonation modunda seçilen kullanıcı, normal modda mevcut kullanıcı
+        // kaydedenpersonel/kaydedenpersoneluid: Her zaman orijinal (auth) kullanıcı
+        const targetPersonelUid = isImpersonating ? impersonatedUserId : currentUser.id;
+        const targetPersonelAdi = currentPersonelAdi; // Impersonation modunda bu zaten seçilen kullanıcının adı
+        const kaydedenPersonelAdi = originalPersonelAdi || personelAdi;
+        const kaydedenPersonelUid = currentUser.id; // Auth kullanıcısı her zaman
+
         const data = {
           id: generateUUID(),
           bagisci: bagisci,
@@ -6426,10 +6439,10 @@
           not: null,
           ay: ayNum,
           tarih: nowISO,
-          personeluid: currentUser.id,
-          personel: personelAdi,
-          kaydedenpersonel: personelAdi,
-          kaydedenpersoneluid: currentUser.id,
+          personeluid: targetPersonelUid,
+          personel: targetPersonelAdi,
+          kaydedenpersonel: kaydedenPersonelAdi,
+          kaydedenpersoneluid: kaydedenPersonelUid,
           yil: yilNum
         };
 
@@ -6528,7 +6541,8 @@
           }
         });
 
-        // 2. Taahhüt kayıtlarını çek (mevcut taahhutKayitlari kullanılabilir)
+        // 2. Taahhüt kayıtlarını çek - önce yükle sonra kullan
+        await loadTaahhutKayitlari();
         let taahhutTutar = 0;
         const taahhutKayitIds = [];
         if (taahhutKayitlari && taahhutKayitlari.length > 0) {
@@ -6715,7 +6729,8 @@
         <div style="margin-bottom:10px;"><strong>Miktar:</strong> ${miktar.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺</div>
         ${aciklama ? `<div style="margin-bottom:10px;"><strong>Açıklama:</strong> ${aciklama}</div>` : ''}
         <div style="margin-top:15px; padding-top:15px; border-top:1px solid #eee; font-size:12px; color:#7f8c8d;">
-          <div><strong>Kaydeden:</strong> ${currentPersonelAdi || 'Bilinmiyor'}</div>
+          ${isImpersonating ? `<div><strong>Kimin adına:</strong> ${currentPersonelAdi || 'Bilinmiyor'}</div>` : ''}
+          <div><strong>Kaydeden:</strong> ${originalPersonelAdi || currentPersonelAdi || 'Bilinmiyor'}</div>
           <div><strong>Tarih:</strong> ${new Date().toLocaleString('tr-TR')}</div>
         </div>
       `;
@@ -6750,6 +6765,15 @@
         const yilNum = CURRENT_YIL ? (typeof CURRENT_YIL === 'number' ? CURRENT_YIL : parseInt(CURRENT_YIL)) : new Date().getFullYear();
         const nowISO = new Date().toISOString();
         const ayNum = new Date().getMonth() + 1;
+
+        // IMPERSONATION: Kayıt kimin adına yapılıyor?
+        // personeluid/personel: Impersonation modunda seçilen kullanıcı, normal modda mevcut kullanıcı
+        // kaydedenpersonel/kaydedenpersoneluid: Her zaman orijinal (auth) kullanıcı
+        const targetPersonelUid = isImpersonating ? impersonatedUserId : currentUser.id;
+        const targetPersonelAdi = currentPersonelAdi; // Impersonation modunda bu zaten seçilen kullanıcının adı
+        const kaydedenPersonelAdi = originalPersonelAdi || personelAdi;
+        const kaydedenPersonelUid = currentUser.id; // Auth kullanıcısı her zaman
+
         // taahhut_kayitlari tablosunda personeladi yok, sadece personel var
         const data = {
           id: generateUUID(),
@@ -6761,10 +6785,10 @@
           tarih: nowISO,
           durum: null,
           silindi: false,
-          personeluid: currentUser.id,
-          personel: personelAdi,
-          kaydedenpersonel: personelAdi,
-          kaydedenpersoneluid: currentUser.id,
+          personeluid: targetPersonelUid,
+          personel: targetPersonelAdi,
+          kaydedenpersonel: kaydedenPersonelAdi,
+          kaydedenpersoneluid: kaydedenPersonelUid,
           yil: yilNum
         };
 
