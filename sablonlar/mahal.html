@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Mahal Görünümü | Ramazan-ı Şerif</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <link rel="icon" type="image/png" href="../img/logo.png" />
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root {
+      --bg: #f4f6f9;
+      --card: #ffffff;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --muted: #64748b;
+      --accent: #3b82f6;
+      --good: #10b981;
+      --warn: #f59e0b;
+      --brand: #324960;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+      color: white;
+      padding: 20px;
+      text-align: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header h1 {
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+
+    .header-subtitle {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    .controls {
+      background: var(--card);
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .control-group label {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    select {
+      height: 40px;
+      border: 1px solid var(--border);
+      background: #fff;
+      border-radius: 8px;
+      padding: 0 12px;
+      font: inherit;
+      font-size: 14px;
+      color: var(--text);
+      cursor: pointer;
+      min-width: 200px;
+    }
+
+    select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .selected-date-info {
+      background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-weight: 600;
+      color: #2e7d32;
+      font-size: 15px;
+    }
+
+    .menu-section {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .menu-box {
+      background: var(--card);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    }
+
+    .menu-box-header {
+      padding: 12px 20px;
+      font-weight: 700;
+      font-size: 16px;
+    }
+
+    .menu-box-header span {
+      font-weight: 500;
+    }
+
+    .menu-box.iftar-box .menu-box-header {
+      background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+      color: #856404;
+      border-bottom: 2px solid #f39c12;
+    }
+
+    .menu-box.sahur-box .menu-box-header {
+      background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+      color: #0c5460;
+      border-bottom: 2px solid #2196f3;
+    }
+
+    .menu-box-content {
+      padding: 14px 20px;
+      font-size: 14px;
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .main-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .mahal-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .mahal-headers {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+      margin-bottom: 8px;
+    }
+
+    .mahal-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+      align-items: stretch;
+    }
+    
+    #mahalRows {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .column-header {
+      background: var(--brand);
+      color: white;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 16px;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .column-header.sol {
+      background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    }
+
+    .column-header.sag {
+      background: linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%);
+    }
+
+    .mahal-card {
+      background: var(--card);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      transition: transform 0.2s, box-shadow 0.2s;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .mahal-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    }
+
+    .mahal-card-header {
+      padding: 14px 16px;
+      font-weight: 700;
+      font-size: 15px;
+      border-bottom: 2px solid;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .mahal-card-header .mahal-icon {
+      font-size: 20px;
+    }
+
+    .mahal-card.buyuk-kamelya .mahal-card-header {
+      background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+      border-color: #f39c12;
+      color: #856404;
+    }
+
+    .mahal-card.gunasigi .mahal-card-header {
+      background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+      border-color: #28a745;
+      color: #155724;
+    }
+
+    .mahal-card.hasbahce .mahal-card-header {
+      background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+      border-color: #17a2b8;
+      color: #0c5460;
+    }
+
+    .mahal-card.yemekhane .mahal-card-header {
+      background: linear-gradient(135deg, #e2e3e5 0%, #d6d8db 100%);
+      border-color: #6c757d;
+      color: #383d41;
+    }
+
+    .mahal-card.beyaz-zambak .mahal-card-header {
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      border-color: #6f42c1;
+      color: #4a148c;
+    }
+
+    .mahal-card.gul .mahal-card-header {
+      background: linear-gradient(135deg, #fce4ec 0%, #f8bbd9 100%);
+      border-color: #e91e63;
+      color: #880e4f;
+    }
+
+    .mahal-card-body {
+      padding: 16px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .mahal-card-body.empty {
+      text-align: center;
+      color: var(--muted);
+      font-style: italic;
+      padding: 24px 16px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .iftar-info {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1;
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .info-label {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      min-width: 80px;
+    }
+
+    .info-value {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      text-align: right;
+      flex: 1;
+    }
+
+    .info-value.sahip {
+      color: #2563eb;
+      font-size: 15px;
+    }
+
+    .info-value.personel {
+      color: #059669;
+    }
+
+    .info-value.musafir {
+      background: #f0f9ff;
+      padding: 4px 10px;
+      border-radius: 6px;
+      color: #0369a1;
+    }
+
+    .info-note {
+      margin-top: auto;
+      padding: 10px 12px;
+      background: #fffbeb;
+      border-left: 3px solid #f59e0b;
+      border-radius: 0 8px 8px 0;
+      font-size: 13px;
+      color: #92400e;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+
+    .loading-spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .no-data {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+
+    .no-data-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .summary-bar {
+      background: var(--card);
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: center;
+      position: sticky;
+      bottom: 0;
+    }
+
+    .summary-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .summary-label {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .summary-value {
+      font-weight: 700;
+      font-size: 16px;
+      color: var(--text);
+    }
+
+    .summary-value.highlight {
+      color: var(--accent);
+    }
+
+    .print-btn {
+      position: fixed;
+      bottom: 80px;
+      right: 24px;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: white;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
+      transition: transform 0.2s, box-shadow 0.2s;
+      z-index: 50;
+    }
+
+    .print-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 24px rgba(59, 130, 246, 0.5);
+    }
+
+    @media print {
+      @page {
+        size: A4 portrait;
+        margin: 10mm;
+      }
+
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      html {
+        font-size: 10px !important;
+      }
+
+      body {
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+
+      .print-btn {
+        display: none !important;
+      }
+
+      .header {
+        padding: 8px 0 !important;
+        margin-bottom: 8px !important;
+        text-align: center;
+      }
+
+      .header h1 {
+        font-size: 1.6rem !important;
+        margin: 0 !important;
+      }
+
+      .header-subtitle {
+        font-size: 1rem !important;
+        margin: 4px 0 0 0 !important;
+      }
+
+      .controls {
+        padding: 8px 12px !important;
+        margin-bottom: 10px !important;
+        gap: 12px !important;
+        justify-content: center !important;
+      }
+
+      .control-group {
+        gap: 6px !important;
+      }
+
+      .control-group label {
+        font-size: 0.9rem !important;
+      }
+
+      .control-group select {
+        font-size: 0.9rem !important;
+        padding: 4px 10px !important;
+      }
+
+      .selected-date-info {
+        display: block !important;
+        text-align: center;
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin-bottom: 10px;
+        padding: 8px;
+        background: #f0f0f0 !important;
+        border-radius: 6px;
+      }
+
+      .main-container {
+        padding: 0 10px !important;
+        max-width: 100% !important;
+        width: 100% !important;
+      }
+
+      .menu-section {
+        display: flex !important;
+        flex-direction: row !important;
+        gap: 12px !important;
+        margin-bottom: 36px !important;
+        width: 100% !important;
+      }
+
+      .menu-box {
+        flex: 1;
+      }
+
+      .menu-box-header {
+        padding: 6px 12px !important;
+        font-size: 1rem !important;
+      }
+
+      .menu-box-content {
+        padding: 6px 12px !important;
+        font-size: 0.9rem !important;
+      }
+
+      .mahal-grid {
+        gap: 8px !important;
+        width: 100% !important;
+      }
+
+      .mahal-headers {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 12px !important;
+        margin-bottom: 8px !important;
+      }
+
+      .column-header {
+        padding: 6px 12px !important;
+        font-size: 1.1rem !important;
+      }
+
+      .mahal-row {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 12px !important;
+      }
+
+      #mahalRows {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+      }
+
+      .mahal-card {
+        page-break-inside: avoid !important;
+        box-shadow: none !important;
+        border: 1px solid #999 !important;
+      }
+
+      .mahal-card-header {
+        padding: 5px 10px !important;
+        font-size: 1rem !important;
+      }
+
+      .mahal-card-body {
+        padding: 6px 10px !important;
+      }
+
+      .info-row {
+        padding: 3px 0 !important;
+      }
+
+      .info-label {
+        font-size: 0.85rem !important;
+      }
+      
+      .info-value {
+        font-size: 0.9rem !important;
+      }
+
+      .info-note {
+        font-size: 0.8rem !important;
+        padding: 4px 6px !important;
+        margin-top: 4px !important;
+      }
+
+      .summary-bar {
+        position: relative !important;
+        margin-top: 16px;
+        padding: 14px 20px !important;
+        border: 2px solid #333 !important;
+        border-radius: 8px;
+        gap: 20px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        background: #f5f5f5 !important;
+      }
+
+      .summary-item {
+        padding: 8px 14px !important;
+        background: #fff !important;
+        border-radius: 6px !important;
+        border: 1px solid #ddd !important;
+      }
+
+      .summary-label {
+        font-size: 1.2rem !important;
+        font-weight: 600 !important;
+      }
+
+      .summary-value {
+        font-size: 1.5rem !important;
+        font-weight: 700 !important;
+      }
+
+      .summary-value.highlight {
+        color: #1565c0 !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="header">
+    <h1>🌙 Mahal Görünümü</h1>
+    <p class="header-subtitle">Ramazan-ı Şerif İftar Planlaması</p>
+  </div>
+
+  <div class="controls">
+    <div class="control-group">
+      <label for="yilSelect">Yıl:</label>
+      <select id="yilSelect">
+        <option value="">Yükleniyor...</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label for="gunSelect">Ramazan Günü:</label>
+      <select id="gunSelect">
+        <option value="">Önce yıl seçiniz</option>
+      </select>
+    </div>
+    <div class="selected-date-info" id="selectedDateInfo" style="display:none">
+      <span id="dateInfoText"></span>
+    </div>
+  </div>
+
+  <div class="main-container">
+    <div id="loadingArea" class="loading" style="display:none">
+      <div class="loading-spinner"></div>
+      <p>Veriler yükleniyor...</p>
+    </div>
+
+    <div id="noDataArea" class="no-data" style="display:none">
+      <div class="no-data-icon">📅</div>
+      <p>Lütfen bir gün seçiniz veya seçilen gün için kayıt bulunamadı.</p>
+    </div>
+
+    <div class="menu-section" id="menuSection" style="display:none">
+      <div class="menu-box iftar-box">
+        <div class="menu-box-header">🌙 İftar Menüsü: <span id="iftarMenuIsmi">-</span></div>
+        <div class="menu-box-content" id="iftarMenuDetay">-</div>
+      </div>
+      <div class="menu-box sahur-box">
+        <div class="menu-box-header">🌟 Sahur Menüsü: <span id="sahurMenuIsmi">-</span></div>
+        <div class="menu-box-content" id="sahurMenuDetay">-</div>
+      </div>
+    </div>
+
+    <div class="mahal-grid" id="mahalGrid" style="display:none">
+      <div class="mahal-headers">
+        <div class="column-header sol">Sol Sıra</div>
+        <div class="column-header sag">Sağ Sıra</div>
+      </div>
+      <div id="mahalRows"></div>
+    </div>
+  </div>
+
+  <div class="summary-bar" id="summaryBar" style="display:none">
+    <div class="summary-item">
+      <span class="summary-label">İftar Adedi:</span>
+      <span class="summary-value highlight" id="toplamIftar">0</span>
+    </div>
+    <div class="summary-item">
+      <span class="summary-label">Müsafir Adedi:</span>
+      <span class="summary-value" id="toplamMusafir">0</span>
+    </div>
+    <div class="summary-item">
+      <span class="summary-label">Talebe Personel Adedi:</span>
+      <span class="summary-value">50</span>
+    </div>
+    <div class="summary-item">
+      <span class="summary-label">Toplam Kişi Adedi:</span>
+      <span class="summary-value highlight" id="toplamKisi">50</span>
+    </div>
+  </div>
+
+  <button class="print-btn" onclick="window.print()" title="Yazdır">🖨️</button>
+
+  <script>
+    const SUPABASE_URL = 'https://lmwfibippjvqctccxiwb.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxtd2ZpYmlwcGp2cWN0Y2N4aXdiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NjE2NzA1NCwiZXhwIjoyMDgxNzQzMDU0fQ.lzoudrJx_V4RdCCxPRfgLA1riWNKZ3HyFzeqRynYHeQ';
+
+    let sb = null;
+    let ramazanYillari = [];
+    let aktifRamazan = null;
+    let mahalList = [];
+
+    // Mahal sıralamaları - ramazan_mahaller tablosundan yüklendikten sonra ID ile eşleştirilecek
+    let mahallerSolConfig = [];
+    let mahallerSagConfig = [];
+
+    function getSupabase() {
+      if (sb) return sb;
+      
+      if (typeof supabase !== 'undefined' && supabase.createClient) {
+        sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        console.log('✅ Supabase client oluşturuldu');
+        return sb;
+      }
+      
+      if (window.supabase && window.supabase.from) {
+        sb = window.supabase;
+        console.log('✅ Window supabase kullanılıyor');
+        return sb;
+      }
+      
+      console.error('❌ Supabase henüz yüklenmedi');
+      return null;
+    }
+
+    async function waitForSupabase(maxWait = 5000) {
+      const startTime = Date.now();
+      while (!getSupabase() && (Date.now() - startTime) < maxWait) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      return getSupabase();
+    }
+
+    function qs(selector) {
+      return document.querySelector(selector);
+    }
+
+    function getMahalClass(mahalAdi) {
+      const adi = normalizeText(mahalAdi);
+      if (adi.includes('buyuk kamelya')) return 'buyuk-kamelya';
+      if (adi.includes('gunasigi')) return 'gunasigi';
+      if (adi.includes('hasbahce')) return 'hasbahce';
+      if (adi.includes('zambak')) return 'beyaz-zambak';
+      if (adi.includes('gul')) return 'gul';
+      if (adi.includes('yemekhane')) return 'yemekhane';
+      return '';
+    }
+
+    function getMahalIcon(mahalAdi) {
+      return '';
+    }
+
+    function createMahalCard(mahalAdi, kayit) {
+      const card = document.createElement('div');
+      card.className = `mahal-card ${getMahalClass(mahalAdi)}`;
+
+      const header = document.createElement('div');
+      header.className = 'mahal-card-header';
+      header.innerHTML = mahalAdi;
+      card.appendChild(header);
+
+      const body = document.createElement('div');
+      body.className = 'mahal-card-body';
+
+      if (kayit) {
+        body.innerHTML = `
+          <div class="iftar-info">
+            <div class="info-row">
+              <span class="info-label">İftar Sahibi</span>
+              <span class="info-value sahip">${kayit.sahip || '-'}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Personel</span>
+              <span class="info-value personel">${kayit.personelAdi || kayit.personeladi || kayit.personel || '-'}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Misafir</span>
+              <span class="info-value musafir">${kayit.musafirAdedi || kayit.musafiradedi || 0} kişi</span>
+            </div>
+            ${(kayit.notlar || kayit.not) ? `<div class="info-note">${kayit.notlar || kayit.not}</div>` : ''}
+          </div>
+        `;
+      } else {
+        body.className = 'mahal-card-body empty';
+        body.textContent = 'Bu mahal için kayıt yok';
+      }
+
+      card.appendChild(body);
+      return card;
+    }
+
+    async function loadRamazanYillari() {
+      const yilSelect = qs('#yilSelect');
+      
+      try {
+        const supabase = getSupabase();
+        if (!supabase) {
+          console.error('❌ Supabase client yok');
+          yilSelect.innerHTML = '<option value="">Bağlantı hatası!</option>';
+          return;
+        }
+
+        console.log('📅 Ramazan yılları yükleniyor...');
+        
+        const { data, error } = await supabase
+          .from('ramazan_yillar')
+          .select('*')
+          .order('yil', { ascending: false });
+
+        if (error) {
+          console.error('Ramazan yılları yüklenemedi:', error);
+          yilSelect.innerHTML = '<option value="">Veri yüklenemedi!</option>';
+          return;
+        }
+
+        ramazanYillari = data || [];
+        console.log('✅ Ramazan yılları yüklendi:', ramazanYillari.length, 'adet');
+        
+        aktifRamazan = ramazanYillari.find(r => r.aktif) || ramazanYillari[0];
+
+        yilSelect.innerHTML = '';
+
+        if (ramazanYillari.length === 0) {
+          yilSelect.innerHTML = '<option value="">Kayıtlı yıl yok</option>';
+          return;
+        }
+
+        ramazanYillari.forEach(r => {
+          const option = document.createElement('option');
+          option.value = r.yil;
+          option.textContent = `${r.yil} - Hicri ${r.hicriyil || r.hicriYil || ''}`;
+          if (r.aktif) option.textContent += ' (Aktif)';
+          yilSelect.appendChild(option);
+        });
+
+        if (aktifRamazan) {
+          yilSelect.value = aktifRamazan.yil;
+          await loadRamazanGunleri(aktifRamazan);
+        }
+      } catch (e) {
+        console.error('Ramazan yılları yüklenemedi:', e);
+        yilSelect.innerHTML = '<option value="">Hata: ' + e.message + '</option>';
+      }
+    }
+
+    async function loadRamazanGunleri(ramazanData) {
+      const gunSelect = qs('#gunSelect');
+      gunSelect.innerHTML = '<option value="">Gün seçiniz...</option>';
+
+      if (!ramazanData || !ramazanData.baslangic || !ramazanData.bitis) return;
+
+      const baslangic = new Date(ramazanData.baslangic);
+      const bitis = new Date(ramazanData.bitis);
+
+      const gunIsimleri = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+      const ayIsimleri = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+
+      let gun = 1;
+      const current = new Date(baslangic);
+
+      while (current <= bitis) {
+        const option = document.createElement('option');
+        const dateStr = current.toISOString().split('T')[0];
+        option.value = dateStr;
+
+        const gunIsmi = gunIsimleri[current.getDay()];
+        const ayIsmi = ayIsimleri[current.getMonth()];
+        option.textContent = `${gun}. Gün - ${current.getDate()} ${ayIsmi} ${gunIsmi}`;
+
+        gunSelect.appendChild(option);
+
+        current.setDate(current.getDate() + 1);
+        gun++;
+      }
+
+      const today = new Date().toISOString().split('T')[0];
+      if (gunSelect.querySelector(`option[value="${today}"]`)) {
+        gunSelect.value = today;
+        await loadGunVerileri(today);
+      }
+    }
+
+    async function loadMenuler(tarih, yil) {
+      try {
+        const supabase = getSupabase();
+        if (!supabase) return;
+
+        const { data: menuler, error } = await supabase
+          .from('ramazan_gun_menuleri')
+          .select('*')
+          .eq('yil', parseInt(yil))
+          .eq('tarih', tarih);
+
+        if (error) {
+          console.error('Menüler yüklenemedi:', error);
+          return;
+        }
+
+        const iftarMenu = menuler?.find(m => m.tip === 'iftar');
+        const sahurMenu = menuler?.find(m => m.tip === 'sahur');
+
+        qs('#iftarMenuIsmi').textContent = iftarMenu?.menu_ismi || '-';
+        qs('#iftarMenuDetay').textContent = iftarMenu?.menu_detay || '-';
+        qs('#sahurMenuIsmi').textContent = sahurMenu?.menu_ismi || '-';
+        qs('#sahurMenuDetay').textContent = sahurMenu?.menu_detay || '-';
+        qs('#menuSection').style.display = 'flex';
+
+      } catch (e) {
+        console.error('Menü yükleme hatası:', e);
+      }
+    }
+
+    async function loadMahallar() {
+      try {
+        const supabase = getSupabase();
+        if (!supabase) return;
+
+        const { data, error } = await supabase
+          .from('ramazan_mahaller')
+          .select('*')
+          .order('adi', { ascending: true });
+
+        if (!error && data) {
+          mahalList = data.map(m => ({
+            id: m.id,
+            adi: m.adi
+          }));
+          
+          console.log('📍 Yüklenen mahaller:', mahalList.map(m => `${m.adi} (${m.id})`));
+          
+          // Mahalleri ID ile eşleştir
+          setupMahalConfig();
+        }
+      } catch (e) {
+        console.error('Mahaller yüklenemedi:', e);
+      }
+    }
+
+    function findMahalByName(searchTerms) {
+      // searchTerms: aranacak kelimeler dizisi - sırayla dener, ilk eşleşeni döner
+      for (const term of searchTerms) {
+        const normTerm = normalizeText(term);
+        
+        // Önce tam eşleşme ara
+        for (const mahal of mahalList) {
+          const normMahal = normalizeText(mahal.adi);
+          if (normMahal === normTerm) {
+            return mahal;
+          }
+        }
+        
+        // Tam eşleşme yoksa, spesifik arama yap (yemekhane için özel kontrol)
+        for (const mahal of mahalList) {
+          const normMahal = normalizeText(mahal.adi);
+          
+          // Yemekhane için kesin eşleşme - sadece tam numara eşleşmeli
+          if (normTerm.includes('yemekhane-1') || normTerm.includes('yemekhane 1')) {
+            if (normMahal.includes('yemekhane-1') || normMahal === 'yemekhane 1' || normMahal === 'yemekhane-1') {
+              return mahal;
+            }
+          } else if (normTerm.includes('yemekhane-2') || normTerm.includes('yemekhane 2')) {
+            if (normMahal.includes('yemekhane-2') || normMahal === 'yemekhane 2' || normMahal === 'yemekhane-2') {
+              return mahal;
+            }
+          } else if (normMahal.includes(normTerm)) {
+            return mahal;
+          }
+        }
+      }
+      return null;
+    }
+
+    function setupMahalConfig() {
+      // Sol sıra mahalleri (DB adları: BÜYÜK KAMELYA, Günâşığı (K), Hasbahçe Kamelyası, Yemekhane-1)
+      const buyukKamelya = findMahalByName(['büyük kamelya']);
+      const gunasigi = findMahalByName(['günâşığı', 'gunasigi']);
+      const hasbahce = findMahalByName(['hasbahçe kamelyası', 'hasbahce']);
+      const yemekhane1 = findMahalByName(['yemekhane-1']);
+      
+      // Sağ sıra mahalleri (DB adları: BÜYÜK KAMELYA, Beyaz Zambak (K), Gül Kamelyası, Yemekhane-2)
+      const beyazZambak = findMahalByName(['beyaz zambak']);
+      const gul = findMahalByName(['gül kamelyası', 'gul kamelyasi']);
+      const yemekhane2 = findMahalByName(['yemekhane-2']);
+
+      mahallerSolConfig = [
+        { displayName: 'Büyük Kamelya', id: buyukKamelya?.id, dbName: buyukKamelya?.adi },
+        { displayName: 'Günâşığı (K)', id: gunasigi?.id, dbName: gunasigi?.adi },
+        { displayName: 'Hasbahçe Kamelyası', id: hasbahce?.id, dbName: hasbahce?.adi },
+        { displayName: 'Yemekhane-1', id: yemekhane1?.id, dbName: yemekhane1?.adi }
+      ];
+
+      mahallerSagConfig = [
+        { displayName: 'Büyük Kamelya', id: buyukKamelya?.id, dbName: buyukKamelya?.adi, useSecond: true },
+        { displayName: 'Beyaz Zambak (K)', id: beyazZambak?.id, dbName: beyazZambak?.adi },
+        { displayName: 'Gül Kamelyası', id: gul?.id, dbName: gul?.adi },
+        { displayName: 'Yemekhane-2', id: yemekhane2?.id, dbName: yemekhane2?.adi }
+      ];
+
+      console.log('🔍 Bulunan mahaller:');
+      console.log('  - Büyük Kamelya:', buyukKamelya?.adi, buyukKamelya?.id);
+      console.log('  - Günâşığı:', gunasigi?.adi, gunasigi?.id);
+      console.log('  - Hasbahçe:', hasbahce?.adi, hasbahce?.id);
+      console.log('  - Yemekhane-1:', yemekhane1?.adi, yemekhane1?.id);
+      console.log('  - Beyaz Zambak:', beyazZambak?.adi, beyazZambak?.id);
+      console.log('  - Gül:', gul?.adi, gul?.id);
+      console.log('  - Yemekhane-2:', yemekhane2?.adi, yemekhane2?.id);
+      console.log('📋 Sol mahal config:', mahallerSolConfig.map(m => `${m.displayName}: ${m.id || 'YOK'}`));
+      console.log('📋 Sağ mahal config:', mahallerSagConfig.map(m => `${m.displayName}: ${m.id || 'YOK'}`));
+    }
+
+    async function loadGunVerileri(tarih) {
+      if (!tarih) {
+        qs('#noDataArea').style.display = 'block';
+        qs('#mahalGrid').style.display = 'none';
+        qs('#summaryBar').style.display = 'none';
+        qs('#selectedDateInfo').style.display = 'none';
+        qs('#menuSection').style.display = 'none';
+        return;
+      }
+
+      qs('#loadingArea').style.display = 'block';
+      qs('#noDataArea').style.display = 'none';
+      qs('#mahalGrid').style.display = 'none';
+      qs('#summaryBar').style.display = 'none';
+
+      try {
+        const supabase = getSupabase();
+        if (!supabase) return;
+
+        const yil = qs('#yilSelect').value;
+
+        // tarih alanı timestamp with time zone tipi, bu yüzden tarih aralığı kullanıyoruz
+        const gunBaslangic = `${tarih}T00:00:00.000Z`;
+        const gunBitis = `${tarih}T23:59:59.999Z`;
+
+        console.log('🔍 Sorgu parametreleri:', { yil, tarih, gunBaslangic, gunBitis });
+
+        const { data: kayitlar, error } = await supabase
+          .from('ramazan_kayitlari')
+          .select('*')
+          .eq('yil', parseInt(yil))
+          .gte('tarih', gunBaslangic)
+          .lte('tarih', gunBitis)
+          .eq('tip', 'iftar');
+        
+        console.log('📦 Gelen kayıtlar:', kayitlar?.length || 0, kayitlar);
+
+        qs('#loadingArea').style.display = 'none';
+
+        if (error) {
+          console.error('Kayıtlar yüklenemedi:', error);
+          qs('#noDataArea').style.display = 'block';
+          return;
+        }
+
+        const iftarlar = kayitlar || [];
+
+        const ramazan = ramazanYillari.find(r => r.yil == yil);
+        const gunNo = ramazan ? calculateRamazanGun(tarih, ramazan.baslangic) : 0;
+        const tarihObj = new Date(tarih);
+        const gunIsimleri = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+        const ayIsimleri = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+
+        qs('#dateInfoText').textContent = `${gunNo}. Gün - ${tarihObj.getDate()} ${ayIsimleri[tarihObj.getMonth()]} ${gunIsimleri[tarihObj.getDay()]}`;
+        qs('#selectedDateInfo').style.display = 'block';
+
+        // Menüleri yükle
+        await loadMenuler(tarih, yil);
+
+        renderMahalGrid(iftarlar);
+
+      } catch (e) {
+        console.error('Veri yükleme hatası:', e);
+        qs('#loadingArea').style.display = 'none';
+        qs('#noDataArea').style.display = 'block';
+      }
+    }
+
+    function calculateRamazanGun(tarih, baslangic) {
+      const tarihObj = new Date(tarih);
+      const baslangicObj = new Date(baslangic);
+      const diffTime = tarihObj - baslangicObj;
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays + 1;
+    }
+
+    function normalizeText(text) {
+      return (text || '').toLowerCase()
+        .replace(/ğ/g, 'g')
+        .replace(/ü/g, 'u')
+        .replace(/ş/g, 's')
+        .replace(/ı/g, 'i')
+        .replace(/ö/g, 'o')
+        .replace(/ç/g, 'c')
+        .replace(/â/g, 'a')
+        .replace(/î/g, 'i')
+        .replace(/û/g, 'u')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function mahalMatch(kayitMahal, targetMahal) {
+      const kayitNorm = normalizeText(kayitMahal);
+      const targetNorm = normalizeText(targetMahal);
+
+      // Tam eşleşme
+      if (kayitNorm === targetNorm) return true;
+
+      // Yemekhane için kesin numara eşleşmesi
+      if ((targetNorm.includes('yemekhane-1') || targetNorm.includes('yemekhane 1')) && 
+          (kayitNorm.includes('yemekhane-1') || kayitNorm === 'yemekhane 1')) return true;
+      if ((targetNorm.includes('yemekhane-2') || targetNorm.includes('yemekhane 2')) && 
+          (kayitNorm.includes('yemekhane-2') || kayitNorm === 'yemekhane 2')) return true;
+
+      // Diğer mahaller için spesifik eşleşme (kamelya genel eşleştirmesi kaldırıldı)
+      if (targetNorm.includes('gunasigi') && kayitNorm.includes('gunasigi')) return true;
+      if (targetNorm.includes('hasbahce') && kayitNorm.includes('hasbahce')) return true;
+      if (targetNorm.includes('beyaz zambak') && kayitNorm.includes('beyaz zambak')) return true;
+      if (targetNorm.includes('gul kamelya') && kayitNorm.includes('gul kamelya')) return true;
+      if (targetNorm.includes('buyuk kamelya') && kayitNorm.includes('buyuk kamelya')) return true;
+
+      return false;
+    }
+
+    function renderMahalGrid(iftarlar) {
+      const mahalRows = qs('#mahalRows');
+      mahalRows.innerHTML = '';
+
+      // Mahal ID'sine göre kayıtları grupla
+      const mahalKayitMapById = {};
+
+      iftarlar.forEach(kayit => {
+        // Önce mahalid ile eşleştir, yoksa mahal adı ile
+        let mahalId = kayit.mahalid || kayit.mahalId;
+        
+        // Eğer mahalid yoksa, mahal adından ID bul
+        if (!mahalId && kayit.mahal) {
+          const kayitMahalNorm = normalizeText(kayit.mahal);
+          
+          // Önce tam eşleşme ara
+          let foundMahal = mahalList.find(m => normalizeText(m.adi) === kayitMahalNorm);
+          
+          // Tam eşleşme yoksa, yemekhane için özel kontrol
+          if (!foundMahal) {
+            if (kayitMahalNorm.includes('yemekhane-1') || kayitMahalNorm.includes('yemekhane 1')) {
+              foundMahal = mahalList.find(m => {
+                const n = normalizeText(m.adi);
+                return n.includes('yemekhane-1') || n === 'yemekhane 1';
+              });
+            } else if (kayitMahalNorm.includes('yemekhane-2') || kayitMahalNorm.includes('yemekhane 2')) {
+              foundMahal = mahalList.find(m => {
+                const n = normalizeText(m.adi);
+                return n.includes('yemekhane-2') || n === 'yemekhane 2';
+              });
+            } else {
+              foundMahal = mahalList.find(m => normalizeText(m.adi).includes(kayitMahalNorm));
+            }
+          }
+          
+          if (foundMahal) mahalId = foundMahal.id;
+        }
+
+        if (mahalId) {
+          if (!mahalKayitMapById[mahalId]) {
+            mahalKayitMapById[mahalId] = [];
+          }
+          mahalKayitMapById[mahalId].push(kayit);
+        } else {
+          console.warn('⚠️ Mahal eşleştirilemedi:', kayit.mahal, kayit);
+        }
+      });
+
+      console.log('🗂️ Mahal kayıt grupları:', Object.keys(mahalKayitMapById).map(id => {
+        const mahal = mahalList.find(m => m.id === id);
+        return `${mahal?.adi || id}: ${mahalKayitMapById[id].length} kayıt`;
+      }));
+      
+      console.log('📝 Gelen kayıtların mahal bilgileri:');
+      iftarlar.forEach((k, i) => {
+        console.log(`  ${i+1}. mahal: "${k.mahal}", mahalid: "${k.mahalid || k.mahalId || 'YOK'}"`);
+      });
+
+      let toplamIftar = 0;
+      let toplamMusafir = 0;
+      let doluMahal = 0;
+
+      // Her satır için sol ve sağ kartı birlikte oluştur
+      for (let i = 0; i < mahallerSolConfig.length; i++) {
+        const solMahal = mahallerSolConfig[i];
+        const sagMahal = mahallerSagConfig[i];
+
+        // Sol kart
+        const solKayitlar = solMahal.id ? (mahalKayitMapById[solMahal.id] || []) : [];
+        const solKayit = solKayitlar.length > 0 ? solKayitlar[0] : null;
+
+        if (solKayit) {
+          toplamIftar++;
+          toplamMusafir += parseInt(solKayit.musafirAdedi || solKayit.musafiradedi || 0);
+          doluMahal++;
+        }
+
+        // Sağ kart
+        const sagKayitlar = sagMahal.id ? (mahalKayitMapById[sagMahal.id] || []) : [];
+        let sagKayit = null;
+
+        if (sagMahal.useSecond) {
+          sagKayit = sagKayitlar.length > 1 ? sagKayitlar[1] : null;
+        } else {
+          sagKayit = sagKayitlar.length > 0 ? sagKayitlar[0] : null;
+        }
+
+        if (sagKayit) {
+          toplamIftar++;
+          toplamMusafir += parseInt(sagKayit.musafirAdedi || sagKayit.musafiradedi || 0);
+          doluMahal++;
+        }
+
+        // Satır oluştur
+        const row = document.createElement('div');
+        row.className = 'mahal-row';
+        
+        const solCard = createMahalCard(solMahal.displayName, solKayit);
+        const sagCard = createMahalCard(sagMahal.displayName, sagKayit);
+        
+        row.appendChild(solCard);
+        row.appendChild(sagCard);
+        mahalRows.appendChild(row);
+      }
+
+      qs('#toplamIftar').textContent = toplamIftar;
+      qs('#toplamMusafir').textContent = toplamMusafir;
+      qs('#toplamKisi').textContent = 50 + toplamMusafir;
+
+      qs('#mahalGrid').style.display = 'grid';
+      qs('#summaryBar').style.display = 'flex';
+    }
+
+    qs('#yilSelect').addEventListener('change', async function () {
+      const yil = this.value;
+      const ramazan = ramazanYillari.find(r => r.yil == yil);
+      if (ramazan) {
+        await loadRamazanGunleri(ramazan);
+      }
+    });
+
+    qs('#gunSelect').addEventListener('change', async function () {
+      await loadGunVerileri(this.value);
+    });
+
+    async function initPage() {
+      console.log('🔄 Sayfa başlatılıyor...');
+      
+      const client = await waitForSupabase(5000);
+      if (!client) {
+        console.error('❌ Supabase bağlantısı kurulamadı');
+        qs('#yilSelect').innerHTML = '<option value="">Bağlantı hatası!</option>';
+        return;
+      }
+      
+      console.log('✅ Supabase bağlantısı başarılı');
+      await loadMahallar();
+      await loadRamazanYillari();
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initPage);
+    } else {
+      initPage();
+    }
+  </script>
+</body>
+
+</html>

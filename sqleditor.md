@@ -435,6 +435,17 @@ CREATE TABLE public.personel_odeme_takvim (
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT personel_odeme_takvim_pkey PRIMARY KEY (id)
 );
+CREATE TABLE public.personel_ramazan_izin (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  personel_uid text NOT NULL,
+  personel_adi text NOT NULL,
+  ramazan_yil integer NOT NULL,
+  izin_tarihi date NOT NULL,
+  sira integer NOT NULL CHECK (sira = ANY (ARRAY[1, 2])),
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT personel_ramazan_izin_pkey PRIMARY KEY (id)
+);
 CREATE TABLE public.ramazan_arsiv (
   id text NOT NULL,
   yil integer,
@@ -468,6 +479,18 @@ CREATE TABLE public.ramazan_ayarlar (
   iftarmax integer,
   sahurmax integer,
   CONSTRAINT ramazan_ayarlar_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.ramazan_gun_menuleri (
+  id text NOT NULL,
+  tarih date NOT NULL,
+  tip text NOT NULL,
+  menu_id text,
+  menu_ismi text,
+  menu_detay text,
+  yil integer NOT NULL,
+  createdat timestamp with time zone DEFAULT now(),
+  updatedat timestamp with time zone DEFAULT now(),
+  CONSTRAINT ramazan_gun_menuleri_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.ramazan_hedefler (
   id text NOT NULL,
@@ -509,6 +532,8 @@ CREATE TABLE public.ramazan_kayitlari (
   createdat timestamp with time zone DEFAULT now(),
   updatedat timestamp with time zone DEFAULT now(),
   tarih timestamp with time zone,
+  muhasebe_kaydedildi boolean DEFAULT false,
+  muhasebe_kayit_tarihi timestamp with time zone,
   CONSTRAINT ramazan_kayitlari_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.ramazan_mahaller (
@@ -530,6 +555,14 @@ CREATE TABLE public.ramazan_menuler (
   yil integer,
   updatedat timestamp with time zone DEFAULT now(),
   createdat timestamp with time zone DEFAULT now(),
+  menu_ismi text,
+  pilav text,
+  orta_menu text,
+  meze text,
+  tatli text,
+  sicak1 text,
+  sicak2 text,
+  sicak3 text,
   CONSTRAINT ramazan_menuler_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.ramazan_secenekler (
@@ -580,18 +613,6 @@ CREATE TABLE public.ramazan_yillar (
   yil integer,
   CONSTRAINT ramazan_yillar_pkey PRIMARY KEY (id)
 );
-CREATE TABLE public.personel_ramazan_izin (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  personel_uid text NOT NULL,
-  personel_adi text NOT NULL,
-  ramazan_yil integer NOT NULL,
-  izin_tarihi date NOT NULL,
-  sira integer NOT NULL CHECK (sira IN (1, 2)),
-  created_at timestamp with time zone DEFAULT now(),
-  updated_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT personel_ramazan_izin_pkey PRIMARY KEY (id),
-  CONSTRAINT personel_ramazan_izin_gunluk_unique UNIQUE (ramazan_yil, izin_tarihi, sira)
-);
 CREATE TABLE public.sayfa_manifesti (
   id text NOT NULL,
   order integer,
@@ -632,6 +653,8 @@ CREATE TABLE public.taahhut_kayitlari (
   kaydedenpersoneluid text,
   createdat timestamp with time zone DEFAULT now(),
   updatedat timestamp with time zone DEFAULT now(),
+  muhasebe_kaydedildi boolean DEFAULT false,
+  muhasebe_kayit_tarihi timestamp with time zone,
   CONSTRAINT taahhut_kayitlari_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.tahakkuklar (
@@ -720,6 +743,8 @@ CREATE TABLE public.teberru_kayitlari (
   tarih timestamp with time zone,
   updatedat timestamp with time zone,
   yil integer,
+  muhasebe_kaydedildi boolean DEFAULT false,
+  muhasebe_kayit_tarihi timestamp with time zone,
   CONSTRAINT teberru_kayitlari_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.umre_onkayit (

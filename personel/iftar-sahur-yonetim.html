@@ -916,6 +916,35 @@
       border-left-color: #7b1fa2;
     }
 
+    #modalCalDay .cal-day-summary-card.tahsilat {
+      background: linear-gradient(135deg, #e8eaf6 0%, #c5cae9 100%);
+      border-left-color: #3f51b5;
+    }
+
+    #modalCalDay .cal-day-summary-card.kalan {
+      background: linear-gradient(135deg, #fce4ec 0%, #f8bbd9 100%);
+      border-left-color: #c2185b;
+    }
+
+    #modalCalDay .cal-day-summary-value.text-success {
+      color: #2e7d32;
+    }
+
+    .cal-tahsilat-odendi {
+      color: #2e7d32;
+      font-weight: 600;
+    }
+
+    .cal-tahsilat-kismi {
+      color: #f57c00;
+      font-weight: 500;
+    }
+
+    .cal-tahsilat-beklemede {
+      color: #9e9e9e;
+      font-style: italic;
+    }
+
     #modalCalDay .cal-day-summary-label {
       font-size: 11px;
       color: var(--muted);
@@ -1170,6 +1199,7 @@
       <button class="tab" data-tab="istatistik">📊 İstatistikler</button>
       <button class="tab" data-tab="export">📤 İçe/Dışa Aktar</button>
       <button class="tab" data-tab="kontrol">🔍 Kontrol</button>
+      <button class="tab" data-tab="paylas">📢 Paylaş</button>
     </div>
 
     <!-- Tab: Kayıtlar -->
@@ -1984,6 +2014,85 @@
         </div>
       </div>
     </div>
+
+    <!-- Tab: Paylaş -->
+    <div class="tab-content" id="tab-paylas">
+      <div class="card">
+        <div class="toolbar" style="flex-wrap:wrap;gap:12px;margin-bottom:16px">
+          <h3 style="margin:0;flex:1;min-width:200px">📢 Personel Performans Özeti (Paylaşım için)</h3>
+          <select id="paylasYil" style="min-width:100px">
+            <option value="">Yıl seçin...</option>
+          </select>
+          <button type="button" class="primary" onclick="loadPaylasData()">🔄 Yükle</button>
+          <button type="button" class="secondary" onclick="exportPaylasExcel()">📊 Excel</button>
+          <button type="button" class="secondary" onclick="copyPaylasTable()">📋 Kopyala</button>
+        </div>
+        <p class="muted" style="margin-bottom:16px;font-size:13px">
+          Bu tablo personellerin Ramazan-ı Şerif dönemindeki performans özetini gösterir. Paylaşım için kopyalayabilir veya Excel'e aktarabilirsiniz.
+        </p>
+        
+        <div id="paylasSummary" style="display:none;margin-bottom:20px">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px">
+            <div class="stat-card" style="background:linear-gradient(135deg, #e3f2fd, #bbdefb);border-left:4px solid #1976d2;padding:16px;border-radius:10px">
+              <div style="font-size:12px;color:#666;margin-bottom:4px">🎯 Toplam Hedef</div>
+              <div style="font-size:22px;font-weight:700" id="paylasToplamHedef">₺0</div>
+            </div>
+            <div class="stat-card" style="background:linear-gradient(135deg, #e8f5e9, #c8e6c9);border-left:4px solid #388e3c;padding:16px;border-radius:10px">
+              <div style="font-size:12px;color:#666;margin-bottom:4px">💰 Toplam Tutar</div>
+              <div style="font-size:22px;font-weight:700" id="paylasToplamTutar">₺0</div>
+            </div>
+            <div class="stat-card" style="background:linear-gradient(135deg, #fff3e0, #ffe0b2);border-left:4px solid #f57c00;padding:16px;border-radius:10px">
+              <div style="font-size:12px;color:#666;margin-bottom:4px">📊 Hedefe Ulaşma</div>
+              <div style="font-size:22px;font-weight:700" id="paylasHedefeUlasmaYuzde">%0</div>
+              <div style="margin-top:6px;height:8px;background:#e0e0e0;border-radius:4px;overflow:hidden">
+                <div id="paylasHedefeUlasmaBar" style="height:100%;background:#4caf50;width:0%;transition:width 0.3s"></div>
+              </div>
+            </div>
+            <div class="stat-card" style="background:linear-gradient(135deg, #f3e5f5, #e1bee7);border-left:4px solid #7b1fa2;padding:16px;border-radius:10px">
+              <div style="font-size:12px;color:#666;margin-bottom:4px">✅ Hedefe Ulaşan/Geçen Personel</div>
+              <div style="font-size:22px;font-weight:700" id="paylasHedefUlasan">0</div>
+              <div style="font-size:11px;color:#666;margin-top:4px" id="paylasHedefUlasanDetay"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-wrap" style="max-height:calc(100vh - 320px);overflow:auto">
+          <table id="tablePaylasim" style="font-size:13px">
+            <thead style="position:sticky;top:0;background:#fff;z-index:2">
+              <tr>
+                <th rowspan="2" style="vertical-align:middle;min-width:150px;cursor:pointer" data-sort="personel" onclick="sortPaylasTable('personel')">Personel</th>
+                <th rowspan="2" style="vertical-align:middle;text-align:center;cursor:pointer" data-sort="hedef" onclick="sortPaylasTable('hedef')">Hedef (₺)</th>
+                <th colspan="2" style="text-align:center;background:#e3f2fd">İftar</th>
+                <th colspan="2" style="text-align:center;background:#fff3e0">Sahur</th>
+                <th colspan="2" style="text-align:center;background:#e8f5e9">Taahhüt</th>
+                <th colspan="2" style="text-align:center;background:#f3e5f5">Teberru</th>
+                <th rowspan="2" style="vertical-align:middle;text-align:center;cursor:pointer" data-sort="toplamTutar" onclick="sortPaylasTable('toplamTutar')">Toplam<br>Tutar (₺)</th>
+                <th rowspan="2" style="vertical-align:middle;text-align:center;cursor:pointer" data-sort="hedefeUlasma" onclick="sortPaylasTable('hedefeUlasma')">Hedefe<br>Ulaşma</th>
+                <th rowspan="2" style="vertical-align:middle;text-align:center;cursor:pointer" data-sort="tahsilatBedeli" onclick="sortPaylasTable('tahsilatBedeli')">Tahsilat<br>Bedeli (₺)</th>
+                <th rowspan="2" style="vertical-align:middle;text-align:center;cursor:pointer" data-sort="tahsilatDurumu" onclick="sortPaylasTable('tahsilatDurumu')">Tahsilat<br>Durumu (₺)</th>
+                <th rowspan="2" style="vertical-align:middle;text-align:center;cursor:pointer" data-sort="tahsilatUlasma" onclick="sortPaylasTable('tahsilatUlasma')">Tahsilat<br>Ulaşma %</th>
+              </tr>
+              <tr>
+                <th style="text-align:center;background:#e3f2fd;cursor:pointer" onclick="sortPaylasTable('iftarAdet')">Adet</th>
+                <th style="text-align:center;background:#e3f2fd;cursor:pointer" onclick="sortPaylasTable('iftarTutar')">Tutar</th>
+                <th style="text-align:center;background:#fff3e0;cursor:pointer" onclick="sortPaylasTable('sahurAdet')">Adet</th>
+                <th style="text-align:center;background:#fff3e0;cursor:pointer" onclick="sortPaylasTable('sahurTutar')">Tutar</th>
+                <th style="text-align:center;background:#e8f5e9;cursor:pointer" onclick="sortPaylasTable('taahhutAdet')">Adet</th>
+                <th style="text-align:center;background:#e8f5e9;cursor:pointer" onclick="sortPaylasTable('taahhutTutar')">Tutar</th>
+                <th style="text-align:center;background:#f3e5f5;cursor:pointer" onclick="sortPaylasTable('teberruAdet')">Adet</th>
+                <th style="text-align:center;background:#f3e5f5;cursor:pointer" onclick="sortPaylasTable('teberruTutar')">Tutar</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyPaylas"></tbody>
+            <tfoot id="tfootPaylas" style="font-weight:700;background:#f8f9fa"></tfoot>
+          </table>
+        </div>
+        <div id="paylasEmpty" style="display:none;padding:40px;text-align:center;color:var(--muted);background:#f8f9fa;border-radius:12px;margin-top:16px">
+          <div style="font-size:48px;margin-bottom:12px">📊</div>
+          <div>Veri yüklemek için yukarıdaki <strong>Yükle</strong> butonuna tıklayın.</div>
+        </div>
+      </div>
+    </div>
   </main>
 
   <!-- Modal: Kayıt Düzenle -->
@@ -2625,6 +2734,7 @@
                 <th style="text-align:center">Müsafir</th>
                 <th style="text-align:center">İştirak</th>
                 <th class="right">Tutar (₺)</th>
+                <th>Tahsilat</th>
                 <th>Notlar</th>
               </tr>
             </thead>
@@ -2645,6 +2755,7 @@
                 <th style="text-align:center">Müsafir</th>
                 <th style="text-align:center">İştirak</th>
                 <th class="right">Tutar (₺)</th>
+                <th>Tahsilat</th>
                 <th>Notlar</th>
               </tr>
             </thead>
@@ -3194,6 +3305,10 @@
               if (tabId === 'kontrol') {
                 // Kontrol sekmesi açıldığında kayıtları yükle
                 if (typeof loadKontrolKayitlari === 'function') loadKontrolKayitlari();
+              }
+              if (tabId === 'paylas') {
+                // Paylaş sekmesi açıldığında verileri yükle
+                if (typeof loadPaylasData === 'function') loadPaylasData();
               }
             }
           });
@@ -3880,6 +3995,7 @@
             updateYilSelect('gunMenuFiltreYil', yillar);
             updateYilSelect('hedefYonetimYil', yillar);
             updateYilSelect('kontrolFiltreYil', yillar);
+            updateYilSelect('paylasYil', yillar);
             
             // Analiz ve düzenleme yılları için özel işlem (tüm yıllar seçeneği var)
             updateYilSelectWithAllOption('analizYil', yillar);
@@ -5979,6 +6095,14 @@
               return;
             }
 
+            // Yerel tarih formatı için yardımcı fonksiyon (timezone sorunlarını önlemek için)
+            const toLocalDateStr = (date) => {
+              const y = date.getFullYear();
+              const m = String(date.getMonth() + 1).padStart(2, '0');
+              const d = String(date.getDate()).padStart(2, '0');
+              return `${y}-${m}-${d}`;
+            };
+
             // Kapasite verilerini yükle
             let genelKapasite = { iftarMax: null, sahurMax: null };
             const gunlukKapasiteMap = new Map();
@@ -6008,7 +6132,7 @@
 
               if (gunlukData) {
                 gunlukData.forEach(k => {
-                  const tarihStr = new Date(k.tarih).toISOString().slice(0, 10);
+                  const tarihStr = toLocalDateStr(new Date(k.tarih));
                   gunlukKapasiteMap.set(tarihStr, {
                     iftarMax: k.iftarmax !== null && k.iftarmax !== undefined ? k.iftarmax : null,
                     sahurMax: k.sahurmax !== null && k.sahurmax !== undefined ? k.sahurmax : null
@@ -6038,8 +6162,11 @@
               const tarihDate = typeof k.tarih === 'string' ? new Date(k.tarih) :
                 (k.tarih instanceof Date ? k.tarih : new Date(k.tarih));
               if (isNaN(tarihDate.getTime())) return;
-              if (tarihDate < bas || tarihDate > bit) return;
-              const tarihStr = tarihDate.toISOString().slice(0, 10);
+              // Yerel tarih karşılaştırması yap (UTC dönüşümü sorunlarını önlemek için)
+              const tarihStr = toLocalDateStr(tarihDate);
+              const basStr = toLocalDateStr(bas);
+              const bitStr = toLocalDateStr(bit);
+              if (tarihStr < basStr || tarihStr > bitStr) return;
               if (!byDate.has(tarihStr)) byDate.set(tarihStr, []);
               byDate.get(tarihStr).push(k);
             });
@@ -6053,16 +6180,17 @@
             }
 
             const today = new Date();
+            const todayStr = toLocalDateStr(today);
             let selectedCell = null;
 
             const current = new Date(bas);
             while (current <= bit) {
-              const dateStr = current.toISOString().slice(0, 10);
+              const dateStr = toLocalDateStr(current);
               const gunKayitlar = byDate.get(dateStr) || [];
 
               const div = document.createElement('div');
               div.className = 'cal-day';
-              if (dateStr === today.toISOString().slice(0, 10)) div.classList.add('today');
+              if (dateStr === todayStr) div.classList.add('today');
               
               // Renk kodlaması: Kayıt durumuna göre
               if (gunKayitlar.length === 0) {
@@ -6223,7 +6351,7 @@
         }
 
         // Takvim gün detay modali
-        function openCalDayModal(dateStr, gunKayitlar) {
+        async function openCalDayModal(dateStr, gunKayitlar) {
           const modal = qs('#modalCalDay');
           const titleEl = qs('#calDayModalTitle');
           const summaryEl = qs('#calDayModalSummary');
@@ -6261,6 +6389,41 @@
             return sum + (typeof m === 'number' ? m : parseInt(m) || 0);
           }, 0);
 
+          // Tahsilat verilerini yükle (iftar, sahur ve taahhüt kayıtları için)
+          let tahsilatByKayitIdCal = {};
+          let tahsilatListByKayitIdCal = {};
+          const tahsilatKayitIds = gunKayitlar
+            .filter(k => (k.tip === 'iftar' || k.tip === 'sahur' || k.tip === 'taahhut') && Number(k.tutar || k.miktar || 0) > 0)
+            .map(k => k.id);
+          
+          if (tahsilatKayitIds.length > 0) {
+            try {
+              const { byId, listById } = await loadTahsilatForKayitIds(tahsilatKayitIds);
+              tahsilatByKayitIdCal = byId || {};
+              tahsilatListByKayitIdCal = listById || {};
+            } catch (err) {
+              console.warn('Takvim detay tahsilat yüklenemedi:', err);
+            }
+          }
+
+          // Tahsilat toplamlarını hesapla
+          let toplamTahsilat = 0;
+          let odemeBekleyen = 0;
+          let tamOdenen = 0;
+          gunKayitlar.forEach(k => {
+            const kayitTutari = Number(k.tutar || k.miktar || 0);
+            if (kayitTutari > 0 && (k.tip === 'iftar' || k.tip === 'sahur' || k.tip === 'taahhut')) {
+              const tahsilToplam = tahsilatByKayitIdCal[k.id] || 0;
+              toplamTahsilat += tahsilToplam;
+              if (tahsilToplam >= kayitTutari) {
+                tamOdenen++;
+              } else if (tahsilToplam === 0) {
+                odemeBekleyen++;
+              }
+            }
+          });
+          const kalanTutar = toplamTutar - toplamTahsilat;
+
           // Özet bilgileri güncelle (yeni kart yapısı)
           summaryEl.innerHTML = `
             <div class="cal-day-summary-card iftar">
@@ -6281,12 +6444,22 @@
               <div class="cal-day-summary-label">👥 Toplam Müsafir</div>
               <div class="cal-day-summary-value">${toplamMusafir} kişi</div>
             </div>
+            <div class="cal-day-summary-card tahsilat">
+              <div class="cal-day-summary-label">💵 Tahsilat</div>
+              <div class="cal-day-summary-value">₺${toplamTahsilat.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+              <div class="cal-day-summary-sub">${tamOdenen > 0 ? tamOdenen + ' ödendi' : ''}${tamOdenen > 0 && odemeBekleyen > 0 ? ' / ' : ''}${odemeBekleyen > 0 ? odemeBekleyen + ' beklemede' : ''}</div>
+            </div>
+            <div class="cal-day-summary-card kalan">
+              <div class="cal-day-summary-label">📊 Kalan</div>
+              <div class="cal-day-summary-value ${kalanTutar <= 0 ? 'text-success' : ''}">₺${kalanTutar.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+              <div class="cal-day-summary-sub">${kalanTutar <= 0 ? '✓ Tümü tahsil edildi' : ((toplamTutar > 0 ? Math.round((toplamTahsilat / toplamTutar) * 100) : 0) + '% tahsil edildi')}</div>
+            </div>
           `;
 
           const renderRows = (list, tbody) => {
             tbody.innerHTML = '';
             if (!list || list.length === 0) {
-              tbody.innerHTML = '<tr><td colspan="7"><div class="cal-day-empty-msg">Bu gün için kayıt bulunamıyor.</div></td></tr>';
+              tbody.innerHTML = '<tr><td colspan="8"><div class="cal-day-empty-msg">Bu gün için kayıt bulunamıyor.</div></td></tr>';
               return;
             }
             list.forEach(k => {
@@ -6299,6 +6472,25 @@
               const istirak = k.istirak !== undefined ? (k.istirak ? '✓ Evet' : '✗ Hayır') : '-';
               const notlar = k.notlar || k.not || k.aciklama || '-';
               
+              // Tahsilat durumu
+              const kayitTutari = Number(tutar);
+              const tahsilToplam = tahsilatByKayitIdCal[k.id] || 0;
+              const tahsilKalan = kayitTutari - tahsilToplam;
+              let tahsilatDurum = '-';
+              let tahsilatClass = '';
+              if (kayitTutari > 0 && (k.tip === 'iftar' || k.tip === 'sahur' || k.tip === 'taahhut')) {
+                if (tahsilToplam >= kayitTutari) {
+                  tahsilatDurum = '✓ Ödendi';
+                  tahsilatClass = 'cal-tahsilat-odendi';
+                } else if (tahsilToplam > 0) {
+                  tahsilatDurum = `₺${tahsilToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} / ₺${tahsilKalan.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} kalan`;
+                  tahsilatClass = 'cal-tahsilat-kismi';
+                } else {
+                  tahsilatDurum = 'Beklemede';
+                  tahsilatClass = 'cal-tahsilat-beklemede';
+                }
+              }
+              
               tr.innerHTML = `
             <td><strong>${personel}</strong></td>
             <td>${sahip}</td>
@@ -6306,7 +6498,8 @@
             <td style="text-align:center">${musafir}</td>
             <td style="text-align:center">${istirak}</td>
             <td class="right"><strong>${tutar ? '₺' + tutar.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}</strong></td>
-            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${notlar}">${notlar !== '-' ? notlar : ''}</td>
+            <td class="${tahsilatClass}" style="font-size:12px">${tahsilatDurum}</td>
+            <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${notlar}">${notlar !== '-' ? notlar : ''}</td>
           `;
               tbody.appendChild(tr);
             });
@@ -12783,6 +12976,631 @@
             }
           });
         }
+
+        // =============================================
+        // PAYLAŞ SEKMESİ FONKSİYONLARI
+        // =============================================
+        
+        let paylasData = [];
+
+        async function loadPaylasData() {
+          const yilValue = qs('#paylasYil')?.value;
+          if (!yilValue) {
+            showToast('warning', 'Uyarı', 'Lütfen bir yıl seçin');
+            return;
+          }
+          const yil = parseInt(yilValue);
+          const tbody = qs('#tbodyPaylas');
+          const tfoot = qs('#tfootPaylas');
+          const emptyDiv = qs('#paylasEmpty');
+          const summaryDiv = qs('#paylasSummary');
+          
+          if (!tbody) return;
+          
+          tbody.innerHTML = '<tr><td colspan="15" style="text-align:center;padding:40px;color:var(--muted)">⏳ Yükleniyor...</td></tr>';
+          if (tfoot) tfoot.innerHTML = '';
+          if (emptyDiv) emptyDiv.style.display = 'none';
+          if (summaryDiv) summaryDiv.style.display = 'none';
+
+          try {
+            const supabase = getSupabase();
+            if (!supabase) {
+              throw new Error('Supabase client hazır değil');
+            }
+
+            // 1. İftar-Sahur kayıtlarını yükle (ramazan_kayitlari tablosu)
+            let iftarSahurKayitlar = [];
+            try {
+              const { data: ramazanKayitData, error: ramazanError } = await supabase
+                .from('ramazan_kayitlari')
+                .select('*')
+                .eq('yil', yil);
+
+              if (!ramazanError && ramazanKayitData) {
+                iftarSahurKayitlar = ramazanKayitData.map(d => ({
+                  id: d.id,
+                  tip: d.tip,
+                  tutar: d.tutar || d.miktar || 0,
+                  personel: d.personeladi || d.personelAdi || d.personel || d.kaydedenpersonel || d.kaydedenPersonel || '',
+                  kayitTipi: 'iftar-sahur'
+                }));
+              }
+            } catch (e) {
+              console.error('İftar-sahur kayıtları yüklenemedi:', e);
+            }
+
+            // 2. Teberru kayıtlarını yükle (teberru_kayitlari tablosu)
+            let teberruKayitlar = [];
+            try {
+              const { data: teberruData, error: teberruError } = await supabase
+                .from('teberru_kayitlari')
+                .select('*')
+                .eq('yil', yil);
+
+              if (!teberruError && teberruData) {
+                teberruKayitlar = teberruData.map(d => ({
+                  id: d.id,
+                  tip: 'teberru',
+                  tutar: d.miktar || d.tutar || 0,
+                  personel: d.personel || d.kaydedenPersonel || d.kaydedenpersonel || '',
+                  kayitTipi: 'teberru'
+                }));
+              }
+            } catch (e) {
+              console.error('Teberru kayıtları yüklenemedi:', e);
+            }
+
+            // 3. Taahhüt kayıtlarını yükle (taahhut_kayitlari tablosu)
+            let taahhutKayitlar = [];
+            try {
+              const { data: taahhutData, error: taahhutError } = await supabase
+                .from('taahhut_kayitlari')
+                .select('*')
+                .eq('yil', yil);
+
+              if (!taahhutError && taahhutData) {
+                taahhutKayitlar = taahhutData.map(d => ({
+                  id: d.id,
+                  tip: 'taahhut',
+                  tutar: d.tutar || d.miktar || 0,
+                  personel: d.personeladi || d.personelAdi || d.personel || d.kaydedenpersonel || d.kaydedenPersonel || '',
+                  kayitTipi: 'taahhut'
+                }));
+              }
+            } catch (e) {
+              console.error('Taahhüt kayıtları yüklenemedi:', e);
+            }
+
+            // Tüm kayıtları birleştir
+            const tumKayitlar = [...iftarSahurKayitlar, ...teberruKayitlar, ...taahhutKayitlar];
+
+            // Personel hedeflerini çek (ramazan_hedefler tablosundan)
+            const { data: hedeflerData } = await supabase
+              .from('ramazan_hedefler')
+              .select('*')
+              .eq('yil', yil);
+
+            const hedefMap = new Map();
+            (hedeflerData || []).forEach(h => {
+              const personelAdi = h.personeladi || h.personelAdi || h.personel || '';
+              if (personelAdi) {
+                hedefMap.set(personelAdi, h.hedef || 0);
+              }
+            });
+
+            // Tahsilat verilerini çek (iftar, sahur, taahhüt için - ramazan_kayitlari ve taahhut_kayitlari)
+            const tahsilatKayitIds = tumKayitlar
+              .filter(k => (k.tip === 'iftar' || k.tip === 'sahur' || k.tip === 'taahhut') && Number(k.tutar || 0) > 0)
+              .map(k => k.id);
+
+            let tahsilatByKayitId = {};
+            if (tahsilatKayitIds.length > 0) {
+              const { byId } = await loadTahsilatForKayitIds(tahsilatKayitIds);
+              tahsilatByKayitId = byId || {};
+            }
+
+            // Personel bazlı grupla
+            const personelMap = new Map();
+
+            tumKayitlar.forEach(k => {
+              const personel = k.personel || 'Bilinmiyor';
+              
+              if (!personelMap.has(personel)) {
+                personelMap.set(personel, {
+                  personel,
+                  hedef: hedefMap.get(personel) || 0,
+                  iftar: { adet: 0, tutar: 0 },
+                  sahur: { adet: 0, tutar: 0 },
+                  taahhut: { adet: 0, tutar: 0 },
+                  teberru: { adet: 0, tutar: 0 },
+                  toplamTutar: 0,
+                  tahsilatBedeli: 0,
+                  tahsilatDurumu: 0
+                });
+              }
+
+              const p = personelMap.get(personel);
+              const tutar = Number(k.tutar || 0);
+              const tip = (k.tip || '').toLowerCase();
+
+              if (tip === 'iftar') {
+                p.iftar.adet++;
+                p.iftar.tutar += tutar;
+                p.toplamTutar += tutar;
+                p.tahsilatBedeli += tutar;
+                p.tahsilatDurumu += tahsilatByKayitId[k.id] || 0;
+              } else if (tip === 'sahur') {
+                p.sahur.adet++;
+                p.sahur.tutar += tutar;
+                p.toplamTutar += tutar;
+                p.tahsilatBedeli += tutar;
+                p.tahsilatDurumu += tahsilatByKayitId[k.id] || 0;
+              } else if (tip === 'taahhut' || tip === 'taahhüt') {
+                p.taahhut.adet++;
+                p.taahhut.tutar += tutar;
+                p.toplamTutar += tutar;
+                p.tahsilatBedeli += tutar;
+                p.tahsilatDurumu += tahsilatByKayitId[k.id] || 0;
+              } else if (tip === 'teberru' || tip === 'teberrü') {
+                p.teberru.adet++;
+                p.teberru.tutar += tutar;
+                p.toplamTutar += tutar;
+              }
+            });
+
+            paylasData = Array.from(personelMap.values()).sort((a, b) => b.toplamTutar - a.toplamTutar);
+
+            if (paylasData.length === 0) {
+              tbody.innerHTML = '';
+              if (emptyDiv) {
+                emptyDiv.innerHTML = `
+                  <div style="font-size:48px;margin-bottom:12px">📊</div>
+                  <div>${yil} yılı için kayıt bulunamadı.</div>
+                `;
+                emptyDiv.style.display = 'block';
+              }
+              return;
+            }
+
+            // Toplamları hesapla
+            let toplamlar = {
+              iftar: { adet: 0, tutar: 0 },
+              sahur: { adet: 0, tutar: 0 },
+              taahhut: { adet: 0, tutar: 0 },
+              teberru: { adet: 0, tutar: 0 },
+              toplamTutar: 0,
+              toplamHedef: 0,
+              tahsilatBedeli: 0,
+              tahsilatDurumu: 0,
+              hedefUlasan: 0,
+              hedefliPersonel: 0
+            };
+
+            // Tabloyu render et
+            tbody.innerHTML = '';
+            paylasData.forEach((p, idx) => {
+              const hedefeUlasma = p.hedef > 0 ? Math.min((p.toplamTutar / p.hedef) * 100, 100) : 0;
+              const tahsilatUlasma = p.tahsilatBedeli > 0 ? Math.min((p.tahsilatDurumu / p.tahsilatBedeli) * 100, 100) : 0;
+              
+              if (p.hedef > 0) {
+                toplamlar.toplamHedef += p.hedef;
+                toplamlar.hedefliPersonel++;
+                if (p.toplamTutar >= p.hedef) toplamlar.hedefUlasan++;
+              }
+
+              toplamlar.iftar.adet += p.iftar.adet;
+              toplamlar.iftar.tutar += p.iftar.tutar;
+              toplamlar.sahur.adet += p.sahur.adet;
+              toplamlar.sahur.tutar += p.sahur.tutar;
+              toplamlar.taahhut.adet += p.taahhut.adet;
+              toplamlar.taahhut.tutar += p.taahhut.tutar;
+              toplamlar.teberru.adet += p.teberru.adet;
+              toplamlar.teberru.tutar += p.teberru.tutar;
+              toplamlar.toplamTutar += p.toplamTutar;
+              toplamlar.tahsilatBedeli += p.tahsilatBedeli;
+              toplamlar.tahsilatDurumu += p.tahsilatDurumu;
+
+              const tr = document.createElement('tr');
+              tr.innerHTML = `
+                <td><strong>${p.personel}</strong></td>
+                <td style="text-align:right">${p.hedef > 0 ? '₺' + p.hedef.toLocaleString('tr-TR') : '-'}</td>
+                <td style="text-align:center;background:#f8fbff">${p.iftar.adet || '-'}</td>
+                <td style="text-align:right;background:#f8fbff">${p.iftar.tutar > 0 ? '₺' + p.iftar.tutar.toLocaleString('tr-TR') : '-'}</td>
+                <td style="text-align:center;background:#fffaf5">${p.sahur.adet || '-'}</td>
+                <td style="text-align:right;background:#fffaf5">${p.sahur.tutar > 0 ? '₺' + p.sahur.tutar.toLocaleString('tr-TR') : '-'}</td>
+                <td style="text-align:center;background:#f5faf5">${p.taahhut.adet || '-'}</td>
+                <td style="text-align:right;background:#f5faf5">${p.taahhut.tutar > 0 ? '₺' + p.taahhut.tutar.toLocaleString('tr-TR') : '-'}</td>
+                <td style="text-align:center;background:#faf5fa">${p.teberru.adet || '-'}</td>
+                <td style="text-align:right;background:#faf5fa">${p.teberru.tutar > 0 ? '₺' + p.teberru.tutar.toLocaleString('tr-TR') : '-'}</td>
+                <td style="text-align:right;font-weight:600">₺${p.toplamTutar.toLocaleString('tr-TR')}</td>
+                <td style="text-align:center">
+                  ${p.hedef > 0 ? `
+                    <div style="display:flex;align-items:center;gap:6px;justify-content:center">
+                      <div style="width:50px;height:6px;background:#e0e0e0;border-radius:3px;overflow:hidden">
+                        <div style="width:${Math.min(hedefeUlasma, 100)}%;height:100%;background:${hedefeUlasma >= 100 ? '#4caf50' : hedefeUlasma >= 70 ? '#ff9800' : '#f44336'};transition:width 0.3s"></div>
+                      </div>
+                      <span style="font-size:11px;color:${hedefeUlasma >= 100 ? '#4caf50' : hedefeUlasma >= 70 ? '#ff9800' : '#f44336'}">%${hedefeUlasma.toFixed(2)}</span>
+                    </div>
+                  ` : '-'}
+                </td>
+                <td style="text-align:right">${p.tahsilatBedeli > 0 ? '₺' + p.tahsilatBedeli.toLocaleString('tr-TR') : '-'}</td>
+                <td style="text-align:right;color:${p.tahsilatDurumu >= p.tahsilatBedeli && p.tahsilatBedeli > 0 ? '#4caf50' : p.tahsilatDurumu > 0 ? '#ff9800' : '#999'}">
+                  ${p.tahsilatDurumu > 0 ? '₺' + p.tahsilatDurumu.toLocaleString('tr-TR') : '-'}
+                </td>
+                <td style="text-align:center">
+                  ${p.tahsilatBedeli > 0 ? `
+                    <div style="display:flex;align-items:center;gap:6px;justify-content:center">
+                      <div style="width:50px;height:6px;background:#e0e0e0;border-radius:3px;overflow:hidden">
+                        <div style="width:${Math.min(tahsilatUlasma, 100)}%;height:100%;background:${tahsilatUlasma >= 100 ? '#4caf50' : tahsilatUlasma >= 50 ? '#ff9800' : '#f44336'};transition:width 0.3s"></div>
+                      </div>
+                      <span style="font-size:11px;color:${tahsilatUlasma >= 100 ? '#4caf50' : tahsilatUlasma >= 50 ? '#ff9800' : '#f44336'}">%${tahsilatUlasma.toFixed(2)}</span>
+                    </div>
+                  ` : '-'}
+                </td>
+              `;
+              tbody.appendChild(tr);
+            });
+
+            // Toplamlar satırı (tfoot)
+            if (tfoot) {
+              const toplamTahsilatYuzde = toplamlar.tahsilatBedeli > 0 ? (toplamlar.tahsilatDurumu / toplamlar.tahsilatBedeli) * 100 : 0;
+              const toplamHedefeUlasmaYuzde = toplamlar.toplamHedef > 0 ? (toplamlar.toplamTutar / toplamlar.toplamHedef) * 100 : 0;
+              tfoot.innerHTML = `
+                <tr style="background:#f0f4f8;font-size:14px">
+                  <td style="padding:14px 10px"><strong>TOPLAM (${paylasData.length} personel)</strong></td>
+                  <td style="padding:14px 10px;text-align:right"><strong>₺${toplamlar.toplamHedef.toLocaleString('tr-TR')}</strong></td>
+                  <td style="text-align:center;background:#e8f0f8;padding:14px 10px">${toplamlar.iftar.adet}</td>
+                  <td style="text-align:right;background:#e8f0f8;padding:14px 10px">₺${toplamlar.iftar.tutar.toLocaleString('tr-TR')}</td>
+                  <td style="text-align:center;background:#fff0e8;padding:14px 10px">${toplamlar.sahur.adet}</td>
+                  <td style="text-align:right;background:#fff0e8;padding:14px 10px">₺${toplamlar.sahur.tutar.toLocaleString('tr-TR')}</td>
+                  <td style="text-align:center;background:#e8f0e8;padding:14px 10px">${toplamlar.taahhut.adet}</td>
+                  <td style="text-align:right;background:#e8f0e8;padding:14px 10px">₺${toplamlar.taahhut.tutar.toLocaleString('tr-TR')}</td>
+                  <td style="text-align:center;background:#f0e8f0;padding:14px 10px">${toplamlar.teberru.adet}</td>
+                  <td style="text-align:right;background:#f0e8f0;padding:14px 10px">₺${toplamlar.teberru.tutar.toLocaleString('tr-TR')}</td>
+                  <td style="text-align:right;padding:14px 10px"><strong>₺${toplamlar.toplamTutar.toLocaleString('tr-TR')}</strong></td>
+                  <td style="text-align:center;padding:14px 10px"><strong>%${toplamHedefeUlasmaYuzde.toFixed(2)}</strong></td>
+                  <td style="text-align:right;padding:14px 10px">₺${toplamlar.tahsilatBedeli.toLocaleString('tr-TR')}</td>
+                  <td style="text-align:right;color:#4caf50;padding:14px 10px">₺${toplamlar.tahsilatDurumu.toLocaleString('tr-TR')}</td>
+                  <td style="text-align:center;padding:14px 10px"><strong>%${toplamTahsilatYuzde.toFixed(2)}</strong></td>
+                </tr>
+              `;
+            }
+
+            // Özet bilgileri güncelle
+            if (summaryDiv) {
+              summaryDiv.style.display = 'block';
+              
+              // Toplam Hedef
+              const elToplamHedef = qs('#paylasToplamHedef');
+              if (elToplamHedef) elToplamHedef.textContent = '₺' + toplamlar.toplamHedef.toLocaleString('tr-TR');
+              
+              // Toplam Tutar
+              const elTutar = qs('#paylasToplamTutar');
+              if (elTutar) elTutar.textContent = '₺' + toplamlar.toplamTutar.toLocaleString('tr-TR');
+              
+              // Hedefe Ulaşma Yüzdesi
+              const hedefeUlasmaYuzde = toplamlar.toplamHedef > 0 ? (toplamlar.toplamTutar / toplamlar.toplamHedef) * 100 : 0;
+              const elHedefeUlasmaYuzde = qs('#paylasHedefeUlasmaYuzde');
+              const elHedefeUlasmaBar = qs('#paylasHedefeUlasmaBar');
+              if (elHedefeUlasmaYuzde) {
+                elHedefeUlasmaYuzde.textContent = '%' + hedefeUlasmaYuzde.toFixed(1);
+                elHedefeUlasmaYuzde.style.color = hedefeUlasmaYuzde >= 100 ? '#4caf50' : hedefeUlasmaYuzde >= 70 ? '#ff9800' : '#f44336';
+              }
+              if (elHedefeUlasmaBar) {
+                elHedefeUlasmaBar.style.width = Math.min(hedefeUlasmaYuzde, 100) + '%';
+                elHedefeUlasmaBar.style.background = hedefeUlasmaYuzde >= 100 ? '#4caf50' : hedefeUlasmaYuzde >= 70 ? '#ff9800' : '#f44336';
+              }
+              
+              // Hedefe Ulaşan/Geçen Personel
+              const elHedefUlasan = qs('#paylasHedefUlasan');
+              const elHedefUlasanDetay = qs('#paylasHedefUlasanDetay');
+              if (elHedefUlasan) elHedefUlasan.textContent = toplamlar.hedefUlasan + ' / ' + toplamlar.hedefliPersonel;
+              if (elHedefUlasanDetay) {
+                const hedefliOran = toplamlar.hedefliPersonel > 0 ? ((toplamlar.hedefUlasan / toplamlar.hedefliPersonel) * 100).toFixed(0) : 0;
+                elHedefUlasanDetay.textContent = `(${paylasData.length} personelden ${toplamlar.hedefliPersonel} hedefli, %${hedefliOran} başarı)`;
+              }
+            }
+
+          } catch (err) {
+            console.error('Paylaş verileri yüklenemedi:', err);
+            tbody.innerHTML = `<tr><td colspan="15" style="text-align:center;padding:40px;color:#d32f2f">❌ Hata: ${err.message}</td></tr>`;
+          }
+        }
+        window.loadPaylasData = loadPaylasData;
+
+        // Paylaş tablosu sıralama
+        let paylasSortKey = 'toplamTutar';
+        let paylasSortAsc = false; // varsayılan azalan (en yüksek önce)
+
+        function sortPaylasTable(key) {
+          if (!paylasData || paylasData.length === 0) return;
+          
+          // Aynı sütuna tıklanırsa yönü değiştir
+          if (paylasSortKey === key) {
+            paylasSortAsc = !paylasSortAsc;
+          } else {
+            paylasSortKey = key;
+            // Metin sütunları için artan, sayısal sütunlar için azalan varsayılan
+            paylasSortAsc = (key === 'personel');
+          }
+
+          paylasData.sort((a, b) => {
+            let valA, valB;
+
+            switch (key) {
+              case 'personel':
+                valA = (a.personel || '').toLowerCase();
+                valB = (b.personel || '').toLowerCase();
+                break;
+              case 'hedef':
+                valA = a.hedef || 0;
+                valB = b.hedef || 0;
+                break;
+              case 'iftarAdet':
+                valA = a.iftar?.adet || 0;
+                valB = b.iftar?.adet || 0;
+                break;
+              case 'iftarTutar':
+                valA = a.iftar?.tutar || 0;
+                valB = b.iftar?.tutar || 0;
+                break;
+              case 'sahurAdet':
+                valA = a.sahur?.adet || 0;
+                valB = b.sahur?.adet || 0;
+                break;
+              case 'sahurTutar':
+                valA = a.sahur?.tutar || 0;
+                valB = b.sahur?.tutar || 0;
+                break;
+              case 'taahhutAdet':
+                valA = a.taahhut?.adet || 0;
+                valB = b.taahhut?.adet || 0;
+                break;
+              case 'taahhutTutar':
+                valA = a.taahhut?.tutar || 0;
+                valB = b.taahhut?.tutar || 0;
+                break;
+              case 'teberruAdet':
+                valA = a.teberru?.adet || 0;
+                valB = b.teberru?.adet || 0;
+                break;
+              case 'teberruTutar':
+                valA = a.teberru?.tutar || 0;
+                valB = b.teberru?.tutar || 0;
+                break;
+              case 'toplamTutar':
+                valA = a.toplamTutar || 0;
+                valB = b.toplamTutar || 0;
+                break;
+              case 'hedefeUlasma':
+                valA = a.hedef > 0 ? (a.toplamTutar / a.hedef) * 100 : 0;
+                valB = b.hedef > 0 ? (b.toplamTutar / b.hedef) * 100 : 0;
+                break;
+              case 'tahsilatBedeli':
+                valA = a.tahsilatBedeli || 0;
+                valB = b.tahsilatBedeli || 0;
+                break;
+              case 'tahsilatDurumu':
+                valA = a.tahsilatDurumu || 0;
+                valB = b.tahsilatDurumu || 0;
+                break;
+              case 'tahsilatUlasma':
+                valA = a.tahsilatBedeli > 0 ? (a.tahsilatDurumu / a.tahsilatBedeli) * 100 : 0;
+                valB = b.tahsilatBedeli > 0 ? (b.tahsilatDurumu / b.tahsilatBedeli) * 100 : 0;
+                break;
+              default:
+                valA = 0;
+                valB = 0;
+            }
+
+            if (valA < valB) return paylasSortAsc ? -1 : 1;
+            if (valA > valB) return paylasSortAsc ? 1 : -1;
+            return 0;
+          });
+
+          renderPaylasTable();
+        }
+        window.sortPaylasTable = sortPaylasTable;
+
+        function renderPaylasTable() {
+          const tbody = qs('#tbodyPaylas');
+          const tfoot = qs('#tfootPaylas');
+          if (!tbody || !paylasData || paylasData.length === 0) return;
+
+          // Toplamları hesapla
+          let toplamlar = {
+            iftar: { adet: 0, tutar: 0 },
+            sahur: { adet: 0, tutar: 0 },
+            taahhut: { adet: 0, tutar: 0 },
+            teberru: { adet: 0, tutar: 0 },
+            toplamTutar: 0,
+            toplamHedef: 0,
+            tahsilatBedeli: 0,
+            tahsilatDurumu: 0,
+            hedefUlasan: 0,
+            hedefliPersonel: 0
+          };
+
+          tbody.innerHTML = '';
+          paylasData.forEach((p) => {
+            const hedefeUlasma = p.hedef > 0 ? (p.toplamTutar / p.hedef) * 100 : 0;
+            const tahsilatUlasma = p.tahsilatBedeli > 0 ? (p.tahsilatDurumu / p.tahsilatBedeli) * 100 : 0;
+            
+            if (p.hedef > 0) {
+              toplamlar.toplamHedef += p.hedef;
+              toplamlar.hedefliPersonel++;
+              if (p.toplamTutar >= p.hedef) toplamlar.hedefUlasan++;
+            }
+
+            toplamlar.iftar.adet += p.iftar.adet;
+            toplamlar.iftar.tutar += p.iftar.tutar;
+            toplamlar.sahur.adet += p.sahur.adet;
+            toplamlar.sahur.tutar += p.sahur.tutar;
+            toplamlar.taahhut.adet += p.taahhut.adet;
+            toplamlar.taahhut.tutar += p.taahhut.tutar;
+            toplamlar.teberru.adet += p.teberru.adet;
+            toplamlar.teberru.tutar += p.teberru.tutar;
+            toplamlar.toplamTutar += p.toplamTutar;
+            toplamlar.tahsilatBedeli += p.tahsilatBedeli;
+            toplamlar.tahsilatDurumu += p.tahsilatDurumu;
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td><strong>${p.personel}</strong></td>
+              <td style="text-align:right">${p.hedef > 0 ? '₺' + p.hedef.toLocaleString('tr-TR') : '-'}</td>
+              <td style="text-align:center;background:#f8fbff">${p.iftar.adet || '-'}</td>
+              <td style="text-align:right;background:#f8fbff">${p.iftar.tutar > 0 ? '₺' + p.iftar.tutar.toLocaleString('tr-TR') : '-'}</td>
+              <td style="text-align:center;background:#fffaf5">${p.sahur.adet || '-'}</td>
+              <td style="text-align:right;background:#fffaf5">${p.sahur.tutar > 0 ? '₺' + p.sahur.tutar.toLocaleString('tr-TR') : '-'}</td>
+              <td style="text-align:center;background:#f5faf5">${p.taahhut.adet || '-'}</td>
+              <td style="text-align:right;background:#f5faf5">${p.taahhut.tutar > 0 ? '₺' + p.taahhut.tutar.toLocaleString('tr-TR') : '-'}</td>
+              <td style="text-align:center;background:#faf5fa">${p.teberru.adet || '-'}</td>
+              <td style="text-align:right;background:#faf5fa">${p.teberru.tutar > 0 ? '₺' + p.teberru.tutar.toLocaleString('tr-TR') : '-'}</td>
+              <td style="text-align:right;font-weight:600">₺${p.toplamTutar.toLocaleString('tr-TR')}</td>
+              <td style="text-align:center">
+                ${p.hedef > 0 ? `
+                  <div style="display:flex;align-items:center;gap:6px;justify-content:center">
+                    <div style="width:50px;height:6px;background:#e0e0e0;border-radius:3px;overflow:hidden">
+                      <div style="width:${Math.min(hedefeUlasma, 100)}%;height:100%;background:${hedefeUlasma >= 100 ? '#4caf50' : hedefeUlasma >= 70 ? '#ff9800' : '#f44336'};transition:width 0.3s"></div>
+                    </div>
+                    <span style="font-size:11px;color:${hedefeUlasma >= 100 ? '#4caf50' : hedefeUlasma >= 70 ? '#ff9800' : '#f44336'}">%${hedefeUlasma.toFixed(2)}</span>
+                  </div>
+                ` : '-'}
+              </td>
+              <td style="text-align:right">${p.tahsilatBedeli > 0 ? '₺' + p.tahsilatBedeli.toLocaleString('tr-TR') : '-'}</td>
+              <td style="text-align:right;color:${p.tahsilatDurumu >= p.tahsilatBedeli && p.tahsilatBedeli > 0 ? '#4caf50' : p.tahsilatDurumu > 0 ? '#ff9800' : '#999'}">
+                ${p.tahsilatDurumu > 0 ? '₺' + p.tahsilatDurumu.toLocaleString('tr-TR') : '-'}
+              </td>
+              <td style="text-align:center">
+                ${p.tahsilatBedeli > 0 ? `
+                  <div style="display:flex;align-items:center;gap:6px;justify-content:center">
+                    <div style="width:50px;height:6px;background:#e0e0e0;border-radius:3px;overflow:hidden">
+                      <div style="width:${Math.min(tahsilatUlasma, 100)}%;height:100%;background:${tahsilatUlasma >= 100 ? '#4caf50' : tahsilatUlasma >= 50 ? '#ff9800' : '#f44336'};transition:width 0.3s"></div>
+                    </div>
+                    <span style="font-size:11px;color:${tahsilatUlasma >= 100 ? '#4caf50' : tahsilatUlasma >= 50 ? '#ff9800' : '#f44336'}">%${tahsilatUlasma.toFixed(2)}</span>
+                  </div>
+                ` : '-'}
+              </td>
+            `;
+            tbody.appendChild(tr);
+          });
+
+          // Toplamlar satırı (tfoot)
+          if (tfoot) {
+            const toplamTahsilatYuzde = toplamlar.tahsilatBedeli > 0 ? (toplamlar.tahsilatDurumu / toplamlar.tahsilatBedeli) * 100 : 0;
+            const toplamHedefeUlasmaYuzde = toplamlar.toplamHedef > 0 ? (toplamlar.toplamTutar / toplamlar.toplamHedef) * 100 : 0;
+            tfoot.innerHTML = `
+              <tr style="background:#f0f4f8;font-size:14px">
+                <td style="padding:14px 10px"><strong>TOPLAM (${paylasData.length} personel)</strong></td>
+                <td style="padding:14px 10px;text-align:right"><strong>₺${toplamlar.toplamHedef.toLocaleString('tr-TR')}</strong></td>
+                <td style="text-align:center;background:#e8f0f8;padding:14px 10px">${toplamlar.iftar.adet}</td>
+                <td style="text-align:right;background:#e8f0f8;padding:14px 10px">₺${toplamlar.iftar.tutar.toLocaleString('tr-TR')}</td>
+                <td style="text-align:center;background:#fff0e8;padding:14px 10px">${toplamlar.sahur.adet}</td>
+                <td style="text-align:right;background:#fff0e8;padding:14px 10px">₺${toplamlar.sahur.tutar.toLocaleString('tr-TR')}</td>
+                <td style="text-align:center;background:#e8f0e8;padding:14px 10px">${toplamlar.taahhut.adet}</td>
+                <td style="text-align:right;background:#e8f0e8;padding:14px 10px">₺${toplamlar.taahhut.tutar.toLocaleString('tr-TR')}</td>
+                <td style="text-align:center;background:#f0e8f0;padding:14px 10px">${toplamlar.teberru.adet}</td>
+                <td style="text-align:right;background:#f0e8f0;padding:14px 10px">₺${toplamlar.teberru.tutar.toLocaleString('tr-TR')}</td>
+                <td style="text-align:right;padding:14px 10px"><strong>₺${toplamlar.toplamTutar.toLocaleString('tr-TR')}</strong></td>
+                <td style="text-align:center;padding:14px 10px"><strong>%${toplamHedefeUlasmaYuzde.toFixed(2)}</strong></td>
+                <td style="text-align:right;padding:14px 10px">₺${toplamlar.tahsilatBedeli.toLocaleString('tr-TR')}</td>
+                <td style="text-align:right;color:#4caf50;padding:14px 10px">₺${toplamlar.tahsilatDurumu.toLocaleString('tr-TR')}</td>
+                <td style="text-align:center;padding:14px 10px"><strong>%${toplamTahsilatYuzde.toFixed(2)}</strong></td>
+              </tr>
+            `;
+          }
+        }
+
+        function exportPaylasExcel() {
+          if (!paylasData || paylasData.length === 0) {
+            showToast('warning', 'Uyarı', 'Önce verileri yükleyin');
+            return;
+          }
+
+          const yil = qs('#paylasYil')?.value || new Date().getFullYear();
+          
+          let csvContent = '\uFEFF'; // BOM for UTF-8
+          csvContent += 'Personel;Hedef (₺);İftar Adet;İftar Tutar;Sahur Adet;Sahur Tutar;Taahhüt Adet;Taahhüt Tutar;Teberru Adet;Teberru Tutar;Toplam Tutar;Hedefe Ulaşma %;Tahsilat Bedeli;Tahsilat Durumu;Tahsilat Ulaşma %\n';
+
+          paylasData.forEach(p => {
+            const hedefeUlasma = p.hedef > 0 ? Math.min((p.toplamTutar / p.hedef) * 100, 100) : 0;
+            const tahsilatUlasma = p.tahsilatBedeli > 0 ? Math.min((p.tahsilatDurumu / p.tahsilatBedeli) * 100, 100) : 0;
+            
+            csvContent += `"${p.personel}";`;
+            csvContent += `${p.hedef || 0};`;
+            csvContent += `${p.iftar.adet};${p.iftar.tutar};`;
+            csvContent += `${p.sahur.adet};${p.sahur.tutar};`;
+            csvContent += `${p.taahhut.adet};${p.taahhut.tutar};`;
+            csvContent += `${p.teberru.adet};${p.teberru.tutar};`;
+            csvContent += `${p.toplamTutar};`;
+            csvContent += `${hedefeUlasma.toFixed(1)};`;
+            csvContent += `${p.tahsilatBedeli};`;
+            csvContent += `${p.tahsilatDurumu};`;
+            csvContent += `${tahsilatUlasma.toFixed(1)}\n`;
+          });
+
+          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = `Personel_Performans_Ozeti_${yil}.csv`;
+          link.click();
+          URL.revokeObjectURL(link.href);
+          
+          showToast('success', 'Başarılı', 'Excel dosyası indirildi');
+        }
+        window.exportPaylasExcel = exportPaylasExcel;
+
+        function copyPaylasTable() {
+          const table = qs('#tablePaylasim');
+          if (!table || paylasData.length === 0) {
+            showToast('warning', 'Uyarı', 'Önce verileri yükleyin');
+            return;
+          }
+
+          // Tablo içeriğini metin olarak oluştur
+          let text = '';
+          const yil = qs('#paylasYil')?.value || new Date().getFullYear();
+          
+          text += `RAMAZAN-I ŞERİF ${yil} - PERSONEL PERFORMANS ÖZETİ\n`;
+          text += '═'.repeat(120) + '\n\n';
+          
+          text += 'Personel\tHedef\tİftar(Ad)\tİftar(₺)\tSahur(Ad)\tSahur(₺)\tTaahhüt(Ad)\tTaahhüt(₺)\tTeberru(Ad)\tTeberru(₺)\tToplam\tHedef%\tTahsilat Bedeli\tTahsilat\tTahsilat%\n';
+          text += '-'.repeat(120) + '\n';
+
+          paylasData.forEach(p => {
+            const hedefeUlasma = p.hedef > 0 ? Math.min((p.toplamTutar / p.hedef) * 100, 100) : 0;
+            const tahsilatUlasma = p.tahsilatBedeli > 0 ? Math.min((p.tahsilatDurumu / p.tahsilatBedeli) * 100, 100) : 0;
+            
+            text += `${p.personel}\t`;
+            text += `${p.hedef > 0 ? p.hedef.toLocaleString('tr-TR') : '-'}\t`;
+            text += `${p.iftar.adet || '-'}\t${p.iftar.tutar > 0 ? p.iftar.tutar.toLocaleString('tr-TR') : '-'}\t`;
+            text += `${p.sahur.adet || '-'}\t${p.sahur.tutar > 0 ? p.sahur.tutar.toLocaleString('tr-TR') : '-'}\t`;
+            text += `${p.taahhut.adet || '-'}\t${p.taahhut.tutar > 0 ? p.taahhut.tutar.toLocaleString('tr-TR') : '-'}\t`;
+            text += `${p.teberru.adet || '-'}\t${p.teberru.tutar > 0 ? p.teberru.tutar.toLocaleString('tr-TR') : '-'}\t`;
+            text += `${p.toplamTutar.toLocaleString('tr-TR')}\t`;
+            text += `${p.hedef > 0 ? hedefeUlasma.toFixed(0) + '%' : '-'}\t`;
+            text += `${p.tahsilatBedeli > 0 ? p.tahsilatBedeli.toLocaleString('tr-TR') : '-'}\t`;
+            text += `${p.tahsilatDurumu > 0 ? p.tahsilatDurumu.toLocaleString('tr-TR') : '-'}\t`;
+            text += `${p.tahsilatBedeli > 0 ? tahsilatUlasma.toFixed(0) + '%' : '-'}\n`;
+          });
+
+          navigator.clipboard.writeText(text).then(() => {
+            showToast('success', 'Kopyalandı', 'Tablo panoya kopyalandı');
+          }).catch(err => {
+            console.error('Kopyalama hatası:', err);
+            showToast('error', 'Hata', 'Kopyalanamadı');
+          });
+        }
+        window.copyPaylasTable = copyPaylasTable;
+
+        // Paylaş sekmesi açıldığında otomatik yükle
+        document.querySelectorAll('.tab[data-tab="paylas"]').forEach(tab => {
+          tab.addEventListener('click', () => {
+            if (paylasData.length === 0) {
+              setTimeout(() => loadPaylasData(), 100);
+            }
+          });
+        });
 
       }); // waitForSupabaseAndOrtak callback kapanışı
     }); // DOMContentLoaded event listener kapanışı
