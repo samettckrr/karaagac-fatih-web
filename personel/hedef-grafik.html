@@ -217,6 +217,11 @@
       text-align: center
     }
 
+    #hedefTablosu tbody td.col-hedef,
+    #hedefTablosu tbody td.col-temin {
+      font-weight: 700;
+    }
+
     #hedefTablosu thead th,
     #hedefTablosu tbody td {
       white-space: nowrap;
@@ -245,6 +250,14 @@
 
     .c-kurban {
       width: 8%
+    }
+
+    #hedefTablosu.mod-ramazan .c-personel {
+      width: 36%;
+    }
+
+    #hedefTablosu.mod-ramazan .c-kurban {
+      width: 2%;
     }
 
     .c-oran {
@@ -359,7 +372,20 @@
       background: linear-gradient(90deg, var(--brand2), var(--brand));
     }
 
+    .progress>.fill.danger {
+      background: linear-gradient(90deg, #dc2626, #ef4444);
+    }
+
+    .progress>.fill.warn {
+      background: linear-gradient(90deg, #ea580c, #f97316);
+    }
+
+    .progress>.fill.good {
+      background: linear-gradient(90deg, #16a34a, #22c55e);
+    }
+
     .progress>.fill.ok {
+      --great: #059669;
       background: linear-gradient(90deg, var(--good), var(--great));
     }
 
@@ -372,7 +398,19 @@
       padding: 0 6px;
       white-space: nowrap;
       overflow: hidden;
-      text-overflow: ellipsis
+      text-overflow: ellipsis;
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(0,0,0,.4), 0 0 1px rgba(0,0,0,.5);
+    }
+
+    .progress>.label.danger {
+      color: #dc2626;
+      text-shadow: none;
+    }
+
+    .progress>.label.warn {
+      color: var(--ink);
+      text-shadow: none;
     }
 
     .badge {
@@ -1100,8 +1138,8 @@
                 <th>Personel</th>
                 <th>Teberru</th>
                 <th>Tahsilat</th>
-                <th>Kurban (KK)</th>
-                <th>Kurban (BB)</th>
+                <th>Kurban (K)</th>
+                <th>Kurban (B)</th>
                 <th>Hedef</th>
                 <th>Temin Edilen</th>
                 <th>Ulaşma Nispeti (%)</th>
@@ -1494,9 +1532,11 @@
           function tabloBasliklariniGuncelle() {
             const thead = document.getElementById('tabloBasliklari');
             const colgroup = document.getElementById('tabloColgroup');
+            const tablo = document.getElementById('hedefTablosu');
             if (!thead || !colgroup) return;
 
             if (ekranModu === 'Ramazan-ı Şerif') {
+              if (tablo) tablo.classList.add('mod-ramazan');
               colgroup.innerHTML = `
           <col class="c-personel">
           <col class="c-mid">
@@ -1518,10 +1558,11 @@
           <th>Teberru</th>
           <th>Toplam Temin Edilen</th>
           <th>Ulaşma Nispeti (%)</th>
-          <th>Kurban (KK)</th>
-          <th>Kurban (BB)</th>
+          <th>Kurban (K)</th>
+          <th>Kurban (B)</th>
         `;
             } else {
+              if (tablo) tablo.classList.remove('mod-ramazan');
               colgroup.innerHTML = `
           <col class="c-personel">
           <col class="c-mid">
@@ -1536,8 +1577,8 @@
           <th>Personel</th>
           <th>Teberru</th>
           <th>Tahsilat</th>
-          <th>Kurban (KK)</th>
-          <th>Kurban (BB)</th>
+          <th>Kurban (K)</th>
+          <th>Kurban (B)</th>
           <th>Hedef</th>
           <th>Temin Edilen</th>
           <th>Ulaşma Nispeti (%)</th>
@@ -1588,13 +1629,13 @@
               tdPersonel.textContent = (p.oran >= 100 ? '⭐ ' : '') + p.personel;
 
               if (ekranModu === 'Ramazan-ı Şerif') {
-                const tdHedef = document.createElement("td"); tdHedef.textContent = `${fmtPara(p.hedef)} ₺`;
+                const tdHedef = document.createElement("td"); tdHedef.className = "col-hedef"; tdHedef.textContent = `${fmtPara(p.hedef)} ₺`;
                 const tdIftar = document.createElement("td"); tdIftar.textContent = `${fmtPara(p.iftar || 0)} ₺`;
                 const tdSahur = document.createElement("td"); tdSahur.textContent = `${fmtPara(p.sahur || 0)} ₺`;
                 const tdTaahhut = document.createElement("td"); tdTaahhut.textContent = `${fmtPara(p.taahhut || 0)} ₺`;
                 const tdTeberru = document.createElement("td"); tdTeberru.textContent = `${fmtPara(p.teberru || 0)} ₺`;
                 const toplamTemin = (p.iftar || 0) + (p.sahur || 0) + (p.taahhut || 0) + (p.teberru || 0);
-                const tdToplamTemin = document.createElement("td"); tdToplamTemin.textContent = `${fmtPara(toplamTemin)} ₺`;
+                const tdToplamTemin = document.createElement("td"); tdToplamTemin.className = "col-temin"; tdToplamTemin.textContent = `${fmtPara(toplamTemin)} ₺`;
 
                 const tdOran = document.createElement("td");
                 const prog = document.createElement('div'); prog.className = 'progress';
@@ -1602,7 +1643,11 @@
                 const lab = document.createElement('div'); lab.className = 'label';
                 const bar = Math.max(0, Math.min(100, p.oran));
                 fill.style.width = bar + '%';
-                if (p.oran >= 100) fill.classList.add('ok');
+                if (p.oran < 30) { fill.classList.add('danger'); lab.classList.add('danger'); }
+                else if (p.oran < 50) { fill.classList.add('warn'); lab.classList.add('warn'); }
+                else if (p.oran < 75) { /* fill: mavi (default), lab: beyaz (default) */ }
+                else if (p.oran < 100) { fill.classList.add('good'); }
+                else { fill.classList.add('ok'); }
                 const oranStr = Number(p.oran).toFixed(2).replace('.', ',');
                 let fullMsg = `%${oranStr}`, shortMsg = `%${oranStr}`;
                 if (p.oran >= 100 && p.oran < 100.01) { fullMsg = 'Hedefinize ulaştınız'; shortMsg = 'Hedefinize ulaştınız'; }
@@ -1619,8 +1664,8 @@
                 const tdTahsilat = document.createElement("td"); tdTahsilat.textContent = `${fmtPara(p.tahsilat)} ₺`;
                 const tdKk = document.createElement("td"); tdKk.textContent = p.kurbanKk || 0;
                 const tdBb = document.createElement("td"); tdBb.textContent = p.kurbanBb || 0;
-                const tdHedef = document.createElement("td"); tdHedef.textContent = `${fmtPara(p.hedef)} ₺`;
-                const tdTemin = document.createElement("td"); tdTemin.textContent = `${fmtPara(p.teminHedef)} ₺`;
+                const tdHedef = document.createElement("td"); tdHedef.className = "col-hedef"; tdHedef.textContent = `${fmtPara(p.hedef)} ₺`;
+                const tdTemin = document.createElement("td"); tdTemin.className = "col-temin"; tdTemin.textContent = `${fmtPara(p.teminHedef)} ₺`;
 
                 const tdOran = document.createElement("td");
                 const prog = document.createElement('div'); prog.className = 'progress';
@@ -1628,7 +1673,11 @@
                 const lab = document.createElement('div'); lab.className = 'label';
                 const bar = Math.max(0, Math.min(100, p.oran));
                 fill.style.width = bar + '%';
-                if (p.oran >= 100) fill.classList.add('ok');
+                if (p.oran < 30) { fill.classList.add('danger'); lab.classList.add('danger'); }
+                else if (p.oran < 50) { fill.classList.add('warn'); lab.classList.add('warn'); }
+                else if (p.oran < 75) { /* fill: mavi (default), lab: beyaz (default) */ }
+                else if (p.oran < 100) { fill.classList.add('good'); }
+                else { fill.classList.add('ok'); }
                 const oranStr = Number(p.oran).toFixed(2).replace('.', ',');
                 let fullMsg = `%${oranStr}`, shortMsg = `%${oranStr}`;
                 if (p.oran >= 100 && p.oran < 100.01) { fullMsg = 'Hedefinize ulaştınız'; shortMsg = 'Hedefinize ulaştınız'; }
