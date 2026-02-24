@@ -19,7 +19,7 @@
     }
 
     .wrap {
-      max-width: 1750px;
+      max-width: 1800px;
       margin: 0 auto;
       padding: 16px
     }
@@ -908,6 +908,40 @@
       font-weight: 800;
     }
 
+    .kf-ramazan-adetler {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 2px solid rgba(148, 163, 184, .25);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .kf-adet-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+      font-weight: 600;
+      color: #334155;
+      background: #ffffff;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(148, 163, 184, .2);
+    }
+
+    .kf-adet-lbl {
+      font-weight: 600;
+      color: #475569;
+    }
+
+    .kf-adet-val {
+      font-size: 18px;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: .02em;
+    }
+
     @media (max-width:1024px) {
       .kf-metrics {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1042,13 +1076,13 @@
     <section class="hero">
       <div>
         <h2><span id="kapsamUst">-</span> Grafiği</h2>
-        <div class="hero-sub">Personelin seçili ayda yaptığı;</div>
-        <div class="hero-sub1">toplam teberru, tahsilat, kurban (kk/bb) + seçili kategorideki hedef/temin → ulaşma
+        <div class="hero-sub">Personelin seçili ayda/kategoriye göre yaptığı;</div>
+        <div class="hero-sub1">toplam teberru, tahsilat, kurban + seçili kategorideki hedef/temin → ulaşma
           nispeti.</div>
         <div class="mini">
           <span class="pill">🕒 Son Güncelleme: <b id="guncellemeZamani">yükleniyor…</b></span>
           <span class="pill">📅 Kapsam: <b id="kapsamPill">-</b></span>
-          <span class="pill">Versiyon: <b>2.0.0</b></span>
+          <span class="pill">Versiyon: <b>3.1</b></span>
           <button class="pill" id="ekranButonu"
             style="cursor:pointer; border:1px solid var(--stroke); background:var(--pill); font-size:12px; padding:6px 10px; border-radius:999px; color:var(--text);">Ekran:
             <b id="ekranAdi">Hedef</b></button>
@@ -1242,6 +1276,11 @@
               <span class="lbl">Toplam</span>
               <span class="val" id="toplamKurbanGenel">0 adet</span>
             </div>
+          </div>
+          <div class="kf-ramazan-adetler" id="ramazanAdetler" style="display:none">
+            <div class="kf-adet-row"><span class="kf-adet-lbl">İftar adedi:</span><span class="kf-adet-val" id="ramazanIftarAdedi">0</span></div>
+            <div class="kf-adet-row"><span class="kf-adet-lbl">Sahur adedi:</span><span class="kf-adet-val" id="ramazanSahurAdedi">0</span></div>
+            <div class="kf-adet-row"><span class="kf-adet-lbl">Taahhüt adedi:</span><span class="kf-adet-val" id="ramazanTaahhutAdedi">0</span></div>
           </div>
         </div>
       </div>
@@ -1515,6 +1554,7 @@
           let refreshInterval = null;
           let cacheTeminHedef = {}, cacheTeberru = {}, cacheTahsilat = {}, sonHedefMap = {};
           let iftarMap = {}, sahurMap = {}, taahhutMap = {};
+          let ramazanIftarAdet = 0, ramazanSahurAdet = 0, ramazanTaahhutAdet = 0;
           let maxUpdateTs = 0;
 
           // Supabase helper: timestamp'i number'a çevir
@@ -1607,6 +1647,8 @@
               if (ozetIftar) ozetIftar.style.display = 'flex';
               if (ozetSahur) ozetSahur.style.display = 'flex';
               if (ozetTaahhut) ozetTaahhut.style.display = 'flex';
+              const ramazanAdetler = document.getElementById('ramazanAdetler');
+              if (ramazanAdetler) ramazanAdetler.style.display = 'flex';
             } else {
               // Hedef modunda Teberru-Tahsilat-Temin göster
               if (teberruEl && teberruEl.parentElement) teberruEl.parentElement.style.display = 'flex';
@@ -1615,6 +1657,8 @@
               if (ozetIftar) ozetIftar.style.display = 'none';
               if (ozetSahur) ozetSahur.style.display = 'none';
               if (ozetTaahhut) ozetTaahhut.style.display = 'none';
+              const ramazanAdetler = document.getElementById('ramazanAdetler');
+              if (ramazanAdetler) ramazanAdetler.style.display = 'none';
             }
           }
 
@@ -1771,6 +1815,13 @@
               if (kkEl) kkEl.textContent = `${sumKk.toLocaleString('tr-TR')} adet`;
               if (bbEl) bbEl.textContent = `${sumBb.toLocaleString('tr-TR')} adet`;
               if (gnEl) gnEl.textContent = `${sumKurban.toLocaleString('tr-TR')} adet`;
+
+              const iftarAdetEl = document.getElementById('ramazanIftarAdedi');
+              const sahurAdetEl = document.getElementById('ramazanSahurAdedi');
+              const taahhutAdetEl = document.getElementById('ramazanTaahhutAdedi');
+              if (iftarAdetEl) iftarAdetEl.textContent = ramazanIftarAdet.toLocaleString('tr-TR');
+              if (sahurAdetEl) sahurAdetEl.textContent = ramazanSahurAdet.toLocaleString('tr-TR');
+              if (taahhutAdetEl) taahhutAdetEl.textContent = ramazanTaahhutAdet.toLocaleString('tr-TR');
             } else {
               const sumTeberru = veriTablosu.reduce((s, x) => s + (x.teberru || 0), 0);
               const sumTahsilat = veriTablosu.reduce((s, x) => s + (x.tahsilat || 0), 0);
@@ -2177,6 +2228,7 @@
                     if (iftarSahurData) {
                       Object.keys(iftarMap).forEach(k => delete iftarMap[k]);
                       Object.keys(sahurMap).forEach(k => delete sahurMap[k]);
+                      ramazanIftarAdet = 0; ramazanSahurAdet = 0;
 
                       iftarSahurData.forEach(d => {
                         if (d.yil && Number(d.yil) !== yil) return;
@@ -2193,8 +2245,10 @@
 
                         if (d.tip === 'iftar') {
                           iftarMap[p] = (iftarMap[p] || 0) + tutar;
+                          ramazanIftarAdet++;
                         } else if (d.tip === 'sahur') {
                           sahurMap[p] = (sahurMap[p] || 0) + tutar;
+                          ramazanSahurAdet++;
                         }
 
                         const ts = getTimestampNumber(d, 'createdat');
@@ -2258,6 +2312,7 @@
 
                     if (taahhutRamazanData) {
                       Object.keys(taahhutMap).forEach(k => delete taahhutMap[k]);
+                      ramazanTaahhutAdet = 0;
                       taahhutRamazanData.forEach(d => {
                         if (d.yil && Number(d.yil) !== yil) return;
                         const personelAdi = d.personeladi || d.personel || d.kaydedenpersonel;
@@ -2270,6 +2325,7 @@
                         
                         const miktar = toNum(d.miktar || 0);
                         taahhutMap[p] = (taahhutMap[p] || 0) + miktar;
+                        ramazanTaahhutAdet++;
 
                         // Lowercase check
                         const ts = getTimestampNumber(d, 'createdat');
@@ -2322,6 +2378,7 @@
 
                     if (iftarData) {
                       Object.keys(iftarMap).forEach(k => delete iftarMap[k]);
+                      ramazanIftarAdet = 0;
                       iftarData.forEach(d => {
                         const when = getWhen(d);
                         if (d.ay !== undefined && d.yil !== undefined) {
@@ -2344,6 +2401,7 @@
                         if (!p || p === '-' || p.trim() === '') return;
                         
                         iftarMap[p] = (iftarMap[p] || 0) + toNum(d.miktar);
+                        ramazanIftarAdet++;
                         const ts = getTimestampNumber(d, 'createdat');
                         if (ts > currentMaxTs) currentMaxTs = ts;
                       });
@@ -2357,6 +2415,7 @@
 
                     if (sahurData) {
                       Object.keys(sahurMap).forEach(k => delete sahurMap[k]);
+                      ramazanSahurAdet = 0;
                       sahurData.forEach(d => {
                         const when = getWhen(d);
                         if (d.ay !== undefined && d.yil !== undefined) {
@@ -2379,6 +2438,7 @@
                         if (!p || p === '-' || p.trim() === '') return;
                         
                         sahurMap[p] = (sahurMap[p] || 0) + toNum(d.miktar);
+                        ramazanSahurAdet++;
                         const ts = getTimestampNumber(d, 'createdat');
                         if (ts > currentMaxTs) currentMaxTs = ts;
                       });
@@ -2391,6 +2451,7 @@
 
                     if (taahhutData) {
                       Object.keys(taahhutMap).forEach(k => delete taahhutMap[k]);
+                      ramazanTaahhutAdet = 0;
                       taahhutData.forEach(d => {
                         const when = getWhen(d);
                         if (d.ay !== undefined && d.yil !== undefined) {
@@ -2413,6 +2474,7 @@
                         if (!p || p === '-' || p.trim() === '') return;
                         
                         taahhutMap[p] = (taahhutMap[p] || 0) + toNum(d.miktar);
+                        ramazanTaahhutAdet++;
                         const ts = getTimestampNumber(d, 'createdat');
                         if (ts > currentMaxTs) currentMaxTs = ts;
                       });
@@ -2423,6 +2485,7 @@
                   Object.keys(iftarMap).forEach(k => delete iftarMap[k]);
                   Object.keys(sahurMap).forEach(k => delete sahurMap[k]);
                   Object.keys(taahhutMap).forEach(k => delete taahhutMap[k]);
+                  ramazanIftarAdet = 0; ramazanSahurAdet = 0; ramazanTaahhutAdet = 0;
                 }
 
                 // Tüm veriler yüklendi, maxUpdateTs'i güncelle
