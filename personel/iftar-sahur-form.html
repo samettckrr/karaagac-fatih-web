@@ -1593,6 +1593,27 @@
     </div>
   </div>
 
+  <!-- Ramazan Özet Modalı (Sayfa yüklendiğinde gösterilir) -->
+  <div id="ramazanOzetModal" class="modal" onclick="if(event.target === this) closeRamazanOzetModal()">
+    <div class="modal-sheet" style="max-width:560px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; padding-bottom:15px; border-bottom:2px solid var(--border);">
+        <h3 style="margin:0; font-size:18px; font-weight:600; color:var(--primary);">📊 Ramazan-ı Şerif</h3>
+        <button type="button" onclick="closeRamazanOzetModal()" 
+          style="background:none; border:none; font-size:24px; cursor:pointer; color:#999; padding:0; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:50%; transition:all 0.2s;"
+          onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background='none'">×</button>
+      </div>
+      <div id="ramazanOzetContent" style="min-height:120px;">
+        <div style="text-align:center; padding:30px; color:#999;">
+          <div style="font-size:24px; margin-bottom:10px;">⏳</div>
+          Yükleniyor...
+        </div>
+      </div>
+      <div style="margin-top:20px; display:flex; justify-content:flex-end;">
+        <button type="button" class="full-btn btn-primary" onclick="closeRamazanOzetModal()">Kapat</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Analiz Modalı -->
   <div id="analizModal" class="modal">
     <div class="modal-sheet" style="max-width:600px;">
@@ -1701,6 +1722,7 @@
         <button class="filter-tab" data-filter="iftar" onclick="applyFilter('iftar')">Sadece İftar</button>
         <button class="filter-tab" data-filter="sahur" onclick="applyFilter('sahur')">Sadece Sahur</button>
         <button class="filter-tab" data-filter="teberru" onclick="applyFilter('teberru')">Sadece Teberru</button>
+        <button class="filter-tab" data-filter="taahhut" onclick="applyFilter('taahhut')">Sadece Taahhüt</button>
       </div>
 
       <!-- KPI Kartları -->
@@ -2091,6 +2113,9 @@
 
       await loadAktifRamazan();
 
+      // İşlem logu: sayfa açıldı kaydı
+      logSayfaAcildi();
+
       // Tüm modalları kapat (sayfa yüklendiğinde)
       document.querySelectorAll('.modal').forEach(modal => {
         modal.classList.remove('open');
@@ -2101,6 +2126,9 @@
 
       // Güncelleme bildirimi (sürüm başına en fazla 2 kez)
       showUpdateModalIfNeeded();
+
+      // Ramazan özet modalı (her sayfa yüklemesinde göster)
+      setTimeout(() => showRamazanOzetModal(), 600);
 
       // Teberru ve Taahhüt form validasyon event listener'ları
       setupTeberruValidation();
@@ -2339,6 +2367,162 @@
     function closeUpdateModal() {
       const modal = qs('#updateModal');
       if (modal) modal.classList.remove('open');
+    }
+
+    function closeRamazanOzetModal() {
+      const modal = qs('#ramazanOzetModal');
+      if (modal) modal.classList.remove('open');
+    }
+
+    async function logSayfaAcildi() {
+      if (!window.supabase) return;
+      try {
+        await window.supabase.from('islem_log').insert({
+          islem: 'sayfa_acildi',
+          uid: currentUser?.id || null,
+          sayfa: 'iftar-sahur-form',
+          path: 'personel/iftar-sahur-form.html',
+          user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null
+        });
+      } catch (e) {
+        console.warn('İşlem logu kaydedilemedi:', e);
+      }
+    }
+
+    async function showRamazanOzetModal() {
+      const contentEl = qs('#ramazanOzetContent');
+      const modalEl = qs('#ramazanOzetModal');
+      if (!contentEl || !modalEl) return;
+      contentEl.innerHTML = '<div style="text-align:center; padding:30px; color:#999;"><div style="font-size:24px; margin-bottom:10px;">⏳</div>Yükleniyor...</div>';
+      modalEl.classList.add('open');
+
+      const formatPara = (val) => (val || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const sb = window.supabase;
+      if (!sb) {
+        contentEl.innerHTML = '<div style="text-align:center; padding:20px; color:#e74c3c;">Supabase bağlantısı yok.</div>';
+        return;
+      }
+      const uid = currentUser?.id;
+      const personelAdi = currentPersonelAdi;
+      const yil2026 = CURRENT_YIL ? (typeof CURRENT_YIL === 'number' ? CURRENT_YIL : parseInt(CURRENT_YIL)) : new Date().getFullYear();
+
+      try {
+        // 1. arsiv_hedefler: 2023, 2024, 2025 Ramazan-ı Şerif tutarları (uid ile)
+        let tutar2023 = 0, tutar2024 = 0, tutar2025 = 0;
+        const addArsivRow = (r) => {
+          const t = parseFloat(r.tutar || 0);
+          if (r.yil === 2023) tutar2023 += t;
+          else if (r.yil === 2024) tutar2024 += t;
+          else if (r.yil === 2025) tutar2025 += t;
+        };
+        if (uid) {
+          const { data: arsivKategori } = await sb.from('arsiv_hedefler').select('id, yil, tutar')
+            .eq('uid', uid).eq('kategori', 'Ramazan-ı Şerif').in('yil', [2023, 2024, 2025]);
+          const { data: arsivTip } = await sb.from('arsiv_hedefler').select('id, yil, tutar')
+            .eq('uid', uid).eq('tip', 'Ramazan-ı Şerif').in('yil', [2023, 2024, 2025]);
+          const merged = [...new Map([...(arsivKategori || []), ...(arsivTip || [])].map(v => [v.id, v])).values()];
+          merged.forEach(addArsivRow);
+          if (tutar2023 === 0 && tutar2024 === 0 && tutar2025 === 0 && personelAdi) {
+            const { data: arsivP1 } = await sb.from('arsiv_hedefler').select('id, yil, tutar, personel')
+              .eq('kategori', 'Ramazan-ı Şerif').in('yil', [2023, 2024, 2025]);
+            const { data: arsivP2 } = await sb.from('arsiv_hedefler').select('id, yil, tutar, personel')
+              .eq('tip', 'Ramazan-ı Şerif').in('yil', [2023, 2024, 2025]);
+            const pNorm = normalizePersonelName(personelAdi);
+            const pMerged = [...new Map([...(arsivP1 || []), ...(arsivP2 || [])].map(v => [v.id, v])).values()];
+            pMerged.filter(r => normalizePersonelName(r.personel || '') === pNorm).forEach(addArsivRow);
+          }
+        }
+
+        // 2. 2026 anlık temin: ramazan_kayitlari (iftar+sahur) + teberru + taahhut
+        let temin2026 = 0;
+        const targetUid = isImpersonating ? impersonatedUserId : uid;
+        const targetName = personelAdi;
+        const seenIds = new Set();
+        if (targetUid) {
+          const { data: rkData } = await sb.from('ramazan_kayitlari').select('id, tip, tutar, personeluid, kaydedenpersoneluid')
+            .eq('yil', yil2026).or(`personeluid.eq.${targetUid},kaydedenpersoneluid.eq.${targetUid}`);
+          (rkData || []).forEach(k => {
+            if ((k.tip === 'iftar' || k.tip === 'sahur') && !seenIds.has(k.id)) {
+              seenIds.add(k.id);
+              temin2026 += Number(k.tutar) || 0;
+            }
+          });
+        }
+        if (targetName) {
+          const tNorm = normalizePersonelName(targetName);
+          const { data: rkName } = await sb.from('ramazan_kayitlari').select('id, tip, tutar, personeladi, kaydedenpersonel')
+            .eq('yil', yil2026);
+          (rkName || []).forEach(k => {
+            const p1 = normalizePersonelName(k.personeladi || '');
+            const p2 = normalizePersonelName(k.kaydedenpersonel || '');
+            if ((p1 === tNorm || p2 === tNorm) && (k.tip === 'iftar' || k.tip === 'sahur') && !seenIds.has(k.id)) {
+              seenIds.add(k.id);
+              temin2026 += Number(k.tutar) || 0;
+            }
+          });
+        }
+        await loadTeberruKayitlari();
+        const yilNum = typeof yil2026 === 'number' ? yil2026 : parseInt(yil2026);
+        if (teberruKayitlari && teberruKayitlari.length > 0) {
+          teberruKayitlari.filter(t => parseInt(t.yil) === yilNum).forEach(t => {
+            temin2026 += Number(t.miktar) || 0;
+          });
+        }
+        await loadTaahhutKayitlari();
+        if (taahhutKayitlari && taahhutKayitlari.length > 0) {
+          taahhutKayitlari.filter(t => parseInt(t.yil) === yilNum).forEach(t => {
+            temin2026 += Number(t.miktar) || 0;
+          });
+        }
+
+        // 3. 2026 hedef: ramazan_hedefler
+        let hedef2026 = 0;
+        const { data: hedefData } = await sb.from('ramazan_hedefler').select('hedef, personeluid, personeladi').eq('yil', yil2026);
+        if (hedefData && hedefData.length > 0) {
+          const h = hedefData.find(x =>
+            (targetUid && x.personeluid === targetUid) ||
+            (targetName && normalizePersonelName(x.personeladi || '') === normalizePersonelName(targetName || ''))
+          );
+          if (h) hedef2026 = parseFloat(h.hedef || 0);
+        }
+        const ulasma2026 = hedef2026 > 0 ? ((temin2026 / hedef2026) * 100).toFixed(1) : '-';
+
+        // Yüzde artış hesapla
+        const artis2024 = tutar2023 > 0 ? (((tutar2024 - tutar2023) / tutar2023) * 100).toFixed(1) : '-';
+        const artis2025 = tutar2024 > 0 ? (((tutar2025 - tutar2024) / tutar2024) * 100).toFixed(1) : '-';
+
+        contentEl.innerHTML = `
+          <div style="display:grid; gap:12px;">
+            <div style="padding:12px 16px; background:linear-gradient(135deg,#f8f9fa,#e9ecef); border-radius:10px; border-left:4px solid #6c757d;">
+              <div style="font-size:12px; color:#6c757d; font-weight:600; margin-bottom:4px;">2023 Ramazan-ı Şerif</div>
+              <div style="font-size:18px; font-weight:700; color:#2c3e50;">₺${formatPara(tutar2023)}</div>
+            </div>
+            <div style="padding:12px 16px; background:linear-gradient(135deg,#e3f2fd,#bbdefb); border-radius:10px; border-left:4px solid #1976d2;">
+              <div style="font-size:12px; color:#1565c0; font-weight:600; margin-bottom:4px;">2024 Ramazan-ı Şerif</div>
+              <div style="font-size:18px; font-weight:700; color:#2c3e50;">₺${formatPara(tutar2024)}</div>
+              ${artis2024 !== '-' ? `<div style="font-size:12px; margin-top:6px; color:${parseFloat(artis2024) >= 0 ? '#27ae60' : '#e74c3c'};">${parseFloat(artis2024) >= 0 ? '↑' : '↓'} %${Math.abs(parseFloat(artis2024))} (2023'e göre)</div>` : ''}
+            </div>
+            <div style="padding:12px 16px; background:linear-gradient(135deg,#e8f5e9,#c8e6c9); border-radius:10px; border-left:4px solid #388e3c;">
+              <div style="font-size:12px; color:#2e7d32; font-weight:600; margin-bottom:4px;">2025 Ramazan-ı Şerif</div>
+              <div style="font-size:18px; font-weight:700; color:#2c3e50;">₺${formatPara(tutar2025)}</div>
+              ${artis2025 !== '-' ? `<div style="font-size:12px; margin-top:6px; color:${parseFloat(artis2025) >= 0 ? '#27ae60' : '#e74c3c'};">${parseFloat(artis2025) >= 0 ? '↑' : '↓'} %${Math.abs(parseFloat(artis2025))} (2024'e göre)</div>` : ''}
+            </div>
+            <div style="padding:12px 16px; background:linear-gradient(135deg,#fff3e0,#ffe0b2); border-radius:10px; border-left:4px solid #f57c00;">
+              <div style="font-size:12px; color:#e65100; font-weight:600; margin-bottom:4px;">${yil2026} Anlık Durum</div>
+              <div style="font-size:18px; font-weight:700; color:#2c3e50;">₺${formatPara(temin2026)}</div>
+              ${hedef2026 > 0 ? `
+                <div style="font-size:12px; margin-top:6px; color:#5d4037;">Hedef: ₺${formatPara(hedef2026)}</div>
+                <div style="font-size:13px; margin-top:6px; font-weight:700; color:${parseFloat(ulasma2026) >= 100 ? '#27ae60' : parseFloat(ulasma2026) >= 50 ? '#f57c00' : '#e74c3c'};">
+                  Ulaşma: %${ulasma2026}
+                </div>
+              ` : '<div style="font-size:12px; margin-top:6px; color:#999;">Hedef tanımlanmamış</div>'}
+            </div>
+          </div>
+        `;
+      } catch (err) {
+        console.error('Ramazan özet yüklenemedi:', err);
+        contentEl.innerHTML = `<div style="text-align:center; padding:20px; color:#e74c3c;">Veriler yüklenirken hata oluştu.<br><small>${err.message || ''}</small></div>`;
+      }
     }
 
     function showInfoCornerButton() {
@@ -4886,6 +5070,9 @@
           } else if (currentFilter === 'teberru') {
             return record.kayitTipi === 'teberru' || 
                    (record.kayitTipi === 'imported' && (record.tip || '').toLowerCase() === 'teberru');
+          } else if (currentFilter === 'taahhut') {
+            return record.kayitTipi === 'taahhut' || 
+                   (record.kayitTipi === 'imported' && ((record.tip || '').toLowerCase() === 'taahhut' || (record.tip || '').toLowerCase() === 'taahhüt'));
           }
           return true;
         });

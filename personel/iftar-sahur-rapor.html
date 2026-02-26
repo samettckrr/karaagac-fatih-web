@@ -276,6 +276,8 @@
       <option value="">Tüm Tipler</option>
       <option value="iftar">İftar</option>
       <option value="sahur">Sahur</option>
+      <option value="teberru">Teberru</option>
+      <option value="taahhut">Taahhüt</option>
     </select>
     <input id="ara" placeholder="Sahip / Personel ara..." />
     <select id="filtreMod">
@@ -334,6 +336,21 @@
     <div class="card">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
         <h3 style="margin:0">Detaylı Liste | Seçime Göre</h3>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span class="muted" style="font-size:13px">Sırala:</span>
+          <select id="siraAlan" style="min-width:140px">
+            <option value="tarih">Tarih</option>
+            <option value="tip">Tip</option>
+            <option value="sahip">Sahip</option>
+            <option value="tutar">Tutar</option>
+            <option value="personel">Personel</option>
+            <option value="mahal">Mahal</option>
+          </select>
+          <select id="siraYon" style="min-width:100px">
+            <option value="artan">Artan</option>
+            <option value="azalan">Azalan</option>
+          </select>
+        </div>
       </div>
 
       <div class="table-wrap" id="tableWrap">
@@ -1216,6 +1233,41 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
         );
       }
 
+      // Sıralama (detaylı liste için)
+      const siraAlan = (qs('#siraAlan') && qs('#siraAlan').value) || 'tarih';
+      const siraYon = (qs('#siraYon') && qs('#siraYon').value) || 'artan';
+      const dir = siraYon === 'azalan' ? -1 : 1;
+      function getSortDate(k) {
+        const t = k.tarih || k.createdat || k.createdAt;
+        if (!t) return 0;
+        if (t instanceof Date) return t.getTime();
+        if (typeof t === 'string') return new Date(t).getTime();
+        if (t.toDate) return t.toDate().getTime();
+        if (t.seconds) return t.seconds * 1000;
+        return 0;
+      }
+      function getSortTip(k) {
+        if (k.kayitTipi === 'teberru') return 'teberru';
+        if (k.kayitTipi === 'taahhut') return 'taahhut';
+        return (k.tip || '').toLowerCase();
+      }
+      function getSortTutar(k) {
+        if (k.kayitTipi === 'teberru' || k.kayitTipi === 'taahhut') return Number(k.miktar) || 0;
+        return Number(k.tutar) || 0;
+      }
+      filtered.sort((a, b) => {
+        let va, vb;
+        switch (siraAlan) {
+          case 'tarih': va = getSortDate(a); vb = getSortDate(b); return dir * (va - vb);
+          case 'tip': va = getSortTip(a); vb = getSortTip(b); return dir * (va < vb ? -1 : va > vb ? 1 : 0);
+          case 'sahip': va = (a.sahip || a.bagisci || '').toLowerCase(); vb = (b.sahip || b.bagisci || '').toLowerCase(); return dir * (va.localeCompare(vb, 'tr'));
+          case 'tutar': va = getSortTutar(a); vb = getSortTutar(b); return dir * (va - vb);
+          case 'personel': va = (a.personelAdi || a.personel || a.kaydedenpersonel || '').toLowerCase(); vb = (b.personelAdi || b.personel || b.kaydedenpersonel || '').toLowerCase(); return dir * (va.localeCompare(vb, 'tr'));
+          case 'mahal': va = (a.mahal || '').toLowerCase(); vb = (b.mahal || '').toLowerCase(); return dir * (va.localeCompare(vb, 'tr'));
+          default: return 0;
+        }
+      });
+
       // KPI güncelle (sadece aktif kayıtlar - iftar-sahur, teberru, taahhüt dahil)
       const aktifKayitlar = filtered.filter(k => !k.silindi);
       const iftarSayisi = aktifKayitlar.filter(k => k.tip === 'iftar' && !k.kayitTipi).length;
@@ -1703,44 +1755,58 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
       loadKayitlar();
     });
     
-    ['#filtreTip', '#filtreMod'].forEach(sel => {
-      qs(sel).addEventListener('change', () => {
-        render();
-      });
+    ['#filtreTip', '#filtreMod', '#siraAlan', '#siraYon'].forEach(sel => {
+      const el = qs(sel);
+      if (el) el.addEventListener('change', () => render());
     });
 
     qs('#ara').addEventListener('input', render);
 
-    // CSV Export
+    // CSV Export (iftar/sahur/teberru/taahhüt aynı filtre mantığı)
     qs('#btnExport').addEventListener('click', () => {
-      const yil = qs('#filtreYil').value;
+      const yil = parseInt(qs('#filtreYil').value);
       const tip = qs('#filtreTip').value;
       const ara = qs('#ara').value.toLowerCase().trim();
       const mod = qs('#filtreMod').value;
 
-      let filtered = [...kayitlar];
-      filtered = filtered.filter(k => k.yil === parseInt(yil));
-      if (tip) filtered = filtered.filter(k => k.tip === tip);
+      let allKayitlar = [...kayitlar, ...silinenKayitlar, ...teberruKayitlari, ...taahhutKayitlari];
+      let filtered = allKayitlar.filter(k => Number(k.yil) === yil || k.yil == yil);
+      if (tip) {
+        if (tip === 'teberru') filtered = filtered.filter(k => k.kayitTipi === 'teberru');
+        else if (tip === 'taahhut') filtered = filtered.filter(k => k.kayitTipi === 'taahhut');
+        else filtered = filtered.filter(k => k.tip === tip && !k.kayitTipi);
+      }
       if (mod === 'kendim' && currentUserUid) filtered = filtered.filter(k => k.personelUid === currentUserUid);
       if (ara) {
         filtered = filtered.filter(k =>
           (k.sahip || '').toLowerCase().includes(ara) ||
-          (k.personel || '').toLowerCase().includes(ara)
+          (k.bagisci || '').toLowerCase().includes(ara) ||
+          (k.personel || '').toLowerCase().includes(ara) ||
+          (k.personelAdi || '').toLowerCase().includes(ara)
         );
       }
 
-      const rows = [['Tarih', 'Tip', 'Sahip', 'Tutar', 'İştirak', 'MüsafirAdedi', 'Personel']];
+      const rows = [['Tarih', 'Tip', 'Sahip/Bağışçı', 'Tutar', 'İştirak', 'MüsafirAdedi', 'Mahal', 'Personel', 'Not']];
 
       filtered.forEach(k => {
-        const tarihStr = k.tarih instanceof Date ? k.tarih.toISOString().slice(0, 10) : k.tarih;
+        let tarihStr = '';
+        if (k.tarih) tarihStr = k.tarih instanceof Date ? k.tarih.toISOString().slice(0, 10) : String(k.tarih).slice(0, 10);
+        else if (k.createdat) tarihStr = typeof k.createdat === 'string' ? k.createdat.slice(0, 10) : (k.createdat instanceof Date ? k.createdat.toISOString().slice(0, 10) : '');
+        const tipLabel = k.kayitTipi === 'teberru' ? 'Teberru' : k.kayitTipi === 'taahhut' ? 'Taahhüt' : (k.tip || '');
+        const sahip = k.sahip || k.bagisci || '';
+        const tutar = k.kayitTipi === 'teberru' || k.kayitTipi === 'taahhut' ? (Number(k.miktar) || 0) : (Number(k.tutar) || 0);
+        const personel = k.personelAdi || k.kaydedenpersonel || k.personel || '';
+        const not = k.notlar || k.aciklama || k.not || '';
         rows.push([
           tarihStr,
-          k.tip || '',
-          k.sahip || '',
-          k.tutar || 0,
-          k.istirak ? 'Evet' : 'Hayır',
-          k.musafirAdedi || 0,
-          k.personel || ''
+          tipLabel,
+          sahip,
+          tutar,
+          k.istirak && !k.kayitTipi ? 'Evet' : (k.kayitTipi ? '-' : 'Hayır'),
+          k.musafirAdedi || (k.kayitTipi ? '-' : 0),
+          k.mahal || '',
+          personel,
+          not
         ]);
       });
 

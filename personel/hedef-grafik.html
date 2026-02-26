@@ -3089,6 +3089,23 @@
               console.error('Veriler yüklenirken hata.');
             }
           }
+
+          // İşlem logu: sayfa açıldı kaydı
+          const sb = getSupabase();
+          if (sb) {
+            try {
+              const { data: { user } } = await sb.auth.getUser();
+              await sb.from('islem_log').insert({
+                islem: 'sayfa_acildi',
+                uid: user?.id || null,
+                sayfa: 'hedef-grafik',
+                path: 'personel/hedef-grafik.html',
+                user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null
+              });
+            } catch (logErr) {
+              console.warn('İşlem logu kaydedilemedi:', logErr);
+            }
+          }
         }; // window.initPage kapanışı
 
         // ortak.js'deki initAppShellAuth otomatik olarak window.initPage'i çağıracak

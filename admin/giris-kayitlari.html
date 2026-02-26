@@ -600,11 +600,9 @@
         if(error) throw error;
         
         const view = document.getElementById('viewIslem').value;
-        const detayStr = (d) => typeof d === 'object' ? JSON.stringify(d || {}) : String(d || '');
         const islemLogs = (rows || []).filter(d => {
           if(!islemTuru) return true;
-          const det = detayStr(d.detay);
-          return d.detay === islemTuru || d.islem === islemTuru || det.includes(islemTuru);
+          return (d.islem === islemTuru) || (d.sayfa === islemTuru);
         });
         
         if(islemLogs.length === 0){
@@ -632,26 +630,27 @@
           <table class="log-table">
             <thead>
               <tr>
-                <th>İşlem/Detay</th>
+                <th>İşlem</th>
+                <th>Sayfa</th>
+                <th>Path</th>
                 <th>Yapan UID</th>
-                <th>Email</th>
                 <th>Zaman</th>
-                <th>Ekstra Bilgi</th>
+                <th>Tarayıcı</th>
               </tr>
             </thead>
             <tbody>
       `;
       logs.forEach(log => {
         const ts = parseLogTime(log);
-        const detay = (typeof log.detay === 'object' ? (log.islem || JSON.stringify(log.detay)) : (log.detay || log.islem || '-'));
-        const ekstra = log.extra ? JSON.stringify(log.extra) : (typeof log.detay === 'object' && log.detay ? JSON.stringify(log.detay) : null);
+        const ua = (log.user_agent || log.userAgent || '-');
         html += `
           <tr>
-            <td>${detay}</td>
+            <td>${log.islem || '-'}</td>
+            <td>${log.sayfa || '-'}</td>
+            <td><code style="font-size:11px">${log.path || '-'}</code></td>
             <td><code style="font-size:11px">${log.uid || '-'}</code></td>
-            <td>${log.email || '-'}</td>
             <td>${ts.toLocaleString('tr-TR')}</td>
-            <td>${ekstra ? (ekstra.length > 50 ? ekstra.substring(0, 50) + '...' : ekstra) : '-'}</td>
+            <td style="font-size:11px; max-width:180px; overflow:hidden; text-overflow:ellipsis;" title="${(ua || '').replace(/"/g, '&quot;')}">${ua.length > 40 ? ua.substring(0, 40) + '…' : ua}</td>
           </tr>
         `;
       });
@@ -663,36 +662,30 @@
       let html = '<div class="log-grid">';
       logs.forEach(log => {
         const ts = parseLogTime(log);
-        const detay = (typeof log.detay === 'object' ? (log.islem || JSON.stringify(log.detay)) : (log.detay || log.islem || '-'));
+        const ua = (log.user_agent || log.userAgent || '-');
         html += `
           <div class="log-card">
             <div class="log-card-header">
-              <div class="log-card-title">${detay}</div>
+              <div class="log-card-title">${log.islem || '-'}</div>
               <div class="log-card-time">${ts.toLocaleString('tr-TR')}</div>
             </div>
             <div class="log-card-body">
               <div class="log-card-item">
+                <span class="log-card-label">Sayfa:</span>
+                <span class="log-card-value">${log.sayfa || '-'}</span>
+              </div>
+              <div class="log-card-item">
+                <span class="log-card-label">Path:</span>
+                <span class="log-card-value"><code style="font-size:11px">${log.path || '-'}</code></span>
+              </div>
+              <div class="log-card-item">
                 <span class="log-card-label">Yapan UID:</span>
                 <span class="log-card-value"><code>${log.uid || '-'}</code></span>
               </div>
-              <div class="log-card-item">
-                <span class="log-card-label">Email:</span>
-                <span class="log-card-value">${log.email || '-'}</span>
-              </div>
-              <div class="log-card-item">
-                <span class="log-card-label">Detay:</span>
-                <span class="log-card-value">${detay}</span>
-              </div>
-              ${(log.extra || (typeof log.detay === 'object' && log.detay)) ? `
-              <div class="log-card-item">
-                <span class="log-card-label">Ekstra:</span>
-                <span class="log-card-value" style="font-size:11px">${JSON.stringify(log.extra || log.detay)}</span>
-              </div>
-              ` : ''}
-              ${(log.user_agent || log.userAgent) ? `
+              ${ua !== '-' ? `
               <div class="log-card-item">
                 <span class="log-card-label">Tarayıcı:</span>
-                <span class="log-card-value" style="font-size:11px">${(log.user_agent || log.userAgent).substring(0, 60)}...</span>
+                <span class="log-card-value" style="font-size:11px">${ua.length > 80 ? ua.substring(0, 80) + '…' : ua}</span>
               </div>
               ` : ''}
             </div>
@@ -908,19 +901,14 @@
             const { data: islemRows } = await sb.from("islem_log").select('*').order('zaman', { ascending: false }).limit(500);
             const uniqueIslemler = new Set();
             (islemRows || []).forEach(d => {
-              const islem = (typeof d.detay === 'object' ? d.islem : d.detay) || d.islem;
-              const s = String(islem || '');
-              if(s){
-                const parts = s.split(':');
-                if(parts.length > 0) uniqueIslemler.add(parts[0]);
-                uniqueIslemler.add(s);
-              }
+              if(d.islem) uniqueIslemler.add(d.islem);
+              if(d.sayfa) uniqueIslemler.add(d.sayfa);
             });
             const islemSelect = document.getElementById('filterIslemTuru');
-            if(islemSelect) Array.from(uniqueIslemler).sort().forEach(islem => {
+            if(islemSelect) Array.from(uniqueIslemler).sort().forEach(val => {
               const opt = document.createElement('option');
-              opt.value = islem;
-              opt.textContent = islem;
+              opt.value = val;
+              opt.textContent = val;
               islemSelect.appendChild(opt);
             });
           }
