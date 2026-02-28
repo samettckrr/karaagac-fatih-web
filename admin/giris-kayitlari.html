@@ -610,11 +610,18 @@
           document.getElementById('statIslem').textContent = '0';
           return;
         }
-        
+
+        const uniqueUids = [...new Set((islemLogs || []).map(d => d.uid).filter(Boolean))];
+        let uidToName = {};
+        if(uniqueUids.length > 0){
+          const { data: kulRows } = await sb.from('kullanicilar').select('id, adsoyad').in('id', uniqueUids);
+          (kulRows || []).forEach(k => { uidToName[k.id] = k.adsoyad || k.id; });
+        }
+
         if(view === 'table'){
-          renderIslemTable(islemLogs, container);
+          renderIslemTable(islemLogs, container, uidToName);
         } else {
-          renderIslemCards(islemLogs, container);
+          renderIslemCards(islemLogs, container, uidToName);
         }
         
         document.getElementById('statIslem').textContent = islemLogs.length;
@@ -624,7 +631,7 @@
       }
     }
 
-    function renderIslemTable(logs, container){
+    function renderIslemTable(logs, container, uidToName = {}){
       let html = `
         <div class="log-table-wrapper">
           <table class="log-table">
@@ -633,7 +640,7 @@
                 <th>İşlem</th>
                 <th>Sayfa</th>
                 <th>Path</th>
-                <th>Yapan UID</th>
+                <th>Yapan</th>
                 <th>Zaman</th>
                 <th>Tarayıcı</th>
               </tr>
@@ -643,12 +650,14 @@
       logs.forEach(log => {
         const ts = parseLogTime(log);
         const ua = (log.user_agent || log.userAgent || '-');
+        const yapanAd = log.uid ? (uidToName[log.uid] || log.uid) : '-';
+        const yapanTitle = log.uid ? `UID: ${log.uid}` : '';
         html += `
           <tr>
             <td>${log.islem || '-'}</td>
             <td>${log.sayfa || '-'}</td>
             <td><code style="font-size:11px">${log.path || '-'}</code></td>
-            <td><code style="font-size:11px">${log.uid || '-'}</code></td>
+            <td title="${yapanTitle}">${yapanAd}</td>
             <td>${ts.toLocaleString('tr-TR')}</td>
             <td style="font-size:11px; max-width:180px; overflow:hidden; text-overflow:ellipsis;" title="${(ua || '').replace(/"/g, '&quot;')}">${ua.length > 40 ? ua.substring(0, 40) + '…' : ua}</td>
           </tr>
@@ -658,11 +667,12 @@
       container.innerHTML = html;
     }
 
-    function renderIslemCards(logs, container){
+    function renderIslemCards(logs, container, uidToName = {}){
       let html = '<div class="log-grid">';
       logs.forEach(log => {
         const ts = parseLogTime(log);
         const ua = (log.user_agent || log.userAgent || '-');
+        const yapan = log.uid ? (uidToName[log.uid] || log.uid) : '-';
         html += `
           <div class="log-card">
             <div class="log-card-header">
@@ -679,8 +689,8 @@
                 <span class="log-card-value"><code style="font-size:11px">${log.path || '-'}</code></span>
               </div>
               <div class="log-card-item">
-                <span class="log-card-label">Yapan UID:</span>
-                <span class="log-card-value"><code>${log.uid || '-'}</code></span>
+                <span class="log-card-label">Yapan:</span>
+                <span class="log-card-value">${yapan}</span>
               </div>
               ${ua !== '-' ? `
               <div class="log-card-item">
