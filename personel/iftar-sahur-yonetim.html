@@ -4829,6 +4829,25 @@
               console.warn('Form alanları güncelleme hatası (modal açılmaya devam ediyor):', updateError);
             }
 
+            // Düzenleme modunda mahal değerini tekrar uygula (async işlemler sırasında kaybolmasını önle)
+            if (id) {
+              const k = kayitlar.find(k => k.id === id);
+              if (k && (k.tip === 'iftar' || k.tip === 'sahur')) {
+                const mahalIdVal = k.mahalId || k.mahalid;
+                const editMahalEl = qs('#editMahal');
+                if (editMahalEl) {
+                  if (mahalIdVal) {
+                    editMahalEl.value = mahalIdVal;
+                  } else if (k.mahal && mahalList && mahalList.length) {
+                    const mahal = mahalList.find(m => m.adi === k.mahal);
+                    if (mahal) editMahalEl.value = mahal.id;
+                  } else {
+                    editMahalEl.value = '';
+                  }
+                }
+              }
+            }
+
             // Modal elementini kontrol et ve aç
             const modalElement = qs('#modalEdit');
             if (!modalElement) {
@@ -5258,9 +5277,10 @@
             console.warn('⚠️ Tip seçilmemiş, tüm alanlar gizleniyor');
           }
 
-          // Mevcut tarih değerini sakla (sıfırlanmaması için)
+          // Mevcut değerleri sakla (sıfırlanmaması için)
           const mevcutTarih = qs('#editTarih').value;
           const mevcutTarihSelect = qs('#editTarihSelect').value;
+          const mevcutMahal = (qs('#editMahal') && qs('#editMahal').value) ? qs('#editMahal').value : '';
 
           // Tüm grupları gizle
           qs('#editGroupSahip').style.display = 'none';
@@ -5341,9 +5361,14 @@
             qs('#editSahip').setAttribute('required', 'required');
             qs('#editTutar').setAttribute('required', 'required');
             qs('#editMusafir').setAttribute('required', 'required');
-            
+
             // Menü şablonlarını yükle
             await loadEditMenuSecenekleri(tip);
+
+            // Mahal seçimini koru (async işlemler sonrası kullanıcı değişikliği kaybolmasın)
+            if (qs('#editMahal')) {
+              qs('#editMahal').value = mevcutMahal || '';
+            }
           } else if (tip === 'teberru' || tip === 'taahhut') {
             // Teberru/Taahhüt alanları - Seçilen yıla göre ramazan tarih aralığından seçim
             qs('#editGroupTarihSelect').style.display = 'block';
@@ -5858,12 +5883,14 @@
                   data.personelUid = personelUidFinal;
                 }
 
-                // Mahal bilgisini ekle
+                // Mahal bilgisini ekle - kullanıcı "Mahal Seçiniz" ile temizlediyse null gönder
                 if (mahalId) {
                   data.mahalId = mahalId;
-                }
-                if (mahalAdi) {
-                  data.mahal = mahalAdi;
+                  if (mahalAdi) data.mahal = mahalAdi;
+                } else {
+                  // Mahal kaldırıldı - veritabanında da temizle
+                  data.mahalId = null;
+                  data.mahal = null;
                 }
 
                 // İftar-Sahur (ramazan_kayitlari) için LOWERCASE zorunluluğu var (sqleditor.md'ye göre)
@@ -5872,8 +5899,11 @@
                 if (data.personelUid) { data.personeluid = data.personelUid; delete data.personelUid; }
                 // personelAdi -> personeladi
                 if (data.personelAdi) { data.personeladi = data.personelAdi; delete data.personelAdi; }
-                // mahalId -> mahalid
-                if (data.mahalId) { data.mahalid = data.mahalId; delete data.mahalId; }
+                // mahalId -> mahalid (null dahil - mahal kaldırıldığında da gönder)
+                if ('mahalId' in data) {
+                  data.mahalid = data.mahalId;
+                  delete data.mahalId;
+                }
                 // musafirAdedi -> musafiradedi (0 dahil gönderilmeli - if (data.musafirAdedi) 0 için false döner)
                 if ('musafirAdedi' in data) {
                   data.musafiradedi = data.musafirAdedi;

@@ -159,6 +159,14 @@
         padding-bottom: max(20px, env(safe-area-inset-bottom));
       }
       .hero h1 { font-size: 18px; margin-bottom: 0; line-height: 1.35; }
+      .personel-tablosu {
+        padding: 16px;
+        margin-bottom: 16px;
+        border-radius: 12px;
+      }
+      .personel-tablosu h3 { font-size: 15px; }
+      .personel-tablosu th,
+      .personel-tablosu td { padding: 8px 10px; font-size: 13px; }
       .izin-kurallari {
         padding: 16px;
         margin-bottom: 16px;
@@ -373,6 +381,63 @@
       font-size: 15px;
     }
 
+    .personel-tablosu {
+      background: linear-gradient(135deg, var(--card), var(--surface));
+      border-radius: 14px;
+      border: 1px solid var(--stroke);
+      padding: 20px 24px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow);
+    }
+    .personel-tablosu h3 {
+      margin: 0 0 14px;
+      font-size: 16px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .personel-tablosu h3::before {
+      content: '';
+      width: 4px;
+      height: 20px;
+      background: var(--brand);
+      border-radius: 2px;
+    }
+    .personel-tablosu table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    .personel-tablosu th,
+    .personel-tablosu td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--stroke);
+    }
+    .personel-tablosu th {
+      font-weight: 600;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .personel-tablosu th:last-child {
+      text-align: center;
+    }
+    .personel-tablosu td:last-child {
+      font-weight: 600;
+      color: var(--brand);
+      text-align: center;
+      min-width: 80px;
+    }
+    .personel-tablosu tr:last-child td { border-bottom: none; }
+    .personel-tablosu .bos-mesaj {
+      color: var(--muted);
+      font-style: italic;
+      padding: 16px 0;
+    }
+
     .loading { text-align: center; padding: 40px; color: var(--muted); }
     .hata { text-align: center; padding: 24px; color: var(--bad); }
   </style>
@@ -443,6 +508,11 @@
     <section class="hero">
       <h1>Personel Ramazan-ı Şerif İzin Yönetimi</h1>
     </section>
+
+    <div class="personel-tablosu" id="personelTablosu">
+      <h3>Personel Tablosu</h3>
+      <div id="personelTabloIcerik">Yükleniyor...</div>
+    </div>
 
     <div class="izin-kurallari">
       <h3>İzin Kuralları</h3>
@@ -625,11 +695,28 @@
       }
 
       function getHaftalaraBol() {
-        const haftalar = [];
-        for (let i = 0; i < tumTarihler.length; i += 7) {
-          haftalar.push(tumTarihler.slice(i, i + 7));
+        // Hafta sırası: Pzt, Salı, Çarşamba, Perşembe, Cuma, Cumartesi, Pazar
+        const weekMap = new Map();
+        const pad = (n) => String(n).padStart(2, '0');
+
+        for (const dateStr of tumTarihler) {
+          const d = tarihStrToDate(dateStr);
+          if (!d) continue;
+          const dayOfWeek = d.getDay(); // 0=Pazar, 1=Pzt, ..., 6=Cumartesi
+          const slotIndex = (dayOfWeek + 6) % 7; // Pzt=0, Salı=1, ..., Pazar=6
+          const diffToMonday = (dayOfWeek + 6) % 7;
+          const monday = new Date(d);
+          monday.setDate(monday.getDate() - diffToMonday);
+          const mondayStr = monday.getFullYear() + '-' + pad(monday.getMonth() + 1) + '-' + pad(monday.getDate());
+
+          if (!weekMap.has(mondayStr)) {
+            weekMap.set(mondayStr, [null, null, null, null, null, null, null]);
+          }
+          weekMap.get(mondayStr)[slotIndex] = dateStr;
         }
-        return haftalar;
+
+        const sortedMondays = [...weekMap.keys()].sort();
+        return sortedMondays.map((m) => weekMap.get(m));
       }
 
       function formatTarihLabel(dateStr) {
@@ -705,11 +792,45 @@
         }
       }
 
+      function renderPersonelTablosu() {
+        const container = qs('personelTabloIcerik');
+        if (!container) return;
+        const ADMIN_KULLANICI = 'Admin Kullanıcı';
+        const yilKayitlari = izinKayitlari.filter(k => k.ramazan_yil === secilenYil);
+        const sayac = {};
+        personelListesi.forEach(p => {
+          if ((p.adsoyad || '').trim() === ADMIN_KULLANICI) return;
+          const anahtar = p.id || p.adsoyad;
+          sayac[anahtar] = { ad: p.adsoyad || anahtar, sayi: 0 };
+        });
+        yilKayitlari.forEach(k => {
+          if ((k.personel_adi || '').trim() === ADMIN_KULLANICI) return;
+          const anahtar = k.personel_uid || k.personel_adi || 'bilinmeyen';
+          if (!sayac[anahtar]) sayac[anahtar] = { ad: k.personel_adi || anahtar, sayi: 0 };
+          sayac[anahtar].sayi += 1;
+        });
+        const liste = Object.entries(sayac)
+          .map(([uid, o]) => ({ uid, ad: o.ad, sayi: o.sayi }))
+          .filter(p => (p.ad || '').trim() !== ADMIN_KULLANICI)
+          .sort((a, b) => b.sayi - a.sayi);
+        if (liste.length === 0) {
+          container.innerHTML = '<div class="bos-mesaj">Personel listesi yüklenemedi.</div>';
+          return;
+        }
+        container.innerHTML = '<table><thead><tr><th>Personel</th><th>Kullanılan İzin</th></tr></thead><tbody>' +
+          liste.map(p => `<tr><td>${p.ad || p.uid}</td><td>${p.sayi}</td></tr>`).join('') +
+          '</tbody></table>';
+      }
+
       function renderBirHafta(haftaTarihler, haftaNo) {
         const hicriYil = ramazanAyar?.hicriyil || '';
         const miladiYil = secilenYil || '';
+        const gunAdlari = ['Pzt', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 
-        return haftaTarihler.map(dateStr => {
+        return haftaTarihler.map((dateStr, idx) => {
+          if (dateStr == null) {
+            return `<div class="gun-kart bos-slot" style="opacity:0.4;pointer-events:none"><div class="gun-baslik">${gunAdlari[idx]}</div><div class="gun-alt">—</div><div class="izinli bos">—</div><div class="izinli bos">—</div></div>`;
+          }
           const gunIzinleri = getGunIzinleri(dateStr);
           const d = tarihStrToDate(dateStr);
           const label = formatTarihLabel(dateStr);
@@ -942,6 +1063,7 @@
         tumTarihler = getTarihListesi();
         await loadIzinKayitlari();
         updateIzinHakBilgi();
+        renderPersonelTablosu();
         renderHaftalar();
       }
 
