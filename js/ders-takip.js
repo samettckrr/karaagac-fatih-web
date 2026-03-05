@@ -56,11 +56,11 @@ async function getCurrentUserProfile() {
 
 /**
  * Yeni ders kaydı oluştur
- * @param {Object} params - { devre, kitap, ders_adi, talebe_uid, talebe_adi, ders_gunu }
+ * @param {Object} params - { devre, kitap, ders_adi, talebe_uid, talebe_adi, ders_gunu, ders_verme_durumu }
  * @returns {Promise<Object>}
  */
 async function dersKaydiOlustur(params) {
-  const { devre, kitap, ders_adi, talebe_uid, talebe_adi, ders_gunu } = params;
+  const { devre, kitap, ders_adi, talebe_uid, talebe_adi, ders_gunu, ders_verme_durumu } = params;
   
   if (!devre || !kitap || !ders_adi || !talebe_uid) {
     throw new Error('Devre, kitap, ders adı ve talebe UID zorunludur.');
@@ -69,17 +69,26 @@ async function dersKaydiOlustur(params) {
   const userProfile = await getCurrentUserProfile();
   const sb = getSupabase();
   
+  const allowedStatuses = ['henuz_verilmedi', 'verdi', 'veremedi', 'yarim'];
+  const durum = (ders_verme_durumu && allowedStatuses.includes(ders_verme_durumu)) ? ders_verme_durumu : null;
+  
   const kayit = {
     devre: String(devre).trim(),
     kitap: String(kitap).trim(),
     ders_adi: String(ders_adi).trim(),
     talebe_uid: String(talebe_uid).trim(),
     talebe_adi: talebe_adi ? String(talebe_adi).trim() : null,
-    ders_gunu: ders_gunu || new Date().toISOString().slice(0, 10),
+    ders_gunu: (ders_gunu && String(ders_gunu).length >= 10) ? String(ders_gunu).slice(0, 10) : (new Date().toISOString().slice(0, 10)),
     kaydeden_personel: userProfile.adsoyad,
     kaydeden_personel_uid: userProfile.uid,
-    ders_verme_durumu: null // Başlangıçta null (henüz işlem yapılmadı)
+    ders_verme_durumu: durum
   };
+  
+  if (durum && durum !== 'henuz_verilmedi') {
+    kayit.ders_veren_personel = userProfile.adsoyad;
+    kayit.ders_veren_personel_uid = userProfile.uid;
+    kayit.ders_verme_tarihi = new Date().toISOString();
+  }
   
   const { data, error } = await sb
     .from('ders_kayitlari')

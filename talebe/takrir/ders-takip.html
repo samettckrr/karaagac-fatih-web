@@ -582,7 +582,7 @@
         <label>Durum</label>
         <select id="selDurum">
           <option value="">Tüm Durumlar</option>
-          <option value="null">İşlem Yapılmadı</option>
+          <option value="islem_yapilmadi">İşlem Yapılmadı</option>
           <option value="henuz_verilmedi">Henüz Verilmedi</option>
           <option value="verdi">Verdi</option>
           <option value="veremedi">Veremedi</option>
@@ -1162,6 +1162,11 @@
 
     currentFiltreler = { devre, kitap, ders_adi, talebe_uid, ders_verme_durumu, ders_gunu };
 
+    const resultsArea = document.getElementById('resultsArea');
+    if (resultsArea) {
+      resultsArea.innerHTML = '<div class="loading">Kayıtlar yükleniyor</div>';
+    }
+
     try {
       const sb = window.supabase;
       
@@ -1315,11 +1320,11 @@
       // 4. Adım: Durum filtresini uygula
       let filtreliKayitlar = sonucKayitlar;
       if (ders_verme_durumu) {
-        if (ders_verme_durumu === 'islem_yapilmadi') {
-          // "İşlem yapılmamış" filtresi varsa sadece onları göster
+        if (ders_verme_durumu === 'islem_yapilmadi' || ders_verme_durumu === 'null') {
+          // "İşlem yapılmamış" filtresi: ders_verme_durumu null veya boş olanlar
           filtreliKayitlar = sonucKayitlar.filter(k => !k.ders_verme_durumu);
         } else {
-          // Belirli bir durum seçildiyse, sadece o durumdakileri göster
+          // Belirli bir durum seçildiyse
           filtreliKayitlar = sonucKayitlar.filter(k => k.ders_verme_durumu === ders_verme_durumu);
         }
       }
@@ -1332,6 +1337,14 @@
       console.error('Filtreleme hatası:', error);
       if (typeof showToast === 'function') {
         showToast('error', 'Hata', 'Kayıtlar yüklenemedi: ' + (error.message || error));
+      }
+      if (resultsArea) {
+        resultsArea.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">⚠️</div>
+            <div>Kayıtlar yüklenirken hata oluştu. Lütfen tekrar deneyin.</div>
+          </div>
+        `;
       }
     }
   }
@@ -2311,14 +2324,15 @@
             ? `${vermeTarihi !== '—' ? vermeTarihi : dersGunu}`
             : `${escapeHtml(kayit.kitap || '—')} / ${escapeHtml(kayit.ders_adi || '—')} ${vermeTarihi !== '—' ? '· ' + vermeTarihi : ''}`;
 
-          // Kayıt bilgilerini JSON string olarak data attribute'a ekle (mobil tıklama için)
+          // Kayıt bilgilerini JSON string olarak data attribute'a ekle (mobil tıklama ve buton için)
           const kayitData = JSON.stringify({
             id: kayit.id || null,
             talebe_adi: kayit.talebe_adi || kayit.talebe_uid || '',
             kitap: kayit.kitap || '',
             ders_adi: kayit.ders_adi || '',
             ders_verme_durumu: kayit.ders_verme_durumu || '',
-            talebe_uid: kayit.talebe_uid || ''
+            talebe_uid: kayit.talebe_uid || '',
+            ders_gunu: kayit.ders_gunu || null
           }).replace(/"/g, '&quot;');
           
           return `
@@ -2335,7 +2349,7 @@
               <div data-label="Verme Tarihi">${vermeTarihi}</div>
               <div data-label="Personel">${escapeHtml(kayit.ders_veren_personel || '—')}</div>
               <div data-label="İşlem">
-                <button class="btn-secondary" onclick="openDurumModal(${kayit.id ? `'${kayit.id}'` : 'null'}, '${escapeHtml(kayit.talebe_adi || kayit.talebe_uid)}', '${escapeHtml(kayit.kitap || '')}', '${escapeHtml(kayit.ders_adi || '')}', '${kayit.ders_verme_durumu || ''}', '${kayit.talebe_uid || ''}')">
+                <button class="btn-secondary" data-kayit='${kayitData}' onclick="openDurumModalFromRow(this)">
                   ${kayit.id ? '✏️ Güncelle' : '➕ Yeni Kayıt'}
                 </button>
               </div>
@@ -2350,7 +2364,7 @@
                 <div class="mobile-row-subtitle">${mobileSubtitle}</div>
               </div>
               <div class="mobile-row-action">
-                <button class="btn-secondary" onclick="openDurumModal(${kayit.id ? `'${kayit.id}'` : 'null'}, '${escapeHtml(kayit.talebe_adi || kayit.talebe_uid)}', '${escapeHtml(kayit.kitap || '')}', '${escapeHtml(kayit.ders_adi || '')}', '${kayit.ders_verme_durumu || ''}', '${kayit.talebe_uid || ''}')">
+                <button class="btn-secondary" data-kayit='${kayitData}' onclick="openDurumModalFromRow(this)">
                   ${kayit.id ? '✏️' : '➕'}
                 </button>
               </div>
@@ -2400,7 +2414,8 @@
                 kayitData.kitap,
                 kayitData.ders_adi,
                 kayitData.ders_verme_durumu,
-                kayitData.talebe_uid
+                kayitData.talebe_uid,
+                kayitData.ders_gunu
               );
             } catch (err) {
               console.error('Kayıt verisi parse edilemedi:', err);
@@ -2463,20 +2478,40 @@
     document.getElementById('statsSection').style.display = 'block';
   }
 
+  // Buton veya satırdan modal aç (data-kayit attribute'undan okur)
+  function openDurumModalFromRow(btnOrRow) {
+    const row = btnOrRow.closest ? btnOrRow.closest('.table-row') : btnOrRow;
+    if (!row) return;
+    const kayitDataStr = row.getAttribute('data-kayit') || (btnOrRow.getAttribute && btnOrRow.getAttribute('data-kayit'));
+    if (!kayitDataStr) return;
+    try {
+      const k = JSON.parse(kayitDataStr.replace(/&quot;/g, '"'));
+      openDurumModal(k.id, k.talebe_adi, k.kitap, k.ders_adi, k.ders_verme_durumu, k.talebe_uid, k.ders_gunu);
+    } catch (err) {
+      console.error('Kayıt verisi parse edilemedi:', err);
+    }
+  }
+
   // Durum modalını aç
-  function openDurumModal(kayitId, talebeAdi, kitap, dersAdi, mevcutDurum, talebeUid) {
+  function openDurumModal(kayitId, talebeAdi, kitap, dersAdi, mevcutDurum, talebeUid, dersGunuParam) {
     // kayitId null olabilir (yeni kayıt için)
     currentKayitId = kayitId === 'null' || kayitId === null ? null : kayitId;
     
-    // Yeni kayıt için mevcut filtrelerden bilgileri al ve sakla
+    // Yeni kayıt için mevcut filtrelerden ve satırdan bilgileri al ve sakla
     if (!currentKayitId && currentFiltreler) {
+      // ders_gunu: satırdan gelen değer (placeholder için takrir_index.created_at) veya filtre veya bugün
+      let dersGunu = dersGunuParam;
+      if (!dersGunu && currentFiltreler.ders_gunu) dersGunu = currentFiltreler.ders_gunu;
+      if (!dersGunu) dersGunu = new Date().toISOString().slice(0, 10);
+      if (typeof dersGunu === 'string' && dersGunu.length > 10) dersGunu = dersGunu.slice(0, 10); // ISO'dan YYYY-MM-DD
+      
       currentKayitObj = {
         devre: currentFiltreler.devre,
         kitap: currentFiltreler.kitap || kitap,
         ders_adi: currentFiltreler.ders_adi || dersAdi,
         talebe_uid: talebeUid || currentFiltreler.talebe_uid,
         talebe_adi: talebeAdi,
-        ders_gunu: currentFiltreler.ders_gunu || new Date().toISOString().slice(0, 10)
+        ders_gunu: dersGunu
       };
     } else {
       currentKayitObj = null;
@@ -2531,6 +2566,13 @@
       return;
     }
 
+    const kaydetBtn = document.getElementById('btnModalKaydet');
+    if (kaydetBtn && kaydetBtn.disabled) return; // Çift tıklamayı engelle
+    if (kaydetBtn) {
+      kaydetBtn.disabled = true;
+      kaydetBtn.textContent = '⏳ Kaydediliyor...';
+    }
+
     try {
       if (currentKayitId) {
         // Mevcut kaydı güncelle
@@ -2550,22 +2592,16 @@
           return;
         }
 
-        // Yeni kayıt oluştur (durum ile birlikte)
-        const yeniKayit = await window.dersTakipAPI.dersKaydiOlustur({
+        // Yeni kayıt oluştur (durum tek seferde kaydedilir - 2. güncelleme ihtiyacı yok)
+        await window.dersTakipAPI.dersKaydiOlustur({
           devre: currentKayitObj.devre,
           kitap: currentKayitObj.kitap,
           ders_adi: currentKayitObj.ders_adi,
           talebe_uid: currentKayitObj.talebe_uid,
           talebe_adi: currentKayitObj.talebe_adi,
-          ders_gunu: currentKayitObj.ders_gunu || new Date().toISOString().slice(0, 10)
+          ders_gunu: currentKayitObj.ders_gunu || new Date().toISOString().slice(0, 10),
+          ders_verme_durumu: durum
         });
-
-        // Oluşturulan kaydın durumunu güncelle
-        if (yeniKayit && yeniKayit.id) {
-          await window.dersTakipAPI.dersKaydiGuncelle(yeniKayit.id, {
-            ders_verme_durumu: durum
-          });
-        }
         
         if (typeof showToast === 'function') {
           showToast('success', 'Başarılı', 'Kayıt oluşturuldu ve durum kaydedildi');
@@ -2579,6 +2615,11 @@
       console.error('Güncelleme hatası:', error);
       if (typeof showToast === 'function') {
         showToast('error', 'Hata', 'İşlem başarısız: ' + (error.message || error));
+      }
+    } finally {
+      if (kaydetBtn) {
+        kaydetBtn.disabled = false;
+        kaydetBtn.textContent = '💾 Kaydet';
       }
     }
   }
@@ -2606,6 +2647,7 @@
   // GLOBAL FONKSİYONLAR
   // ============================================
   window.openDurumModal = openDurumModal;
+  window.openDurumModalFromRow = openDurumModalFromRow;
   window.handleDuzenle = handleDuzenle;
   window.switchYeniKayitTab = switchYeniKayitTab;
   window.openYeniKayitModal = openYeniKayitModal;
