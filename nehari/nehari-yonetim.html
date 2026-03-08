@@ -627,7 +627,7 @@
               <th>Aylık (₺)</th>
               <th>Dönem</th>
               <th>Ay Bazlı Durum</th>
-              <th style="width:80px">İşlem</th>
+              <th style="width:120px">İşlem</th>
             </tr>
           </thead>
           <tbody id="aidatOzetTbody"></tbody>
@@ -1208,7 +1208,8 @@
             if (!window._aidatPlanMap) window._aidatPlanMap = {};
             window._aidatPlanMap[a.id] = { id: a.id, talebe_id: a.talebe_id, aylik_tutar: aylik, baslangic_yil: a.baslangic_yil, baslangic_ay: a.baslangic_ay, bitis_yil: a.bitis_yil, bitis_ay: a.bitis_ay };
             var editBtn = '<button type="button" class="btn-edit aidat-plan-edit" title="Düzenle" data-aidat-id="' + a.id + '">&#9998;</button>';
-            return '<tr data-aidat-id="' + a.id + '"><td><strong>' + adSoyad + '</strong></td><td>' + paraFmt(aylik) + '</td><td>' + donem + '</td><td>' + subTable + '</td><td>' + editBtn + '</td></tr>';
+            var silBtn = '<button type="button" class="btn-sil aidat-plan-sil" title="Sil" data-aidat-id="' + a.id + '" data-talebe-ad="' + (adSoyad || '').replace(/"/g, '&quot;') + '">&#10005;</button>';
+            return '<tr data-aidat-id="' + a.id + '"><td><strong>' + adSoyad + '</strong></td><td>' + paraFmt(aylik) + '</td><td>' + donem + '</td><td>' + subTable + '</td><td>' + editBtn + ' ' + silBtn + '</td></tr>';
           }).join('');
 
           loadOdemeListesi(talebeler);
@@ -1216,20 +1217,38 @@
           if (aidatOzetWrapper) {
             aidatOzetWrapper.style.display = 'block';
             aidatOzetWrapper.querySelectorAll('.aidat-plan-edit').forEach(function(btn) {
-              btn.onclick = function() {
-                var plan = window._aidatPlanMap && window._aidatPlanMap[this.dataset.aidatId];
-                if (!plan) return;
-                document.getElementById('aidatPlanModalBaslik').textContent = 'Aidat Planı Düzenle';
-                document.getElementById('aidatPlanForm').dataset.editId = plan.id;
-                document.getElementById('aidatTalebe').value = plan.talebe_id;
-                document.getElementById('aidatAylik').value = plan.aylik_tutar;
-                document.getElementById('aidatBasYil').value = plan.baslangic_yil;
-                document.getElementById('aidatBasAy').value = plan.baslangic_ay;
-                document.getElementById('aidatBitYil').value = plan.bitis_yil;
-                document.getElementById('aidatBitAy').value = plan.bitis_ay;
-                acAidatPlan();
-              };
-            });
+                btn.onclick = function() {
+                  var plan = window._aidatPlanMap && window._aidatPlanMap[this.dataset.aidatId];
+                  if (!plan) return;
+                  document.getElementById('aidatPlanModalBaslik').textContent = 'Aidat Planı Düzenle';
+                  document.getElementById('aidatPlanForm').dataset.editId = plan.id;
+                  document.getElementById('aidatTalebe').value = plan.talebe_id;
+                  document.getElementById('aidatAylik').value = plan.aylik_tutar;
+                  document.getElementById('aidatBasYil').value = plan.baslangic_yil;
+                  document.getElementById('aidatBasAy').value = plan.baslangic_ay;
+                  document.getElementById('aidatBitYil').value = plan.bitis_yil;
+                  document.getElementById('aidatBitAy').value = plan.bitis_ay;
+                  acAidatPlan();
+                };
+              });
+            aidatOzetWrapper.querySelectorAll('.aidat-plan-sil').forEach(function(btn) {
+                btn.onclick = function() {
+                  var ad = (this.dataset.talebeAd || '').replace(/&quot;/g, '"');
+                  var msg = ad ? 'Bu aidat planını silmek istediğinize emin misiniz? (' + ad + ')' : 'Bu aidat planını silmek istediğinize emin misiniz?';
+                  if (!confirm(msg)) return;
+                  var id = this.dataset.aidatId;
+                  window.supabase.from('nehari_aidat').delete().eq('id', id).then(function(res) {
+                    if (res.error) {
+                      if (typeof window.showToast === 'function') window.showToast('error', 'Hata', res.error.message);
+                      else alert('Hata: ' + res.error.message);
+                    } else {
+                      if (typeof window.showToast === 'function') window.showToast('success', 'Silindi', 'Aidat planı silindi.');
+                      loadAidatOzet();
+                      loadTalebeListesi();
+                    }
+                  });
+                };
+              });
           }
         } catch (err) {
           aidatOzetIcerik.className = 'hata';
@@ -1601,6 +1620,10 @@
           setTimeout(tryLoad, 300);
         }
       }
+      window.refreshPageData = async function() {
+        await loadTalebeListesi();
+        await loadAidatOzet();
+      };
       tryLoad();
     })();
   </script>

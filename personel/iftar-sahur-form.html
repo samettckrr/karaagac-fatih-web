@@ -219,8 +219,9 @@
       box-shadow: 0 4px 14px rgba(52, 152, 219, 0.5) !important;
     }
 
-    /* Hata Bildirimi butonu */
+    /* Hata Bildirimi butonu - gizli (işlevler korunuyor) */
     .hata-bildirimi-btn {
+      display: none !important;
       background: #9b59b6 !important;
       border-color: #8e44ad !important;
       box-shadow: 0 3px 10px rgba(155, 89, 182, 0.4) !important;
@@ -1430,9 +1431,7 @@
       </div>
       <div id="updateModalContent" style="line-height:1.6; color:#555; margin-bottom:20px; font-size:14px;">
         <ul style="margin:0; padding-left:20px; text-align:left;">
-          <li style="margin-bottom:10px;"><strong>Müsafir Adetleri:</strong> Geciktirmeden (sistem kapanmadan) kontrol edip teyit edelim. <strong style="color:var(--danger);">Bir gün öncesi saat 17:00'dan sonra</strong> kayıt eklenemez veya düzenlenemez.</li>
-          <li style="margin-bottom:10px;"><strong>Tahsilat Takibi:</strong> İftar-sahur tahsilatlarımızın takibini yapmayı unutmayalım.</li>
-          <li style="margin-bottom:10px;"><strong>Günlük Tahsilat:</strong> Her gün tahsilat yapılması, yapılamama durumunda takip edilmesi gerekmektedir.</li>
+          <li style="margin-bottom:10px;"><strong>Boş Kamelya Tespiti:</strong> Artık geçmiş tarihli veriler gösterilmiyor; sorgulandığı tarih ve ileri tarihli boş/dolu günler listeleniyor.</li>
           <li style="margin-bottom:10px;"><strong>Hedef:</strong> Ramazan-ı Şerif sonuna kadar <strong style="color:var(--danger);">%50 tahsilat</strong> arzu edilmektedir.</li>
         </ul>
       </div>
@@ -2350,7 +2349,7 @@
       }
     }
 
-    const UPDATE_VERSION = '2026-02-21';
+    const UPDATE_VERSION = '2026-03-09';
 
     function showUpdateModalIfNeeded() {
       const key = `iftarSahurUpdateViewCount_${UPDATE_VERSION}`;
@@ -3895,8 +3894,10 @@
         const name = k.personeladi || k.personelAdi || k.sahip || k.personel || '';
         if (name) doluMap[dateStr].push({ name, tip: k.tip || '' });
       });
-      const bosGunler = allDates.filter(d => !doluMap[d] || doluMap[d].length === 0);
-      const doluGunler = allDates.filter(d => doluMap[d] && doluMap[d].length > 0);
+      const bugunStr = new Date().toISOString().slice(0, 10);
+      const bugunVeIleri = (d) => d >= bugunStr;
+      const bosGunler = allDates.filter(d => (!doluMap[d] || doluMap[d].length === 0) && bugunVeIleri(d));
+      const doluGunler = allDates.filter(d => doluMap[d] && doluMap[d].length > 0 && bugunVeIleri(d));
       const formatTarihGoster = (s) => {
         const d = new Date(s + 'T12:00:00');
         return d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' });

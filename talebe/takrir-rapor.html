@@ -506,7 +506,7 @@ sheetBackdrop?.addEventListener('click', closeSheet);
   function reset(){ pulling=false; maxPull=0; setP(0); show(false); lbl.textContent='Yenilemek için çek'; }
   area.addEventListener('touchstart',e=>{ if(area.scrollTop>0) return reset(); const t=e.touches[0]; startY=t.clientY; startX=t.clientX; pulling=true; maxPull=0; setP(0); show(false); },{passive:true});
   area.addEventListener('touchmove',e=>{ if(!pulling) return; if(area.scrollTop>0){ reset(); return; } const t=e.touches[0]; const dy=t.clientY-startY, dx=t.clientX-startX; if(Math.abs(dx)>RESTRAINT_X){ reset(); return; } if(dy>SHOW_AT){ show(true); } maxPull=Math.max(maxPull,dy); const p=(dy-SHOW_AT)/(COMPLETE-SHOW_AT); setP(p); lbl.textContent=(p>=1)?'Bırakınca yenilenir':'Yenilemek için çek'; },{passive:true});
-  area.addEventListener('touchend',()=>{ if(!pulling){ reset(); return; } const p=parseFloat(getComputedStyle(ring).getPropertyValue('--p'))||0; const ok=(p>=1)&&(maxPull>=120); reset(); if(ok){ try{ navigator.vibrate && navigator.vibrate(15);}catch(_){ } location.reload(); } },{passive:true});
+  area.addEventListener('touchend',()=>{ if(!pulling){ reset(); return; } const p=parseFloat(getComputedStyle(ring).getPropertyValue('--p'))||0; const ok=(p>=1)&&(maxPull>=120); reset(); if(ok){ try{ navigator.vibrate && navigator.vibrate(15);}catch(_){ } (typeof window.refreshPageData==='function'?window.refreshPageData():location.reload()); } },{passive:true});
   area.addEventListener('touchcancel', reset, {passive:true});
 })();
 (function edge(){
@@ -1188,6 +1188,14 @@ function initPage() {
 
 // ortak.js'den gelen window.initPage hook'u
 window.initPage = initPage;
+
+// Veri yenileme (sayfa reload olmadan)
+window.refreshPageData = async function(){
+  await refreshKitapAndDersCount();
+  state.talebeler = await loadTalebeler(state.devre);
+  await refreshTalebeSelect();
+  if(state.devre) await runReport();
+};
 </script>
 </body>
 </html>

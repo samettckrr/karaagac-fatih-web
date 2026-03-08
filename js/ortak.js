@@ -303,7 +303,20 @@ function icerikYukle(icerik) {
 
 
 function sayfayiYenile() {
-  location.reload();
+  // Sayfa kendi veri yenileme fonksiyonunu tanımladıysa onu kullan, yoksa tam yenile
+  if (typeof window.refreshPageData === 'function') {
+    try {
+      const p = window.refreshPageData();
+      if (p && typeof p.then === 'function') {
+        p.catch(function (err) { console.error('refreshPageData hatası:', err); location.reload(); });
+      }
+    } catch (e) {
+      console.error('refreshPageData hatası:', e);
+      location.reload();
+    }
+  } else {
+    location.reload();
+  }
 }
 
 // =========================
