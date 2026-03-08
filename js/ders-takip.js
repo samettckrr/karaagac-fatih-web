@@ -1,39 +1,27 @@
 // ============================================
-// DERS TAKİP SİSTEMİ - Supabase API Modülü
+// DERS TAKİP SİSTEMİ - Supabase API Modülü (FIXED)
 // ============================================
 
-/**
- * Supabase client'ı al
- */
 function getSupabase() {
   if (!window.supabase) {
-    throw new Error('Supabase client bulunamadı. Sayfa yüklenirken bekleyin.');
+    throw new Error('Supabase client bulunamadı.');
   }
   return window.supabase;
 }
 
-/**
- * Mevcut kullanıcı bilgilerini al
- * Optimize retry mekanizması ile (çoklu sayfa çakışması önleme)
- */
 async function getCurrentUser() {
   const sb = getSupabase();
-  
-  // window.getSessionWithRetry varsa kullan (ortak.js'den gelir), yoksa direkt getSession kullan
-  const getSessionFn = (typeof window.getSessionWithRetry === 'function') 
-    ? window.getSessionWithRetry 
+  const getSessionFn = (typeof window.getSessionWithRetry === 'function')
+    ? window.getSessionWithRetry
     : async () => await sb.auth.getSession();
-  
+
   const { data: { session }, error } = await getSessionFn();
   if (error || !session) {
-    throw new Error('Oturum bulunamadı. Lütfen giriş yapın.');
+    throw new Error('Oturum bulunamadı.');
   }
   return session.user;
 }
 
-/**
- * Kullanıcı profil bilgilerini al
- */
 async function getCurrentUserProfile() {
   const user = await getCurrentUser();
   const sb = getSupabase();
@@ -42,101 +30,106 @@ async function getCurrentUserProfile() {
     .select('adsoyad, rol, yetkiler')
     .eq('id', user.id)
     .single();
-  
+
   if (error || !data) {
     return { uid: user.id, adsoyad: user.email?.split('@')[0] || 'Bilinmeyen', rol: null };
   }
-  
+
   return { uid: user.id, adsoyad: data.adsoyad || user.email?.split('@')[0] || 'Bilinmeyen', rol: data.rol };
 }
 
 // ============================================
-// CRUD İŞLEMLERİ
+// DERS KAYDI OLUŞTUR - BASİT VERSİYON
 // ============================================
 
-/**
- * Yeni ders kaydı oluştur
- * @param {Object} params - { devre, kitap, ders_adi, talebe_uid, talebe_adi, ders_gunu, ders_verme_durumu }
- * @returns {Promise<Object>}
- */
 async function dersKaydiOlustur(params) {
   const { devre, kitap, ders_adi, talebe_uid, talebe_adi, ders_gunu, ders_verme_durumu } = params;
-  
+
   if (!devre || !kitap || !ders_adi || !talebe_uid) {
-    throw new Error('Devre, kitap, ders adı ve talebe UID zorunludur.');
+    throw new Error('Zorunlu alanlar eksik.');
   }
-  
+
   const userProfile = await getCurrentUserProfile();
   const sb = getSupabase();
-  
+
   const allowedStatuses = ['henuz_verilmedi', 'verdi', 'veremedi', 'yarim'];
   const durum = (ders_verme_durumu && allowedStatuses.includes(ders_verme_durumu)) ? ders_verme_durumu : null;
-  
+
   const kayit = {
     devre: String(devre).trim(),
     kitap: String(kitap).trim(),
     ders_adi: String(ders_adi).trim(),
     talebe_uid: String(talebe_uid).trim(),
     talebe_adi: talebe_adi ? String(talebe_adi).trim() : null,
-    ders_gunu: (ders_gunu && String(ders_gunu).length >= 10) ? String(ders_gunu).slice(0, 10) : (new Date().toISOString().slice(0, 10)),
+    ders_gunu: (ders_gunu && String(ders_gunu).length >= 10) ? String(ders_gunu).slice(0, 10) : new Date().toISOString().slice(0, 10),
     kaydeden_personel: userProfile.adsoyad,
     kaydeden_personel_uid: userProfile.uid,
     ders_verme_durumu: durum
   };
-  
+
   if (durum && durum !== 'henuz_verilmedi') {
     kayit.ders_veren_personel = userProfile.adsoyad;
     kayit.ders_veren_personel_uid = userProfile.uid;
     kayit.ders_verme_tarihi = new Date().toISOString();
   }
-  
-  const { data, error } = await sb
+
+  // ADIM 1: Mevcut kayıt var mı kontrol et
+  const checkRes = await sb
+    .from('ders_kayitlari')
+    .select('id')
+    .eq('devre', kayit.devre)
+    .eq('kitap', kayit.kitap)
+    .eq('ders_adi', kayit.ders_adi)
+    .eq('talebe_uid', kayit.talebe_uid)
+    .eq('ders_gunu', kayit.ders_gunu)
+    .limit(1);
+
+  if (checkRes.error) throw checkRes.error;
+
+  const existingId = checkRes.data && checkRes.data[0] ? checkRes.data[0].id : null;
+
+  // ADIM 2: Varsa güncelle, yoksa ekle
+  if (existingId) {
+    const updateRes = await sb
+      .from('ders_kayitlari')
+      .update({
+        ders_verme_durumu: durum,
+        ...(durum && durum !== 'henuz_verilmedi' ? {
+          ders_veren_personel: kayit.ders_veren_personel,
+          ders_veren_personel_uid: kayit.ders_veren_personel_uid,
+          ders_verme_tarihi: kayit.ders_verme_tarihi
+        } : {}),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', existingId)
+      .select()
+      .single();
+
+    if (updateRes.error) throw updateRes.error;
+    return updateRes.data;
+  }
+
+  // Yeni ekle
+  const insertRes = await sb
     .from('ders_kayitlari')
     .insert(kayit)
     .select()
     .single();
-  
-  if (error) {
-    // UNIQUE constraint hatası ise, mevcut kaydı döndür
-    if (error.code === '23505') {
-      const { data: existing } = await sb
-        .from('ders_kayitlari')
-        .select()
-        .eq('devre', devre)
-        .eq('kitap', kitap)
-        .eq('ders_adi', ders_adi)
-        .eq('talebe_uid', talebe_uid)
-        .single();
-      
-      if (existing) {
-        return existing;
-      }
-    }
-    throw error;
-  }
-  
-  return data;
+
+  if (insertRes.error) throw insertRes.error;
+  return insertRes.data;
 }
 
-/**
- * Ders kaydı güncelle (durum, veren personel, tarih)
- * @param {string} id - Kayıt ID
- * @param {Object} updates - { ders_verme_durumu, ders_veren_personel, ders_veren_personel_uid, ders_verme_tarihi }
- * @returns {Promise<Object>}
- */
-async function dersKaydiGuncelle(id, updates) {
-  if (!id) {
-    throw new Error('Kayıt ID zorunludur.');
-  }
-  
+// ============================================
+// DERS KAYDI GÜNCELLE
+// ============================================
+
+async function dersKaydiGuncelle(id, updates, fallbackKey = null) {
   const userProfile = await getCurrentUserProfile();
   const sb = getSupabase();
-  
-  const updateData = {
-    updated_at: new Date().toISOString()
-  };
-  
-  // Durum güncellemesi
+
+  const updateData = { updated_at: new Date().toISOString() };
+
   if (updates.ders_verme_durumu !== undefined) {
     const allowedStatuses = ['henuz_verilmedi', 'verdi', 'veremedi', 'yarim'];
     if (updates.ders_verme_durumu && !allowedStatuses.includes(updates.ders_verme_durumu)) {
@@ -144,122 +137,86 @@ async function dersKaydiGuncelle(id, updates) {
     }
     updateData.ders_verme_durumu = updates.ders_verme_durumu;
   }
-  
-  // Veren personel bilgileri
-  if (updates.ders_veren_personel_uid) {
-    updateData.ders_veren_personel_uid = updates.ders_veren_personel_uid;
-    updateData.ders_veren_personel = updates.ders_veren_personel || userProfile.adsoyad;
-  } else if (updates.ders_verme_durumu && updates.ders_verme_durumu !== 'henuz_verilmedi') {
-    // Durum güncelleniyorsa ve veren personel belirtilmemişse, mevcut kullanıcıyı ata
+
+  if (updates.ders_verme_durumu && updates.ders_verme_durumu !== 'henuz_verilmedi') {
     updateData.ders_veren_personel_uid = userProfile.uid;
     updateData.ders_veren_personel = userProfile.adsoyad;
-  }
-  
-  // Verilme tarihi
-  if (updates.ders_verme_tarihi !== undefined) {
-    updateData.ders_verme_tarihi = updates.ders_verme_tarihi;
-  } else if (updates.ders_verme_durumu && updates.ders_verme_durumu !== 'henuz_verilmedi' && !updateData.ders_verme_tarihi) {
-    // Durum güncelleniyorsa ve tarih belirtilmemişse, şimdiki zamanı ata
     updateData.ders_verme_tarihi = new Date().toISOString();
   }
-  
-  const { data, error } = await sb
-    .from('ders_kayitlari')
-    .update(updateData)
-    .eq('id', id)
-    .select()
-    .single();
-  
-  if (error) throw error;
-  return data;
-}
 
-/**
- * Ders kaydı sil (soft delete için kullanılabilir)
- * @param {string} id - Kayıt ID
- * @returns {Promise<void>}
- */
-async function dersKaydiSil(id) {
-  if (!id) {
-    throw new Error('Kayıt ID zorunludur.');
+  // ID ile güncelle
+  if (id) {
+    const res = await sb
+      .from('ders_kayitlari')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (!res.error && res.data) {
+      return res.data;
+    }
   }
-  
+
+  // Fallback: composite key ile güncelle
+  if (fallbackKey && fallbackKey.devre && fallbackKey.kitap && fallbackKey.ders_adi && fallbackKey.talebe_uid) {
+    const dg = fallbackKey.ders_gunu && String(fallbackKey.ders_gunu).length >= 10
+      ? String(fallbackKey.ders_gunu).slice(0, 10) : null;
+
+    let query = sb
+      .from('ders_kayitlari')
+      .update(updateData)
+      .eq('devre', String(fallbackKey.devre).trim())
+      .eq('kitap', String(fallbackKey.kitap).trim())
+      .eq('ders_adi', String(fallbackKey.ders_adi).trim())
+      .eq('talebe_uid', String(fallbackKey.talebe_uid).trim());
+
+    if (dg) query = query.eq('ders_gunu', dg);
+
+    const res = await query.select().limit(1);
+
+    if (!res.error && res.data && res.data.length > 0) {
+      return res.data[0];
+    }
+  }
+
+  throw new Error('Kayıt güncellenemedi.');
+}
+
+async function dersKaydiSil(id) {
+  if (!id) throw new Error('ID zorunludur.');
+
   const sb = getSupabase();
-  const { error } = await sb
-    .from('ders_kayitlari')
-    .delete()
-    .eq('id', id);
-  
+  const { error } = await sb.from('ders_kayitlari').delete().eq('id', id);
+
   if (error) throw error;
 }
 
-// ============================================
-// FİLTRELEME FONKSİYONLARI
-// ============================================
-
-/**
- * Ders kayıtlarını filtreleme ile getir
- * @param {Object} filtreler - { devre, kitap, ders_adi, talebe_uid, ders_gunu, kaydeden_personel_uid, ders_veren_personel_uid, ders_verme_durumu, ders_verme_tarihi }
- * @param {Object} options - { limit, offset, orderBy, ascending }
- * @returns {Promise<Array>}
- */
 async function dersKayitlariGetir(filtreler = {}, options = {}) {
   const sb = getSupabase();
   let query = sb.from('ders_kayitlari').select('*');
-  
-  // Filtreleme
-  if (filtreler.devre) {
-    query = query.eq('devre', filtreler.devre);
-  }
-  if (filtreler.kitap) {
-    query = query.eq('kitap', filtreler.kitap);
-  }
-  if (filtreler.ders_adi) {
-    query = query.eq('ders_adi', filtreler.ders_adi);
-  }
-  if (filtreler.talebe_uid) {
-    query = query.eq('talebe_uid', filtreler.talebe_uid);
-  }
-  if (filtreler.ders_gunu) {
-    query = query.eq('ders_gunu', filtreler.ders_gunu);
-  }
-  if (filtreler.kaydeden_personel_uid) {
-    query = query.eq('kaydeden_personel_uid', filtreler.kaydeden_personel_uid);
-  }
-  if (filtreler.ders_veren_personel_uid) {
-    query = query.eq('ders_veren_personel_uid', filtreler.ders_veren_personel_uid);
-  }
+
+  if (filtreler.devre) query = query.eq('devre', filtreler.devre);
+  if (filtreler.kitap) query = query.eq('kitap', filtreler.kitap);
+  if (filtreler.ders_adi) query = query.eq('ders_adi', filtreler.ders_adi);
+  if (filtreler.talebe_uid) query = query.eq('talebe_uid', filtreler.talebe_uid);
+  if (filtreler.ders_gunu) query = query.eq('ders_gunu', filtreler.ders_gunu);
+  if (filtreler.kaydeden_personel_uid) query = query.eq('kaydeden_personel_uid', filtreler.kaydeden_personel_uid);
+  if (filtreler.ders_veren_personel_uid) query = query.eq('ders_veren_personel_uid', filtreler.ders_veren_personel_uid);
   if (filtreler.ders_verme_durumu !== undefined) {
-    if (filtreler.ders_verme_durumu === null) {
-      query = query.is('ders_verme_durumu', null);
-    } else {
-      query = query.eq('ders_verme_durumu', filtreler.ders_verme_durumu);
-    }
+    if (filtreler.ders_verme_durumu === null) query = query.is('ders_verme_durumu', null);
+    else query = query.eq('ders_verme_durumu', filtreler.ders_verme_durumu);
   }
-  if (filtreler.ders_verme_tarihi) {
-    // Tarih aralığı için (gün bazlı)
-    const tarihStr = String(filtreler.ders_verme_tarihi).slice(0, 10);
-    query = query.gte('ders_verme_tarihi', tarihStr + 'T00:00:00Z')
-                 .lt('ders_verme_tarihi', tarihStr + 'T23:59:59Z');
-  }
-  
-  // Sıralama
-  if (options.orderBy) {
-    query = query.order(options.orderBy, { ascending: options.ascending !== false });
-  } else {
-    query = query.order('created_at', { ascending: false });
-  }
-  
-  // Sayfalama
-  if (options.limit) {
-    query = query.limit(options.limit);
-  }
-  if (options.offset) {
-    query = query.range(options.offset, options.offset + (options.limit || 100) - 1);
-  }
-  
+
+  const orderBy = options.orderBy || 'created_at';
+  const ascending = options.ascending !== false;
+  query = query.order(orderBy, { ascending });
+
+  if (options.limit) query = query.limit(options.limit);
+  if (options.offset) query = query.range(options.offset, options.offset + (options.limit || 100) - 1);
+
   const { data, error } = await query;
-  
+
   if (error) throw error;
   return data || [];
 }
@@ -659,11 +616,12 @@ async function takrirDerslerGetir(devre, kitap) {
   }
   
   const sb = getSupabase();
+  const kitapTrim = String(kitap).trim();
   const { data, error } = await sb
     .from('takrir_index')
     .select('ders_adi')
     .eq('devre', String(devre).trim())
-    .eq('kitap', String(kitap).trim())
+    .ilike('kitap', kitapTrim)
     .not('ders_adi', 'is', null)
     .order('ders_adi', { ascending: true });
   
@@ -688,11 +646,12 @@ async function takrirDerslerGetirWithDate(devre, kitap) {
   }
   
   const sb = getSupabase();
+  const kitapTrim = String(kitap).trim();
   const { data, error } = await sb
     .from('takrir_index')
     .select('ders_adi, created_at')
     .eq('devre', String(devre).trim())
-    .eq('kitap', String(kitap).trim())
+    .ilike('kitap', kitapTrim)
     .not('ders_adi', 'is', null)
     .order('ders_adi', { ascending: true });
   

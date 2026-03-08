@@ -114,7 +114,9 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
         (urlStr.includes('refresh_token') || (options.body && String(options.body).includes('refresh_token')));
 
       if (!isRefresh) {
-        return fetch(url, options);
+        const opts = { ...options };
+        if (opts.cache === undefined) opts.cache = 'no-store';
+        return fetch(url, opts);
       }
 
       if (tryAcquireLock()) {

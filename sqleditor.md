@@ -144,7 +144,9 @@ CREATE TABLE public.islem_log (
   islem text NOT NULL,
   uid text,
   zaman timestamp with time zone DEFAULT now(),
-  detay jsonb,
+  sayfa text,
+  path text,
+  user_agent text,
   CONSTRAINT islem_log_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.izin_oturumlari (
@@ -366,6 +368,68 @@ CREATE TABLE public.muhasebe_planlama_2026 (
   tip text,
   yil integer,
   CONSTRAINT muhasebe_planlama_2026_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.nehari_aidat (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  talebe_id uuid NOT NULL,
+  aylik_tutar numeric NOT NULL CHECK (aylik_tutar >= 0::numeric),
+  baslangic_yil integer NOT NULL,
+  baslangic_ay integer NOT NULL CHECK (baslangic_ay >= 1 AND baslangic_ay <= 12),
+  bitis_yil integer NOT NULL,
+  bitis_ay integer NOT NULL CHECK (bitis_ay >= 1 AND bitis_ay <= 12),
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT nehari_aidat_pkey PRIMARY KEY (id),
+  CONSTRAINT nehari_aidat_talebe_id_fkey FOREIGN KEY (talebe_id) REFERENCES public.nehari_talebeler(id)
+);
+CREATE TABLE public.nehari_aidat_odemeler (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  talebe_id uuid NOT NULL,
+  aidat_id uuid NOT NULL,
+  yil integer NOT NULL,
+  ay integer NOT NULL CHECK (ay >= 1 AND ay <= 12),
+  tutar numeric NOT NULL CHECK (tutar > 0::numeric),
+  odeme_tarihi date,
+  taksit_sira integer NOT NULL DEFAULT 1,
+  aciklama text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT nehari_aidat_odemeler_pkey PRIMARY KEY (id),
+  CONSTRAINT nehari_aidat_odemeler_talebe_id_fkey FOREIGN KEY (talebe_id) REFERENCES public.nehari_talebeler(id),
+  CONSTRAINT nehari_aidat_odemeler_aidat_id_fkey FOREIGN KEY (aidat_id) REFERENCES public.nehari_aidat(id)
+);
+CREATE TABLE public.nehari_talebeler (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  ad text NOT NULL,
+  soyad text NOT NULL,
+  sinif integer NOT NULL CHECK (sinif >= 1 AND sinif <= 12),
+  dogum_tarihi date,
+  anne_adi text NOT NULL,
+  baba_adi text NOT NULL,
+  anne_meslek text NOT NULL,
+  baba_meslek text NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  durum text DEFAULT 'aktif'::text CHECK (durum = ANY (ARRAY['aktif'::text, 'pasif'::text])),
+  CONSTRAINT nehari_talebeler_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.nehari_yoklama_gunleri (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  tarih date NOT NULL UNIQUE,
+  siniflar ARRAY NOT NULL DEFAULT '{}'::integer[],
+  yoklama_acik boolean NOT NULL DEFAULT false,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT nehari_yoklama_gunleri_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.nehari_yoklama_kayitlari (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  tarih date NOT NULL,
+  talebe_id uuid NOT NULL,
+  durum text NOT NULL DEFAULT 'gelmedi'::text CHECK (durum = ANY (ARRAY['geldi'::text, 'gelmedi'::text, 'izinli'::text])),
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT nehari_yoklama_kayitlari_pkey PRIMARY KEY (id),
+  CONSTRAINT nehari_yoklama_kayitlari_talebe_id_fkey FOREIGN KEY (talebe_id) REFERENCES public.nehari_talebeler(id)
 );
 CREATE TABLE public.nobet_ayar (
   id text NOT NULL,
