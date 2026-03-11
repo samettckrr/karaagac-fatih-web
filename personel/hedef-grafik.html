@@ -271,6 +271,15 @@
       text-overflow: clip;
     }
 
+    #hedefTablosu tbody td.col-gunluk-artis {
+      font-variant-numeric: tabular-nums;
+      min-width: 72px;
+    }
+    #hedefTablosu tbody td.col-gunluk-artis.ga-low { color: var(--bad); }
+    #hedefTablosu tbody td.col-gunluk-artis.ga-mid { color: var(--warn); }
+    #hedefTablosu tbody td.col-gunluk-artis.ga-high,
+    #hedefTablosu tbody td.col-gunluk-artis.ga-new { color: var(--good); }
+
     .under-note {
       color: var(--muted);
       font-size: 12px;
@@ -412,6 +421,9 @@
       color: var(--ink);
       text-shadow: none;
     }
+
+    .oransal-wrap { display: flex; flex-direction: column; gap: 4px; }
+    .prog-footer { font-size: 13px; font-weight: 800; color: var(--ink); text-align: center; }
 
     .badge {
       display: inline-block;
@@ -1162,7 +1174,6 @@
               <col class="c-mid">
               <col class="c-mid">
               <col class="c-kurban">
-              <col class="c-kurban">
               <col class="c-mid">
               <col class="c-mid">
               <col class="c-oran">
@@ -1172,8 +1183,7 @@
                 <th>Personel</th>
                 <th>Teberru</th>
                 <th>Tahsilat</th>
-                <th>Kurban (K)</th>
-                <th>Kurban (B)</th>
+                <th>Kurban (K/B)</th>
                 <th>Hedef</th>
                 <th>Temin Edilen</th>
                 <th>Ulaşma Nispeti (%)</th>
@@ -1553,8 +1563,17 @@
           // Supabase için subscription'ları tutmak yerine polling veya realtime kullanacağız
           let refreshInterval = null;
           let cacheTeminHedef = {}, cacheTeberru = {}, cacheTahsilat = {}, sonHedefMap = {};
-          let iftarMap = {}, sahurMap = {}, taahhutMap = {};
+          let iftarMap = {}, sahurMap = {}, taahhutMap = {}, gunlukArtisMap = {};
           let ramazanIftarAdet = 0, ramazanSahurAdet = 0, ramazanTaahhutAdet = 0;
+
+          // Bugün (yerel tarih) oluşturulmuş kayıt mı?
+          function isCreatedToday(createdat) {
+            if (!createdat) return false;
+            const d = new Date(typeof createdat === 'string' ? createdat : createdat);
+            if (isNaN(d.getTime())) return false;
+            const now = new Date();
+            return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+          }
           let maxUpdateTs = 0;
 
           // Supabase helper: timestamp'i number'a çevir
@@ -1586,7 +1605,7 @@
           <col class="c-mid">
           <col class="c-mid">
           <col class="c-oran">
-          <col class="c-kurban">
+          <col class="c-mid">
           <col class="c-kurban">
         `;
               thead.innerHTML = `
@@ -1598,8 +1617,8 @@
           <th>Teberru</th>
           <th>Toplam Temin Edilen</th>
           <th>Ulaşma Nispeti (%)</th>
-          <th>Kurban (K)</th>
-          <th>Kurban (B)</th>
+          <th>Günlük Artış (%)</th>
+          <th>Kurban (K/B)</th>
         `;
             } else {
               if (tablo) tablo.classList.remove('mod-ramazan');
@@ -1608,18 +1627,16 @@
           <col class="c-mid">
           <col class="c-mid">
           <col class="c-kurban">
-          <col class="c-kurban">
           <col class="c-mid">
           <col class="c-mid">
           <col class="c-oran">
         `;
               thead.innerHTML = `
           <th>Personel</th>
-          <th>Teberru</th>
-          <th>Tahsilat</th>
-          <th>Kurban (K)</th>
-          <th>Kurban (B)</th>
-          <th>Hedef</th>
+                <th>Teberru</th>
+                <th>Tahsilat</th>
+                <th>Kurban (K/B)</th>
+                <th>Hedef</th>
           <th>Temin Edilen</th>
           <th>Ulaşma Nispeti (%)</th>
         `;
@@ -1666,6 +1683,15 @@
             tabloBody.innerHTML = "";
             const fmtPara = (n) => Math.round(n || 0).toLocaleString("tr-TR", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
+            let gaMin = 0, gaMax = 100;
+            if (ekranModu === 'Ramazan-ı Şerif') {
+              const gaVals = veriler.map(p => p.gunlukArtisYuzde).filter(v => v != null && v >= 0 && v < 999);
+              if (gaVals.length > 0) {
+                gaMin = Math.min(...gaVals);
+                gaMax = Math.max(...gaVals);
+              }
+            }
+
             veriler.forEach(p => {
               const tr = document.createElement("tr");
 
@@ -1695,19 +1721,48 @@
                 const oranStr = Number(p.oran).toFixed(2).replace('.', ',');
                 let fullMsg = `%${oranStr}`, shortMsg = `%${oranStr}`;
                 if (p.oran >= 100 && p.oran < 100.01) { fullMsg = 'Hedefinize ulaştınız'; shortMsg = 'Hedefinize ulaştınız'; }
-                if (p.oran > 100) { fullMsg = 'Hedefinizi geçtiniz'; shortMsg = 'Hedefinizi geçtiniz'; }
+                if (p.oran > 100) { shortMsg = `%${oranStr}`; }
                 lab.textContent = shortMsg; lab.title = fullMsg;
-                prog.appendChild(fill); prog.appendChild(lab); tdOran.appendChild(prog);
+                prog.appendChild(fill); prog.appendChild(lab);
+                if (p.oran > 100) {
+                  const wrap = document.createElement('div'); wrap.className = 'oransal-wrap';
+                  const footer = document.createElement('div'); footer.className = 'prog-footer';
+                  footer.textContent = 'Hedefinizi geçtiniz';
+                  wrap.appendChild(prog); wrap.appendChild(footer); tdOran.appendChild(wrap);
+                } else { tdOran.appendChild(prog); }
 
-                const tdKk = document.createElement("td"); tdKk.textContent = p.kurbanKk || 0;
-                const tdBb = document.createElement("td"); tdBb.textContent = p.kurbanBb || 0;
+                const tdGunlukArtis = document.createElement("td");
+                tdGunlukArtis.className = "col-gunluk-artis";
+                const gy = p.gunlukArtisYuzde;
+                const ga = p.gunlukArtis ?? 0;
+                if (gy === 999) {
+                  tdGunlukArtis.textContent = 'Yeni';
+                  tdGunlukArtis.title = `Bugün eklenen: ${fmtPara(ga)} ₺ (dün 0 idi)`;
+                  tdGunlukArtis.classList.add('ga-new');
+                } else if (gy != null && ga > 0) {
+                  tdGunlukArtis.textContent = `+%${Number(gy).toFixed(2).replace('.', ',')}`;
+                  tdGunlukArtis.title = `Bugün eklenen: ${fmtPara(ga)} ₺ (dünkü toplama göre %${Number(gy).toFixed(2).replace('.', ',')})`;
+                  const gaRange = gaMax > gaMin ? gaMax - gaMin : 1;
+                  const gaNorm = Math.min(1, (gy - gaMin) / gaRange);
+                  if (gaNorm <= 0.33) tdGunlukArtis.classList.add('ga-low');
+                  else if (gaNorm <= 0.66) tdGunlukArtis.classList.add('ga-mid');
+                  else tdGunlukArtis.classList.add('ga-high');
+                } else {
+                  tdGunlukArtis.textContent = '-';
+                  tdGunlukArtis.title = 'Bugün artış yok';
+                }
 
-                tr.append(tdPersonel, tdHedef, tdIftar, tdSahur, tdTaahhut, tdTeberru, tdToplamTemin, tdOran, tdKk, tdBb);
+                const tdKurban = document.createElement("td");
+                tdKurban.textContent = `${p.kurbanKk || 0} / ${p.kurbanBb || 0}`;
+                tdKurban.title = `Küçükbaş: ${p.kurbanKk || 0} | Büyükbaş: ${p.kurbanBb || 0}`;
+
+                tr.append(tdPersonel, tdHedef, tdIftar, tdSahur, tdTaahhut, tdTeberru, tdToplamTemin, tdOran, tdGunlukArtis, tdKurban);
               } else {
                 const tdTeberru = document.createElement("td"); tdTeberru.textContent = `${fmtPara(p.teberru)} ₺`;
                 const tdTahsilat = document.createElement("td"); tdTahsilat.textContent = `${fmtPara(p.tahsilat)} ₺`;
-                const tdKk = document.createElement("td"); tdKk.textContent = p.kurbanKk || 0;
-                const tdBb = document.createElement("td"); tdBb.textContent = p.kurbanBb || 0;
+                const tdKurban = document.createElement("td");
+                tdKurban.textContent = `${p.kurbanKk || 0} / ${p.kurbanBb || 0}`;
+                tdKurban.title = `Küçükbaş: ${p.kurbanKk || 0} | Büyükbaş: ${p.kurbanBb || 0}`;
                 const tdHedef = document.createElement("td"); tdHedef.className = "col-hedef"; tdHedef.textContent = `${fmtPara(p.hedef)} ₺`;
                 const tdTemin = document.createElement("td"); tdTemin.className = "col-temin"; tdTemin.textContent = `${fmtPara(p.teminHedef)} ₺`;
 
@@ -1725,11 +1780,17 @@
                 const oranStr = Number(p.oran).toFixed(2).replace('.', ',');
                 let fullMsg = `%${oranStr}`, shortMsg = `%${oranStr}`;
                 if (p.oran >= 100 && p.oran < 100.01) { fullMsg = 'Hedefinize ulaştınız'; shortMsg = 'Hedefinize ulaştınız'; }
-                if (p.oran > 100) { fullMsg = 'Hedefinizi geçtiniz'; shortMsg = 'Hedefinizi geçtiniz'; }
+                if (p.oran > 100) { shortMsg = `%${oranStr}`; }
                 lab.textContent = shortMsg; lab.title = fullMsg;
-                prog.appendChild(fill); prog.appendChild(lab); tdOran.appendChild(prog);
+                prog.appendChild(fill); prog.appendChild(lab);
+                if (p.oran > 100) {
+                  const wrap = document.createElement('div'); wrap.className = 'oransal-wrap';
+                  const footer = document.createElement('div'); footer.className = 'prog-footer';
+                  footer.textContent = 'Hedefinizi geçtiniz';
+                  wrap.appendChild(prog); wrap.appendChild(footer); tdOran.appendChild(wrap);
+                } else { tdOran.appendChild(prog); }
 
-                tr.append(tdPersonel, tdTeberru, tdTahsilat, tdKk, tdBb, tdHedef, tdTemin, tdOran);
+                tr.append(tdPersonel, tdTeberru, tdTahsilat, tdKurban, tdHedef, tdTemin, tdOran);
               }
 
               tr.addEventListener('click', () => acDetayModal(p.personel));
@@ -1866,7 +1927,8 @@
               ...Object.keys(kurbanBbMap),
               ...Object.keys(iftarMap),
               ...Object.keys(sahurMap),
-              ...Object.keys(taahhutMap)
+              ...Object.keys(taahhutMap),
+              ...Object.keys(gunlukArtisMap || {})
             ]);
             const tabloDizi = [];
             personeller.forEach(key => {
@@ -1883,12 +1945,15 @@
               const iftar = toNum(iftarMap[key] || 0);
               const sahur = toNum(sahurMap[key] || 0);
               const taahhut = toNum(taahhutMap[key] || 0);
+              const gunlukArtis = toNum((gunlukArtisMap || {})[key] || 0);
 
               let oran;
               if (ekranModu === 'Ramazan-ı Şerif') {
                 const toplamTemin = iftar + sahur + taahhut + teberru;
                 oran = hedef > 0 ? (toplamTemin / hedef) * 100 : 0;
-                tabloDizi.push({ personel, hedef, iftar, sahur, taahhut, teberru, kurbanKk, kurbanBb, oran, toplamTemin });
+                const dunToplam = Math.max(0, toplamTemin - gunlukArtis);
+                const gunlukArtisYuzde = dunToplam > 0 ? (gunlukArtis / dunToplam) * 100 : (gunlukArtis > 0 ? 999 : null);
+                tabloDizi.push({ personel, hedef, iftar, sahur, taahhut, teberru, kurbanKk, kurbanBb, oran, toplamTemin, gunlukArtis, gunlukArtisYuzde });
               } else {
                 oran = hedef > 0 ? (teminHedef / hedef) * 100 : 0;
                 tabloDizi.push({ personel, teberru, tahsilat, kurbanKk, kurbanBb, hedef, teminHedef, oran });
@@ -2209,6 +2274,7 @@
                   const isRamazanKategoriRamazan = kategori.includes('Ramazan') || kategori.includes('ramazan');
 
                   if (isRamazanKategoriRamazan && yil) {
+                    Object.keys(gunlukArtisMap).forEach(k => delete gunlukArtisMap[k]);
                     // İFTAR-SAHUR kayıtları (ramazan_kayitlari tablosu)
                     let iftarSahurData = null;
                     try {
@@ -2250,6 +2316,9 @@
                           sahurMap[p] = (sahurMap[p] || 0) + tutar;
                           ramazanSahurAdet++;
                         }
+                        if (isCreatedToday(d.createdat)) {
+                          gunlukArtisMap[p] = (gunlukArtisMap[p] || 0) + tutar;
+                        }
 
                         const ts = getTimestampNumber(d, 'createdat');
                         if (ts > currentMaxTs) currentMaxTs = ts;
@@ -2289,6 +2358,9 @@
                         
                         const miktar = toNum(d.miktar || 0);
                         teberruMap[p] = (teberruMap[p] || 0) + miktar;
+                        if (isCreatedToday(d.createdat)) {
+                          gunlukArtisMap[p] = (gunlukArtisMap[p] || 0) + miktar;
+                        }
                         const ts = getTimestampNumber(d, 'createdat');
                         if (ts > currentMaxTs) currentMaxTs = ts;
                       });
@@ -2326,6 +2398,9 @@
                         const miktar = toNum(d.miktar || 0);
                         taahhutMap[p] = (taahhutMap[p] || 0) + miktar;
                         ramazanTaahhutAdet++;
+                        if (isCreatedToday(d.createdat)) {
+                          gunlukArtisMap[p] = (gunlukArtisMap[p] || 0) + miktar;
+                        }
 
                         // Lowercase check
                         const ts = getTimestampNumber(d, 'createdat');
