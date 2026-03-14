@@ -650,12 +650,18 @@
     }
 
     @media (max-width: 820px) {
-      #tableWrap {
-        overflow-x: auto
+      .grid > .card:first-child {
+        min-width: 0;
+        overflow: hidden;
       }
-
+      #tableWrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 0 -14px;
+        padding: 0 14px;
+      }
       #hedefTablosu {
-        min-width: 980px
+        min-width: 980px;
       }
     }
 
@@ -1094,7 +1100,7 @@
         <div class="mini">
           <span class="pill">🕒 Son Güncelleme: <b id="guncellemeZamani">yükleniyor…</b></span>
           <span class="pill">📅 Kapsam: <b id="kapsamPill">-</b></span>
-          <span class="pill">Versiyon: <b>3.1</b></span>
+          <span class="pill">Versiyon: <b>4.0</b></span>
           <button class="pill" id="ekranButonu"
             style="cursor:pointer; border:1px solid var(--stroke); background:var(--pill); font-size:12px; padding:6px 10px; border-radius:999px; color:var(--text);">Ekran:
             <b id="ekranAdi">Hedef</b></button>
@@ -1616,8 +1622,8 @@
           <th>Taahhüt</th>
           <th>Teberru</th>
           <th>Toplam Temin Edilen</th>
-          <th>Ulaşma Nispeti (%)</th>
-          <th>Günlük Artış (%)</th>
+          <th>Ulaşma Nispeti</th>
+          <th>Günlük Artış</th>
           <th>Kurban (K/B)</th>
         `;
             } else {
@@ -1741,7 +1747,8 @@
                   tdGunlukArtis.classList.add('ga-new');
                 } else if (gy != null && ga > 0) {
                   tdGunlukArtis.textContent = `+%${Number(gy).toFixed(2).replace('.', ',')}`;
-                  tdGunlukArtis.title = `Bugün eklenen: ${fmtPara(ga)} ₺ (dünkü toplama göre %${Number(gy).toFixed(2).replace('.', ',')})`;
+                  const dunOran = p.oran - gy;
+                  tdGunlukArtis.title = `Ulaşma nispetinde +${Number(gy).toFixed(2).replace('.', ',')} puan artış (dün %${Number(dunOran).toFixed(2).replace('.', ',')} → bugün %${Number(p.oran).toFixed(2).replace('.', ',')})`;
                   const gaRange = gaMax > gaMin ? gaMax - gaMin : 1;
                   const gaNorm = Math.min(1, (gy - gaMin) / gaRange);
                   if (gaNorm <= 0.33) tdGunlukArtis.classList.add('ga-low');
@@ -1951,8 +1958,8 @@
               if (ekranModu === 'Ramazan-ı Şerif') {
                 const toplamTemin = iftar + sahur + taahhut + teberru;
                 oran = hedef > 0 ? (toplamTemin / hedef) * 100 : 0;
-                const dunToplam = Math.max(0, toplamTemin - gunlukArtis);
-                const gunlukArtisYuzde = dunToplam > 0 ? (gunlukArtis / dunToplam) * 100 : (gunlukArtis > 0 ? 999 : null);
+                // Günlük artış = ulaşma nispetindeki puan değişimi (bugünkü % - dünkü %)
+                const gunlukArtisYuzde = hedef > 0 && gunlukArtis > 0 ? (gunlukArtis / hedef) * 100 : (gunlukArtis > 0 && hedef <= 0 ? 999 : null);
                 tabloDizi.push({ personel, hedef, iftar, sahur, taahhut, teberru, kurbanKk, kurbanBb, oran, toplamTemin, gunlukArtis, gunlukArtisYuzde });
               } else {
                 oran = hedef > 0 ? (teminHedef / hedef) * 100 : 0;
