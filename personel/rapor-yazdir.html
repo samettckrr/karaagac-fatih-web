@@ -186,6 +186,11 @@
       font-weight: 600;
     }
 
+    td.kalan-cell {
+      color: #dc2626;
+      font-weight: 800;
+    }
+
     tbody tr:last-child {
       border-bottom: none;
     }
@@ -227,38 +232,55 @@
       color: #0f172a;
     }
 
-    .faaliyet-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
+    .yil-section {
+      margin-bottom: 18px;
     }
 
-    .faaliyet-card {
-      padding: 10px;
-      border-radius: 10px;
-      border: 1px solid #e5e7eb;
-      background: #ffffff;
+    .yil-section h3 {
+      margin-bottom: 8px;
+      font-size: 14px;
+      color: #0f172a;
     }
 
-    .faaliyet-title {
+    .mini-summary {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 10px;
+      font-size: 9px;
+      box-shadow: none;
+    }
+
+    .mini-summary th,
+    .mini-summary td {
+      padding: 4px 6px;
+      text-align: center;
+    }
+
+    .mini-summary th {
+      background: #f1f5f9;
+      color: #334155;
+      font-size: 9px;
       font-weight: 700;
-      margin-bottom: 4px;
-      font-size: 12px;
+      text-transform: none;
+      letter-spacing: 0;
     }
 
-    .faaliyet-row {
-      display: flex;
-      justify-content: space-between;
-      font-size: 11px;
-      margin-top: 2px;
+    .mini-summary td {
+      font-size: 9px;
+      color: #334155;
+    }
+
+    .mini-summary td.numeric,
+    .mini-summary th.numeric {
+      text-align: center;
     }
 
     .faaliyet-kalan {
       display: inline-block;
-      margin-top: 6px;
-      padding: 3px 8px;
+      margin-top: 2px;
+      padding: 2px 6px;
       border-radius: 999px;
-      font-size: 10px;
+      font-size: 9px;
       font-weight: 700;
     }
 
@@ -278,18 +300,6 @@
       background: #eff6ff;
       color: #1d4ed8;
       border: 1px solid #93c5fd;
-    }
-
-    @media (max-width: 900px) {
-      .faaliyet-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
-
-    @media (max-width: 640px) {
-      .faaliyet-grid {
-        grid-template-columns: 1fr;
-      }
     }
 
     .footer {
@@ -432,10 +442,36 @@
       </table>
     </div>
 
+    <!-- Tek personel modunda yıl bazlı özet -->
+    <div id="yilSection" class="yil-section" style="display:none">
+      <h3>Yıl Bazlı Özet</h3>
+      <table class="mini-summary">
+        <thead>
+          <tr>
+            <th>Yıl</th>
+            <th class="numeric">Tahakkuk</th>
+            <th class="numeric">Tahsilat</th>
+            <th class="numeric">Kalan</th>
+          </tr>
+        </thead>
+        <tbody id="yilBody"></tbody>
+      </table>
+    </div>
+
     <!-- Tek personel modunda faaliyet bazlı özet -->
     <div id="faaliyetSection" class="faaliyet-section" style="display:none">
       <h3>Faaliyet Bazlı Özet</h3>
-      <div id="faaliyetGrid" class="faaliyet-grid"></div>
+      <table class="mini-summary">
+        <thead>
+          <tr>
+            <th>Faaliyet</th>
+            <th class="numeric">Tahakkuk</th>
+            <th class="numeric">Tahsilat</th>
+            <th class="numeric">Kalan</th>
+          </tr>
+        </thead>
+        <tbody id="faaliyetBody"></tbody>
+      </table>
     </div>
 
     <table id="raporTable">
@@ -446,7 +482,6 @@
           <th id="thPersonel" style="display:none">Personel</th>
           <th>Borçlu</th>
           <th>Ödeyen</th>
-          <th>Açıklama</th>
           <th class="numeric">Tahakkuk</th>
           <th class="numeric">Tahsilat</th>
           <th class="numeric">Yeni Tahsilat</th>
@@ -527,7 +562,11 @@
 
     function getRelatedTahsilat(tahakkuk, list) {
       return list.filter(s => {
-        if (s.tahakkukId && s.tahakkukId === tahakkuk.id) return true;
+        const kid = s.tahakkukid ?? s.tahakkukId;
+        const hasTahakkukId = kid != null && String(kid).trim() !== '';
+        if (hasTahakkukId) {
+          return String(kid) === String(tahakkuk.id);
+        }
         if (
           String(s.yil) === String(tahakkuk.yil) &&
           s.faaliyet === tahakkuk.faaliyet &&
@@ -661,6 +700,98 @@
           faaliyet: titleTR(d.faaliyet)
         };
       });
+
+      // 2026 İftar-Sahur ve Taahhüt verileri (rapor-personel ile aynı mantık)
+      try {
+        const targetYear = 2026;
+
+        // 1) ramazan_kayitlari (iftar/sahur) -> tahakkuk
+        const { data: ramazanData } = await supabase
+          .from('ramazan_kayitlari')
+          .select('id, yil, tip, sahip, tutar, personel, personeladi')
+          .eq('yil', targetYear)
+          .in('tip', ['iftar', 'sahur']);
+
+        if (ramazanData && ramazanData.length > 0) {
+          const ramazanTahakkuk = ramazanData.map(d => ({
+            id: d.id,
+            yil: d.yil,
+            faaliyet: titleTR(d.tip || ''),
+            personel: resolveName(d.personeladi || d.personel),
+            borclu: resolveName(d.sahip || ''),
+            tahakkuk: Number(d.tutar) || 0,
+            aciklama: '-'
+          }));
+          allTahakkuk = allTahakkuk.concat(ramazanTahakkuk);
+        }
+
+        // 2) taahhut_kayitlari -> tahakkuk
+        const { data: taahhutData } = await supabase
+          .from('taahhut_kayitlari')
+          .select('id, yil, personel, bagisci, miktar')
+          .eq('yil', targetYear)
+          .or('silindi.eq.false,silindi.is.null');
+
+        if (taahhutData && taahhutData.length > 0) {
+          const taahhutTahakkuk = taahhutData.map(d => ({
+            id: d.id,
+            yil: d.yil,
+            faaliyet: 'Taahhüt',
+            personel: resolveName(d.personel),
+            borclu: resolveName(d.bagisci || ''),
+            tahakkuk: Number(d.miktar) || 0,
+            aciklama: '-'
+          }));
+          allTahakkuk = allTahakkuk.concat(taahhutTahakkuk);
+        }
+
+        // 3) ramazan_tahsilat -> tahsilat (kayit_id üzerinden birebir)
+        const kayitMap = {};
+        (ramazanData || []).forEach(d => {
+          kayitMap[d.id] = {
+            yil: d.yil,
+            faaliyet: titleTR(d.tip || ''),
+            personel: resolveName(d.personeladi || d.personel),
+            borclu: resolveName(d.sahip || '')
+          };
+        });
+        (taahhutData || []).forEach(d => {
+          kayitMap[d.id] = {
+            yil: d.yil,
+            faaliyet: 'Taahhüt',
+            personel: resolveName(d.personel),
+            borclu: resolveName(d.bagisci || '')
+          };
+        });
+
+        const kayitIds = Object.keys(kayitMap);
+        if (kayitIds.length > 0) {
+          const { data: tahsilatRamazan } = await supabase
+            .from('ramazan_tahsilat')
+            .select('id, kayit_id, tutar, tahsilat_tarihi')
+            .in('kayit_id', kayitIds);
+
+          if (tahsilatRamazan && tahsilatRamazan.length > 0) {
+            const ramazanTahsilat = tahsilatRamazan.map(s => {
+              const parent = kayitMap[s.kayit_id] || {};
+              return {
+                id: 'ramazan_' + s.id,
+                tahakkukid: s.kayit_id,
+                yil: parent.yil,
+                faaliyet: parent.faaliyet,
+                personel: parent.personel,
+                borclu: parent.borclu,
+                tutar: Number(s.tutar) || 0,
+                odeyen: '',
+                tarih: s.tahsilat_tarihi || ''
+              };
+            });
+            allTahsilat = allTahsilat.concat(ramazanTahsilat);
+          }
+        }
+      } catch (e) {
+        console.warn('2026 Ramazan/Taahhüt verileri yüklenemedi:', e);
+      }
     }
 
     function showError(msg) {
@@ -807,9 +938,11 @@
       // Personel sıralaması / Faaliyet özeti
       if (showPersonel) {
         renderRankSection(tList, sList);
+        qs('#yilSection').style.display = 'none';
         qs('#faaliyetSection').style.display = 'none';
       } else {
         qs('#rankSection').style.display = 'none';
+        renderYilSection(rows);
         renderFaaliyetSection(rows);
       }
 
@@ -836,11 +969,10 @@
           ${showPersonel ? `<td>${r.personel || ''}</td>` : ''}
           <td>${r.borclu || ''}</td>
           <td>${r.odeyen || ''}</td>
-          <td>${r.aciklama || ''}</td>
           <td class="numeric">${money(r.tahakkuk)}</td>
           <td class="numeric">${money(r.tahsilat)}</td>
           <td class="numeric">${money(r.yeni)}</td>
-          <td class="numeric">${money(r.kalan)}</td>
+          <td class="numeric kalan-cell">${money(r.kalan)}</td>
         `;
         tbody.appendChild(tr);
       });
@@ -848,13 +980,13 @@
       // Toplam satırı
       const totalTr = document.createElement('tr');
       totalTr.className = 'total-row';
-      const colSpan = showPersonel ? 6 : 5;
+      const colSpan = showPersonel ? 5 : 4;
       totalTr.innerHTML = `
         <td colspan="${colSpan}"><strong>TOPLAM</strong></td>
         <td class="numeric">${money(sumTah)}</td>
         <td class="numeric">${money(sumTsl)}</td>
         <td class="numeric">${money(sumYeni)}</td>
-        <td class="numeric">${money(sumKal)}</td>
+        <td class="numeric kalan-cell">${money(sumKal)}</td>
       `;
       tbody.appendChild(totalTr);
 
@@ -920,7 +1052,7 @@
           <td>${r.p}</td>
           <td class="numeric">${money(r.t)}</td>
           <td class="numeric">${money(r.s)}</td>
-          <td class="numeric">${money(r.k)}</td>
+          <td class="numeric kalan-cell">${money(r.k)}</td>
           <td class="numeric">%${r.n.toFixed(1)}</td>
         `;
         tbody.appendChild(tr);
@@ -939,7 +1071,7 @@
             <td>${r.p}</td>
             <td class="numeric">${money(r.t)}</td>
             <td class="numeric">${money(r.s)}</td>
-            <td class="numeric">${money(r.k)}</td>
+            <td class="numeric kalan-cell">${money(r.k)}</td>
             <td class="numeric">%${r.n.toFixed(1)}</td>
           `;
           tbody.appendChild(tr);
@@ -949,11 +1081,78 @@
       rankSection.style.display = tbody.children.length ? 'block' : 'none';
     }
 
+    // Tek personel modunda yıl bazlı özet (2023-günümüz)
+    function renderYilSection(rows) {
+      const sec = qs('#yilSection');
+      const tbody = qs('#yilBody');
+      tbody.innerHTML = '';
+
+      const yMap = {};
+      rows.forEach(r => {
+        const key = String(r.yil || '').trim();
+        if (!key) return;
+        if (!yMap[key]) yMap[key] = { tahakkuk: 0, tahsilat: 0, kalan: 0 };
+        yMap[key].tahakkuk += Number(r.tahakkuk || 0);
+        yMap[key].tahsilat += Number(r.tahsilat || 0);
+        yMap[key].kalan += Number(r.kalan || 0);
+      });
+
+      let list;
+      if (paramYil === 'tum') {
+        // Tüm yıl seçili: 2023, 2024, 2025, 2026 sırasıyla göster
+        const yillar = ['2023', '2024', '2025', '2026'];
+        list = yillar.map(y => ({
+          yil: y,
+          tahakkuk: (yMap[y] || {}).tahakkuk || 0,
+          tahsilat: (yMap[y] || {}).tahsilat || 0,
+          kalan: (yMap[y] || {}).kalan || 0
+        }));
+      } else {
+        // Tek yıl seçili: sadece o yılı göster
+        const y = String(paramYil || '').trim();
+        if (!y) {
+          sec.style.display = 'none';
+          return;
+        }
+        list = [{
+          yil: y,
+          tahakkuk: (yMap[y] || {}).tahakkuk || 0,
+          tahsilat: (yMap[y] || {}).tahsilat || 0,
+          kalan: (yMap[y] || {}).kalan || 0
+        }];
+      }
+
+      if (!list.length) {
+        sec.style.display = 'none';
+        return;
+      }
+
+      list.forEach(item => {
+        const borcYok = Math.abs(item.kalan) < 0.01;
+        let cls = 'kalan-non';
+        if (!borcYok && item.kalan > 0.1) cls = 'kalan-pozitif';
+        if (!borcYok && item.kalan < -0.1) cls = 'kalan-negatif';
+
+        const kalanText = borcYok ? 'Borç yoktur' : money(item.kalan);
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${item.yil} Yılı</td>
+          <td class="numeric">${money(item.tahakkuk)}</td>
+          <td class="numeric">${money(item.tahsilat)}</td>
+          <td class="numeric"><span class="faaliyet-kalan ${cls}">${kalanText}</span></td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      sec.style.display = 'block';
+    }
+
     // Tek personel modunda faaliyet bazlı özet
     function renderFaaliyetSection(rows) {
       const sec = qs('#faaliyetSection');
-      const grid = qs('#faaliyetGrid');
-      grid.innerHTML = '';
+      const tbody = qs('#faaliyetBody');
+      tbody.innerHTML = '';
 
       const fMap = {};
       rows.forEach(r => {
@@ -987,21 +1186,14 @@
         if (item.kalan > 0.1) cls = 'kalan-pozitif';
         if (item.kalan < -0.1) cls = 'kalan-negatif';
 
-        const div = document.createElement('div');
-        div.className = 'faaliyet-card';
-        div.innerHTML = `
-          <div class="faaliyet-title">${item.faaliyet}</div>
-          <div class="faaliyet-row">
-            <span>Tahakkuk</span>
-            <span>${money(item.tahakkuk)}</span>
-          </div>
-          <div class="faaliyet-row">
-            <span>Tahsilat</span>
-            <span>${money(item.tahsilat)}</span>
-          </div>
-          <span class="faaliyet-kalan ${cls}">Kalan: ${money(item.kalan)}</span>
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${item.faaliyet}</td>
+          <td class="numeric">${money(item.tahakkuk)}</td>
+          <td class="numeric">${money(item.tahsilat)}</td>
+          <td class="numeric"><span class="faaliyet-kalan ${cls}">${money(item.kalan)}</span></td>
         `;
-        grid.appendChild(div);
+        tbody.appendChild(tr);
       });
 
       sec.style.display = 'block';

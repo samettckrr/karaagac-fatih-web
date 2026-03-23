@@ -217,6 +217,17 @@
       color: var(--ink)
     }
 
+    /* Personel başarı sıralaması — Kalan: ortalı, kırmızı, kalın */
+    #rankTbl th.rank-col-kalan,
+    #rankTbl td.rank-col-kalan {
+      text-align: center;
+    }
+
+    #rankTbl td.rank-col-kalan {
+      color: var(--bad);
+      font-weight: 700;
+    }
+
     /* Faaliyet Grid */
     .faaliyet-grid {
       display: grid;
@@ -481,11 +492,7 @@
       <div class="kisi-secim" id="controlPanel" style="display:none">
         <select id="personelSecim"></select>
         <select id="selYil">
-          <option value="2023">2023</option>
-          <option value="2024">2024</option>
-          <option value="2025" selected>2025</option>
-          <option value="2026">2026</option>
-          <option value="tum">Tüm Yıllar</option>
+          <option value="tum" selected>Tüm Yıllar</option>
         </select>
         <button id="btnYukle" class="btn btn-primary">Yükle</button>
         <button id="btnGizle" class="btn">Kalan Sıfır Olanları Gizle</button>
@@ -536,7 +543,7 @@
               <th>Personel</th>
               <th class="right">Toplam Tahakkuk</th>
               <th class="right">Toplam Tahsilat</th>
-              <th class="right">Kalan</th>
+              <th class="rank-col-kalan">Kalan</th>
               <th style="width:200px">Tahsilat Nispeti</th>
             </tr>
           </thead>
@@ -646,6 +653,16 @@
 
           await loadData();
 
+          // Yıl seçimini veriden otomatik doldur (tüm yıllar)
+          const yilSet = new Set();
+          allTahakkuk.forEach(t => { if (t.yil != null && t.yil !== '') yilSet.add(String(t.yil)); });
+          allTahsilat.forEach(t => { if (t.yil != null && t.yil !== '') yilSet.add(String(t.yil)); });
+          const yilList = [...yilSet].sort((a, b) => Number(b) - Number(a));
+          const selYilEl = qs('#selYil');
+          selYilEl.innerHTML = '<option value="tum" selected>Tüm Yıllar</option>' +
+            yilList.map(y => `<option value="${window.escapeHtml(y)}">${window.escapeHtml(y)}</option>`).join('');
+          selYilEl.value = 'tum';
+
           const sel = qs('#personelSecim');
           const controlPanel = qs('#controlPanel');
 
@@ -729,6 +746,94 @@
               faaliyet: titleTR(d.faaliyet)
             };
           });
+
+          // İftar-Sahur ve Taahhüt verilerini çek (ramazan tablolarından)
+          try {
+            // 1. ramazan_kayitlari (İftar, Sahur)
+            const { data: ramazanData } = await supabase
+              .from('ramazan_kayitlari')
+              .select('id, yil, tip, sahip, tutar, personel, personeladi, notlar')
+              .in('tip', ['iftar', 'sahur']);
+
+            if (ramazanData && ramazanData.length > 0) {
+              const ramazanTahakkuk = ramazanData.map(d => ({
+                id: d.id,
+                yil: d.yil,
+                faaliyet: titleTR(d.tip || ''), // "İftar" veya "Sahur"
+                personel: resolveName(d.personeladi || d.personel),
+                borclu: resolveName(d.sahip || ''),
+                tahakkuk: Number(d.tutar) || 0,
+                aciklama: '-' // Ramazan kayıtlarında açıklama boş
+              }));
+              allTahakkuk = allTahakkuk.concat(ramazanTahakkuk);
+            }
+
+            // 2. taahhut_kayitlari (Taahhüt)
+            const { data: taahhutData } = await supabase
+              .from('taahhut_kayitlari')
+              .select('id, yil, personel, bagisci, miktar, aciklama')
+              .or('silindi.eq.false,silindi.is.null');
+
+            if (taahhutData && taahhutData.length > 0) {
+              const taahhutTahakkuk = taahhutData.map(d => ({
+                id: d.id,
+                yil: d.yil,
+                faaliyet: 'Taahhüt',
+                personel: resolveName(d.personel),
+                borclu: resolveName(d.bagisci || ''),
+                tahakkuk: Number(d.miktar) || 0,
+                aciklama: '-' // Taahhüt kayıtlarında açıklama boş
+              }));
+              allTahakkuk = allTahakkuk.concat(taahhutTahakkuk);
+            }
+
+            // 3. ramazan_tahsilat - ana kayıt bilgisi için lookup map
+            const kayitMap = {};
+            (ramazanData || []).forEach(d => {
+              kayitMap[d.id] = {
+                yil: d.yil,
+                faaliyet: titleTR(d.tip || ''),
+                personel: resolveName(d.personeladi || d.personel),
+                borclu: resolveName(d.sahip || '')
+              };
+            });
+            (taahhutData || []).forEach(d => {
+              kayitMap[d.id] = {
+                yil: d.yil,
+                faaliyet: 'Taahhüt',
+                personel: resolveName(d.personel),
+                borclu: resolveName(d.bagisci || '')
+              };
+            });
+
+            const kayitIds = Object.keys(kayitMap);
+            if (kayitIds.length > 0) {
+              const { data: tahsilatRamazan } = await supabase
+                .from('ramazan_tahsilat')
+                .select('id, kayit_id, tutar, tahsilat_tarihi')
+                .in('kayit_id', kayitIds);
+
+              if (tahsilatRamazan && tahsilatRamazan.length > 0) {
+                const ramazanTahsilatList = tahsilatRamazan.map(s => {
+                  const parent = kayitMap[s.kayit_id] || {};
+                  return {
+                    id: 'ramazan_' + s.id, // ID çakışmasını önlemek için önek
+                    tahakkukid: s.kayit_id,
+                    yil: parent.yil,
+                    faaliyet: parent.faaliyet,
+                    personel: parent.personel,
+                    borclu: parent.borclu,
+                    tutar: Number(s.tutar) || 0,
+                    odeyen: '',
+                    tarih: s.tahsilat_tarihi || ''
+                  };
+                });
+                allTahsilat = allTahsilat.concat(ramazanTahsilatList);
+              }
+            }
+          } catch (e) {
+            console.warn('İftar-Sahur/Taahhüt verileri yüklenirken hata:', e);
+          }
         }
 
         function renderReport() {
@@ -757,16 +862,20 @@
           }
         }
 
-        // Eşleştirme Fonksiyonu (Güçlendirilmiş)
+        // Tahsilat eşleştirmesi: tahakkukid varsa SADECE kayıt id/uid ile (isim üzerinden değil).
+        // Aksi halde aynı personel+borçlu+faaliyet+yılda birden fazla iftar/taahhüt satırında tahsilatlar karışır.
         function getRelatedTahsilat(tahakkuk, allTahsilatList) {
           return allTahsilatList.filter(s => {
-            // PostgreSQL'de sütun ismi tahakkukid (küçük harf)
-            if (s.tahakkukid && s.tahakkukid === tahakkuk.id) return true;
-            if (String(s.yil) === String(tahakkuk.yil) &&
+            const kid = s.tahakkukid;
+            const hasTahakkukId = kid != null && String(kid).trim() !== '';
+            if (hasTahakkukId) {
+              return String(kid) === String(tahakkuk.id);
+            }
+            // Eski tahsilatlar tablosu: tahakkukid yoksa yıl+faaliyet+personel+borclu (geriye dönük)
+            return String(s.yil) === String(tahakkuk.yil) &&
               s.faaliyet === tahakkuk.faaliyet &&
               s.personel === tahakkuk.personel &&
-              s.borclu === tahakkuk.borclu) return true;
-            return false;
+              s.borclu === tahakkuk.borclu;
           });
         }
 
@@ -918,7 +1027,7 @@
           <th data-key="p">Personel</th>
           <th class="right" data-key="t">Toplam Tahakkuk</th>
           <th class="right" data-key="s">Toplam Tahsilat</th>
-          <th class="right" data-key="k">Kalan</th>
+          <th class="rank-col-kalan" data-key="k">Kalan</th>
           <th style="width:200px" data-key="n">Tahsilat Nispeti</th>
         </tr>
       `;
@@ -967,7 +1076,7 @@
             <td style="font-weight:600">${window.escapeHtml(r.p)}</td>
             <td class="right">${money(r.t)}</td>
             <td class="right">${money(r.s)}</td>
-            <td class="right" style="color:${r.k > 0 ? 'var(--warn)' : 'var(--muted)'}">${money(r.k)}</td>
+            <td class="rank-col-kalan">${money(r.k)}</td>
             <td>
               <div style="display:flex;align-items:center">
                 <div class="progress-bg"><div class="progress-fill" style="width:${Math.min(r.n, 100)}%; background:${color}"></div></div>
@@ -993,7 +1102,7 @@
               <td style="font-weight:600">${window.escapeHtml(r.p)}</td>
               <td class="right">${money(r.t)}</td>
               <td class="right">${money(r.s)}</td>
-              <td class="right" style="color:${r.k > 0 ? 'var(--warn)' : 'var(--muted)'}">${money(r.k)}</td>
+              <td class="rank-col-kalan">${money(r.k)}</td>
               <td>
                 <div style="display:flex;align-items:center">
                   <div class="progress-bg"><div class="progress-fill" style="width:${Math.min(r.n, 100)}%; background:${color}"></div></div>
