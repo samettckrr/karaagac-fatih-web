@@ -188,6 +188,14 @@
     #detayliIstatistikler .stat-tutar { font-weight: 700; color: #111; }
     #detayliIstatistikler .stat-tahsilat { font-weight: 700; color: var(--good); }
     #detayliIstatistikler .stat-kalan { font-weight: 700; color: var(--bad); }
+
+    /* Detaylı liste: Tahsilat / Kalan sütunu – ödendi ve kalan daha belirgin */
+    .td-tahsilat { font-size: 13px !important; font-weight: 600; min-width: 140px; }
+    .td-tahsilat .badge-odendi { display: inline-block; padding: 4px 10px; border-radius: 8px; background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); color: #15803d; font-weight: 700; font-size: 12px; }
+    .td-tahsilat .badge-beklemede { display: inline-block; padding: 4px 10px; border-radius: 8px; background: #fef3c7; color: #b45309; font-weight: 600; font-size: 12px; }
+    .td-tahsilat .tahsilat-ozet { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+    .td-tahsilat .tahsilat-tutar { color: var(--good); font-weight: 700; }
+    .td-tahsilat .kalan-tutar { color: var(--bad); font-weight: 700; background: rgba(220, 38, 38, 0.08); padding: 2px 6px; border-radius: 4px; }
     
     .avoid-break{page-break-inside:avoid;break-inside:avoid}
     
@@ -297,6 +305,10 @@
 <main class="wrap" id="pdf-root">
   <h2 style="margin:12px 0 8px 0;font-size:24px;font-weight:800">Ramazan-ı Şerif</h2>
   <div class="muted" style="margin-bottom:12px">2026 Ramazan-ı Şerif</div>
+  <div id="connectionErrorBanner" style="display:none;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px 16px;margin-bottom:12px;color:#b91c1c;font-size:14px">
+    <strong>⚠️ Veritabanı bağlantısı kurulamadı.</strong> Lütfen giriş yapıp sayfayı yenileyin.
+    <a href="../index.html" style="margin-left:8px;color:#dc2626;text-decoration:underline;font-weight:600">Giriş Yap</a>
+  </div>
   <div class="toolbar">
     <select id="filtreYil">
       <option value="">Yıl seçiniz...</option>
@@ -429,6 +441,7 @@
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;min-width:0;width:100%;overflow-x:hidden;box-sizing:border-box">
         <h3 style="margin:0;flex-shrink:0">Detaylı Liste | Seçime Göre</h3>
         <div style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:nowrap;min-width:0;flex-shrink:1">
+          <button type="button" id="btnTahsilatGoster" class="secondary" style="white-space:nowrap;padding:6px 12px;font-size:12px" title="Teberru kayıtlarını gizle, sadece İftar-Sahur-Taahhüt göster">📋 Tahsilat göster</button>
           <span class="muted" style="font-size:13px;flex-shrink:0">Sırala:</span>
           <select id="siraAlan" style="min-width:120px;max-width:140px;flex:1 1 auto">
             <option value="tarih">Tarih</option>
@@ -464,12 +477,13 @@
           </thead>
           <tbody id="tbody"></tbody>
           <tfoot>
-            <tr>
-              <td colspan="3" class="right"><strong>TOPLAM</strong></td>
-              <td class="right" id="sumTutar"><strong>₺0</strong></td>
-              <td></td>
-              <td colspan="5"></td>
-              <td class="right" id="sumMusafir"><strong>0</strong></td>
+            <tr style="background:#f8fafc;border-top:2px solid var(--border);font-weight:600">
+              <td colspan="3" class="right" style="padding:12px"><strong>TOPLAM</strong></td>
+              <td class="right" id="sumTutar" style="padding:12px"><strong>₺0</strong></td>
+              <td id="sumTahsilatKalan" class="td-tahsilat" style="padding:12px;font-size:13px"></td>
+              <td style="padding:12px"></td>
+              <td class="right" id="sumMusafir" style="padding:12px"><strong>0</strong></td>
+              <td colspan="4" style="padding:12px"></td>
             </tr>
           </tfoot>
         </table>
@@ -591,6 +605,7 @@
     let duzenlemeTalepleri = [];
     let mahallerList = []; // ramazan_mahaller: mahalid -> adi eşleştirmesi için
     let tahsilatByKayitId = {}; // kayit_id -> toplam tahsilat (iftar/sahur/taahhut için)
+    let tahsilatGosterAktif = false; // true: teberru gizle, sadece iftar-sahur-taahhüt; false: hepsi göster
     let hedefMap = {}; // personelAdi (lowercase) -> hedef tutar (ramazan_hedefler)
     let hedefPersonelList = []; // ramazan_hedefler'daki personel isimleri (dropdown için)
     let currentUser = null;
@@ -804,11 +819,10 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
       // Mevcut session'ı kontrol et
       window.supabase.auth.getSession().then(async ({ data: { session }, error }) => {
         if (error || !session) {
-          // TEST MODU: Yönlendirme devre dışı
-          // window.location.href = '../../index.html';
-          console.warn('⚠️ Supabase oturumu yok, test modu aktif, yönlendirme durduruldu');
-          // Sayfanın çalışmaya devam etmesi için session olmasa bile devam et
-          // return; // <-- Bu satırı da yoruma aldık
+          console.warn('⚠️ Supabase oturumu yok');
+          const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
+          window.location.href = '../index.html?redirect=' + returnUrl;
+          return;
         } else {
           // Session varsa kullanıcı bilgilerini ayarla
           currentUser = session.user; // Supabase user objesi
@@ -902,10 +916,8 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
       
       window.supabase.auth.onAuthStateChange(async (event, session) => {
         if (event === 'SIGNED_OUT' || !session) {
-          // TEST MODU: Yönlendirme devre dışı
-          // window.location.href = '../../index.html';
-          console.warn('⚠️ Supabase oturumu yok, test modu aktif, yönlendirme durduruldu');
-          // return; // <-- Bu satırı da yoruma aldık
+          const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
+          window.location.href = '../index.html?redirect=' + returnUrl;
         }
         
         if (session && session.user) {
@@ -1391,6 +1403,11 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
         );
       }
 
+      // Tahsilat göster: teberru gizle, sadece iftar-sahur-taahhüt
+      if (tahsilatGosterAktif) {
+        filtered = filtered.filter(k => k.kayitTipi !== 'teberru');
+      }
+
       // Sıralama (detaylı liste için)
       const siraAlan = (qs('#siraAlan') && qs('#siraAlan').value) || 'tarih';
       const siraYon = (qs('#siraYon') && qs('#siraYon').value) || 'artan';
@@ -1522,8 +1539,9 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
 
       if (filtered.length === 0) {
         tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:20px">Kayıt bulunamadı</td></tr>';
-        qs('#sumTutar').textContent = '₺0';
-        qs('#sumMusafir').textContent = '0';
+        qs('#sumTutar').innerHTML = '<strong>₺0</strong>';
+        qs('#sumMusafir').innerHTML = '<strong>0</strong>';
+        qs('#sumTahsilatKalan').innerHTML = '<span class="muted">—</span>';
         return;
       }
 
@@ -1650,18 +1668,18 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
             const toplamTahsilatT = hasTahsilatTaahhut ? (tahsilatByKayitId[k.id] || 0) : 0;
             const kayitTutariT = Number(k.miktar || 0);
             const kalanT = kayitTutariT - toplamTahsilatT;
-            let tahsilatDurumT = '-';
+            let tahsilatHtmlT = '-';
             if (hasTahsilatTaahhut) {
-              if (toplamTahsilatT >= kayitTutariT) tahsilatDurumT = 'Ödendi';
-              else if (toplamTahsilatT > 0) tahsilatDurumT = `₺${toplamTahsilatT.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} / ₺${kalanT.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} kalan`;
-              else tahsilatDurumT = 'Beklemede';
+              if (toplamTahsilatT >= kayitTutariT) tahsilatHtmlT = '<span class="badge-odendi">✓ Ödendi</span>';
+              else if (toplamTahsilatT > 0) tahsilatHtmlT = `<span class="tahsilat-ozet"><span class="tahsilat-tutar">₺${toplamTahsilatT.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span> / <span class="kalan-tutar">₺${kalanT.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} kalan</span></span>`;
+              else tahsilatHtmlT = '<span class="badge-beklemede">⏳ Beklemede</span>';
             }
             tr.innerHTML = `
               <td>${tarih.getDate()}.${tarih.getMonth() + 1}.${tarih.getFullYear()}</td>
               <td><span class="chip-badge" style="background:${k.kayitTipi === 'teberru' ? '#27ae60' : '#3498db'}; color:white; padding:4px 8px; border-radius:4px; font-size:11px;">${k.kayitTipi === 'teberru' ? '💰 Teberru' : '📋 Taahhüt'}</span></td>
               <td class="td-scroll-text" title="${(k.bagisci || '-').replace(/"/g, '&quot;')}"><strong>${k.bagisci || '-'}</strong></td>
               <td class="right"><strong>₺${Number(k.miktar || 0).toLocaleString('tr-TR',{minimumFractionDigits:2})}</strong></td>
-              <td style="font-size:12px">${tahsilatDurumT}</td>
+              <td class="td-tahsilat">${tahsilatHtmlT}</td>
               <td>-</td>
               <td>-</td>
               <td>${k.kayitTipi === 'teberru' ? (odemeLabels[k.odemeYontemi] || k.odemeYontemi || '-') : '-'}</td>
@@ -1821,18 +1839,18 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
             const toplamTahsilatI = hasTahsilatIftar ? (tahsilatByKayitId[k.id] || 0) : 0;
             const kayitTutariI = Number(k.tutar || 0);
             const kalanI = kayitTutariI - toplamTahsilatI;
-            let tahsilatDurumI = '-';
+            let tahsilatHtmlI = '-';
             if (hasTahsilatIftar) {
-              if (toplamTahsilatI >= kayitTutariI) tahsilatDurumI = 'Ödendi';
-              else if (toplamTahsilatI > 0) tahsilatDurumI = `₺${toplamTahsilatI.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} / ₺${kalanI.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} kalan`;
-              else tahsilatDurumI = 'Beklemede';
+              if (toplamTahsilatI >= kayitTutariI) tahsilatHtmlI = '<span class="badge-odendi">✓ Ödendi</span>';
+              else if (toplamTahsilatI > 0) tahsilatHtmlI = `<span class="tahsilat-ozet"><span class="tahsilat-tutar">₺${toplamTahsilatI.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span> / <span class="kalan-tutar">₺${kalanI.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} kalan</span></span>`;
+              else tahsilatHtmlI = '<span class="badge-beklemede">⏳ Beklemede</span>';
             }
             tr.innerHTML = `
               <td>${tarih.getDate()}.${tarih.getMonth() + 1}.${tarih.getFullYear()}</td>
               <td><span class="chip-badge ${k.tip}">${k.tip === 'iftar' ? '🌙 İftar' : '🌟 Sahur'}</span></td>
               <td class="td-scroll-text" title="${(k.sahip || '-').replace(/"/g, '&quot;')}"><strong>${k.sahip || '-'}</strong></td>
               <td class="right"><strong>₺${Number(k.tutar || 0).toLocaleString('tr-TR',{minimumFractionDigits:2})}</strong></td>
-              <td style="font-size:12px">${tahsilatDurumI}</td>
+              <td class="td-tahsilat">${tahsilatHtmlI}</td>
               <td>${k.istirak ? '✓ Evet' : '✗ Hayır'}</td>
               <td>${k.musafirAdedi || 0}</td>
               <td class="td-scroll-text td-scroll-narrow" title="${(k.mahal || '-').replace(/"/g, '&quot;')}">${k.mahal || '-'}</td>
@@ -1845,15 +1863,39 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
         });
 
         // Toplam hesaplama (sadece aktif kayıtlar - iftar-sahur, teberru, taahhüt dahil)
-        const aktifToplamTutar = filtered.filter(k => !k.silindi).reduce((sum, k) => {
+        const aktifFiltered = filtered.filter(k => !k.silindi);
+        const aktifToplamTutar = aktifFiltered.reduce((sum, k) => {
           if(k.kayitTipi === 'teberru' || k.kayitTipi === 'taahhut') {
             return sum + (Number(k.miktar) || 0);
           }
           return sum + (Number(k.tutar) || 0);
         }, 0);
-        const aktifToplamMusafir = filtered.filter(k => !k.silindi && !k.kayitTipi).reduce((sum, k) => sum + (Number(k.musafirAdedi) || 0), 0);
-        qs('#sumTutar').innerHTML = '<strong>₺' + aktifToplamTutar.toLocaleString('tr-TR',{minimumFractionDigits:2}) + '</strong>';
+        const aktifToplamMusafir = aktifFiltered.filter(k => !k.kayitTipi).reduce((sum, k) => sum + (Number(k.musafirAdedi) || 0), 0);
+
+        // Tahsilat / Kalan toplamı (sadece taahhüt + iftar + sahur – teberru tahsilatı yok)
+        let toplamTahsilat = 0;
+        let toplamTahsilatTutar = 0; // tahsilat yapılabilen kayıtların tutar toplamı
+        aktifFiltered.forEach(k => {
+          if (k.kayitTipi === 'taahhut' && Number(k.miktar || 0) > 0) {
+            const t = tahsilatByKayitId[k.id] || 0;
+            toplamTahsilat += t;
+            toplamTahsilatTutar += Number(k.miktar) || 0;
+          } else if ((k.tip === 'iftar' || k.tip === 'sahur') && !k.kayitTipi && Number(k.tutar || 0) > 0) {
+            const t = tahsilatByKayitId[k.id] || 0;
+            toplamTahsilat += t;
+            toplamTahsilatTutar += Number(k.tutar) || 0;
+          }
+        });
+        const toplamKalan = Math.max(0, toplamTahsilatTutar - toplamTahsilat);
+
+        qs('#sumTutar').innerHTML = '<strong>' + fmt(aktifToplamTutar) + '</strong>';
         qs('#sumMusafir').innerHTML = '<strong>' + aktifToplamMusafir + '</strong>';
+        const sumTahsilatEl = qs('#sumTahsilatKalan');
+        if (toplamTahsilatTutar > 0) {
+          sumTahsilatEl.innerHTML = '<span class="tahsilat-tutar">' + fmt(toplamTahsilat) + '</span> / <span class="kalan-tutar">' + fmt(toplamKalan) + ' kalan</span>';
+        } else {
+          sumTahsilatEl.innerHTML = '<span class="muted">—</span>';
+        }
     }
 
     // Sadece tablo görünümü - kart görünümü kaldırıldı
@@ -1867,8 +1909,12 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
     // Ramazan yıllarını yükle ve yıl seçeneklerini güncelle
     // ===== SUPABASE: Ramazan yıllarını yükle =====
     async function loadRamazanYillari() {
+      const banner = qs('#connectionErrorBanner');
       if (!window.supabase) {
         console.warn('Supabase client hazır değil, ramazan yılları yüklenemiyor');
+        if (banner) banner.style.display = 'block';
+        if (typeof window.showToast === 'function') window.showToast('error', 'Bağlantı Hatası', 'Veritabanı hazır değil. Sayfayı yenileyin.');
+        addFallbackYears();
         return;
       }
       
@@ -1880,32 +1926,33 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
         
         if (error) throw error;
         
-        // Filtre yıl seçeneklerini güncelle
+        if (banner) banner.style.display = 'none';
+        
         const select = qs('#filtreYil');
         if (select) {
           const currentValue = select.value;
           select.innerHTML = '';
           
-          (data || []).forEach(d => {
-            const opt = document.createElement('option');
-            opt.value = d.yil;
-            opt.textContent = `${d.yil} Ramazan-ı Şerif${d.aktif ? ' (Aktif)' : ''}`;
-            select.appendChild(opt);
-            
-            // Aktif yıl varsa onu seç
-            if (d.aktif) {
-              select.value = d.yil;
-            }
-          });
-          
-          // Eğer aktif yıl seçilmediyse, mevcut değeri koru veya ilk yılı seç
-          if (!select.value && currentValue && data.some(d => d.yil === parseInt(currentValue))) {
-            select.value = currentValue;
-          } else if (!select.value && data.length > 0) {
-            select.value = data[0].yil;
+          const rows = data || [];
+          if (rows.length === 0) {
+            addFallbackYears();
+            if (typeof window.showToast === 'function') window.showToast('warning', 'Uyarı', 'Ramazan yılları tablosunda kayıt bulunamadı. Varsayılan yıllar eklendi.');
+          } else {
+            rows.forEach(d => {
+              const opt = document.createElement('option');
+              opt.value = d.yil;
+              opt.textContent = `${d.yil} Ramazan-ı Şerif${d.aktif ? ' (Aktif)' : ''}`;
+              select.appendChild(opt);
+              if (d.aktif) select.value = d.yil;
+            });
           }
           
-          // Yıl seçildikten sonra hedefleri ve verileri yükle
+          if (!select.value && currentValue && rows.some(d => d.yil === parseInt(currentValue))) {
+            select.value = currentValue;
+          } else if (!select.value && select.options.length > 1) {
+            select.value = select.options[1].value;
+          }
+          
           if (select.value) {
             loadHedefler().then(() => {});
             loadKayitlar();
@@ -1913,6 +1960,30 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
         }
       } catch (e) {
         console.error('Ramazan yılları yüklenemedi:', e);
+        if (banner) banner.style.display = 'block';
+        const errMsg = e?.message || String(e);
+        const isAuthError = errMsg.includes('JWT') || errMsg.includes('401') || errMsg.includes('403') || errMsg.includes('PGRST301') || errMsg.includes('permission') || errMsg.includes('RLS');
+        if (typeof window.showToast === 'function') {
+          window.showToast('error', 'Veritabanı Hatası', isAuthError ? 'Giriş yapmanız gerekiyor. Lütfen giriş yapıp tekrar deneyin.' : (errMsg || 'Yıllar yüklenemedi.'));
+        }
+        addFallbackYears();
+      }
+    }
+
+    function addFallbackYears() {
+      const select = qs('#filtreYil');
+      if (!select || select.options.length > 1) return;
+      const fallbacks = [2026, 2025, 2024];
+      fallbacks.forEach(y => {
+        const opt = document.createElement('option');
+        opt.value = y;
+        opt.textContent = y + ' Ramazan-ı Şerif';
+        select.appendChild(opt);
+      });
+      select.value = fallbacks[0];
+      if (select.value) {
+        loadHedefler().then(() => {});
+        loadKayitlar();
       }
     }
 
@@ -1936,6 +2007,30 @@ window.CURRENT_ALLOW = window.CURRENT_ALLOW;
     });
 
     qs('#ara').addEventListener('input', render);
+
+    // Tahsilat göster / kapat butonu
+    qs('#btnTahsilatGoster').addEventListener('click', () => {
+      tahsilatGosterAktif = !tahsilatGosterAktif;
+      const btn = qs('#btnTahsilatGoster');
+      if (tahsilatGosterAktif) {
+        btn.textContent = '✕ Tahsilat kapat';
+        btn.classList.add('good');
+        btn.classList.remove('secondary');
+        btn.style.background = 'var(--good)';
+        btn.style.color = '#fff';
+        btn.style.border = 'none';
+        btn.title = 'Teberru dahil tüm kayıtları göster';
+      } else {
+        btn.textContent = '📋 Tahsilat göster';
+        btn.classList.remove('good');
+        btn.classList.add('secondary');
+        btn.style.background = '';
+        btn.style.color = '';
+        btn.style.border = '';
+        btn.title = 'Teberru kayıtlarını gizle, sadece İftar-Sahur-Taahhüt göster';
+      }
+      render();
+    });
 
     // CSV Export (iftar/sahur/teberru/taahhüt aynı filtre mantığı)
     qs('#btnExport').addEventListener('click', () => {

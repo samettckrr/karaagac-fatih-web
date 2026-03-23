@@ -307,6 +307,28 @@ CREATE TABLE public.kumbaralar (
   tamamlanmatarihi timestamp with time zone,
   CONSTRAINT kumbaralar_pkey PRIMARY KEY (id)
 );
+CREATE TABLE public.kurban_2026_bagis_hisse (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  created_at timestamp with time zone DEFAULT now(),
+  created_by_uid text,
+  ad_soyad text NOT NULL,
+  telefon text NOT NULL,
+  fiyat numeric NOT NULL DEFAULT 0,
+  aciklama text,
+  durum text DEFAULT 'kayit_alindi'::text,
+  CONSTRAINT kurban_2026_bagis_hisse_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.kurban_2026_etli_hisse (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  created_at timestamp with time zone DEFAULT now(),
+  created_by_uid text,
+  hisedar_ad_soyad text NOT NULL,
+  telefon text NOT NULL,
+  hisse_grubu text NOT NULL,
+  hisse_adedi integer NOT NULL DEFAULT 1 CHECK (hisse_adedi >= 1),
+  aciklama text,
+  CONSTRAINT kurban_2026_etli_hisse_pkey PRIMARY KEY (id)
+);
 CREATE TABLE public.kurban_onkayit (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   created_at timestamp with time zone DEFAULT now(),
@@ -314,9 +336,10 @@ CREATE TABLE public.kurban_onkayit (
   ad_soyad text NOT NULL,
   telefon text NOT NULL,
   email text,
-  adet integer NOT NULL DEFAULT 1 CHECK (adet >= 1 AND adet <= 100),
   tur text NOT NULL CHECK (tur = ANY (ARRAY['kucukbas'::text, 'buyukbas'::text])),
   aciklama text,
+  kaynak text,
+  hisse_grup integer,
   CONSTRAINT kurban_onkayit_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.muhasebe_alt_kategoriler (
