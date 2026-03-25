@@ -316,6 +316,7 @@ CREATE TABLE public.kurban_2026_bagis_hisse (
   fiyat numeric NOT NULL DEFAULT 0,
   aciklama text,
   durum text DEFAULT 'kayit_alindi'::text,
+  yil integer DEFAULT 2026,
   CONSTRAINT kurban_2026_bagis_hisse_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.kurban_2026_etli_hisse (
@@ -327,7 +328,27 @@ CREATE TABLE public.kurban_2026_etli_hisse (
   hisse_grubu text NOT NULL,
   hisse_adedi integer NOT NULL DEFAULT 1 CHECK (hisse_adedi >= 1),
   aciklama text,
+  yil integer DEFAULT 2026,
   CONSTRAINT kurban_2026_etli_hisse_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.kurban_2026_hedefler (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  personel_uid text NOT NULL,
+  personel text,
+  bagis_hedef integer NOT NULL DEFAULT 0 CHECK (bagis_hedef >= 0),
+  etli_hedef integer NOT NULL DEFAULT 0 CHECK (etli_hedef >= 0),
+  yil integer NOT NULL DEFAULT 2026,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT kurban_2026_hedefler_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.kurban_kategoriler (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  yil integer NOT NULL UNIQUE,
+  label text NOT NULL DEFAULT ''::text,
+  aktif boolean NOT NULL DEFAULT false,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT kurban_kategoriler_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.kurban_onkayit (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -340,6 +361,7 @@ CREATE TABLE public.kurban_onkayit (
   aciklama text,
   kaynak text,
   hisse_grup integer,
+  yil integer DEFAULT 2026,
   CONSTRAINT kurban_onkayit_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.muhasebe_alt_kategoriler (

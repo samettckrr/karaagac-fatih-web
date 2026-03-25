@@ -164,8 +164,18 @@
       font-size: 12px
     }
 
+    @media (max-width: 1200px) {
+      .row-grid-filtre {
+        grid-template-columns: repeat(3, minmax(0, 1fr))
+      }
+    }
+
     @media (max-width: 820px) {
       .row-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr))
+      }
+
+      .row-grid-filtre {
         grid-template-columns: repeat(2, minmax(0, 1fr))
       }
 
@@ -173,6 +183,21 @@
         grid-column: 1/-1;
         justify-self: start;
         margin-top: 4px
+      }
+    }
+
+    @media (max-width: 520px) {
+      .row-grid-filtre {
+        grid-template-columns: 1fr
+      }
+
+      .row-grid-filtre .cell-filtre select {
+        font-size: 13px;
+        max-width: 100%
+      }
+
+      .row-grid-filtre .right-note {
+        grid-column: 1;
       }
     }
 
@@ -258,6 +283,16 @@
 
     #hedefTablosu.mod-ramazan .c-kurban {
       width: 2%;
+    }
+
+    #hedefTablosu.mod-kurban .c-personel {
+      width: 18%;
+    }
+    #hedefTablosu.mod-kurban .c-mid {
+      width: 10%;
+    }
+    #hedefTablosu.mod-kurban .c-oran {
+      width: 12%;
     }
 
     .c-oran {
@@ -844,6 +879,19 @@
       color: #94a3b8;
     }
 
+    .kf-metrics-kurban-ozet {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .kf-metric-stack {
+      gap: 6px;
+      min-height: auto;
+    }
+
+    .kf-metric-stack .lbl + .val {
+      margin-bottom: 2px;
+    }
+
     /* KURBAN */
     .kf-kurban-box {
       background: #f3faf8;
@@ -965,6 +1013,10 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
+      .kf-metrics-kurban-ozet {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
       .kf-kurban-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
       }
@@ -982,6 +1034,10 @@
       }
 
       .kf-metrics {
+        grid-template-columns: 1fr;
+      }
+
+      .kf-metrics-kurban-ozet {
         grid-template-columns: 1fr;
       }
 
@@ -1119,9 +1175,9 @@
           </label>
         </div>
 
-        <div class="row-grid" style="margin-bottom:12px">
-          <div class="cell">
-            <label for="kategoriSecimi">Kategori</label>
+        <div class="row-grid row-grid-filtre" style="margin-bottom:12px">
+          <div class="cell cell-kategori">
+            <label for="kategoriSecimi" id="kategoriLabel">Kategori</label>
             <select id="kategoriSecimi">
               <option value="Tümü">Tümü</option>
               <option value="Kitap Kampanyası">Kitap Kampanyası</option>
@@ -1131,7 +1187,7 @@
               <option value="Mevlid Kandili">Mevlid Kandili</option>
             </select>
           </div>
-          <div class="cell">
+          <div class="cell cell-filtre">
             <label for="filtreSecimi">Filtre</label>
             <select id="filtreSecimi">
               <option value="oran-azalan" selected>Ulaşma Nispeti (Azalan)</option>
@@ -1148,11 +1204,11 @@
               <option value="tahsilat-azalan">Tahsilat (Azalan)</option>
             </select>
           </div>
-          <div class="cell">
+          <div class="cell cell-yil">
             <label for="yilSec">Yıl</label>
             <select id="yilSec"></select>
           </div>
-          <div class="cell">
+          <div class="cell cell-ay">
             <label for="aySec">Ay</label>
             <select id="aySec">
               <option value="">-</option>
@@ -1210,27 +1266,45 @@
           <button class="kf-side-refresh" onclick="aboneOl()" title="Yenile">⟳</button>
         </div>
 
-        <!-- ÜST: ULAŞMA ORANI + TEMİN/HEDEF -->
-        <div class="kf-topline">
+        <!-- ÜST: ULAŞMA ORANI + TEMİN/HEDEF (Kurban modunda yalnızca bağış hisse) -->
+        <div class="kf-topline" id="kfTopline">
           <div class="kf-badge-oran">
-            <small>Ulaşma</small>
+            <small id="kfUlasmaBadgeLbl">Ulaşma</small>
             <span id="toplamOran">%0</span>
           </div>
           <div class="kf-topline-right">
             <div class="kf-top-row">
-              <span>Temin</span>
+              <span id="kfTopTeminLbl">Temin</span>
               <strong id="toplamTemin">₺0</strong>
             </div>
             <div class="kf-top-row">
-              <span>Hedef</span>
+              <span id="kfTopHedefLbl">Hedef</span>
               <strong id="toplamHedef">₺0</strong>
             </div>
             <div class="kf-bar-wrap">
               <div class="kf-bar">
                 <div id="oranBar"></div>
               </div>
-              <span class="kf-bar-text">Genel ulaşma oranı</span>
+              <span class="kf-bar-text" id="kfBarTextLbl">Genel ulaşma oranı</span>
             </div>
+          </div>
+        </div>
+
+        <!-- KURBAN: Bağış / etli özet kartları (orta) -->
+        <div class="kf-metrics kf-metrics-kurban-ozet" id="ozetMetricsKurban" style="display:none">
+          <div class="kf-metric kf-metric-stack">
+            <span class="lbl">Toplam bağış hisse hedef</span>
+            <span class="val" id="ozetBlockBagisHedef">0</span>
+            <span class="lbl">Toplam temin bağış hisse</span>
+            <span class="val" id="ozetBlockBagisTemin">0</span>
+          </div>
+          <div class="kf-metric kf-metric-stack">
+            <span class="lbl">Toplam etli hisse hedef</span>
+            <span class="val" id="ozetBlockEtliHedef">0</span>
+            <span class="lbl">Toplam etli hisse temin</span>
+            <span class="val" id="ozetBlockEtliTemin">0</span>
+            <span class="lbl">Etli hisse ulaşma nispeti</span>
+            <span class="val" id="ozetBlockEtliUlasma">%0</span>
           </div>
         </div>
 
@@ -1275,11 +1349,12 @@
           <div class="kf-kurban-head">
             <div>
               <h4>🐑 Kurban</h4>
-              <p>Bu kapsamda toplanan adetler</p>
+              <p id="kurbanOzetAciklama">Bu kapsamda toplanan adetler</p>
             </div>
             <span class="kf-tag" id="kapsamPill2">Seçili ay</span>
           </div>
-          <div class="kf-kurban-grid">
+          <!-- Hedef/Ramazan modu: Küçükbaş/Büyükbaş -->
+          <div class="kf-kurban-grid" id="kurbanGridNormal">
             <div class="kf-k-item">
               <span class="lbl">Küçükbaş</span>
               <span class="val" id="toplamKurbanKk">0 adet</span>
@@ -1291,6 +1366,33 @@
             <div class="kf-k-item total">
               <span class="lbl">Toplam</span>
               <span class="val" id="toplamKurbanGenel">0 adet</span>
+            </div>
+          </div>
+          <!-- Kurban ekran modu: Bağış Hisse / Etli Hisse -->
+          <div class="kf-kurban-grid" id="kurbanGridKurbanModu" style="display:none">
+            <div class="kf-k-item">
+              <span class="lbl">Bağış Hisse</span>
+              <span class="val" id="toplamBagisHedef">0</span>
+              <span class="sub">Hedef</span>
+            </div>
+            <div class="kf-k-item">
+              <span class="lbl">Bağış Temin</span>
+              <span class="val" id="toplamBagisTemin">0</span>
+              <span class="sub" id="toplamBagisOran">%0</span>
+            </div>
+            <div class="kf-k-item">
+              <span class="lbl">Etli Hisse</span>
+              <span class="val" id="toplamEtliHedef">0</span>
+              <span class="sub">Hedef</span>
+            </div>
+            <div class="kf-k-item">
+              <span class="lbl">Etli Temin</span>
+              <span class="val" id="toplamEtliTemin">0</span>
+              <span class="sub" id="toplamEtliOran">%0</span>
+            </div>
+            <div class="kf-k-item total">
+              <span class="lbl">Toplam</span>
+              <span class="val" id="toplamKurbanGenelMod">0 adet</span>
             </div>
           </div>
           <div class="kf-ramazan-adetler" id="ramazanAdetler" style="display:none">
@@ -1626,8 +1728,35 @@
           <th>Günlük Artış</th>
           <th>Kurban (K/B)</th>
         `;
+            } else if (ekranModu === 'Kurban') {
+              if (tablo) tablo.classList.remove('mod-ramazan');
+              if (tablo) tablo.classList.add('mod-kurban');
+              colgroup.innerHTML = `
+          <col class="c-personel">
+          <col class="c-mid">
+          <col class="c-mid">
+          <col class="c-mid">
+          <col class="c-mid">
+          <col class="c-mid">
+          <col class="c-mid">
+          <col class="c-mid">
+          <col class="c-mid">
+          <col class="c-oran">
+        `;
+              thead.innerHTML = `
+          <th>Personel</th>
+          <th>Bağış Hisse Hedef</th>
+          <th>Temin</th>
+          <th>Kalan</th>
+          <th>Ulaşma Nispeti</th>
+          <th>Günlük Artış</th>
+          <th>Etli Hisse Hedef</th>
+          <th>Temin</th>
+          <th>Ulaşma Nispeti</th>
+        `;
             } else {
               if (tablo) tablo.classList.remove('mod-ramazan');
+              if (tablo) tablo.classList.remove('mod-kurban');
               colgroup.innerHTML = `
           <col class="c-personel">
           <col class="c-mid">
@@ -1661,8 +1790,45 @@
             const ozetIftar = document.getElementById('ozetIftar');
             const ozetSahur = document.getElementById('ozetSahur');
             const ozetTaahhut = document.getElementById('ozetTaahhut');
+            const kurbanGridNormal = document.getElementById('kurbanGridNormal');
+            const kurbanGridKurbanModu = document.getElementById('kurbanGridKurbanModu');
+            const kurbanOzetAciklama = document.getElementById('kurbanOzetAciklama');
+            const ozetMetricsKurban = document.getElementById('ozetMetricsKurban');
+            const ozetMetriklerEl = document.getElementById('ozetMetrikler');
+            const kfKurbanBox = document.querySelector('.kf-kurban-box');
 
-            if (ekranModu === 'Ramazan-ı Şerif') {
+            const ulasmaLbl = document.getElementById('kfUlasmaBadgeLbl');
+            const topTeminLbl = document.getElementById('kfTopTeminLbl');
+            const topHedefLbl = document.getElementById('kfTopHedefLbl');
+            const barTextLbl = document.getElementById('kfBarTextLbl');
+
+            if (ekranModu === 'Kurban') {
+              if (ulasmaLbl) ulasmaLbl.textContent = 'Bağış hisse ulaşma';
+              if (topTeminLbl) topTeminLbl.textContent = 'Temin (bağış hisse)';
+              if (topHedefLbl) topHedefLbl.textContent = 'Hedef (bağış hisse)';
+              if (barTextLbl) barTextLbl.textContent = 'Bağış hisse ulaşma oranı';
+              if (teberruEl && teberruEl.parentElement) teberruEl.parentElement.style.display = 'none';
+              if (tahsilatEl && tahsilatEl.parentElement) tahsilatEl.parentElement.style.display = 'none';
+              if (teminDisplayEl && teminDisplayEl.parentElement) teminDisplayEl.parentElement.style.display = 'none';
+              if (ozetIftar) ozetIftar.style.display = 'none';
+              if (ozetSahur) ozetSahur.style.display = 'none';
+              if (ozetTaahhut) ozetTaahhut.style.display = 'none';
+              if (ozetMetriklerEl) ozetMetriklerEl.style.display = 'none';
+              if (ozetMetricsKurban) ozetMetricsKurban.style.display = 'grid';
+              if (kurbanGridNormal) kurbanGridNormal.style.display = 'none';
+              if (kurbanGridKurbanModu) kurbanGridKurbanModu.style.display = 'none';
+              if (kurbanOzetAciklama) kurbanOzetAciklama.textContent = 'Bağış hisse ve etli hisse hedef/temin';
+              const ramazanAdetler = document.getElementById('ramazanAdetler');
+              if (ramazanAdetler) ramazanAdetler.style.display = 'none';
+              if (kfKurbanBox) kfKurbanBox.style.display = 'none';
+            } else if (ekranModu === 'Ramazan-ı Şerif') {
+              if (ulasmaLbl) ulasmaLbl.textContent = 'Ulaşma';
+              if (topTeminLbl) topTeminLbl.textContent = 'Temin';
+              if (topHedefLbl) topHedefLbl.textContent = 'Hedef';
+              if (barTextLbl) barTextLbl.textContent = 'Genel ulaşma oranı';
+              if (ozetMetricsKurban) ozetMetricsKurban.style.display = 'none';
+              if (ozetMetriklerEl) ozetMetriklerEl.style.display = 'grid';
+              if (kfKurbanBox) kfKurbanBox.style.display = '';
               // Ramazan-ı Şerif modunda İftar-Sahur-Taahhüt göster
               if (teberruEl && teberruEl.parentElement) teberruEl.parentElement.style.display = 'none';
               if (tahsilatEl && tahsilatEl.parentElement) tahsilatEl.parentElement.style.display = 'none';
@@ -1672,7 +1838,17 @@
               if (ozetTaahhut) ozetTaahhut.style.display = 'flex';
               const ramazanAdetler = document.getElementById('ramazanAdetler');
               if (ramazanAdetler) ramazanAdetler.style.display = 'flex';
+              if (kurbanGridNormal) kurbanGridNormal.style.display = 'grid';
+              if (kurbanGridKurbanModu) kurbanGridKurbanModu.style.display = 'none';
+              if (kurbanOzetAciklama) kurbanOzetAciklama.textContent = 'Bu kapsamda toplanan adetler';
             } else {
+              if (ulasmaLbl) ulasmaLbl.textContent = 'Ulaşma';
+              if (topTeminLbl) topTeminLbl.textContent = 'Temin';
+              if (topHedefLbl) topHedefLbl.textContent = 'Hedef';
+              if (barTextLbl) barTextLbl.textContent = 'Genel ulaşma oranı';
+              if (ozetMetricsKurban) ozetMetricsKurban.style.display = 'none';
+              if (ozetMetriklerEl) ozetMetriklerEl.style.display = 'grid';
+              if (kfKurbanBox) kfKurbanBox.style.display = '';
               // Hedef modunda Teberru-Tahsilat-Temin göster
               if (teberruEl && teberruEl.parentElement) teberruEl.parentElement.style.display = 'flex';
               if (tahsilatEl && tahsilatEl.parentElement) tahsilatEl.parentElement.style.display = 'flex';
@@ -1682,6 +1858,9 @@
               if (ozetTaahhut) ozetTaahhut.style.display = 'none';
               const ramazanAdetler = document.getElementById('ramazanAdetler');
               if (ramazanAdetler) ramazanAdetler.style.display = 'none';
+              if (kurbanGridNormal) kurbanGridNormal.style.display = 'grid';
+              if (kurbanGridKurbanModu) kurbanGridKurbanModu.style.display = 'none';
+              if (kurbanOzetAciklama) kurbanOzetAciklama.textContent = 'Bu kapsamda toplanan adetler';
             }
           }
 
@@ -1697,12 +1876,20 @@
                 gaMax = Math.max(...gaVals);
               }
             }
+            if (ekranModu === 'Kurban') {
+              const gaVals = veriler.map(p => p.bagisGunlukArtis).filter(v => v != null && v >= 0);
+              if (gaVals.length > 0) {
+                gaMin = Math.min(...gaVals);
+                gaMax = Math.max(...gaVals);
+              }
+            }
 
             veriler.forEach(p => {
               const tr = document.createElement("tr");
 
               const tdPersonel = document.createElement("td"); tdPersonel.className = 'wrap';
-              tdPersonel.textContent = (p.oran >= 100 ? '⭐ ' : '') + p.personel;
+              const starKurban = ekranModu === 'Kurban' && ((p.bagisOran || 0) >= 100 || (p.etliOran || 0) >= 100);
+              tdPersonel.textContent = ((ekranModu === 'Kurban' ? starKurban : p.oran >= 100) ? '⭐ ' : '') + p.personel;
 
               if (ekranModu === 'Ramazan-ı Şerif') {
                 const tdHedef = document.createElement("td"); tdHedef.className = "col-hedef"; tdHedef.textContent = `${fmtPara(p.hedef)} ₺`;
@@ -1764,6 +1951,56 @@
                 tdKurban.title = `Küçükbaş: ${p.kurbanKk || 0} | Büyükbaş: ${p.kurbanBb || 0}`;
 
                 tr.append(tdPersonel, tdHedef, tdIftar, tdSahur, tdTaahhut, tdTeberru, tdToplamTemin, tdOran, tdGunlukArtis, tdKurban);
+              } else if (ekranModu === 'Kurban') {
+                const bagisHedef = p.bagisHedef ?? 0, bagisTemin = p.bagisTemin ?? 0, bagisKalan = Math.max(0, bagisHedef - bagisTemin);
+                const bagisOran = bagisHedef > 0 ? (bagisTemin / bagisHedef) * 100 : 0;
+                const etliHedef = p.etliHedef ?? 0, etliTemin = p.etliTemin ?? 0;
+                const etliOran = etliHedef > 0 ? (etliTemin / etliHedef) * 100 : 0;
+
+                const tdBagisHedef = document.createElement("td"); tdBagisHedef.className = "col-hedef"; tdBagisHedef.textContent = bagisHedef;
+                const tdBagisTemin = document.createElement("td"); tdBagisTemin.className = "col-temin"; tdBagisTemin.textContent = bagisTemin;
+                const tdBagisKalan = document.createElement("td"); tdBagisKalan.textContent = bagisKalan;
+                const tdBagisOran = document.createElement("td");
+                const progBagis = document.createElement('div'); progBagis.className = 'progress';
+                const fillBagis = document.createElement('div'); fillBagis.className = 'fill';
+                const labBagis = document.createElement('div'); labBagis.className = 'label';
+                const barBagis = Math.max(0, Math.min(100, bagisOran));
+                fillBagis.style.width = barBagis + '%';
+                if (bagisOran < 30) { fillBagis.classList.add('danger'); labBagis.classList.add('danger'); }
+                else if (bagisOran < 50) { fillBagis.classList.add('warn'); labBagis.classList.add('warn'); }
+                else if (bagisOran < 100) { fillBagis.classList.add('good'); }
+                else { fillBagis.classList.add('ok'); }
+                labBagis.textContent = bagisHedef > 0 ? `%${Number(bagisOran).toFixed(2).replace('.', ',')}` : '-';
+                progBagis.appendChild(fillBagis); progBagis.appendChild(labBagis); tdBagisOran.appendChild(progBagis);
+
+                const tdBagisGunluk = document.createElement("td"); tdBagisGunluk.className = "col-gunluk-artis";
+                const ga = p.bagisGunlukArtis ?? 0;
+                if (ga > 0) {
+                  tdBagisGunluk.textContent = `+${ga}`;
+                  tdBagisGunluk.title = 'Bugün eklenen bağış hisse';
+                  const gaRange = gaMax > gaMin ? gaMax - gaMin : 1;
+                  const gaNorm = Math.min(1, (ga - gaMin) / gaRange);
+                  if (gaNorm <= 0.33) tdBagisGunluk.classList.add('ga-low');
+                  else if (gaNorm <= 0.66) tdBagisGunluk.classList.add('ga-mid');
+                  else tdBagisGunluk.classList.add('ga-high');
+                } else { tdBagisGunluk.textContent = '-'; }
+
+                const tdEtliHedef = document.createElement("td"); tdEtliHedef.className = "col-hedef"; tdEtliHedef.textContent = etliHedef;
+                const tdEtliTemin = document.createElement("td"); tdEtliTemin.className = "col-temin"; tdEtliTemin.textContent = etliTemin;
+                const tdEtliOran = document.createElement("td");
+                const progEtli = document.createElement('div'); progEtli.className = 'progress';
+                const fillEtli = document.createElement('div'); fillEtli.className = 'fill';
+                const labEtli = document.createElement('div'); labEtli.className = 'label';
+                const barEtli = Math.max(0, Math.min(100, etliOran));
+                fillEtli.style.width = barEtli + '%';
+                if (etliOran < 30) { fillEtli.classList.add('danger'); labEtli.classList.add('danger'); }
+                else if (etliOran < 50) { fillEtli.classList.add('warn'); labEtli.classList.add('warn'); }
+                else if (etliOran < 100) { fillEtli.classList.add('good'); }
+                else { fillEtli.classList.add('ok'); }
+                labEtli.textContent = etliHedef > 0 ? `%${Number(etliOran).toFixed(2).replace('.', ',')}` : '-';
+                progEtli.appendChild(fillEtli); progEtli.appendChild(labEtli); tdEtliOran.appendChild(progEtli);
+
+                tr.append(tdPersonel, tdBagisHedef, tdBagisTemin, tdBagisKalan, tdBagisOran, tdBagisGunluk, tdEtliHedef, tdEtliTemin, tdEtliOran);
               } else {
                 const tdTeberru = document.createElement("td"); tdTeberru.textContent = `${fmtPara(p.teberru)} ₺`;
                 const tdTahsilat = document.createElement("td"); tdTahsilat.textContent = `${fmtPara(p.tahsilat)} ₺`;
@@ -1813,17 +2050,25 @@
             switch (f) {
               case "personel-az": d.sort((a, b) => a.personel.localeCompare(b.personel, 'tr')); break;
               case "personel-za": d.sort((a, b) => b.personel.localeCompare(a.personel, 'tr')); break;
-              case "hedef-artan": d.sort(by('hedef')); break;
-              case "hedef-azalan": d.sort((a, b) => b.hedef - a.hedef); break;
+              case "hedef-artan":
+                if (ekranModu === 'Kurban') d.sort((a, b) => ((a.bagisHedef || 0) + (a.etliHedef || 0)) - ((b.bagisHedef || 0) + (b.etliHedef || 0)));
+                else d.sort(by('hedef'));
+                break;
+              case "hedef-azalan":
+                if (ekranModu === 'Kurban') d.sort((a, b) => ((b.bagisHedef || 0) + (b.etliHedef || 0)) - ((a.bagisHedef || 0) + (a.etliHedef || 0)));
+                else d.sort((a, b) => b.hedef - a.hedef);
+                break;
               case "temin-artan":
-                if (ekranModu === 'Ramazan-ı Şerif') {
+                if (ekranModu === 'Kurban') d.sort((a, b) => ((a.bagisTemin || 0) + (a.etliTemin || 0)) - ((b.bagisTemin || 0) + (b.etliTemin || 0)));
+                else if (ekranModu === 'Ramazan-ı Şerif') {
                   d.sort((a, b) => (a.toplamTemin || 0) - (b.toplamTemin || 0));
                 } else {
                   d.sort(by('teminHedef'));
                 }
                 break;
               case "temin-azalan":
-                if (ekranModu === 'Ramazan-ı Şerif') {
+                if (ekranModu === 'Kurban') d.sort((a, b) => ((b.bagisTemin || 0) + (b.etliTemin || 0)) - ((a.bagisTemin || 0) + (a.etliTemin || 0)));
+                else if (ekranModu === 'Ramazan-ı Şerif') {
                   d.sort((a, b) => (b.toplamTemin || 0) - (a.toplamTemin || 0));
                 } else {
                   d.sort((a, b) => b.teminHedef - a.teminHedef);
@@ -1833,15 +2078,52 @@
               case "teberru-azalan": d.sort((a, b) => b.teberru - a.teberru); break;
               case "tahsilat-artan": d.sort(by('tahsilat')); break;
               case "tahsilat-azalan": d.sort((a, b) => b.tahsilat - a.tahsilat); break;
-              case "oran-artan": d.sort(by('oran')); break;
+              case "oran-artan":
+                if (ekranModu === 'Kurban') d.sort((a, b) => ((a.bagisOran || 0) + (a.etliOran || 0)) - ((b.bagisOran || 0) + (b.etliOran || 0)));
+                else d.sort(by('oran'));
+                break;
               case "oran-azalan":
-              default: d.sort((a, b) => b.oran - a.oran); break;
+              default:
+                if (ekranModu === 'Kurban') d.sort((a, b) => ((b.bagisOran || 0) + (b.etliOran || 0)) - ((a.bagisOran || 0) + (a.etliOran || 0)));
+                else d.sort((a, b) => b.oran - a.oran);
+                break;
             }
             tabloyuYenidenYaz(d);
           }
 
           function toplamlariGuncelle() {
             const fmtPara = (n) => Math.round(n || 0).toLocaleString("tr-TR", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+            if (ekranModu === 'Kurban') {
+              const sumBagisHedef = veriTablosu.reduce((s, x) => s + (x.bagisHedef || 0), 0);
+              const sumBagisTemin = veriTablosu.reduce((s, x) => s + (x.bagisTemin || 0), 0);
+              const sumEtliHedef = veriTablosu.reduce((s, x) => s + (x.etliHedef || 0), 0);
+              const sumEtliTemin = veriTablosu.reduce((s, x) => s + (x.etliTemin || 0), 0);
+              const bagisOran = sumBagisHedef > 0 ? (sumBagisTemin / sumBagisHedef) * 100 : 0;
+              const etliOran = sumEtliHedef > 0 ? (sumEtliTemin / sumEtliHedef) * 100 : 0;
+              const bagisOranStr = Number(bagisOran).toFixed(2).replace('.', ',');
+              const etliOranStr = sumEtliHedef > 0 ? `%${Number(etliOran).toFixed(2).replace('.', ',')}` : '-';
+
+              // Üst satır: yalnızca bağış hisse
+              toplamHedefEl.textContent = `${sumBagisHedef.toLocaleString('tr-TR')} adet`;
+              toplamTeminEl.textContent = `${sumBagisTemin.toLocaleString('tr-TR')} adet`;
+              toplamOranEl.textContent = `%${bagisOranStr}`;
+              oranBar.style.width = Math.max(0, Math.min(100, bagisOran)) + '%';
+
+              const obh = document.getElementById('ozetBlockBagisHedef');
+              const obt = document.getElementById('ozetBlockBagisTemin');
+              const oeh = document.getElementById('ozetBlockEtliHedef');
+              const oet = document.getElementById('ozetBlockEtliTemin');
+              const oeu = document.getElementById('ozetBlockEtliUlasma');
+              if (obh) obh.textContent = `${sumBagisHedef.toLocaleString('tr-TR')} adet`;
+              if (obt) obt.textContent = `${sumBagisTemin.toLocaleString('tr-TR')} adet`;
+              if (oeh) oeh.textContent = `${sumEtliHedef.toLocaleString('tr-TR')} adet`;
+              if (oet) oet.textContent = `${sumEtliTemin.toLocaleString('tr-TR')} adet`;
+              if (oeu) oeu.textContent = etliOranStr;
+
+              ozetMetrikleriniGuncelle();
+              return;
+            }
 
             if (ekranModu === 'Ramazan-ı Şerif') {
               const sumHedef = veriTablosu.reduce((s, x) => s + (x.hedef || 0), 0);
@@ -1922,6 +2204,38 @@
             }
             // Özet metriklerini güncelle (göster/gizle)
             ozetMetrikleriniGuncelle();
+          }
+
+          function derleVeYansitKurban(bagisHedefMap, etliHedefMap, bagisTeminMap, etliTeminMap, bagisGunlukMap) {
+            const personeller = new Set([
+              ...Object.keys(bagisHedefMap),
+              ...Object.keys(etliHedefMap),
+              ...Object.keys(bagisTeminMap),
+              ...Object.keys(etliTeminMap)
+            ]);
+            const tabloDizi = [];
+            personeller.forEach(key => {
+              if (!key || key === '-' || key.trim() === '') return;
+              const personel = key;
+              const bagisHedef = toNum(bagisHedefMap[key] || 0);
+              const etliHedef = toNum(etliHedefMap[key] || 0);
+              const bagisTemin = toNum(bagisTeminMap[key] || 0);
+              const etliTemin = toNum(etliTeminMap[key] || 0);
+              const bagisGunlukArtis = toNum((bagisGunlukMap || {})[key] || 0);
+              const bagisOran = bagisHedef > 0 ? (bagisTemin / bagisHedef) * 100 : 0;
+              const etliOran = etliHedef > 0 ? (etliTemin / etliHedef) * 100 : 0;
+              tabloDizi.push({ personel, bagisHedef, etliHedef, bagisTemin, etliTemin, bagisGunlukArtis, bagisOran, etliOran });
+            });
+            veriTablosu = tabloDizi;
+            uygulaFiltre();
+            toplamlariGuncelle();
+            const yil = Number(kategoriSecimi.value) || 2026;
+            const ust = `Kurban • ${yil}`;
+            kapsamUst.textContent = ust;
+            kapsamPill.textContent = ust;
+            altNot.textContent = ust;
+            const nowStr = new Date((maxUpdateTs && !isNaN(maxUpdateTs)) ? maxUpdateTs : Date.now()).toLocaleString("tr-TR");
+            guncellemeEl.textContent = nowStr;
           }
 
           function derleVeYansit(hedefMap, teminMap, teberruMap, tahsilatMap, kurbanKkMap, kurbanBbMap) {
@@ -2009,9 +2323,53 @@
 
             // Verileri yükle fonksiyonu
             async function loadData() {
-              // Her yüklemede maxUpdateTs'i sıfırla (sadece bu yüklemedeki veriler için hesapla)
               let currentMaxTs = 0;
               try {
+                // KURBAN MODU: 2026 kurban bağış/etli hisse
+                if (ekranModu === 'Kurban') {
+                  const kurbanYil = Number(kategoriSecimi.value) || 2026;
+                  const bagisHedefMap = {}, etliHedefMap = {}, bagisTeminMap = {}, etliTeminMap = {}, bagisGunlukMap = {};
+                  const uidToPersonel = {};
+
+                  const { data: kullaniciData } = await supabase.from('kullanicilar').select('id,adsoyad');
+                  (kullaniciData || []).forEach(k => { if (k.id && k.adsoyad) uidToPersonel[k.id] = canonName(k.adsoyad); });
+
+                  try {
+                    const { data: hedefData } = await supabase.from('kurban_2026_hedefler').select('personel_uid,personel,bagis_hedef,etli_hedef').eq('yil', kurbanYil);
+                    (hedefData || []).forEach(d => {
+                      const p = canonName(d.personel || uidToPersonel[d.personel_uid] || '-');
+                      if (!p || p === '-') return;
+                      bagisHedefMap[p] = toNum(d.bagis_hedef || 0);
+                      etliHedefMap[p] = toNum(d.etli_hedef || 0);
+                    });
+                  } catch (e) { console.warn('kurban_2026_hedefler yüklenemedi:', e); }
+
+                  const { data: bagisData } = await supabase.from('kurban_2026_bagis_hisse').select('created_by_uid,created_at').eq('yil', kurbanYil);
+                  (bagisData || []).forEach(d => {
+                    const p = canonName(uidToPersonel[d.created_by_uid] || '-');
+                    if (!p || p === '-') return;
+                    bagisTeminMap[p] = (bagisTeminMap[p] || 0) + 1;
+                    if (isCreatedToday(d.created_at)) bagisGunlukMap[p] = (bagisGunlukMap[p] || 0) + 1;
+                    const ts = getTimestampNumber(d, 'created_at');
+                    if (ts > currentMaxTs) currentMaxTs = ts;
+                  });
+
+                  const { data: etliData } = await supabase.from('kurban_2026_etli_hisse').select('created_by_uid,hisse_adedi,created_at').eq('yil', kurbanYil);
+                  (etliData || []).forEach(d => {
+                    const p = canonName(uidToPersonel[d.created_by_uid] || '-');
+                    if (!p || p === '-') return;
+                    const adet = toNum(d.hisse_adedi || 1);
+                    etliTeminMap[p] = (etliTeminMap[p] || 0) + adet;
+                    const ts = getTimestampNumber(d, 'created_at');
+                    if (ts > currentMaxTs) currentMaxTs = ts;
+                  });
+
+                  if (currentMaxTs > maxUpdateTs) maxUpdateTs = currentMaxTs;
+                  derleVeYansitKurban(bagisHedefMap, etliHedefMap, bagisTeminMap, etliTeminMap, bagisGunlukMap);
+                  return;
+                }
+
+                // Her yüklemede maxUpdateTs'i sıfırla (sadece bu yüklemedeki veriler için hesapla)
                 // 1. Hedefler
                 let hedefQuery = supabase.from('hedefler').select('personel,hedef,kategori,updatedat');
                 if (kategori !== "Tümü") {
@@ -2681,14 +3039,15 @@
 
           async function acDetayModal(personel) {
             const kategori = kategoriSecimi.value;
-            const yil = Number(yilSec.value);
+            const yil = ekranModu === 'Kurban' ? Number(kategoriSecimi.value) : Number(yilSec.value);
             const ay = aySec.value === '' ? null : Number(aySec.value);
             const { start, end } = localRangeFor(yil || null, ay || null);
+            const kategoriDisplay = ekranModu === 'Kurban' ? (kategoriSecimi.options[kategoriSecimi.selectedIndex]?.text || kategori + ' Kurban') : kategori;
 
-            const kapsam = kapsamMetni(yil, ay, kategori);
+            const kapsam = ekranModu === 'Kurban' ? `Kurban • ${yil}` : kapsamMetni(yil, ay, kategori);
             m_baslik.textContent = `${personel}`;
             m_kapsamEtik.textContent = kapsam;
-            m_kategoriEtik.textContent = kategori;
+            m_kategoriEtik.textContent = kategoriDisplay;
             modalArka.style.display = 'block';
             m_hareketTabloBody.innerHTML = '<tr><td colspan="5">Yükleniyor...</td></tr>';
 
@@ -3093,19 +3452,25 @@
             aySec.value = (savedM === null) ? String(now.getMonth() + 1) : savedM;
             yilSec.addEventListener('change', () => { localStorage.setItem('hedefGrafik_yil', yilSec.value); aboneOl(); });
             aySec.addEventListener('change', () => { localStorage.setItem('hedefGrafik_ay', aySec.value); aboneOl(); });
-            const k = localStorage.getItem('hedefGrafik_kategori'); if (k) kategoriSecimi.value = k;
             const f = localStorage.getItem('hedefGrafik_filtresi'); if (f) filtreSecimi.value = f;
-            kategoriSecimi.addEventListener('change', () => { localStorage.setItem('hedefGrafik_kategori', kategoriSecimi.value); aboneOl(); });
+            kategoriSecimi.addEventListener('change', () => {
+              if (ekranModu === 'Kurban') localStorage.setItem('hedefGrafik_kurbanYil', kategoriSecimi.value);
+              else localStorage.setItem('hedefGrafik_kategori', kategoriSecimi.value);
+              aboneOl();
+            });
             filtreSecimi.addEventListener('change', () => { localStorage.setItem('hedefGrafik_filtresi', filtreSecimi.value); uygulaFiltre(); });
 
             // Ekran modu butonu
             if (ekranButonu) {
-              ekranButonu.addEventListener('click', () => {
-                ekranModu = ekranModu === 'Hedef' ? 'Ramazan-ı Şerif' : 'Hedef';
+              ekranButonu.addEventListener('click', async () => {
+                if (ekranModu === 'Hedef') ekranModu = 'Ramazan-ı Şerif';
+                else if (ekranModu === 'Ramazan-ı Şerif') ekranModu = 'Kurban';
+                else ekranModu = 'Hedef';
                 localStorage.setItem('hedefGrafik_ekranModu', ekranModu);
                 if (ekranAdi) ekranAdi.textContent = ekranModu;
                 tabloBasliklariniGuncelle();
                 ozetMetrikleriniGuncelle();
+                await loadKategoriler();
                 aboneOl();
               });
             }
@@ -3115,11 +3480,57 @@
             ozetMetrikleriniGuncelle();
           })();
 
+          function filtrelereGoreGoster() {
+            const kategoriLabel = document.getElementById('kategoriLabel');
+            const cellYil = document.querySelector('.cell-yil');
+            const cellAy = document.querySelector('.cell-ay');
+            if (ekranModu === 'Kurban') {
+              if (kategoriLabel) kategoriLabel.textContent = 'Kurban Yılı';
+              if (cellYil) cellYil.style.display = 'none';
+              if (cellAy) cellAy.style.display = 'none';
+            } else {
+              if (kategoriLabel) kategoriLabel.textContent = 'Kategori';
+              if (cellYil) cellYil.style.display = '';
+              if (cellAy) cellAy.style.display = '';
+            }
+          }
+
           async function loadKategoriler() {
             const sel = document.getElementById('kategoriSecimi');
             const supabase = getSupabase();
             if (!supabase) {
               console.warn('Supabase client hazır değil, kategoriler yüklenemedi');
+              return;
+            }
+
+            if (ekranModu === 'Kurban') {
+              try {
+                const { data: kurbanData, error: kurbanError } = await supabase
+                  .from('kurban_kategoriler')
+                  .select('yil,label,aktif')
+                  .order('yil', { ascending: false });
+
+                if (kurbanError) {
+                  console.error('Kurban kategorileri yüklenirken hata:', kurbanError);
+                  if (showToast) showToast('error', 'Hata', 'Kurban yılları yüklenemedi.');
+                }
+
+                const list = kurbanData && kurbanData.length > 0 ? kurbanData : [{ yil: 2026, label: '2026 Kurban', aktif: true }];
+                const saved = localStorage.getItem('hedefGrafik_kurbanYil') || String(list.find(x => x.aktif)?.yil || 2026);
+                sel.innerHTML = '';
+                list.forEach(k => {
+                  const val = String(k.yil);
+                  const txt = k.label || (k.yil + ' Kurban');
+                  sel.appendChild(new Option(txt, val));
+                });
+                const optionExists = Array.from(sel.options).some(opt => opt.value === saved);
+                sel.value = optionExists ? saved : String(list[0]?.yil || 2026);
+                localStorage.setItem('hedefGrafik_kurbanYil', sel.value);
+                filtrelereGoreGoster();
+              } catch (err) {
+                console.error('Kurban kategorileri okunamadı:', err);
+                if (showToast) showToast('error', 'Hata', 'Kurban yılları yüklenirken bir hata oluştu.');
+              }
               return;
             }
 
@@ -3145,15 +3556,16 @@
                     sel.appendChild(new Option(ad, ad));
                   }
                 });
-                // Eğer kaydedilmiş kategori hala listede varsa seç, yoksa 'Tümü' seç
                 const optionExists = Array.from(sel.options).some(opt => opt.value === saved);
                 sel.value = optionExists ? saved : 'Tümü';
               } else {
                 console.warn('Kategoriler bulunamadı veya aktif kategori yok');
               }
+              filtrelereGoreGoster();
             } catch (err) {
               console.error('Kategoriler okunamadı:', err);
               if (showToast) showToast('error', 'Hata', 'Kategoriler yüklenirken bir hata oluştu.');
+              filtrelereGoreGoster();
             }
           }
 
