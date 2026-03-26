@@ -171,6 +171,7 @@
                 <th>Ad Soyad</th>
                 <th>Telefon</th>
                 <th>Personel</th>
+                <th>Adet</th>
                 <th>Durum</th>
                 <th>Açıklama</th>
                 <th style="width:140px">İşlemler</th>
@@ -570,6 +571,8 @@
   }
 
   let bagisList = [], etliList = [], onkayitList = [], hedefList = [];
+  let bagisTopluDuzenlemeIds = [];
+  let etliTopluDuzenlemeIds = [];
   let personelMap = {};
 
   async function loadPersonelMap() {
@@ -583,6 +586,35 @@
   function getPersonelAd(row) {
     return personelMap[row.created_by_uid] || row.personel || '–';
   }
+  function paketDetaySatirlari(records, tur) {
+    return (records || []).map(function (x) {
+      const personelAd = getPersonelAd(x);
+      const ad = tur === 'bagis' ? (x.ad_soyad || '–') : (x.hisedar_ad_soyad || x.hissedar_ad_soyad || '–');
+      const grup = tur === 'etli' ? `<span style="margin-left:8px;color:var(--muted)">• ${esc(x.hisse_grubu || '–')}</span>` : '';
+      const adet = tur === 'etli' ? (parseInt(x.hisse_adedi, 10) || 1) : 1;
+      const editFn = tur === 'bagis' ? 'window.editBagis' : 'window.editEtli';
+      const delFn = tur === 'bagis' ? 'window.silBagis' : 'window.silEtli';
+      return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:#fff;margin-top:6px">
+        <div style="font-size:12px;line-height:1.4">
+          <div><b>${esc(ad)}</b> <span style="color:var(--muted)">(${esc(x.telefon || '–')})</span>${grup}</div>
+          <div style="color:var(--muted)">Tarih: ${esc(fmtDate(x.created_at))} | Personel: ${esc(personelAd)} | Adet: ${adet}</div>
+        </div>
+        <div style="display:flex;gap:6px;white-space:nowrap">
+          <button type="button" class="btn btn-ghost" style="padding:4px 8px;font-size:12px" onclick="${editFn}('${x.id}')">Düzenle</button>
+          <button type="button" class="btn btn-danger" style="padding:4px 8px;font-size:12px" onclick="${delFn}('${x.id}')">Sil</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  function paketDetayAcKapa(id) {
+    const detay = document.getElementById(id);
+    if (!detay) return;
+    const btn = document.querySelector(`[data-detay-btn="${id}"]`);
+    const acik = detay.style.display !== 'none';
+    detay.style.display = acik ? 'none' : '';
+    if (btn) btn.textContent = acik ? 'Detayı Aç' : 'Detayı Kapat';
+  }
+  window.paketDetayAcKapa = paketDetayAcKapa;
   function renderBagisTable() {
     const tbody = document.getElementById('tbodyBagis');
     const emptyEl = document.getElementById('bagisEmpty');
@@ -596,17 +628,65 @@
       if (durumFiltre && (r.durum || '') !== durumFiltre) return false;
       return true;
     });
+    const groupedMap = new Map();
+    filtered.forEach(r => {
+      const key = [
+        r.created_by_uid || '',
+        r.created_at || '',
+        r.ad_soyad || '',
+        r.telefon || '',
+        r.durum || '',
+        r.aciklama || '',
+        r.yil || ''
+      ].join('|');
+      if (!groupedMap.has(key)) {
+        groupedMap.set(key, {
+          id: r.id,
+          created_at: r.created_at,
+          ad_soyad: r.ad_soyad || '',
+          telefon: r.telefon || '',
+          created_by_uid: r.created_by_uid || null,
+          durum: r.durum || 'kayit_alindi',
+          aciklama: r.aciklama || '',
+          adet: 0,
+          records: []
+        });
+      }
+      const g = groupedMap.get(key);
+      g.adet += 1;
+      g.records.push(r);
+    });
+    const groupedRows = Array.from(groupedMap.values());
     tbody.innerHTML = '';
-    if (filtered.length === 0) {
+    if (groupedRows.length === 0) {
       emptyEl.style.display = 'block';
       return;
     }
     emptyEl.style.display = 'none';
-    filtered.forEach(r => {
+    groupedRows.forEach(r => {
       const tr = document.createElement('tr');
       const personelAd = getPersonelAd(r);
-      tr.innerHTML = `<td>${esc(fmtDate(r.created_at))}</td><td>${esc(r.ad_soyad)}</td><td>${esc(r.telefon)}</td><td>${esc(personelAd)}</td><td><span class="badge-chip bagis">${r.durum === 'kesildi' ? 'Kesildi' : 'Kayıt Alındı'}</span></td><td>${esc((r.aciklama || '').slice(0, 40))}${(r.aciklama || '').length > 40 ? '…' : ''}</td><td><button type="button" class="btn btn-ghost" style="padding:4px 8px;font-size:12px" onclick="window.editBagis('${r.id}')">Düzenle</button> <button type="button" class="btn btn-danger" style="padding:4px 8px;font-size:12px" onclick="window.silBagis('${r.id}')">Sil</button></td>`;
+      const isTekil = (r.adet || 0) <= 1;
+      const detayId = `bagisPaketDetay_${String(r.id || '').replace(/[^a-zA-Z0-9_-]/g, '')}`;
+      const topluIds = (r.records || []).map(x => x.id).filter(Boolean);
+      const encodedTopluIds = encodeURIComponent(JSON.stringify(topluIds));
+      const islemHtml = isTekil
+        ? `<button type="button" class="btn btn-ghost" style="padding:4px 8px;font-size:12px" onclick="window.editBagis('${r.id}')">Düzenle</button> <button type="button" class="btn btn-danger" style="padding:4px 8px;font-size:12px" onclick="window.silBagis('${r.id}')">Sil</button>`
+        : `<button type="button" class="btn btn-ghost" data-detay-btn="${detayId}" style="padding:4px 8px;font-size:12px" onclick="window.paketDetayAcKapa('${detayId}')">Detayı Aç</button> <button type="button" class="btn btn-primary" style="padding:4px 8px;font-size:12px" onclick="window.editBagisToplu('${encodedTopluIds}')">Çoğul Düzenle</button>`;
+      tr.innerHTML = `<td>${esc(fmtDate(r.created_at))}</td><td>${esc(r.ad_soyad)}</td><td>${esc(r.telefon)}</td><td>${esc(personelAd)}</td><td>${r.adet || 1}</td><td><span class="badge-chip bagis">${r.durum === 'kesildi' ? 'Kesildi' : 'Kayıt Alındı'}</span></td><td>${esc((r.aciklama || '').slice(0, 40))}${(r.aciklama || '').length > 40 ? '…' : ''}</td><td>${islemHtml}</td>`;
       tbody.appendChild(tr);
+      if (!isTekil) {
+        const detayTr = document.createElement('tr');
+        detayTr.id = detayId;
+        detayTr.style.display = 'none';
+        detayTr.innerHTML = `<td colspan="8" style="background:#f8fafc;border-top:0">
+          <div style="padding:6px 4px 8px">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Tekil kayıtlar (${r.records.length})</div>
+            ${paketDetaySatirlari(r.records, 'bagis')}
+          </div>
+        </td>`;
+        tbody.appendChild(detayTr);
+      }
     });
   }
   function renderEtliTable() {
@@ -622,17 +702,66 @@
       if (grupFiltre && (r.hisse_grubu || '') !== grupFiltre) return false;
       return true;
     });
+    const groupedMap = new Map();
+    filtered.forEach(r => {
+      const ad = r.hisedar_ad_soyad || r.hissedar_ad_soyad || '';
+      const key = [
+        r.created_by_uid || '',
+        r.created_at || '',
+        ad,
+        r.telefon || '',
+        r.hisse_grubu || '',
+        r.aciklama || '',
+        r.yil || ''
+      ].join('|');
+      if (!groupedMap.has(key)) {
+        groupedMap.set(key, {
+          id: r.id,
+          created_at: r.created_at,
+          hisedar_ad_soyad: ad,
+          telefon: r.telefon || '',
+          created_by_uid: r.created_by_uid || null,
+          hisse_grubu: r.hisse_grubu || '',
+          aciklama: r.aciklama || '',
+          adet: 0,
+          records: []
+        });
+      }
+      const g = groupedMap.get(key);
+      g.adet += (parseInt(r.hisse_adedi, 10) || 1);
+      g.records.push(r);
+    });
+    const groupedRows = Array.from(groupedMap.values());
     tbody.innerHTML = '';
-    if (filtered.length === 0) {
+    if (groupedRows.length === 0) {
       emptyEl.style.display = 'block';
       return;
     }
     emptyEl.style.display = 'none';
-    filtered.forEach(r => {
+    groupedRows.forEach(r => {
       const tr = document.createElement('tr');
       const personelAd = getPersonelAd(r);
-      tr.innerHTML = `<td>${esc(fmtDate(r.created_at))}</td><td>${esc(r.hisedar_ad_soyad || r.hissedar_ad_soyad)}</td><td>${esc(r.telefon)}</td><td>${esc(personelAd)}</td><td>${esc(r.hisse_grubu)}</td><td>${r.hisse_adedi || 1}</td><td>${esc((r.aciklama || '').slice(0, 40))}${(r.aciklama || '').length > 40 ? '…' : ''}</td><td><button type="button" class="btn btn-ghost" style="padding:4px 8px;font-size:12px" onclick="window.editEtli('${r.id}')">Düzenle</button> <button type="button" class="btn btn-danger" style="padding:4px 8px;font-size:12px" onclick="window.silEtli('${r.id}')">Sil</button></td>`;
+      const isTekil = (r.adet || 0) <= 1;
+      const detayId = `etliPaketDetay_${String(r.id || '').replace(/[^a-zA-Z0-9_-]/g, '')}`;
+      const topluIds = (r.records || []).map(x => x.id).filter(Boolean);
+      const encodedTopluIds = encodeURIComponent(JSON.stringify(topluIds));
+      const islemHtml = isTekil
+        ? `<button type="button" class="btn btn-ghost" style="padding:4px 8px;font-size:12px" onclick="window.editEtli('${r.id}')">Düzenle</button> <button type="button" class="btn btn-danger" style="padding:4px 8px;font-size:12px" onclick="window.silEtli('${r.id}')">Sil</button>`
+        : `<button type="button" class="btn btn-ghost" data-detay-btn="${detayId}" style="padding:4px 8px;font-size:12px" onclick="window.paketDetayAcKapa('${detayId}')">Detayı Aç</button> <button type="button" class="btn btn-primary" style="padding:4px 8px;font-size:12px" onclick="window.editEtliToplu('${encodedTopluIds}')">Çoğul Düzenle</button>`;
+      tr.innerHTML = `<td>${esc(fmtDate(r.created_at))}</td><td>${esc(r.hisedar_ad_soyad || r.hissedar_ad_soyad)}</td><td>${esc(r.telefon)}</td><td>${esc(personelAd)}</td><td>${esc(r.hisse_grubu)}</td><td>${r.adet || 1}</td><td>${esc((r.aciklama || '').slice(0, 40))}${(r.aciklama || '').length > 40 ? '…' : ''}</td><td>${islemHtml}</td>`;
       tbody.appendChild(tr);
+      if (!isTekil) {
+        const detayTr = document.createElement('tr');
+        detayTr.id = detayId;
+        detayTr.style.display = 'none';
+        detayTr.innerHTML = `<td colspan="8" style="background:#f8fafc;border-top:0">
+          <div style="padding:6px 4px 8px">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Tekil kayıtlar (${r.records.length})</div>
+            ${paketDetaySatirlari(r.records, 'etli')}
+          </div>
+        </td>`;
+        tbody.appendChild(detayTr);
+      }
     });
   }
 
@@ -660,7 +789,7 @@
     const emptyEl = document.getElementById('bagisEmpty');
     const yilFiltre = document.getElementById('bagisYilFiltre')?.value || '';
     if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="7">Yükleniyor…</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8">Yükleniyor…</td></tr>';
     try {
       let q = sb.from('kurban_2026_bagis_hisse').select('*').order('created_at', { ascending: false });
       if (yilFiltre) q = q.eq('yil', parseInt(yilFiltre, 10));
@@ -670,7 +799,7 @@
       await loadPersonelMap();
       renderBagisTable();
     } catch (e) {
-      tbody.innerHTML = `<tr><td colspan="7">Hata: ${esc(e.message)}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8">Hata: ${esc(e.message)}</td></tr>`;
     }
   }
 
@@ -782,8 +911,11 @@
   }
 
   // Bağış modal
-  async function openBagisModal(id) {
-    document.getElementById('modalBagisTitle').textContent = id ? 'Bağış Hisse Düzenle' : 'Yeni Bağış Hisse';
+  async function openBagisModal(id, options) {
+    const opts = options || {};
+    bagisTopluDuzenlemeIds = Array.isArray(opts.topluIds) ? opts.topluIds.filter(Boolean) : [];
+    const topluMod = bagisTopluDuzenlemeIds.length > 1;
+    document.getElementById('modalBagisTitle').textContent = topluMod ? 'Bağış Hisse Toplu Düzenle' : (id ? 'Bağış Hisse Düzenle' : 'Yeni Bağış Hisse');
     document.getElementById('bagisId').value = id || '';
     document.getElementById('formBagis').reset();
     populateKategoriDropdowns();
@@ -808,6 +940,7 @@
   }
   function closeBagisModal() {
     document.getElementById('modalBagis').classList.remove('show');
+    bagisTopluDuzenlemeIds = [];
     removeModalOpen();
   }
   document.getElementById('formBagis').addEventListener('submit', async (e) => {
@@ -827,11 +960,17 @@
     };
     try {
       if (id) {
-        const { data: updatedRow, error } = await sb.from('kurban_2026_bagis_hisse').update(row).eq('id', id).select('*').single();
-        if (error) throw error;
-        const idx = bagisList.findIndex(x => x.id === id);
-        if (idx !== -1) bagisList[idx] = updatedRow;
-        showToast('success', 'Başarılı', 'Bağış hisse güncellendi.');
+        if (bagisTopluDuzenlemeIds.length > 1) {
+          const { error } = await sb.from('kurban_2026_bagis_hisse').update(row).in('id', bagisTopluDuzenlemeIds);
+          if (error) throw error;
+          showToast('success', 'Başarılı', `Bağış hisse toplu güncellendi (${bagisTopluDuzenlemeIds.length} kayıt).`);
+        } else {
+          const { data: updatedRow, error } = await sb.from('kurban_2026_bagis_hisse').update(row).eq('id', id).select('*').single();
+          if (error) throw error;
+          const idx = bagisList.findIndex(x => x.id === id);
+          if (idx !== -1) bagisList[idx] = updatedRow;
+          showToast('success', 'Başarılı', 'Bağış hisse güncellendi.');
+        }
       } else {
         if (!row.created_by_uid) {
           const { data: { user } } = await sb.auth.getUser();
@@ -843,14 +982,20 @@
         showToast('success', 'Başarılı', 'Bağış hisse eklendi.');
       }
       closeBagisModal();
-      await loadPersonelMap();
-      renderBagisTable();
+      await loadBagis();
       loadOzet();
     } catch (err) {
       showToast('error', 'Hata', err.message || 'Kayıt yapılamadı.');
     }
   });
   window.editBagis = (id) => openBagisModal(id);
+  window.editBagisToplu = async (encodedIds) => {
+    try {
+      const ids = JSON.parse(decodeURIComponent(encodedIds || '%5B%5D'));
+      if (!Array.isArray(ids) || ids.length === 0) return;
+      await openBagisModal(ids[0], { topluIds: ids });
+    } catch (e) {}
+  };
   window.silBagis = async (id) => {
     if (!confirm('Bu bağış hisse kaydını silmek istediğinize emin misiniz?')) return;
     const sb = getSupabase();
@@ -868,11 +1013,16 @@
   };
 
   // Etli modal
-  async function openEtliModal(id) {
-    document.getElementById('modalEtliTitle').textContent = id ? 'Etli Hisse Düzenle' : 'Yeni Etli Hisse';
+  async function openEtliModal(id, options) {
+    const opts = options || {};
+    etliTopluDuzenlemeIds = Array.isArray(opts.topluIds) ? opts.topluIds.filter(Boolean) : [];
+    const topluMod = etliTopluDuzenlemeIds.length > 1;
+    document.getElementById('modalEtliTitle').textContent = topluMod ? 'Etli Hisse Toplu Düzenle' : (id ? 'Etli Hisse Düzenle' : 'Yeni Etli Hisse');
     document.getElementById('etliId').value = id || '';
     document.getElementById('formEtli').reset();
     document.getElementById('etliAdet').value = 1;
+    const etliAdetEl = document.getElementById('etliAdet');
+    if (etliAdetEl) etliAdetEl.disabled = topluMod;
     populateKategoriDropdowns();
     const sel = document.getElementById('etliKategori');
     if (sel) sel.value = String(getAktifYil());
@@ -896,6 +1046,9 @@
   }
   function closeEtliModal() {
     document.getElementById('modalEtli').classList.remove('show');
+    const etliAdetEl = document.getElementById('etliAdet');
+    if (etliAdetEl) etliAdetEl.disabled = false;
+    etliTopluDuzenlemeIds = [];
     removeModalOpen();
   }
   document.getElementById('formEtli').addEventListener('submit', async (e) => {
@@ -916,11 +1069,19 @@
     };
     try {
       if (id) {
-        const { data: updatedRow, error } = await sb.from('kurban_2026_etli_hisse').update(row).eq('id', id).select('*').single();
-        if (error) throw error;
-        const idx = etliList.findIndex(x => x.id === id);
-        if (idx !== -1) etliList[idx] = updatedRow;
-        showToast('success', 'Başarılı', 'Etli hisse güncellendi.');
+        if (etliTopluDuzenlemeIds.length > 1) {
+          const bulkRow = { ...row };
+          delete bulkRow.hisse_adedi;
+          const { error } = await sb.from('kurban_2026_etli_hisse').update(bulkRow).in('id', etliTopluDuzenlemeIds);
+          if (error) throw error;
+          showToast('success', 'Başarılı', `Etli hisse toplu güncellendi (${etliTopluDuzenlemeIds.length} kayıt).`);
+        } else {
+          const { data: updatedRow, error } = await sb.from('kurban_2026_etli_hisse').update(row).eq('id', id).select('*').single();
+          if (error) throw error;
+          const idx = etliList.findIndex(x => x.id === id);
+          if (idx !== -1) etliList[idx] = updatedRow;
+          showToast('success', 'Başarılı', 'Etli hisse güncellendi.');
+        }
       } else {
         const rows = [];
         if (!row.created_by_uid) {
@@ -936,14 +1097,20 @@
         showToast('success', 'Başarılı', 'Etli hisse eklendi.');
       }
       closeEtliModal();
-      await loadPersonelMap();
-      renderEtliTable();
+      await loadEtli();
       loadOzet();
     } catch (err) {
       showToast('error', 'Hata', err.message || 'Kayıt yapılamadı.');
     }
   });
   window.editEtli = (id) => openEtliModal(id);
+  window.editEtliToplu = async (encodedIds) => {
+    try {
+      const ids = JSON.parse(decodeURIComponent(encodedIds || '%5B%5D'));
+      if (!Array.isArray(ids) || ids.length === 0) return;
+      await openEtliModal(ids[0], { topluIds: ids });
+    } catch (e) {}
+  };
   window.silEtli = async (id) => {
     if (!confirm('Bu etli hisse kaydını silmek istediğinize emin misiniz?')) return;
     const sb = getSupabase();

@@ -1789,6 +1789,7 @@
           }
 
           let veriTablosu = [];
+          let kurbanOranSirasi = { key: null, dir: 'desc' };
           // Supabase için subscription'ları tutmak yerine polling veya realtime kullanacağız
           let refreshInterval = null;
           let cacheTeminHedef = {}, cacheTeberru = {}, cacheTahsilat = {}, sonHedefMap = {};
@@ -1870,11 +1871,11 @@
           <th>Bağış H. Hedef</th>
           <th>Temin</th>
           <th>Kalan</th>
-          <th>Ulaşma Nispeti</th>
+          <th data-kurban-sort="bagisOran" style="cursor:pointer;">Ulaşma Nispeti</th>
           <th>Günlük Artış</th>
           <th>Etli H. Hedef</th>
           <th>Temin</th>
-          <th>Ulaşma Nispeti</th>
+          <th data-kurban-sort="etliOran" style="cursor:pointer;">Ulaşma Nispeti</th>
         `;
             } else {
               if (tablo) tablo.classList.remove('mod-ramazan');
@@ -2169,6 +2170,11 @@
           function uygulaFiltre() {
             const f = filtreSecimi.value; let d = [...veriTablosu];
             const by = (k) => (a, b) => a[k] - b[k];
+            const kurbanOranKarsilastir = (a, b, key, dir) => {
+              const av = Number(a?.[key] || 0);
+              const bv = Number(b?.[key] || 0);
+              return dir === 'asc' ? av - bv : bv - av;
+            };
             switch (f) {
               case "personel-az": d.sort((a, b) => a.personel.localeCompare(b.personel, 'tr')); break;
               case "personel-za": d.sort((a, b) => b.personel.localeCompare(a.personel, 'tr')); break;
@@ -2201,12 +2207,18 @@
               case "tahsilat-artan": d.sort(by('tahsilat')); break;
               case "tahsilat-azalan": d.sort((a, b) => b.tahsilat - a.tahsilat); break;
               case "oran-artan":
-                if (ekranModu === 'Kurban') d.sort((a, b) => ((a.bagisOran || 0) + (a.etliOran || 0)) - ((b.bagisOran || 0) + (b.etliOran || 0)));
+                if (ekranModu === 'Kurban') {
+                  if (kurbanOranSirasi.key) d.sort((a, b) => kurbanOranKarsilastir(a, b, kurbanOranSirasi.key, kurbanOranSirasi.dir));
+                  else d.sort((a, b) => ((a.bagisOran || 0) + (a.etliOran || 0)) - ((b.bagisOran || 0) + (b.etliOran || 0)));
+                }
                 else d.sort(by('oran'));
                 break;
               case "oran-azalan":
               default:
-                if (ekranModu === 'Kurban') d.sort((a, b) => ((b.bagisOran || 0) + (b.etliOran || 0)) - ((a.bagisOran || 0) + (a.etliOran || 0)));
+                if (ekranModu === 'Kurban') {
+                  if (kurbanOranSirasi.key) d.sort((a, b) => kurbanOranKarsilastir(a, b, kurbanOranSirasi.key, kurbanOranSirasi.dir));
+                  else d.sort((a, b) => ((b.bagisOran || 0) + (b.etliOran || 0)) - ((a.bagisOran || 0) + (a.etliOran || 0)));
+                }
                 else d.sort((a, b) => b.oran - a.oran);
                 break;
             }
@@ -2246,6 +2258,7 @@
               if (kpiEtliTemin) kpiEtliTemin.textContent = `${sumEtliTemin.toLocaleString('tr-TR')} adet`;
               if (kpiEtliUlasma) kpiEtliUlasma.textContent = etliOranStr;
               if (kpiGruplar) {
+                const formatKurbanAdedi = (kayitAdedi) => (Number(kayitAdedi || 0) / 7).toFixed(1).replace('.', ',');
                 const grupSatirlari = Object.entries(etliGrupKayitMap || {})
                   .sort((a, b) => {
                     const an = Number(String(a[0]).match(/\d+/)?.[0] || 999);
@@ -2253,9 +2266,9 @@
                     if (an !== bn) return an - bn;
                     return String(a[0]).localeCompare(String(b[0]), 'tr');
                   })
-                  .map(([grup, adet]) => `<div class="kf-kpi-line"><span>${escapeHtml(grup)}</span><b>${Number(adet || 0).toLocaleString('tr-TR')} kayıt</b></div>`)
+                  .map(([grup, adet]) => `<div class="kf-kpi-line"><span>${escapeHtml(grup)}</span><b>${formatKurbanAdedi(adet)} kurban</b></div>`)
                   .join('');
-                kpiGruplar.innerHTML = grupSatirlari || '<div class="kf-kpi-line"><span>-</span><b>0 kayıt</b></div>';
+                kpiGruplar.innerHTML = grupSatirlari || '<div class="kf-kpi-line"><span>-</span><b>0,0 kurban</b></div>';
               }
 
               ozetMetrikleriniGuncelle();
@@ -3600,6 +3613,26 @@
               aboneOl();
             });
             filtreSecimi.addEventListener('change', () => { localStorage.setItem('hedefGrafik_filtresi', filtreSecimi.value); uygulaFiltre(); });
+            const tabloBasliklari = document.getElementById('tabloBasliklari');
+            if (tabloBasliklari) {
+              tabloBasliklari.addEventListener('click', (e) => {
+                if (ekranModu !== 'Kurban') return;
+                const th = e.target.closest('th[data-kurban-sort]');
+                if (!th) return;
+                const key = th.dataset.kurbanSort;
+                if (!key) return;
+                if (kurbanOranSirasi.key === key) {
+                  kurbanOranSirasi.dir = kurbanOranSirasi.dir === 'desc' ? 'asc' : 'desc';
+                } else {
+                  kurbanOranSirasi = { key, dir: 'desc' };
+                }
+                if (filtreSecimi) {
+                  filtreSecimi.value = 'oran-azalan';
+                  localStorage.setItem('hedefGrafik_filtresi', filtreSecimi.value);
+                }
+                uygulaFiltre();
+              });
+            }
 
             // Ekran modu butonu
             if (ekranButonu) {

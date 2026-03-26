@@ -1782,16 +1782,13 @@
     }
     var uid = null;
     try { var u = await supabase.auth.getUser(); if (u && u.data && u.data.user) uid = u.data.user.id; } catch (err) {}
-    var countQuery = supabase.from('kurban_2026_etli_hisse').select('id', { count: 'exact', head: true });
     var listQuery = supabase
       .from('kurban_2026_etli_hisse')
       .select('id,hisedar_ad_soyad,telefon,hisse_grubu,hisse_adedi,aciklama,created_at,created_by_uid');
     if (uid) {
-      countQuery = countQuery.eq('created_by_uid', uid);
       listQuery = listQuery.eq('created_by_uid', uid);
     }
     if (etliKayitlarGrupFiltre) {
-      countQuery = countQuery.eq('hisse_grubu', etliKayitlarGrupFiltre);
       listQuery = listQuery.eq('hisse_grubu', etliKayitlarGrupFiltre);
     }
     if (etliKayitlarSiralama === 'eski') {
@@ -1803,11 +1800,34 @@
     } else {
       listQuery = listQuery.order('created_at', { ascending: false });
     }
-    listQuery = listQuery.range(etliOffset, etliOffset + PAGE_SIZE - 1);
-    var countRes = await countQuery;
     var listRes = await listQuery;
-    var toplam = (countRes && countRes.count) || 0;
-    var rows = (listRes && listRes.data) || [];
+    var rowsRaw = (listRes && listRes.data) || [];
+    var grouped = new Map();
+    rowsRaw.forEach(function (r) {
+      var ad = (r.hisedar_ad_soyad || r.hissedar_ad_soyad || '').trim();
+      var key = [
+        r.created_by_uid || '',
+        r.created_at || '',
+        ad,
+        r.telefon || '',
+        r.hisse_grubu || '',
+        r.aciklama || ''
+      ].join('|');
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          hisedar_ad_soyad: ad || '–',
+          telefon: r.telefon || '–',
+          hisse_grubu: r.hisse_grubu || '–',
+          aciklama: r.aciklama || '–',
+          created_at: r.created_at,
+          toplam_hisse: 0
+        });
+      }
+      var g = grouped.get(key);
+      g.toplam_hisse += (parseInt(r.hisse_adedi, 10) || 1);
+    });
+    var rows = Array.from(grouped.values());
+    var toplam = rows.reduce(function (s, x) { return s + (x.toplam_hisse || 0); }, 0);
     if (uid) {
       var { data: hedefRows } = await supabase
         .from('kurban_2026_hedefler')
@@ -1825,7 +1845,7 @@
     }
 
     loadingEl.style.display = 'none';
-    if (toplamEl) toplamEl.textContent = 'Toplam: ' + toplam;
+    if (toplamEl) toplamEl.textContent = 'Toplam Hisse: ' + toplam;
     if (metaEl) metaEl.style.display = 'flex';
     if (toplam === 0) {
       listEl.style.display = 'none';
@@ -1842,14 +1862,14 @@
         '<div class="meta-grid">' +
           '<div class="meta-item"><div class="line-item"><span class="line-key">Telefon:</span><span class="line-value">' + (r.telefon || '–') + '</span></div></div>' +
           '<div class="meta-item"><div class="line-item"><span class="line-key">Hisse Grubu:</span><span class="line-value">' + (r.hisse_grubu || '–') + '</span></div></div>' +
-          '<div class="meta-item"><div class="line-item"><span class="line-key">Hisse Adedi:</span><span class="line-value">' + (r.hisse_adedi || 0) + ' hisse</span></div></div>' +
+          '<div class="meta-item"><div class="line-item"><span class="line-key">Hisse Adedi:</span><span class="line-value">' + (r.toplam_hisse || 0) + ' hisse</span></div></div>' +
         '</div>' +
         '<div class="note"><div class="line-item"><span class="line-key">Açıklama:</span><span class="line-value">' + ((r.aciklama || '–').replace(/</g, '&lt;').replace(/>/g, '&gt;')) + '</span></div></div>' +
         '<div class="time">Kayıt zamanı: ' + formatDate(r.created_at) + '</div>';
       listEl.appendChild(card);
     });
     etliOffset += rows.length;
-    if (dahaFazlaBtn) dahaFazlaBtn.style.display = etliOffset < toplam ? 'block' : 'none';
+    if (dahaFazlaBtn) dahaFazlaBtn.style.display = 'none';
   }
 
   async function loadAnaliz() {
