@@ -113,6 +113,10 @@
 
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
+    #panelBagisKayitlar,
+    #panelEtliKayitlar {
+      padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 20px);
+    }
 
     /* Ana sayfa: iki buton alt alta - minimalist kartlar */
     .btn-grid {
@@ -355,7 +359,57 @@
     .form-group input::placeholder,
     .form-group textarea::placeholder { color: var(--muted); }
     .form-group textarea { min-height: 80px; resize: vertical; }
+    @media (max-width: 639px) {
+      .modal-sheet {
+        max-height: min(86vh, 100dvh - env(safe-area-inset-top, 0px) - 8px);
+        border-radius: 16px 16px 0 0;
+      }
+      .modal-header {
+        padding: 6px 10px 8px 12px;
+      }
+      .modal-header h2 {
+        font-size: 1rem;
+      }
+      .modal-scroll {
+        padding: 10px 12px 6px;
+      }
+      .modal-footer {
+        padding: 8px 12px;
+        padding-bottom: max(8px, env(safe-area-inset-bottom));
+      }
+      .modal-footer .btn {
+        min-height: 42px;
+        font-size: 0.9rem;
+        padding: 10px 12px;
+      }
+      .form-group { margin-bottom: 12px; }
+      .form-group input,
+      .form-group select,
+      .form-group textarea {
+        padding: 10px 12px;
+        font-size: 0.95rem;
+      }
+      .form-group textarea { min-height: 72px; }
+    }
     .form-group small.muted { color: var(--muted); font-size: 0.8rem; margin-top: 4px; display: block; }
+    .hizli-oneri-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .hizli-oneri-btn {
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 0.74rem;
+      line-height: 1.2;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .hizli-oneri-btn:hover { border-color: var(--primary); color: var(--primary); }
     .grup-1-uyari {
       display: none;
       margin-top: 10px;
@@ -424,15 +478,8 @@
       max-width: 760px;
       margin-left: auto;
       margin-right: auto;
-      max-height: calc(100vh - 320px);
-      overflow-y: auto;
-      overflow-x: hidden;
-      padding-right: 2px;
-      scroll-behavior: smooth;
+      padding-bottom: 4px;
     }
-    .kayit-list::-webkit-scrollbar { width: 8px; }
-    .kayit-list::-webkit-scrollbar-thumb { background: #cfd6dd; border-radius: 999px; }
-    .kayit-list::-webkit-scrollbar-track { background: transparent; }
     .kayit-meta-bar {
       margin-top: 8px;
       display: flex;
@@ -460,7 +507,15 @@
       padding: 0 10px;
     }
     @media (max-width: 520px) {
-      .kayit-tools { grid-template-columns: 1fr; }
+      .kayit-tools {
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+      }
+      .kayit-tools select {
+        height: 34px;
+        font-size: 0.76rem;
+        padding: 0 8px;
+      }
     }
     .btn-load-more {
       width: 100%;
@@ -978,6 +1033,10 @@
                 <option value="Resülullah Efendimiz ve Ehl-i Beyti"></option>
                 <option value="Hz. Üstazımız ve Ehl-i Beyti"></option>
               </datalist>
+              <div class="hizli-oneri-wrap">
+                <button type="button" class="hizli-oneri-btn" data-oneri="Resülullah Efendimiz ve Ehl-i Beyti">1- Resülullah Efendimiz ve Ehl-i Beyti</button>
+                <button type="button" class="hizli-oneri-btn" data-oneri="Hz. Üstazımız ve Ehl-i Beyti">2- Hz. Üstazımız ve Ehl-i Beyti</button>
+              </div>
               <small class="muted">Lütfen isimleri düzgün formatta yazalım (örnek: Ahmet Yılmaz). Karışıklık olmaması için gerekli not ve hatırlatmaları açıklama alanına ekleyebilirsiniz.</small>
               <small class="muted">Peygamber Efendimiz, Hz. Üstazımız niyetine vb. kayıtlar için yukarıdaki hazır önerileri kullanabilirsiniz.</small>
             </div>
@@ -1269,6 +1328,19 @@
 
   // Bağış: form submit engelle
   document.getElementById('formBagis').addEventListener('submit', function (e) { e.preventDefault(); });
+  var bagisFormWrapEl = document.getElementById('bagisFormWrap');
+  if (bagisFormWrapEl) {
+    bagisFormWrapEl.addEventListener('click', function (e) {
+      var btn = e.target.closest('.hizli-oneri-btn');
+      if (!btn) return;
+      var oneri = btn.getAttribute('data-oneri') || '';
+      var input = document.querySelector('#formBagis [name="ad_soyad"]');
+      if (input) {
+        input.value = oneri;
+        try { input.focus(); } catch (err) {}
+      }
+    });
+  }
 
   function bagisFormGoster() {
     document.getElementById('bagisFormWrap').style.display = 'block';
