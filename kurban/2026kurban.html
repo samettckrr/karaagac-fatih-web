@@ -1381,7 +1381,16 @@
     bagisOnizleGoster();
   });
   document.getElementById('bagisOnizleGeri').addEventListener('click', function () { bagisFormGoster(); });
+  var bagisSubmitInProgress = false;
   document.getElementById('bagisKaydet').addEventListener('click', async function () {
+    if (bagisSubmitInProgress) return;
+    bagisSubmitInProgress = true;
+    var bagisBtn = document.getElementById('bagisKaydet');
+    var bagisBtnEskiText = bagisBtn ? bagisBtn.textContent : 'Kaydet';
+    if (bagisBtn) {
+      bagisBtn.disabled = true;
+      bagisBtn.textContent = 'Kaydediliyor...';
+    }
     var form = document.getElementById('formBagis');
     var ad_soyad = (form.querySelector('[name="ad_soyad"]').value || '').trim();
     var telefonRaw = (form.querySelector('[name="telefon"]').value || '').trim();
@@ -1389,16 +1398,34 @@
     var tel = normalizeTelefon(telefonRaw);
     if (!tel.valid) {
       showToast('error', 'Hata', 'Geçerli bir cep telefonu giriniz (5 ile başlayan 10 hane).');
+      bagisSubmitInProgress = false;
+      if (bagisBtn) {
+        bagisBtn.disabled = false;
+        bagisBtn.textContent = bagisBtnEskiText;
+      }
       return;
     }
     var supabase = await getSupabase();
-    if (!supabase) { showToast('error', 'Hata', 'Bağlantı hazır değil.'); return; }
+    if (!supabase) {
+      showToast('error', 'Hata', 'Bağlantı hazır değil.');
+      bagisSubmitInProgress = false;
+      if (bagisBtn) {
+        bagisBtn.disabled = false;
+        bagisBtn.textContent = bagisBtnEskiText;
+      }
+      return;
+    }
     var uid = null;
     try { var u = await supabase.auth.getUser(); if (u && u.data && u.data.user) uid = u.data.user.id; } catch (err) {}
     var row = { ad_soyad: ad_soyad, telefon: tel.normalized, fiyat: 1, aciklama: aciklama || null, created_by_uid: uid };
     var { error } = await supabase.from('kurban_2026_bagis_hisse').insert(row);
     if (error) {
       showToast('error', 'Hata', error.message || 'Kayıt eklenemedi.');
+      bagisSubmitInProgress = false;
+      if (bagisBtn) {
+        bagisBtn.disabled = false;
+        bagisBtn.textContent = bagisBtnEskiText;
+      }
       return;
     }
     closeModal('modalBagis');
@@ -1406,6 +1433,11 @@
     bagisFormGoster();
     showToast('success', 'Başarılı', 'Bağış hisse kaydı alındı.');
     loadAnaDurum();
+    bagisSubmitInProgress = false;
+    if (bagisBtn) {
+      bagisBtn.disabled = false;
+      bagisBtn.textContent = bagisBtnEskiText;
+    }
   });
 
   // Etli: form submit engelle
@@ -1484,7 +1516,16 @@
     etliOnizleGoster();
   });
   document.getElementById('etliOnizleGeri').addEventListener('click', function () { etliFormGoster(); });
+  var etliSubmitInProgress = false;
   document.getElementById('etliKaydet').addEventListener('click', async function () {
+    if (etliSubmitInProgress) return;
+    etliSubmitInProgress = true;
+    var etliBtn = document.getElementById('etliKaydet');
+    var etliBtnEskiText = etliBtn ? etliBtn.textContent : 'Kaydet';
+    if (etliBtn) {
+      etliBtn.disabled = true;
+      etliBtn.textContent = 'Kaydediliyor...';
+    }
     var form = document.getElementById('formEtli');
     var hissedar_ad_soyad = (form.querySelector('[name="hissedar_ad_soyad"]').value || '').trim();
     var telefonRaw = (form.querySelector('[name="telefon"]').value || '').trim();
@@ -1495,10 +1536,23 @@
     var tel = normalizeTelefon(telefonRaw);
     if (!tel.valid) {
       showToast('error', 'Hata', 'Geçerli bir cep telefonu giriniz (5 ile başlayan 10 hane).');
+      etliSubmitInProgress = false;
+      if (etliBtn) {
+        etliBtn.disabled = false;
+        etliBtn.textContent = etliBtnEskiText;
+      }
       return;
     }
     var supabase = await getSupabase();
-    if (!supabase) { showToast('error', 'Hata', 'Bağlantı hazır değil.'); return; }
+    if (!supabase) {
+      showToast('error', 'Hata', 'Bağlantı hazır değil.');
+      etliSubmitInProgress = false;
+      if (etliBtn) {
+        etliBtn.disabled = false;
+        etliBtn.textContent = etliBtnEskiText;
+      }
+      return;
+    }
     var uid = null;
     try { var u = await supabase.auth.getUser(); if (u && u.data && u.data.user) uid = u.data.user.id; } catch (err) {}
     var rows = [];
@@ -1508,6 +1562,11 @@
     var { error } = await supabase.from('kurban_2026_etli_hisse').insert(rows);
     if (error) {
       showToast('error', 'Hata', error.message || 'Kayıt eklenemedi.');
+      etliSubmitInProgress = false;
+      if (etliBtn) {
+        etliBtn.disabled = false;
+        etliBtn.textContent = etliBtnEskiText;
+      }
       return;
     }
     closeModal('modalEtli');
@@ -1517,6 +1576,11 @@
     showToast('success', 'Başarılı', 'Etli hisse kaydı alındı.');
     loadAnaDurum();
     openModal('modalEtliHatirlatma');
+    etliSubmitInProgress = false;
+    if (etliBtn) {
+      etliBtn.disabled = false;
+      etliBtn.textContent = etliBtnEskiText;
+    }
   });
   document.getElementById('etliHatirlatmaTamam').addEventListener('click', function () { closeModal('modalEtliHatirlatma'); });
 

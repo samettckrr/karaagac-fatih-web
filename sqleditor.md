@@ -276,6 +276,7 @@ CREATE TABLE public.kullanicilar (
   aktif boolean,
   eklenmetarihi timestamp with time zone,
   yetkiler ARRAY,
+  telefon text CHECK (telefon IS NULL OR telefon ~ '^90[0-9]{10}$'::text),
   CONSTRAINT kullanicilar_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.kumbaralar (
