@@ -1071,6 +1071,27 @@
     </div>
   </div>
 
+  <!-- Etli kayıt öncesi kısa bilgi -->
+  <div id="modalEtliBilgi" class="modal-overlay reminder-modal" role="dialog" aria-modal="true" aria-labelledby="modalEtliBilgiTitle">
+    <div class="modal-sheet">
+      <div class="modal-handle" aria-hidden="true"></div>
+      <div class="modal-header">
+        <h2 id="modalEtliBilgiTitle">Etli hisse kaydı</h2>
+        <button type="button" class="modal-close" id="modalEtliBilgiKapat" aria-label="Kapat">×</button>
+      </div>
+      <div class="modal-scroll">
+        <div class="reminder-body">
+          <p>Aynı kurbanda kesim isteyen hissedarlarınızı (1'den fazla) tek kayıtta ilerleyin: Hissedar adı soyadı alanına aralarından bir kişiyi yazın; diğer isimleri açıklamaya düzgün şekilde ekleyin. Hisse adedini toplam kişi sayınıza göre seçin. Bu şekilde verilen kayıtlar tek paket sayılır ve aynı kurbana birlikte düşer.</p>
+          <p>Ayrı ayrı (formu birden fazla kez doldurarak) verilen kayıtların farklı kurbanlara atanma ihtimali yüksektir.</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="etliBilgiVazgec">Vazgeç</button>
+        <button type="button" class="btn btn-primary" id="etliBilgiDevam">Anladım, kayıta geç</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: Etli Hisse formu -->
   <div id="modalEtli" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modalEtliTitle">
     <div class="modal-sheet">
@@ -1109,7 +1130,7 @@
             <div class="form-group">
               <label>Hisse Adedi <span class="required">*</span></label>
               <input type="number" name="hisse_adedi" required min="1" step="1" value="1" placeholder="Sayı" inputmode="numeric" />
-              <small class="muted">Birden fazla hisse adedinde her hisse için ayrı kayıt oluşturulur.</small>
+              <small class="muted">Kaç kişi bu paketteyse o sayıyı yazın; 2 ve üzeri tek paket olarak kaydedilir.</small>
             </div>
             <div class="form-group">
               <label>Açıklama (opsiyonel)</label>
@@ -1239,7 +1260,7 @@
   });
 
   // Modal aç/kapa (arka plan kaydırma kilidi, Escape, odak)
-  var modalOrder = ['modalEtliHatirlatma', 'modalEtli', 'modalBagis'];
+  var modalOrder = ['modalEtliHatirlatma', 'modalEtliBilgi', 'modalEtli', 'modalBagis'];
   function syncBodyModalLock() {
     var any = document.querySelector('.modal-overlay.open');
     if (any) document.body.classList.add('modal-open');
@@ -1282,7 +1303,20 @@
   });
 
   document.getElementById('btnBagis').addEventListener('click', function () { bagisFormGoster(); openModal('modalBagis'); });
-  document.getElementById('btnEtli').addEventListener('click', function () { etliFormGoster(); openModal('modalEtli'); });
+  document.getElementById('btnEtli').addEventListener('click', function () { openModal('modalEtliBilgi'); });
+  function etliBilgiKapat() {
+    closeModal('modalEtliBilgi');
+  }
+  document.getElementById('etliBilgiDevam').addEventListener('click', function () {
+    etliBilgiKapat();
+    etliFormGoster();
+    openModal('modalEtli');
+  });
+  document.getElementById('etliBilgiVazgec').addEventListener('click', etliBilgiKapat);
+  document.getElementById('modalEtliBilgiKapat').addEventListener('click', etliBilgiKapat);
+  document.getElementById('modalEtliBilgi').addEventListener('click', function (e) {
+    if (e.target === this) etliBilgiKapat();
+  });
   document.getElementById('bagisIptal').addEventListener('click', function () {
     bagisFormGoster();
     closeModal('modalBagis');
@@ -1555,11 +1589,42 @@
     }
     var uid = null;
     try { var u = await supabase.auth.getUser(); if (u && u.data && u.data.user) uid = u.data.user.id; } catch (err) {}
-    var rows = [];
-    for (var i = 0; i < hisse_adedi; i++) {
-      rows.push({ hisedar_ad_soyad: hissedar_ad_soyad, telefon: tel.normalized, hisse_grubu: hisse_grubu, hisse_adedi: 1, aciklama: aciklama || null, created_by_uid: uid });
+    var KURBAN_YIL = 2026;
+    var baseRow = {
+      hisedar_ad_soyad: hissedar_ad_soyad,
+      telefon: tel.normalized,
+      hisse_grubu: hisse_grubu,
+      hisse_adedi: 1,
+      aciklama: aciklama || null,
+      created_by_uid: uid,
+      yil: KURBAN_YIL
+    };
+    var error = null;
+    if (hisse_adedi <= 1) {
+      var insTek = await supabase.from('kurban_2026_etli_hisse').insert([baseRow]);
+      error = insTek.error;
+    } else {
+      var rKok = await supabase.from('kurban_2026_etli_hisse').insert([baseRow]).select('id').single();
+      error = rKok.error;
+      if (!error && rKok.data && rKok.data.id) {
+        var anaId = rKok.data.id;
+        var paketRest = [];
+        for (var pi = 1; pi < hisse_adedi; pi++) {
+          paketRest.push({
+            hisedar_ad_soyad: baseRow.hisedar_ad_soyad,
+            telefon: baseRow.telefon,
+            hisse_grubu: baseRow.hisse_grubu,
+            hisse_adedi: 1,
+            aciklama: baseRow.aciklama,
+            created_by_uid: baseRow.created_by_uid,
+            yil: baseRow.yil,
+            ana_hisse_id: anaId
+          });
+        }
+        var rRest = await supabase.from('kurban_2026_etli_hisse').insert(paketRest);
+        error = rRest.error;
+      }
     }
-    var { error } = await supabase.from('kurban_2026_etli_hisse').insert(rows);
     if (error) {
       showToast('error', 'Hata', error.message || 'Kayıt eklenemedi.');
       etliSubmitInProgress = false;
@@ -1573,7 +1638,7 @@
     form.reset();
     form.querySelector('[name="hisse_adedi"]').value = '1';
     etliFormGoster();
-    showToast('success', 'Başarılı', 'Etli hisse kaydı alındı.');
+    showToast('success', 'Başarılı', hisse_adedi > 1 ? ('Etli hisse paketi kaydedildi (' + hisse_adedi + ' satır).') : 'Etli hisse kaydı alındı.');
     loadAnaDurum();
     openModal('modalEtliHatirlatma');
     etliSubmitInProgress = false;

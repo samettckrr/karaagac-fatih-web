@@ -206,6 +206,22 @@ CREATE TABLE public.kantin_urunler (
   updatedby text,
   CONSTRAINT kantin_urunler_pkey PRIMARY KEY (id)
 );
+CREATE TABLE public.karaagac_kurban (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  created_at timestamp with time zone DEFAULT now(),
+  created_by_uid text,
+  yil integer NOT NULL,
+  kesim_sirasi integer NOT NULL CHECK (kesim_sirasi >= 1),
+  kupe_no text,
+  canli_kg numeric,
+  hisse_grubu text NOT NULL,
+  hissedar_adedi integer NOT NULL DEFAULT 7 CHECK (hissedar_adedi >= 1 AND hissedar_adedi <= 7),
+  hisse_fiyati numeric,
+  kapora numeric,
+  tahsilat numeric,
+  atamalar jsonb NOT NULL DEFAULT '[]'::jsonb,
+  CONSTRAINT karaagac_kurban_pkey PRIMARY KEY (id)
+);
 CREATE TABLE public.kategoriler (
   id text NOT NULL,
   ad text,
@@ -330,7 +346,13 @@ CREATE TABLE public.kurban_2026_etli_hisse (
   hisse_adedi integer NOT NULL DEFAULT 1 CHECK (hisse_adedi >= 1),
   aciklama text,
   yil integer DEFAULT 2026,
-  CONSTRAINT kurban_2026_etli_hisse_pkey PRIMARY KEY (id)
+  kurban_id uuid,
+  kapora numeric,
+  tahsilat numeric,
+  ana_hisse_id uuid,
+  CONSTRAINT kurban_2026_etli_hisse_pkey PRIMARY KEY (id),
+  CONSTRAINT kurban_2026_etli_hisse_kurban_id_fkey FOREIGN KEY (kurban_id) REFERENCES public.karaagac_kurban(id),
+  CONSTRAINT kurban_2026_etli_hisse_ana_hisse_id_fkey FOREIGN KEY (ana_hisse_id) REFERENCES public.kurban_2026_etli_hisse(id)
 );
 CREATE TABLE public.kurban_2026_hedefler (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
