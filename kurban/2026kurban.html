@@ -643,6 +643,33 @@
       color: var(--muted);
       font-size: 0.68rem;
     }
+    .btn-etli-paket-detay {
+      margin-top: 8px;
+      width: 100%;
+      padding: 8px 10px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--primary);
+      cursor: pointer;
+    }
+    .btn-etli-paket-detay:hover { filter: brightness(0.98); }
+    .etli-paket-detay { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border); }
+    .etli-paket-satir {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 8px;
+      margin-bottom: 6px;
+      font-size: 0.74rem;
+      line-height: 1.35;
+    }
+    .etli-paket-satir:last-child { margin-bottom: 0; }
+    .etli-paket-satir-bas { font-weight: 600; color: var(--text); }
+    .etli-paket-sira { font-weight: 700; color: var(--accent); }
+    .etli-paket-satir-meta { font-size: 0.7rem; margin-top: 4px; }
     @media (min-width: 640px) {
       .kayit-card .meta-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .kayit-card {
@@ -662,6 +689,7 @@
     }
     .kayit-card .badge.bagis { background: rgba(39, 174, 96, 0.15); color: #1e8449; }
     .kayit-card .badge.etli { background: rgba(230, 126, 34, 0.15); color: #c0392b; }
+    .kayit-card .badge.etli-paket { background: rgba(230, 126, 34, 0.22); color: #a04000; }
     .kayit-loading, .kayit-empty {
       text-align: center;
       padding: 28px 16px;
@@ -1805,6 +1833,26 @@
     if (dahaFazlaBtn) dahaFazlaBtn.style.display = bagisOffset < toplam ? 'block' : 'none';
   }
 
+  function etliKayitEsc(s) {
+    return (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function etliPaketKokIdKayitlar(r) {
+    if (!r || r.id == null) return '';
+    var aid = r.ana_hisse_id;
+    if (aid != null && String(aid).trim() !== '') return String(aid);
+    return String(r.id);
+  }
+  function etliHissedarAdKayitlar(r) {
+    return (r.hisedar_ad_soyad || r.hissedar_ad_soyad || '').trim();
+  }
+  function sortEtliPaketMembersKayitlar(members, kok) {
+    return members.slice().sort(function (a, b) {
+      if (String(a.id) === kok) return -1;
+      if (String(b.id) === kok) return 1;
+      return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+    });
+  }
+
   async function loadEtliKayitlar(reset) {
     var loadingEl = document.getElementById('etliKayitlarLoading');
     var emptyEl = document.getElementById('etliKayitlarEmpty');
@@ -1849,7 +1897,7 @@
     try { var u = await supabase.auth.getUser(); if (u && u.data && u.data.user) uid = u.data.user.id; } catch (err) {}
     var listQuery = supabase
       .from('kurban_2026_etli_hisse')
-      .select('id,hisedar_ad_soyad,telefon,hisse_grubu,hisse_adedi,aciklama,created_at,created_by_uid');
+      .select('id,hisedar_ad_soyad,telefon,hisse_grubu,hisse_adedi,aciklama,created_at,created_by_uid,ana_hisse_id');
     if (uid) {
       listQuery = listQuery.eq('created_by_uid', uid);
     }
@@ -1867,32 +1915,24 @@
     }
     var listRes = await listQuery;
     var rowsRaw = (listRes && listRes.data) || [];
-    var grouped = new Map();
+    var toplam = rowsRaw.reduce(function (s, r) { return s + (parseInt(r.hisse_adedi, 10) || 1); }, 0);
+    var byKok = new Map();
     rowsRaw.forEach(function (r) {
-      var ad = (r.hisedar_ad_soyad || r.hissedar_ad_soyad || '').trim();
-      var key = [
-        r.created_by_uid || '',
-        r.created_at || '',
-        ad,
-        r.telefon || '',
-        r.hisse_grubu || '',
-        r.aciklama || ''
-      ].join('|');
-      if (!grouped.has(key)) {
-        grouped.set(key, {
-          hisedar_ad_soyad: ad || '–',
-          telefon: r.telefon || '–',
-          hisse_grubu: r.hisse_grubu || '–',
-          aciklama: r.aciklama || '–',
-          created_at: r.created_at,
-          toplam_hisse: 0
-        });
-      }
-      var g = grouped.get(key);
-      g.toplam_hisse += (parseInt(r.hisse_adedi, 10) || 1);
+      var k = etliPaketKokIdKayitlar(r);
+      if (!k) return;
+      if (!byKok.has(k)) byKok.set(k, []);
+      byKok.get(k).push(r);
     });
-    var rows = Array.from(grouped.values());
-    var toplam = rows.reduce(function (s, x) { return s + (x.toplam_hisse || 0); }, 0);
+    var displayGroups = [];
+    byKok.forEach(function (members, kok) {
+      displayGroups.push({ kok: kok, members: sortEtliPaketMembersKayitlar(members, kok) });
+    });
+    displayGroups.sort(function (a, b) {
+      var maxT = function (mems) {
+        return Math.max.apply(null, mems.map(function (m) { return new Date(m.created_at || 0).getTime(); }));
+      };
+      return maxT(b.members) - maxT(a.members);
+    });
     if (uid) {
       var { data: hedefRows } = await supabase
         .from('kurban_2026_hedefler')
@@ -1919,21 +1959,50 @@
     }
     listEl.style.display = 'block';
     if (reset) listEl.innerHTML = '';
-    rows.forEach(function (r) {
+    displayGroups.forEach(function (group) {
+      var members = group.members;
+      var root = members[0];
+      var paketSay = members.length;
+      var adetToplam = members.reduce(function (s, m) { return s + (parseInt(m.hisse_adedi, 10) || 1); }, 0);
+      var adGoster = etliHissedarAdKayitlar(root) || '–';
+      var telGoster = root.telefon || '–';
+      var grupGoster = root.hisse_grubu || '–';
+      var acikGoster = (root.aciklama || '–').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       var card = document.createElement('div');
-      card.className = 'kayit-card etli-card';
-      card.innerHTML =
-        '<div class="top"><div class="name">' + (r.hisedar_ad_soyad || r.hissedar_ad_soyad || '–') + '</div><span class="badge etli">Etli</span></div>' +
-        '<div class="meta-grid">' +
-          '<div class="meta-item"><div class="line-item"><span class="line-key">Telefon:</span><span class="line-value">' + (r.telefon || '–') + '</span></div></div>' +
-          '<div class="meta-item"><div class="line-item"><span class="line-key">Hisse Grubu:</span><span class="line-value">' + (r.hisse_grubu || '–') + '</span></div></div>' +
-          '<div class="meta-item"><div class="line-item"><span class="line-key">Hisse Adedi:</span><span class="line-value">' + (r.toplam_hisse || 0) + ' hisse</span></div></div>' +
-        '</div>' +
-        '<div class="note"><div class="line-item"><span class="line-key">Açıklama:</span><span class="line-value">' + ((r.aciklama || '–').replace(/</g, '&lt;').replace(/>/g, '&gt;')) + '</span></div></div>' +
-        '<div class="time">Kayıt zamanı: ' + formatDate(r.created_at) + '</div>';
+      card.className = 'kayit-card etli-card' + (paketSay > 1 ? ' etli-card-paket' : '');
+      if (paketSay === 1) {
+        card.innerHTML =
+          '<div class="top"><div class="name">' + etliKayitEsc(adGoster) + '</div><span class="badge etli">Etli</span></div>' +
+          '<div class="meta-grid">' +
+            '<div class="meta-item"><div class="line-item"><span class="line-key">Telefon:</span><span class="line-value">' + etliKayitEsc(telGoster) + '</span></div></div>' +
+            '<div class="meta-item"><div class="line-item"><span class="line-key">Hisse Grubu:</span><span class="line-value">' + etliKayitEsc(grupGoster) + '</span></div></div>' +
+            '<div class="meta-item"><div class="line-item"><span class="line-key">Hisse Adedi:</span><span class="line-value">' + adetToplam + ' hisse</span></div></div>' +
+          '</div>' +
+          '<div class="note"><div class="line-item"><span class="line-key">Açıklama:</span><span class="line-value">' + acikGoster + '</span></div></div>' +
+          '<div class="time">Kayıt zamanı: ' + formatDate(root.created_at) + '</div>';
+      } else {
+        var detayHtml = members.map(function (m, idx) {
+          var nm = etliHissedarAdKayitlar(m) || '—';
+          var ac = (m.aciklama || '').trim();
+          return '<div class="etli-paket-satir">' +
+            '<div class="etli-paket-satir-bas"><span class="etli-paket-sira">Sıra ' + (idx + 1) + '</span> · ' + etliKayitEsc(nm) + '</div>' +
+            '<div class="etli-paket-satir-meta muted">Tel: ' + etliKayitEsc(m.telefon || '–') + (ac ? ' · Not: ' + etliKayitEsc(ac) : '') + '</div></div>';
+        }).join('');
+        card.innerHTML =
+          '<div class="top"><div class="name">' + etliKayitEsc(adGoster) + '</div><span class="badge etli-paket">Etli · ' + paketSay + ' hisse</span></div>' +
+          '<div class="meta-grid">' +
+            '<div class="meta-item"><div class="line-item"><span class="line-key">Telefon:</span><span class="line-value">' + etliKayitEsc(telGoster) + '</span></div></div>' +
+            '<div class="meta-item"><div class="line-item"><span class="line-key">Hisse Grubu:</span><span class="line-value">' + etliKayitEsc(grupGoster) + '</span></div></div>' +
+            '<div class="meta-item"><div class="line-item"><span class="line-key">Hisse Adedi:</span><span class="line-value">' + adetToplam + ' (paket)</span></div></div>' +
+          '</div>' +
+          '<div class="note"><div class="line-item"><span class="line-key">Açıklama:</span><span class="line-value">' + acikGoster + '</span></div></div>' +
+          '<button type="button" class="btn-etli-paket-detay" aria-expanded="false">Detay göster</button>' +
+          '<div class="etli-paket-detay" hidden>' + detayHtml + '</div>' +
+          '<div class="time">Kayıt zamanı: ' + formatDate(root.created_at) + '</div>';
+      }
       listEl.appendChild(card);
     });
-    etliOffset += rows.length;
+    etliOffset += displayGroups.length;
     if (dahaFazlaBtn) dahaFazlaBtn.style.display = 'none';
   }
 
@@ -1946,6 +2015,27 @@
   if (bagisDahaFazlaBtn) bagisDahaFazlaBtn.addEventListener('click', function () { loadBagisKayitlar(false); });
   var etliDahaFazlaBtn = document.getElementById('etliDahaFazla');
   if (etliDahaFazlaBtn) etliDahaFazlaBtn.addEventListener('click', function () { loadEtliKayitlar(false); });
+  var etliKayitlarListEl = document.getElementById('etliKayitlarList');
+  if (etliKayitlarListEl && !etliKayitlarListEl.dataset.paketDetayBound) {
+    etliKayitlarListEl.dataset.paketDetayBound = '1';
+    etliKayitlarListEl.addEventListener('click', function (e) {
+      var btn = e.target.closest('.btn-etli-paket-detay');
+      if (!btn) return;
+      var card = btn.closest('.kayit-card');
+      var det = card ? card.querySelector('.etli-paket-detay') : null;
+      if (!det) return;
+      var acik = !det.hasAttribute('hidden');
+      if (acik) {
+        det.setAttribute('hidden', '');
+        btn.textContent = 'Detay göster';
+        btn.setAttribute('aria-expanded', 'false');
+      } else {
+        det.removeAttribute('hidden');
+        btn.textContent = 'Detayı gizle';
+        btn.setAttribute('aria-expanded', 'true');
+      }
+    });
+  }
   var etliGrupFiltreEl = document.getElementById('etliGrupFiltreKayitlar');
   if (etliGrupFiltreEl) {
     etliGrupFiltreEl.addEventListener('change', function () {
