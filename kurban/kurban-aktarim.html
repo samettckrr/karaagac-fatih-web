@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Kurban Excel Aktarımı | Karaağaç</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <link rel="icon" type="image/png" href="../img/logo.png" />
+  <link rel="stylesheet" href="../css/app-shell.css" />
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+  <style>
+    body {
+      padding-top: var(--appbar-h) !important;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+
+    .wrap {
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    .page-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .page-head h1 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .toolbar button,
+    .toolbar .link-btn {
+      height: 38px;
+      padding: 0 14px;
+      border-radius: 10px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .toolbar button.btn-primary {
+      background: var(--accent, #324960);
+      color: #fff;
+      border: none;
+    }
+
+    .toolbar button.btn-secondary {
+      background: var(--surface);
+      color: var(--ink);
+      border: 1px solid var(--border);
+    }
+
+    .toolbar button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .toolbar .link-btn {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--ink);
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--stroke, var(--border));
+      border-radius: 16px;
+      padding: 16px;
+      margin: 16px 0;
+      box-shadow: var(--shadow, 0 1px 3px rgba(0, 0, 0, 0.06));
+    }
+
+    .card h2 {
+      margin: 0 0 8px;
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .card .sub {
+      margin: 0 0 14px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .info-list {
+      margin: 0;
+      padding-left: 1.2rem;
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--ink);
+    }
+
+    .info-list li {
+      margin-bottom: 6px;
+    }
+
+    .file-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .file-row input[type="file"] {
+      font-size: 13px;
+    }
+
+    .stat-inline {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin: 12px 0;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .stat-inline .ok {
+      color: #047857;
+    }
+
+    .stat-inline .bad {
+      color: #b91c1c;
+    }
+
+    .stat-inline .warn {
+      color: #b45309;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--stroke, var(--border));
+      border-radius: 12px;
+      max-height: 420px;
+      background: var(--card);
+    }
+
+    table.tbl-mini {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    table.tbl-mini thead th {
+      position: sticky;
+      top: 0;
+      background: var(--surface);
+      border-bottom: 2px solid var(--stroke, var(--border));
+      text-align: left;
+      padding: 8px;
+      z-index: 1;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    table.tbl-mini tbody td {
+      border-bottom: 1px solid var(--stroke, var(--border));
+      padding: 7px 8px;
+      vertical-align: top;
+    }
+
+    table.tbl-mini tbody tr.err {
+      background: rgba(254, 226, 226, 0.35);
+    }
+
+    table.tbl-mini tbody tr.ok {
+      background: rgba(220, 252, 231, 0.25);
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .pill.diger {
+      background: rgba(245, 158, 11, 0.22);
+      color: #b45309;
+    }
+
+    .pill.matched {
+      background: rgba(16, 185, 129, 0.18);
+      color: #047857;
+    }
+
+    .pill.eşleşti {
+      background: rgba(16, 185, 129, 0.18);
+      color: #047857;
+    }
+
+    code {
+      font-size: 12px;
+      background: var(--surface);
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+
+    .mono {
+      font-family: ui-monospace, monospace;
+      font-size: 11px;
+      word-break: break-all;
+    }
+  </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="../src/supabase.js"></script>
+  <script src="../src/supabase-auth-wrapper.js"></script>
+  <script src="../src/supabase-db-wrapper.js"></script>
+  <script>
+    (function () {
+      function initAuth() {
+        if (typeof window.getSupabaseAuth === 'function') {
+          window.auth = window.getSupabaseAuth();
+          return true;
+        }
+        return false;
+      }
+      function waitAndTriggerInit() {
+        if (typeof window.auth !== 'undefined' && window.auth && typeof window.initAppShellAuth === 'function') {
+          try { window.initAppShellAuth(); } catch (e) { console.error(e); }
+        } else if (typeof window.initAppShellAuth === 'function') {
+          setTimeout(waitAndTriggerInit, 300);
+        }
+      }
+      function bootstrap() {
+        if (!initAuth()) setTimeout(bootstrap, 200);
+        else setTimeout(waitAndTriggerInit, 200);
+      }
+      bootstrap();
+    })();
+  </script>
+  <script src="../js/ortak.js"></script>
+</head>
+
+<body>
+
+  <div class="appbar">
+    <div class="brand" onclick="location.href='../panel.html'">
+      <img src="../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
+    </div>
+    <nav class="nav-center"><ul class="nav-list" id="navMain"></ul></nav>
+    <div class="nav-right">
+      <button class="btn hamb" id="hamburger" title="Menü">☰</button>
+      <div class="nav-item">
+        <button class="iconbtn" id="btnProfile" title="Profil">
+          <span class="avatar"></span> <span id="profName" class="muted">Profil</span>
+        </button>
+        <div class="dropdown drop-right" id="profDropdown">
+          <a href="../diger/kullanici-yonetimi.html">👤 Profil</a>
+          <a href="../diger/sistem-ayarlari.html">⚙️ Sistem Ayarları</a>
+          <a href="#" id="btnLogout">🚪 Çıkış Yap</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <aside class="drawer" id="drawer"></aside>
+  <div class="toast-container" id="toastContainer"></div>
+
+  <main class="wrap">
+    <div class="page-head">
+      <h1>📥 Kurban Excel / CSV aktarımı</h1>
+      <div class="toolbar">
+        <a class="link-btn" href="kurbanrapor.html">Kurban raporu</a>
+        <a class="link-btn" href="kurbanyonetim.html">Kurban yönetimi</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Aktarım hakkında</h2>
+      <ul class="info-list">
+        <li>Her satır için yeni bir <strong>UUID</strong> üretilir; aynı yıl / ad / fiyat / personel tekrarı olsa bile kayıtlar birbirine karışmaz.</li>
+        <li><code>created_by</code> sütunundaki personel adı <code>kullanicilar.adsoyad</code> ile <strong>Türkçe büyük/küçük harf duyarsız</strong> eşleştirilir; eşleşme yoksa önizlemede <span class="pill diger">Diğer</span> gösterilir ve <code>created_by_uid</code> <strong>boş (null)</strong> bırakılır (eski personel, artık sistemde yok).</li>
+        <li>Dosyadaki <code>created_by_uid</code> sütunu yok sayılır; UID her zaman bu eşleştirmeden (veya null) gelir.</li>
+        <li>Bağış hisse tablosunda <code>telefon</code> zorunludur: dosyada yoksa otomatik <code>-</code> yazılır. İsterseniz isteğe bağlı <code>telefon</code> sütunu ekleyebilirsiniz.</li>
+        <li>Etli hisse için <code>telefon</code> yoksa <code>-</code>, <code>hisse_grubu</code> yoksa <code>IMPORT</code> atanır (şema zorunluluğu).</li>
+        <li><code>aciklama</code> sütunu her iki tabloda da <strong>isteğe bağlıdır</strong>; CSV’de yoksa veya boşsa veritabanında <code>null</code> kaydedilir.</li>
+        <li>CSV ayırıcı: virgül veya noktalı virgül (Excel Türkiye). UTF-8 kullanın; gerekirse BOM kabul edilir.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>Bağış hisse</h2>
+      <p class="sub">
+        Zorunlu sütunlar: <code>yil</code>, <code>ad_soyad</code>, <code>fiyat</code>, <code>created_by</code> (boş olabilir → Diğer). İsteğe bağlı: <code>aciklama</code> (<code>açıklama</code> başlığı da kabul edilir). Başlık eş anlamlıları:
+        <code>creadet_by</code>, <code>yıl</code>, <code>tutar</code>.
+      </p>
+      <div class="file-row">
+        <input type="file" id="fileBagis" accept=".csv,text/csv" />
+        <button type="button" class="btn-secondary" id="btnBagisOnizle">Önizle</button>
+        <button type="button" class="btn-primary" id="btnBagisAktar" disabled>Aktar (doğrular)</button>
+      </div>
+      <div class="stat-inline" id="bagisStats"></div>
+      <h3 class="muted" style="font-size:13px;margin:12px 0 6px">Hatalı satırlar</h3>
+      <div class="table-wrap" id="bagisErrWrap" style="display:none;margin-bottom:12px">
+        <table class="tbl-mini" id="tblBagisErr"></table>
+      </div>
+      <h3 class="muted" style="font-size:13px;margin:12px 0 6px">Doğru satırlar (önizleme)</h3>
+      <div class="table-wrap">
+        <table class="tbl-mini" id="tblBagisOk">
+          <thead><tr><th>Satır</th><th>id (yeni)</th><th>yil</th><th>ad_soyad</th><th>fiyat</th><th>aciklama</th><th>Dosya created_by</th><th>Eşleşme</th><th>created_by_uid</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Etli hisse</h2>
+      <p class="sub">
+        Zorunlu: <code>yil</code>, <code>hisedar_ad_soyad</code> (veritabanı sütunu; CSV başlığında yazım farkları normalize edilir), <code>created_by</code>.
+        <code>hisse_adedi</code> boşsa <strong>1</strong> atanır. İsteğe bağlı: <code>telefon</code>, <code>hisse_grubu</code> (yoksa <code>IMPORT</code>), <code>aciklama</code>.
+      </p>
+      <div class="file-row">
+        <input type="file" id="fileEtli" accept=".csv,text/csv" />
+        <button type="button" class="btn-secondary" id="btnEtliOnizle">Önizle</button>
+        <button type="button" class="btn-primary" id="btnEtliAktar" disabled>Aktar (doğrular)</button>
+      </div>
+      <div class="stat-inline" id="etliStats"></div>
+      <h3 class="muted" style="font-size:13px;margin:12px 0 6px">Hatalı satırlar</h3>
+      <div class="table-wrap" id="etliErrWrap" style="display:none;margin-bottom:12px">
+        <table class="tbl-mini" id="tblEtliErr"></table>
+      </div>
+      <h3 class="muted" style="font-size:13px;margin:12px 0 6px">Doğru satırlar (önizleme)</h3>
+      <div class="table-wrap">
+        <table class="tbl-mini" id="tblEtliOk">
+          <thead><tr><th>Satır</th><th>id (yeni)</th><th>yil</th><th>hisedar_ad_soyad</th><th>hisse_adedi</th><th>aciklama</th><th>Dosya created_by</th><th>Eşleşme</th><th>created_by_uid</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const DEFAULT_TELEFON = '-';
+    const DEFAULT_HISSE_GRUBU = 'IMPORT';
+
+    let kullaniciNameToId = new Map();
+    let kullaniciLoaded = false;
+
+    function normKey(s) {
+      return String(s || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLocaleLowerCase('tr-TR')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function normalizeHeader(h) {
+      let x = String(h || '').trim();
+      if (x.charCodeAt(0) === 0xfeff) x = x.slice(1);
+      x = normKey(x).replace(/\s/g, '_');
+      const aliases = {
+        yil: 'yil',
+        yıl: 'yil',
+        year: 'yil',
+        ad_soyad: 'ad_soyad',
+        adsoyad: 'ad_soyad',
+        'ad_soyad': 'ad_soyad',
+        fiyat: 'fiyat',
+        tutar: 'fiyat',
+        created_by: 'created_by',
+        creadet_by: 'created_by',
+        created_by_uid: 'created_by_uid_ignore',
+        creadet_by_uid: 'created_by_uid_ignore',
+        aciklama: 'aciklama',
+        açıklama: 'aciklama',
+        aciklam: 'aciklama',
+        telefon: 'telefon',
+        hisedar_ad_soyad: 'hisedar_ad_soyad',
+        hissedar_ad_soyad: 'hisedar_ad_soyad',
+        hisedir_ad_soyad: 'hisedar_ad_soyad',
+        hissear_ad_soyad: 'hisedar_ad_soyad',
+        hissedar_adsoyad: 'hisedar_ad_soyad',
+        hisedar_adsoyad: 'hisedar_ad_soyad',
+        hisse_adedi: 'hisse_adedi',
+        hisse_adet: 'hisse_adedi',
+        hisse_grubu: 'hisse_grubu',
+        hissegrubu: 'hisse_grubu'
+      };
+      if (aliases[x] !== undefined) return aliases[x];
+      const xWords = normKey(x.replace(/_/g, ' '));
+      if (xWords === normKey('açıklama') || xWords === normKey('aciklama')) return 'aciklama';
+      return x;
+    }
+
+    function parseNumberTr(v) {
+      if (v == null || v === '') return NaN;
+      let s = String(v).trim().replace(/\s/g, '');
+      if (!s) return NaN;
+      const lastC = s.lastIndexOf(',');
+      const lastD = s.lastIndexOf('.');
+      if (lastC > lastD) {
+        s = s.replace(/\./g, '').replace(',', '.');
+      } else {
+        s = s.replace(/,/g, '');
+      }
+      const n = parseFloat(s);
+      return Number.isFinite(n) ? n : NaN;
+    }
+
+    function parseIntYear(v) {
+      const n = parseInt(String(v).trim(), 10);
+      return Number.isFinite(n) ? n : NaN;
+    }
+
+    async function ensureKullanicilar(sb) {
+      if (kullaniciLoaded) return;
+      const { data, error } = await sb.from('kullanicilar').select('id, adsoyad');
+      if (error) throw error;
+      kullaniciNameToId = new Map();
+      (data || []).forEach(row => {
+        const k = normKey(row.adsoyad);
+        if (k && !kullaniciNameToId.has(k)) kullaniciNameToId.set(k, row.id);
+      });
+      kullaniciLoaded = true;
+    }
+
+    function resolveCreatedByUid(createdByRaw) {
+      const raw = String(createdByRaw || '').trim();
+      if (!raw) {
+        return { uid: null, label: 'Diğer', matched: false, reason: 'created_by boş' };
+      }
+      const k = normKey(raw);
+      const uid = kullaniciNameToId.get(k);
+      if (uid) {
+        return { uid, label: raw, matched: true, reason: '' };
+      }
+      return { uid: null, label: 'Diğer', matched: false, reason: 'kullanicilar ile eşleşmedi' };
+    }
+
+    function mapRow(obj) {
+      const out = {};
+      Object.keys(obj).forEach(key => {
+        out[normalizeHeader(key)] = obj[key];
+      });
+      return out;
+    }
+
+    function parseCsvFile(file, done) {
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: 'greedy',
+        encoding: 'UTF-8',
+        complete: results => {
+          done(null, results.data || [], results.meta);
+        },
+        error: err => done(err, [], null)
+      });
+    }
+
+    let bagisValidPayloads = [];
+    let bagisErrors = [];
+    let etliValidPayloads = [];
+    let etliErrors = [];
+
+    function previewAcikHtml(val, maxLen) {
+      const lim = typeof maxLen === 'number' ? maxLen : 72;
+      const t = String(val ?? '').trim();
+      if (!t) return '<span class="muted">—</span>';
+      const cut = t.length > lim ? t.slice(0, lim) + '…' : t;
+      return escapeHtml(cut);
+    }
+
+    function normalizeAciklama(o) {
+      const t = String(o.aciklama != null ? o.aciklama : '').trim();
+      return t ? t : null;
+    }
+
+    function renderBagisPreview() {
+      const stats = document.getElementById('bagisStats');
+      const tblOk = document.querySelector('#tblBagisOk tbody');
+      const tblErr = document.getElementById('tblBagisErr');
+      const errWrap = document.getElementById('bagisErrWrap');
+      tblOk.innerHTML = '';
+      tblErr.innerHTML = '';
+      const nOk = bagisValidPayloads.length;
+      const nBad = bagisErrors.length;
+      stats.innerHTML = `<span class="ok">Doğru: ${nOk}</span><span class="bad">Hata: ${nBad}</span>`;
+      if (nBad) {
+        errWrap.style.display = 'block';
+        tblErr.innerHTML = '<thead><tr><th>Satır</th><th>Hata</th><th>Ham veri</th></tr></thead><tbody></tbody>';
+        const tb = tblErr.querySelector('tbody');
+        bagisErrors.forEach(e => {
+          const tr = document.createElement('tr');
+          tr.className = 'err';
+          tr.innerHTML = `<td>${e.line}</td><td>${escapeHtml(e.msg)}</td><td class="mono">${escapeHtml(JSON.stringify(e.raw))}</td>`;
+          tb.appendChild(tr);
+        });
+      } else {
+        errWrap.style.display = 'none';
+      }
+      bagisValidPayloads.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.className = 'ok';
+        const pill = row._matched
+          ? '<span class="pill matched">Eşleşti</span>'
+          : '<span class="pill diger">Diğer</span>';
+        const uidCell = row.created_by_uid
+          ? `<span class="mono">${escapeHtml(row.created_by_uid)}</span>`
+          : '<span class="muted">null</span>';
+        tr.innerHTML = `<td>${row._line}</td><td class="mono">${escapeHtml(row.id)}</td><td>${row.yil}</td><td>${escapeHtml(row.ad_soyad)}</td><td>${escapeHtml(String(row.fiyat))}</td><td>${previewAcikHtml(row.aciklama)}</td><td>${escapeHtml(row._fileCreatedBy)}</td><td>${pill}</td><td>${uidCell}</td>`;
+        tblOk.appendChild(tr);
+      });
+      document.getElementById('btnBagisAktar').disabled = nOk === 0;
+    }
+
+    function renderEtliPreview() {
+      const stats = document.getElementById('etliStats');
+      const tblOk = document.querySelector('#tblEtliOk tbody');
+      const tblErr = document.getElementById('tblEtliErr');
+      const errWrap = document.getElementById('etliErrWrap');
+      tblOk.innerHTML = '';
+      tblErr.innerHTML = '';
+      const nOk = etliValidPayloads.length;
+      const nBad = etliErrors.length;
+      stats.innerHTML = `<span class="ok">Doğru: ${nOk}</span><span class="bad">Hata: ${nBad}</span>`;
+      if (nBad) {
+        errWrap.style.display = 'block';
+        tblErr.innerHTML = '<thead><tr><th>Satır</th><th>Hata</th><th>Ham veri</th></tr></thead><tbody></tbody>';
+        const tb = tblErr.querySelector('tbody');
+        etliErrors.forEach(e => {
+          const tr = document.createElement('tr');
+          tr.className = 'err';
+          tr.innerHTML = `<td>${e.line}</td><td>${escapeHtml(e.msg)}</td><td class="mono">${escapeHtml(JSON.stringify(e.raw))}</td>`;
+          tb.appendChild(tr);
+        });
+      } else {
+        errWrap.style.display = 'none';
+      }
+      etliValidPayloads.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.className = 'ok';
+        const pill = row._matched
+          ? '<span class="pill matched">Eşleşti</span>'
+          : '<span class="pill diger">Diğer</span>';
+        const uidCell = row.created_by_uid
+          ? `<span class="mono">${escapeHtml(row.created_by_uid)}</span>`
+          : '<span class="muted">null</span>';
+        tr.innerHTML = `<td>${row._line}</td><td class="mono">${escapeHtml(row.id)}</td><td>${row.yil}</td><td>${escapeHtml(row.hisedar_ad_soyad)}</td><td>${row.hisse_adedi}</td><td>${previewAcikHtml(row.aciklama)}</td><td>${escapeHtml(row._fileCreatedBy)}</td><td>${pill}</td><td>${uidCell}</td>`;
+        tblOk.appendChild(tr);
+      });
+      document.getElementById('btnEtliAktar').disabled = nOk === 0;
+    }
+
+    function processBagisRows(rows, sb) {
+      bagisValidPayloads = [];
+      bagisErrors = [];
+      const startLine = 2;
+      rows.forEach((raw, i) => {
+        const line = startLine + i;
+        if (!raw || typeof raw !== 'object') return;
+        const o = mapRow(raw);
+        const keys = Object.keys(o).filter(k => o[k] != null && String(o[k]).trim() !== '');
+        if (keys.length === 0) return;
+        const yil = parseIntYear(o.yil);
+        const ad = String(o.ad_soyad || '').trim();
+        const fiyat = parseNumberTr(o.fiyat);
+        const fileCb = String(o.created_by || '').trim();
+        const tel = String(o.telefon || '').trim() || DEFAULT_TELEFON;
+        const aciklamaDb = normalizeAciklama(o);
+        const errs = [];
+        if (!Number.isFinite(yil)) errs.push('yil geçersiz');
+        if (!ad) errs.push('ad_soyad zorunlu');
+        if (!Number.isFinite(fiyat)) errs.push('fiyat geçersiz');
+        if (errs.length) {
+          bagisErrors.push({ line, msg: errs.join('; '), raw: o });
+          return;
+        }
+        const res = resolveCreatedByUid(fileCb);
+        const id = crypto.randomUUID();
+        const payload = {
+          id,
+          yil,
+          ad_soyad: ad,
+          telefon: tel,
+          fiyat,
+          created_by_uid: res.uid,
+          durum: 'kayit_alindi',
+          aciklama: aciklamaDb,
+          _line: line,
+          _fileCreatedBy: fileCb || '—',
+          _matched: res.matched
+        };
+        bagisValidPayloads.push(payload);
+      });
+      renderBagisPreview();
+    }
+
+    function processEtliRows(rows) {
+      etliValidPayloads = [];
+      etliErrors = [];
+      const startLine = 2;
+      rows.forEach((raw, i) => {
+        const line = startLine + i;
+        if (!raw || typeof raw !== 'object') return;
+        const o = mapRow(raw);
+        const keys = Object.keys(o).filter(k => o[k] != null && String(o[k]).trim() !== '');
+        if (keys.length === 0) return;
+        const yil = parseIntYear(o.yil);
+        const hissedar = String(o.hisedar_ad_soyad || '').trim();
+        let adetStr = o.hisse_adedi;
+        if (adetStr == null || String(adetStr).trim() === '') {
+          adetStr = '1';
+        }
+        const hisseAdedi = parseInt(String(adetStr).trim(), 10);
+        const fileCb = String(o.created_by || '').trim();
+        const tel = String(o.telefon || '').trim() || DEFAULT_TELEFON;
+        const grup = String(o.hisse_grubu || '').trim() || DEFAULT_HISSE_GRUBU;
+        const aciklamaDb = normalizeAciklama(o);
+        const errs = [];
+        if (!Number.isFinite(yil)) errs.push('yil geçersiz');
+        if (!hissedar) errs.push('hisedar_ad_soyad zorunlu');
+        if (!Number.isFinite(hisseAdedi) || hisseAdedi < 1) errs.push('hisse_adedi geçersiz (min 1)');
+        if (errs.length) {
+          etliErrors.push({ line, msg: errs.join('; '), raw: o });
+          return;
+        }
+        const res = resolveCreatedByUid(fileCb);
+        const id = crypto.randomUUID();
+        const payload = {
+          id,
+          yil,
+          hisedar_ad_soyad: hissedar,
+          telefon: tel,
+          hisse_grubu: grup,
+          hisse_adedi: hisseAdedi,
+          created_by_uid: res.uid,
+          aciklama: aciklamaDb,
+          _line: line,
+          _fileCreatedBy: fileCb || '—',
+          _matched: res.matched
+        };
+        etliValidPayloads.push(payload);
+      });
+      renderEtliPreview();
+    }
+
+    function stripMeta(p) {
+      const { _line, _fileCreatedBy, _matched, ...rest } = p;
+      return rest;
+    }
+
+    async function insertChunked(sb, table, payloads) {
+      const chunk = 80;
+      let inserted = 0;
+      for (let i = 0; i < payloads.length; i += chunk) {
+        const part = payloads.slice(i, i + chunk).map(stripMeta);
+        const { error } = await sb.from(table).insert(part);
+        if (error) throw error;
+        inserted += part.length;
+      }
+      return inserted;
+    }
+
+    let aktarimListenersBound = false;
+
+    window.initPage = async function initKurbanAktarim() {
+      const sb = window.supabase;
+      if (!sb) {
+        showToast('error', 'Bağlantı', 'Supabase hazır değil.');
+        return;
+      }
+      try {
+        await ensureKullanicilar(sb);
+      } catch (e) {
+        console.error(e);
+        showToast('error', 'Kullanıcılar', 'kullanicilar yüklenemedi. Yetkiniz olmayabilir (RLS).');
+      }
+
+      function bind() {
+        if (aktarimListenersBound) return;
+        aktarimListenersBound = true;
+
+        document.getElementById('btnBagisOnizle').addEventListener('click', () => {
+          const f = document.getElementById('fileBagis').files[0];
+          if (!f) {
+            showToast('warning', 'Dosya', 'Önce CSV seçin.');
+            return;
+          }
+          parseCsvFile(f, (err, rows) => {
+            if (err) {
+              showToast('error', 'CSV', err.message || String(err));
+              return;
+            }
+            try {
+              processBagisRows(rows, sb);
+              showToast('success', 'Önizleme', `${bagisValidPayloads.length} doğru, ${bagisErrors.length} hatalı satır.`);
+            } catch (e2) {
+              console.error(e2);
+              showToast('error', 'Hata', 'Önizleme işlenemedi.');
+            }
+          });
+        });
+
+        document.getElementById('btnEtliOnizle').addEventListener('click', () => {
+          const f = document.getElementById('fileEtli').files[0];
+          if (!f) {
+            showToast('warning', 'Dosya', 'Önce CSV seçin.');
+            return;
+          }
+          parseCsvFile(f, (err, rows) => {
+            if (err) {
+              showToast('error', 'CSV', err.message || String(err));
+              return;
+            }
+            try {
+              processEtliRows(rows);
+              showToast('success', 'Önizleme', `${etliValidPayloads.length} doğru, ${etliErrors.length} hatalı satır.`);
+            } catch (e2) {
+              console.error(e2);
+              showToast('error', 'Hata', 'Önizleme işlenemedi.');
+            }
+          });
+        });
+
+        document.getElementById('btnBagisAktar').addEventListener('click', async () => {
+          if (!bagisValidPayloads.length) return;
+          try {
+            const n = await insertChunked(sb, 'kurban_2026_bagis_hisse', bagisValidPayloads);
+            showToast('success', 'Aktarım', `${n} bağış hisse kaydı eklendi.`);
+            bagisValidPayloads = [];
+            renderBagisPreview();
+            document.getElementById('fileBagis').value = '';
+          } catch (e) {
+            console.error(e);
+            showToast('error', 'Aktarım', (e && e.message) || 'Insert başarısız. RLS veya doğrulama kontrol edin.');
+          }
+        });
+
+        document.getElementById('btnEtliAktar').addEventListener('click', async () => {
+          if (!etliValidPayloads.length) return;
+          try {
+            const n = await insertChunked(sb, 'kurban_2026_etli_hisse', etliValidPayloads);
+            showToast('success', 'Aktarım', `${n} etli hisse kaydı eklendi.`);
+            etliValidPayloads = [];
+            renderEtliPreview();
+            document.getElementById('fileEtli').value = '';
+          } catch (e) {
+            console.error(e);
+            showToast('error', 'Aktarım', (e && e.message) || 'Insert başarısız. RLS veya doğrulama kontrol edin.');
+          }
+        });
+      }
+
+      bind();
+    };
+  </script>
+</body>
+
+</html>

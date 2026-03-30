@@ -1,0 +1,2517 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Kurban Raporu | Karaağaç</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <link rel="icon" type="image/png" href="../img/logo.png" />
+  <link rel="stylesheet" href="../css/app-shell.css" />
+
+  <style>
+    body {
+      padding-top: var(--appbar-h) !important;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+
+    .wrap {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    .page-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .page-head h1 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .toolbar button {
+      height: 38px;
+      border: 1px solid var(--border);
+      background: var(--accent, #324960);
+      color: #fff;
+      border-radius: 10px;
+      padding: 0 14px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .toolbar button.btn-yazdir {
+      background: var(--surface);
+      color: var(--ink);
+      border-color: var(--border);
+    }
+
+    .toolbar button.btn-duzenle {
+      background: var(--surface);
+      color: var(--ink);
+      border: 1px solid var(--border);
+    }
+
+    .isim-ozet-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .isim-ozet-toolbar h2 {
+      margin: 0;
+    }
+
+    .btn-toggle-tablo {
+      height: 36px;
+      padding: 0 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--ink);
+      font: inherit;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .btn-toggle-tablo:hover {
+      border-color: var(--accent, #324960);
+      color: var(--accent, #324960);
+    }
+
+    .modal-kurban-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 3000;
+      background: rgba(15, 23, 42, 0.55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-kurban-overlay[hidden] {
+      display: none !important;
+    }
+
+    .modal-kurban {
+      width: 100%;
+      max-width: 1000px;
+      max-height: min(92vh, 900px);
+      background: var(--card);
+      border-radius: 18px;
+      border: 1px solid var(--stroke, var(--border));
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .modal-kurban-hd {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--stroke, var(--border));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .modal-kurban-hd h2 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .modal-kurban-close {
+      width: 40px;
+      height: 40px;
+      border: none;
+      border-radius: 10px;
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 22px;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .modal-kurban-close:hover {
+      background: rgba(239, 68, 68, 0.12);
+      color: #b91c1c;
+    }
+
+    .modal-kurban-tabs {
+      display: flex;
+      gap: 4px;
+      padding: 10px 16px 0;
+      border-bottom: 1px solid var(--stroke, var(--border));
+      flex-shrink: 0;
+    }
+
+    .modal-kurban-tabs button {
+      padding: 10px 18px;
+      border: none;
+      border-radius: 10px 10px 0 0;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .modal-kurban-tabs button.active {
+      background: var(--surface);
+      color: var(--ink);
+      box-shadow: 0 -1px 0 var(--card);
+    }
+
+    .modal-kurban-bd {
+      padding: 14px 18px 18px;
+      overflow: auto;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .modal-kurban-filtre {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 14px;
+      align-items: center;
+    }
+
+    .modal-kurban-filtre input {
+      flex: 1 1 200px;
+      min-width: 160px;
+      height: 40px;
+      padding: 0 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font: inherit;
+      background: var(--surface);
+      color: var(--ink);
+    }
+
+    .modal-kurban-ozet {
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--muted);
+      margin: 0 0 12px;
+      padding: 10px 12px;
+      background: var(--surface);
+      border-radius: 10px;
+      border: 1px solid var(--stroke, var(--border));
+    }
+
+    .modal-kurban-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .modal-kurban-row-id {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    table.tbl-rapor th.th-isim-sort {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    table.tbl-rapor th.th-isim-sort:hover {
+      color: var(--ink);
+      background: rgba(59, 130, 246, 0.08);
+    }
+
+    .modal-kurban-row {
+      border: 1px solid var(--stroke, var(--border));
+      border-radius: 12px;
+      padding: 12px 14px;
+      background: var(--surface);
+    }
+
+    .modal-kurban-row-h {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .modal-kurban-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+    }
+
+    .modal-kurban-grid label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .modal-kurban-grid input,
+    .modal-kurban-grid select,
+    .modal-kurban-grid textarea {
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font: inherit;
+      font-size: 13px;
+      background: var(--card);
+      color: var(--ink);
+    }
+
+    .modal-kurban-grid textarea {
+      min-height: 52px;
+      resize: vertical;
+    }
+
+    .modal-kurban-row-ft {
+      margin-top: 10px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .modal-kurban-row-ft button {
+      height: 36px;
+      padding: 0 16px;
+      border-radius: 10px;
+      border: none;
+      font: inherit;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .btn-kaydet-mini {
+      background: var(--accent, #324960);
+      color: #fff;
+    }
+
+    .stat-card.stat-daimi { border-left: 4px solid #16a34a; }
+    .stat-card.stat-pasif { border-left: 4px solid #dc2626; }
+    .stat-card.stat-yeni { border-left: 4px solid #2563eb; }
+    .stat-card.stat-degisken { border-left: 4px solid #ea580c; }
+
+    .portfoy-ozet-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .portfoy-ozet-pill {
+      flex: 1 1 220px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: var(--surface);
+      border: 1px solid var(--stroke, var(--border));
+    }
+
+    .portfoy-ozet-pill .lab {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 6px;
+    }
+
+    .portfoy-ozet-pill .val {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .durum-renk-legend {
+      font-size: 12px;
+      color: var(--muted);
+      margin: 0 0 14px;
+      line-height: 1.5;
+    }
+
+    .durum-renk-legend strong { color: var(--ink); font-weight: 700; }
+
+    .toolbar a.link-btn {
+      display: inline-flex;
+      align-items: center;
+      height: 38px;
+      padding: 0 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--ink);
+      font-weight: 600;
+      font-size: 14px;
+      text-decoration: none;
+    }
+
+    .tagline {
+      margin: 0 0 20px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .yil-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .yil-oran-pill {
+      display: inline-block;
+      font-size: 15px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      padding: 6px 12px;
+      border-radius: 10px;
+      line-height: 1.25;
+      box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
+    }
+
+    .kpi-trend-section {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+
+    .kpi-trend-box {
+      background: var(--card);
+      border: 1px solid var(--stroke, var(--border));
+      border-radius: 14px;
+      padding: 12px 14px 10px;
+      box-shadow: var(--shadow, 0 1px 3px rgba(0, 0, 0, 0.06));
+    }
+
+    .kpi-trend-title {
+      margin: 0 0 8px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent, #324960);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      border-bottom: 1px solid var(--stroke, var(--border));
+      padding-bottom: 6px;
+    }
+
+    .kpi-trend-svg-wrap {
+      width: 100%;
+      min-height: 124px;
+    }
+
+    .kpi-trend-svg-wrap svg {
+      width: 100%;
+      height: auto;
+      display: block;
+      max-height: 140px;
+    }
+
+    .kpi-trend-svg-wrap .chart-line {
+      fill: none;
+      stroke: var(--accent, #324960);
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .kpi-trend-svg-wrap .chart-point {
+      fill: var(--card, #fff);
+      stroke: var(--accent, #324960);
+      stroke-width: 2.5;
+    }
+
+    .kpi-trend-svg-wrap .growth-bg {
+      fill: #16a34a;
+    }
+
+    .kpi-trend-svg-wrap .growth-bg.negative {
+      fill: #dc2626;
+    }
+
+    .kpi-trend-svg-wrap .growth-badge {
+      font-size: 9px;
+      font-weight: 700;
+      fill: #fff;
+    }
+
+    .yil-kutu {
+      background: var(--card);
+      border: 1px solid var(--stroke, var(--border));
+      border-radius: 14px;
+      padding: 14px 16px;
+      box-shadow: var(--shadow, 0 1px 3px rgba(0, 0, 0, 0.06));
+    }
+
+    .yil-kutu .yil-baslik {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--stroke, var(--border));
+    }
+
+    .yil-metrik {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      padding: 4px 0;
+      color: var(--ink);
+    }
+
+    .yil-metrik span:first-child {
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .yil-metrik .sayi {
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .yil-alt-baslik {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 8px;
+    }
+
+    .yil-blok-etli {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--stroke, var(--border));
+    }
+
+    table.tbl-rapor .td-oran {
+      font-weight: 800;
+      font-size: 12px;
+    }
+
+    table.tbl-rapor thead th.th-sort {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    table.tbl-rapor thead th.th-sort:active {
+      opacity: 0.85;
+    }
+
+    table.tbl-rapor .td-durum {
+      text-align: center;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .kpi-aciklama {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--stroke, var(--border));
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .kpi-aciklama p {
+      margin: 0 0 8px;
+    }
+
+    .kpi-aciklama p:last-child {
+      margin-bottom: 0;
+    }
+
+    .kisi-grup-baslik {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--ink);
+      margin: 0 0 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--stroke, var(--border));
+    }
+
+    .kisi-grup-baslik.kisi-grup-ikinci {
+      margin-top: 20px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--stroke, var(--border));
+      border-radius: 12px;
+      padding: 12px 14px;
+      box-shadow: var(--shadow, 0 1px 3px rgba(0, 0, 0, 0.06));
+    }
+
+    .stat-card.accent {
+      border-color: rgba(59, 130, 246, 0.35);
+      background: linear-gradient(180deg, rgba(59, 130, 246, 0.05) 0%, var(--card) 100%);
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      line-height: 1.3;
+    }
+
+    .stat-value {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--stroke, var(--border));
+      border-radius: 16px;
+      padding: 16px;
+      margin: 16px 0;
+      box-shadow: var(--shadow, 0 1px 3px rgba(0, 0, 0, 0.06));
+    }
+
+    .card h2 {
+      margin: 0 0 6px;
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .card .hint {
+      margin: 0 0 14px;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--stroke, var(--border));
+      border-radius: 12px;
+      background: var(--card);
+    }
+
+    table.tbl-rapor {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 600px;
+    }
+
+    table.tbl-rapor.tbl-isim {
+      table-layout: fixed;
+      width: 100%;
+      min-width: 560px;
+      max-width: 100%;
+    }
+
+    table.tbl-rapor.tbl-isim thead th.th-isim-ad {
+      text-align: left;
+      width: 40%;
+      min-width: 140px;
+      max-width: 48%;
+    }
+
+    table.tbl-rapor.tbl-isim thead th.th-isim-durum {
+      width: 13%;
+      min-width: 88px;
+      max-width: 120px;
+    }
+
+    table.tbl-rapor.tbl-isim thead th.th-isim-yil {
+      width: 15.666%;
+      min-width: 52px;
+      max-width: 72px;
+    }
+
+    table.tbl-rapor.tbl-isim td.td-isim-ad {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 0;
+    }
+
+    table.tbl-rapor.tbl-isim td.td-isim-durum {
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    table.tbl-rapor.tbl-isim td.td-isim-durum.isim-durum-daimi {
+      color: #16a34a;
+      font-weight: 800;
+    }
+
+    table.tbl-rapor.tbl-isim td.td-isim-durum.isim-durum-yeni {
+      color: #2563eb;
+      font-weight: 800;
+    }
+
+    table.tbl-rapor.tbl-isim td.td-isim-durum.isim-durum-pasif {
+      color: #dc2626;
+      font-weight: 800;
+    }
+
+    table.tbl-rapor.tbl-isim td.td-isim-durum.isim-durum-degisken {
+      color: #ea580c;
+      font-weight: 800;
+    }
+
+    table.tbl-rapor.tbl-isim td.td-isim-yil {
+      text-align: center;
+    }
+
+    table.tbl-rapor .td-tik {
+      text-align: center;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    table.tbl-rapor thead th {
+      position: sticky;
+      top: 0;
+      background: var(--surface);
+      border-bottom: 2px solid var(--stroke, var(--border));
+      font-weight: 600;
+      text-align: center;
+      font-size: 11px;
+      color: var(--muted);
+      padding: 8px 6px;
+      z-index: 1;
+      vertical-align: middle;
+    }
+
+    table.tbl-rapor thead th.th-personel {
+      text-align: left;
+      min-width: 160px;
+    }
+
+    table.tbl-rapor thead th.th-yil {
+      background: rgba(59, 130, 246, 0.08);
+      border-left: 1px solid var(--stroke, var(--border));
+    }
+
+    table.tbl-rapor thead th.th-yil:first-of-type {
+      border-left: 2px solid var(--stroke, var(--border));
+    }
+
+    table.tbl-rapor thead tr.sub th {
+      top: 36px;
+      font-size: 10px;
+      padding: 6px 4px;
+      background: var(--surface);
+    }
+
+    table.tbl-rapor tbody td {
+      border-bottom: 1px solid var(--stroke, var(--border));
+      padding: 8px 6px;
+      font-size: 13px;
+      color: var(--ink);
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+
+    table.tbl-rapor tbody td.td-ad {
+      text-align: left;
+      font-weight: 500;
+    }
+
+    table.tbl-rapor tbody td.td-yil-start {
+      border-left: 1px solid var(--stroke, var(--border));
+      background: rgba(248, 250, 252, 0.5);
+    }
+
+    table.tbl-rapor tbody tr:hover td {
+      background: rgba(241, 245, 249, 0.9);
+    }
+
+    table.tbl-rapor tbody tr:hover td.td-yil-start {
+      background: rgba(226, 232, 240, 0.45);
+    }
+
+    table.tbl-rapor tbody tr:hover td.td-yil:not(.td-yil-start) {
+      background: rgba(241, 245, 249, 0.75);
+    }
+
+    .right {
+      text-align: right;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    #raporYukleniyor {
+      padding: 28px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .rapor-yukle-ipucu {
+      margin: 0 0 14px;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .tbl-legend {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 10px;
+      line-height: 1.45;
+    }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .chart-box {
+      background: var(--card);
+      border: 1px solid var(--stroke, var(--border));
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: var(--shadow, 0 1px 3px rgba(0, 0, 0, 0.06));
+    }
+
+    .chart-box h3 {
+      margin: 0 0 12px;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .chart-canvas-wrap {
+      position: relative;
+      height: 280px;
+      width: 100%;
+    }
+
+    .yil-metrik .hedef-etiket {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .filtre-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      padding: 12px 14px;
+      background: var(--card);
+      border: 1px solid var(--stroke, var(--border));
+      border-radius: 12px;
+      box-shadow: var(--shadow, 0 1px 3px rgba(0, 0, 0, 0.06));
+    }
+
+    .filtre-bar label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink);
+      white-space: nowrap;
+    }
+
+    .filtre-bar select {
+      min-width: 220px;
+      max-width: 100%;
+      flex: 1 1 200px;
+      height: 40px;
+      padding: 0 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+      color: var(--ink);
+      font: inherit;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .ozet-baslik-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .ozet-baslik-wrap .filtre-etiket {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+  </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="../src/supabase.js"></script>
+  <script src="../src/supabase-auth-wrapper.js"></script>
+  <script src="../src/supabase-db-wrapper.js"></script>
+  <script>
+    (function () {
+      function initAuth() {
+        if (typeof window.getSupabaseAuth === 'function') {
+          window.auth = window.getSupabaseAuth();
+          return true;
+        }
+        return false;
+      }
+      function waitAndTriggerInit() {
+        if (typeof window.auth !== 'undefined' && window.auth && typeof window.initAppShellAuth === 'function') {
+          try { window.initAppShellAuth(); } catch (e) { console.error('initAppShellAuth hatası:', e); }
+        } else if (typeof window.initAppShellAuth === 'function') {
+          setTimeout(waitAndTriggerInit, 300);
+        }
+      }
+      function bootstrap() {
+        if (!initAuth()) setTimeout(bootstrap, 200);
+        else setTimeout(waitAndTriggerInit, 200);
+      }
+      bootstrap();
+    })();
+  </script>
+  <script src="../js/ortak.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+
+<body>
+
+  <div class="appbar">
+    <div class="brand" onclick="location.href='../panel.html'">
+      <img src="../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
+    </div>
+    <nav class="nav-center"><ul class="nav-list" id="navMain"></ul></nav>
+    <div class="nav-right">
+      <button class="btn hamb" id="hamburger" title="Menü">☰</button>
+      <div class="nav-item">
+        <button class="iconbtn" id="btnProfile" title="Profil">
+          <span class="avatar"></span> <span id="profName" class="muted">Profil</span>
+        </button>
+        <div class="dropdown drop-right" id="profDropdown">
+          <a href="../diger/kullanici-yonetimi.html">👤 Profil</a>
+          <a href="../diger/sistem-ayarlari.html">⚙️ Sistem Ayarları</a>
+          <a href="#" id="btnLogout">🚪 Çıkış Yap</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <aside class="drawer" id="drawer"></aside>
+  <div class="toast-container" id="toastContainer"></div>
+
+  <div id="modalKurbanDuzenle" class="modal-kurban-overlay" hidden aria-hidden="true">
+    <div class="modal-kurban" role="dialog" aria-modal="true" aria-labelledby="modalKurbanTitle">
+      <div class="modal-kurban-hd">
+        <h2 id="modalKurbanTitle">Rapor verilerini düzenle</h2>
+        <button type="button" class="modal-kurban-close" id="modalKurbanKapat" aria-label="Kapat">×</button>
+      </div>
+      <div class="modal-kurban-tabs">
+        <button type="button" class="active" data-tab="bagis">Bağış hisse kayıtları</button>
+        <button type="button" data-tab="etli">Etli hisse kayıtları</button>
+      </div>
+      <div class="modal-kurban-bd">
+        <div class="modal-kurban-filtre">
+          <input type="search" id="modalKurbanAra" placeholder="Ara: ad, telefon, personel, kayıt no…" autocomplete="off" />
+        </div>
+        <p id="modalKurbanOzet" class="modal-kurban-ozet" hidden></p>
+        <datalist id="listKurbanDurumBagis">
+          <option value="kayit_alindi"></option>
+          <option value="beklemede"></option>
+          <option value="tamamlandi"></option>
+        </datalist>
+        <div id="modalKurbanListeBagis" class="modal-kurban-list"></div>
+        <div id="modalKurbanListeEtli" class="modal-kurban-list" hidden></div>
+      </div>
+    </div>
+  </div>
+
+  <main class="wrap">
+    <div class="page-head">
+      <h1>Kurban Raporu</h1>
+      <div class="toolbar">
+        <button type="button" id="btnYenile">Yenile</button>
+        <button type="button" id="btnKurbanDuzenle" class="btn-duzenle" title="Kayıtları düzelt">Düzenle</button>
+        <button type="button" id="btnKurbanYazdir" class="btn-yazdir" title="PDF veya yazıcı">Yazdır / PDF</button>
+      </div>
+    </div>
+
+    <div class="filtre-bar">
+      <label for="selPersonelRapor">Personel</label>
+      <select id="selPersonelRapor" aria-label="Rapor personeli">
+        <option value="__all__">Tüm personel</option>
+      </select>
+    </div>
+
+    <div id="raporYukleniyor" style="display:none">Veriler yükleniyor…</div>
+    <p id="raporYukleIpucu" class="rapor-yukle-ipucu muted" hidden>Rapor verisini sunucudan almak için <strong>Yenile</strong>’ye tıklayın veya tarayıcıda sekmeyi yenileyin (F5).</p>
+
+    <div id="raporIcerik">
+      <div class="ozet-baslik-wrap">
+        <h2 class="muted" style="font-size:12px;margin:0;font-weight:600;text-transform:uppercase;letter-spacing:0.04em">Yıl bazında özet</h2>
+        <span id="raporFiltreEtiket" class="filtre-etiket" style="display:none"></span>
+      </div>
+      <p class="muted" style="font-size:12px;margin:-4px 0 14px;line-height:1.45">Her kartta yıl başlığı altında <strong>Bağış hisse</strong> ve <strong>Etli hisse</strong> blokları; her blokta hedef, temin ve ulaşma nispeti (hedef yoksa —).</p>
+      <div class="yil-row" id="kpiYillar"></div>
+
+      <div class="kpi-trend-section" id="kpiYilTrendSection">
+        <div class="kpi-trend-box">
+          <h3 class="kpi-trend-title">Bağış kayıt — trend (2023–2025)</h3>
+          <div id="kpiTrendBagis" class="kpi-trend-svg-wrap" aria-hidden="true"></div>
+        </div>
+        <div class="kpi-trend-box">
+          <h3 class="kpi-trend-title">Etli hisse — trend (2023–2025)</h3>
+          <div id="kpiTrendEtli" class="kpi-trend-svg-wrap" aria-hidden="true"></div>
+        </div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-box">
+          <h3 id="chartBagisBaslik">Bağış hisse — gerçekleşen ve hedef</h3>
+          <div class="chart-canvas-wrap"><canvas id="chartKurbanBagis" aria-label="Bağış grafiği"></canvas></div>
+        </div>
+        <div class="chart-box">
+          <h3 id="chartEtliBaslik">Etli hisse (adet) — gerçekleşen ve hedef</h3>
+          <div class="chart-canvas-wrap"><canvas id="chartKurbanEtli" aria-label="Etli grafiği"></canvas></div>
+        </div>
+      </div>
+
+      <div class="card" id="cardKisiGecmis">
+        <h2 style="margin:0 0 10px;font-size:17px">Portföy ve durum (2023–2025)</h2>
+        <p class="muted" style="font-size:12px;margin:0 0 12px;line-height:1.45"><strong>Portföy</strong>, seçili kayıtlarda <strong>normalize edilmiş ad soyad</strong> ile <strong>kaç farklı kişi</strong> olduğunu gösterir (telefon dikkate alınmaz). Yazım farkları birleştirilebilir; aynı normalize isimdeki kayıtlar tek kişi sayılır. Durum kartları yıl desenine göre böler.</p>
+        <div class="portfoy-ozet-bar" id="kurbanPortfoyOzeti"></div>
+        <p class="durum-renk-legend"><strong>Durum renkleri:</strong> Daimi — yeşil · Yeni — mavi · Pasif — kırmızı · Değişken — turuncu</p>
+        <h3 class="kisi-grup-baslik">Durum dağılımı — bağış hisse</h3>
+        <div class="stats-grid" id="kpiKisiBagis"></div>
+        <h3 class="kisi-grup-baslik kisi-grup-ikinci">Durum dağılımı — etli hisse</h3>
+        <div class="stats-grid" id="kpiKisiEtli"></div>
+        <div class="kpi-aciklama muted" id="kpiKisiAciklama" hidden>
+          <p><strong>Portföy</strong> = seçili kayıtlarda normalize edilmiş ad soyada tekilleştirilmiş kişi sayısı. Üstteki kartlar durum sınıfına göre böler. Bağış ve etli listeleri ayrı hesaplanır.</p>
+          <p><strong>Daimi</strong> — İlgili kayıt türünde 2023, 2024 ve 2025’in üçünü de dolu.</p>
+          <p><strong>Yeni (sadece 2025)</strong> — Yalnızca 2025’te görünüyor.</p>
+          <p><strong>Pasif (2025 yok)</strong> — 2025 yok; 2023 veya 2024 var.</p>
+          <p><strong>Değişken</strong> — Bu üç kalıba girmeyen yıl deseni.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 id="tblBagisPersonelBaslik">Bağış hisse — temin ve hedef (personel)</h2>
+        <p class="hint">Her yıl sütunu: <strong>Hedef</strong> (kayıt hedefi), <strong>Temin</strong> (gerçekleşen kayıt), <strong>Ulaşma</strong> (temin ÷ hedef, hedef yoksa —).</p>
+        <div class="table-wrap">
+          <table class="tbl-rapor tbl-personel-sort" id="tblPersonelBagis" data-sort-body="tblPersonelBagisBody">
+            <thead>
+              <tr>
+                <th class="th-personel" rowspan="2">Personel</th>
+                <th class="th-yil" colspan="3">2023</th>
+                <th class="th-yil" colspan="3">2024</th>
+                <th class="th-yil" colspan="3">2025</th>
+              </tr>
+              <tr class="sub">
+                <th class="th-sort" data-si="0" title="Sırala">Hedef</th><th class="th-sort" data-si="1" title="Sırala">Temin</th><th class="th-sort" data-si="2" title="Sırala">Ulaşma</th>
+                <th class="th-sort" data-si="3" title="Sırala">Hedef</th><th class="th-sort" data-si="4" title="Sırala">Temin</th><th class="th-sort" data-si="5" title="Sırala">Ulaşma</th>
+                <th class="th-sort" data-si="6" title="Sırala">Hedef</th><th class="th-sort" data-si="7" title="Sırala">Temin</th><th class="th-sort" data-si="8" title="Sırala">Ulaşma</th>
+              </tr>
+            </thead>
+            <tbody id="tblPersonelBagisBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="isim-ozet-toolbar">
+          <h2 id="tblBagisIsimBaslik">Bağış hisse — bağışçı özeti</h2>
+          <button type="button" class="btn-toggle-tablo" id="btnToggleBagisIsimTablo" aria-expanded="true">Tabloyu gizle</button>
+        </div>
+        <p class="hint"><strong>Normalize ad soyad</strong> ile tekilleştirilir (telefon kullanılmaz); <strong>Durum</strong> yıl desenine göre (Daimi / Yeni / Pasif / Değişken).</p>
+        <div class="table-wrap" id="wrapBagisIsimTablo">
+          <table class="tbl-rapor tbl-isim" data-isim-kind="bagis">
+            <thead>
+              <tr>
+                <th class="th-personel th-isim-ad th-isim-sort" data-isim-sort="ad" title="Sırala">Ad soyad</th>
+                <th class="th-yil th-isim-durum th-isim-sort" data-isim-sort="durum" title="Sırala">Durum</th>
+                <th class="th-yil th-isim-yil">2023</th>
+                <th class="th-yil th-isim-yil">2024</th>
+                <th class="th-yil th-isim-yil">2025</th>
+              </tr>
+            </thead>
+            <tbody id="tblBagisIsimBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 id="tblEtliPersonelBaslik">Etli hisse — temin ve hedef (personel)</h2>
+        <p class="hint">Her yıl: <strong>Hedef</strong> (etli hisse adedi hedefi), <strong>Temin</strong> (toplam hisse adedi), <strong>Ulaşma</strong> nispeti.</p>
+        <div class="table-wrap">
+          <table class="tbl-rapor tbl-personel-sort" id="tblPersonelEtli" data-sort-body="tblPersonelEtliBody">
+            <thead>
+              <tr>
+                <th class="th-personel" rowspan="2">Personel</th>
+                <th class="th-yil" colspan="3">2023</th>
+                <th class="th-yil" colspan="3">2024</th>
+                <th class="th-yil" colspan="3">2025</th>
+              </tr>
+              <tr class="sub">
+                <th class="th-sort" data-si="0" title="Sırala">Hedef</th><th class="th-sort" data-si="1" title="Sırala">Temin</th><th class="th-sort" data-si="2" title="Sırala">Ulaşma</th>
+                <th class="th-sort" data-si="3" title="Sırala">Hedef</th><th class="th-sort" data-si="4" title="Sırala">Temin</th><th class="th-sort" data-si="5" title="Sırala">Ulaşma</th>
+                <th class="th-sort" data-si="6" title="Sırala">Hedef</th><th class="th-sort" data-si="7" title="Sırala">Temin</th><th class="th-sort" data-si="8" title="Sırala">Ulaşma</th>
+              </tr>
+            </thead>
+            <tbody id="tblPersonelEtliBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="isim-ozet-toolbar">
+          <h2 id="tblEtliIsimBaslik">Etli hisse — hissedar özeti</h2>
+          <button type="button" class="btn-toggle-tablo" id="btnToggleEtliIsimTablo" aria-expanded="true">Tabloyu gizle</button>
+        </div>
+        <p class="hint"><strong>Normalize ad soyad</strong> ile tekilleştirilir; <strong>Durum</strong> etli kayıtlarındaki yıl desenine göre.</p>
+        <div class="table-wrap" id="wrapEtliIsimTablo">
+          <table class="tbl-rapor tbl-isim" data-isim-kind="etli">
+            <thead>
+              <tr>
+                <th class="th-personel th-isim-ad th-isim-sort" data-isim-sort="ad" title="Sırala">Hissedar</th>
+                <th class="th-yil th-isim-durum th-isim-sort" data-isim-sort="durum" title="Sırala">Durum</th>
+                <th class="th-yil th-isim-yil">2023</th>
+                <th class="th-yil th-isim-yil">2024</th>
+                <th class="th-yil th-isim-yil">2025</th>
+              </tr>
+            </thead>
+            <tbody id="tblEtliIsimBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const YILLAR_GECMIS = [2023, 2024, 2025];
+    const TUM_YILLAR = [...YILLAR_GECMIS];
+
+    let raporChartBagis = null;
+    let raporChartEtli = null;
+
+    function destroyRaporCharts() {
+      if (raporChartBagis) {
+        raporChartBagis.destroy();
+        raporChartBagis = null;
+      }
+      if (raporChartEtli) {
+        raporChartEtli.destroy();
+        raporChartEtli = null;
+      }
+    }
+
+    function chartCssColor(varName, fallback) {
+      const v = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+      return v || fallback;
+    }
+
+    function hedefRowToDisplayName(row, personelMap) {
+      const uid = String(row.personel_uid || '');
+      if (uid === '__kurban_diger__') return 'Diğer';
+      if (personelMap[uid]) return personelMap[uid];
+      const p = String(row.personel || '').trim();
+      return p || 'Bilinmeyen kullanıcı';
+    }
+
+    function emptyYilHedefAgg() {
+      const o = {};
+      TUM_YILLAR.forEach(y => {
+        o[y] = { bagisHedef: 0, etliHedef: 0 };
+      });
+      return o;
+    }
+
+    /** Portföy ve isim özetinde tek anahtar: NFKC, boşluk/noktalama sadeleştirme, tr-TR küçük harf. */
+    function normalizeDonorIsim(s) {
+      let t = String(s || '').normalize('NFKC');
+      t = t.replace(/[\u00A0\u2000-\u200B\uFEFF]/g, ' ');
+      t = t.replace(/[.,;:–—\-_/\\|]+/g, ' ');
+      t = t.replace(/\s+/g, ' ').trim();
+      t = t.toLocaleLowerCase('tr-TR');
+      t = t.replace(/\s+/g, ' ').trim();
+      return t;
+    }
+
+    function donorKey(ad) {
+      const n = normalizeDonorIsim(ad);
+      return n || '';
+    }
+
+    /** Bağış / etli satırlarından isim+yıl matrisi (donorKey = normalize ad soyad); yıl başına kayıt sayısı. */
+    function buildIsimYilListesi(rows, getAd, yillar) {
+      const m = new Map();
+      (rows || []).forEach(r => {
+        const y = Number(r.yil);
+        if (!yillar.includes(y)) return;
+        const ad = getAd(r);
+        const k = donorKey(ad);
+        if (!k) return;
+        const isim = String(ad || '').trim().replace(/\s+/g, ' ') || k;
+        if (!m.has(k)) {
+          const counts = {};
+          yillar.forEach(yy => { counts[yy] = 0; });
+          m.set(k, { isim, counts });
+        }
+        const rec = m.get(k);
+        rec.counts[y] = (rec.counts[y] || 0) + 1;
+      });
+      return [...m.values()]
+        .map(row => {
+          const years = new Set();
+          yillar.forEach(y => {
+            if ((row.counts[y] || 0) > 0) years.add(y);
+          });
+          return { ...row, years, sinif: sinifGecmisPencere(years) };
+        })
+        .sort((a, b) => a.isim.localeCompare(b.isim, 'tr'));
+    }
+
+    function sinifEtiket(s) {
+      if (s === 'daimi') return 'Daimi';
+      if (s === 'yeni_2025') return 'Yeni';
+      if (s === 'pasif_2025') return 'Pasif';
+      return 'Değişken';
+    }
+
+    /** Bağışçı / hissedar özet tablolarında durum hücresi için CSS sınıfı (portföy kartlarıyla aynı palet). */
+    function durumSinifClass(sinif) {
+      if (sinif === 'daimi') return 'isim-durum-daimi';
+      if (sinif === 'yeni_2025') return 'isim-durum-yeni';
+      if (sinif === 'pasif_2025') return 'isim-durum-pasif';
+      return 'isim-durum-degisken';
+    }
+
+    function htmlIsimDurumSatirlari(liste, yillar) {
+      const colCount = 2 + yillar.length;
+      if (!liste.length) {
+        return `<tr><td colspan="${colCount}" class="muted" style="text-align:center;padding:16px">Kayıt yok.</td></tr>`;
+      }
+      return liste.map(row => {
+        const cells = yillar.map((y, i) => {
+          const cnt = row.counts && row.counts[y] != null
+            ? row.counts[y]
+            : (row.years && row.years.has(y) ? 1 : 0);
+          let inner = '';
+          if (cnt === 1) inner = '✓';
+          else if (cnt > 1) inner = `<span title="${cnt} kayıt">${fmtSayi(cnt)}</span>`;
+          return `<td class="td-tik td-isim-yil${i === 0 ? ' td-yil-start' : ''}">${inner}</td>`;
+        }).join('');
+        const tit = escapeHtml(row.isim).replace(/"/g, '&#34;');
+        const dcls = durumSinifClass(row.sinif);
+        return `<tr><td class="td-ad td-isim-ad" title="${tit}">${escapeHtml(row.isim)}</td><td class="td-durum td-isim-durum ${dcls}">${escapeHtml(sinifEtiket(row.sinif))}</td>${cells}</tr>`;
+      }).join('');
+    }
+
+    function fmtSayi(n) {
+      return new Intl.NumberFormat('tr-TR').format(Number(n) || 0);
+    }
+
+    function ulasmaNispetiStr(temin, hedef) {
+      const raw = ulasmaPctRaw(temin, hedef);
+      if (raw == null) return '—';
+      const rounded = Math.round(raw * 10) / 10;
+      return new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1, minimumFractionDigits: 0 }).format(rounded) + '%';
+    }
+
+    function ulasmaPctRaw(temin, hedef) {
+      const t = Number(temin) || 0;
+      const h = Number(hedef) || 0;
+      if (h <= 0) return null;
+      return (t / h) * 100;
+    }
+
+    /** Ulaşma %: 0–25 kırmızı, 25–50 turuncu, 50–75 mavi, 75–100 yeşil, 100+ koyu yeşil; hedef yoksa nötr. */
+    function ulasmaOranStili(pct) {
+      if (pct == null || pct < 0) return 'color: var(--muted); font-weight: 700;';
+      if (pct < 25) return 'color: #dc2626; font-weight: 800;';
+      if (pct < 50) return 'color: #ea580c; font-weight: 800;';
+      if (pct < 75) return 'color: #2563eb; font-weight: 800;';
+      if (pct <= 100) return 'color: #16a34a; font-weight: 800;';
+      return 'color: #15803d; font-weight: 800;';
+    }
+
+    function yilUlasmaArkaPlan(pct) {
+      if (pct == null || pct < 0) return 'rgba(148, 163, 184, 0.2)';
+      if (pct < 25) return 'rgba(220, 38, 38, 0.16)';
+      if (pct < 50) return 'rgba(234, 88, 12, 0.16)';
+      if (pct < 75) return 'rgba(37, 99, 235, 0.14)';
+      if (pct <= 100) return 'rgba(22, 163, 74, 0.16)';
+      return 'rgba(21, 128, 61, 0.18)';
+    }
+
+    function yilUlasmaCellHtml(temin, hedef) {
+      const raw = ulasmaPctRaw(temin, hedef);
+      const text = escapeHtml(ulasmaNispetiStr(temin, hedef));
+      const bg = yilUlasmaArkaPlan(raw);
+      const colorSt = ulasmaOranStili(raw);
+      return `<span class="yil-oran-pill" style="${colorSt} background: ${bg};">${text}</span>`;
+    }
+
+    /** Yazdır sayfasındaki `createTrendN` ile aynı mantık (SVG çizgi + alan + büyüme rozetleri). */
+    function createKurbanTrendSvg(values, labels, gradId) {
+      const gid = gradId || 'gradientKurbanTrend';
+      const vals = (values || []).map(v => Number(v) || 0);
+      const labs = labels || [];
+      const n = Math.max(1, vals.length);
+      const maxVal = Math.max(1, ...vals, 1);
+      const w = 580;
+      const h = 120;
+      const pad = 30;
+      const span = w - 2 * pad;
+      const step = n <= 1 ? 0 : span / (n - 1);
+      const scaleY = v => h - 18 - ((v / (maxVal * 1.15)) * (h - 36));
+      const pts = vals.map((v, i) => ({
+        x: pad + i * step,
+        y: scaleY(v),
+        v,
+        yr: labs[i] != null ? labs[i] : (2023 + i)
+      }));
+      let linePath = '';
+      pts.forEach((p, i) => { linePath += (i === 0 ? 'M ' : ' L ') + p.x + ' ' + p.y; });
+      const last = pts[pts.length - 1];
+      const first = pts[0];
+      const areaPath = linePath + ` L ${last.x} ${h} L ${first.x} ${h} Z`;
+
+      const getGrowth = (v1, v2) => {
+        if (v1 === 0) return v2 > 0 ? '+100%' : '0%';
+        const p = ((v2 - v1) / v1) * 100;
+        return (p > 0 ? '+' : '') + Math.round(p) + '%';
+      };
+
+      let badges = '';
+      for (let i = 0; i < pts.length - 1; i++) {
+        const p1 = pts[i];
+        const p2 = pts[i + 1];
+        const g = getGrowth(p1.v, p2.v);
+        const neg = g.indexOf('-') === 0 ? ' negative' : '';
+        const mx = (p1.x + p2.x) / 2;
+        const my = (p1.y + p2.y) / 2;
+        badges += `<rect x="${mx - 22}" y="${my - 22}" width="44" height="16" class="growth-bg${neg}" rx="3"/>
+          <text x="${mx}" y="${my - 11}" class="growth-badge" text-anchor="middle">${escapeHtml(g)}</text>`;
+      }
+
+      const circles = pts.map(p =>
+        `<line x1="${p.x}" y1="${p.y}" x2="${p.x}" y2="${h - 12}" stroke="#cbd5e1" stroke-dasharray="3"/>
+        <circle cx="${p.x}" cy="${p.y}" r="4" class="chart-point"/>
+        <text x="${p.x}" y="${h - 2}" style="font-size:9px;fill:#64748b;text-anchor:middle">${escapeHtml(String(p.yr))}</text>
+        <text x="${p.x}" y="${p.y - 8}" style="font-size:10px;font-weight:bold;fill:#324960;text-anchor:middle">${escapeHtml(fmtSayi(p.v))}</text>`
+      ).join('');
+
+      return `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Trend"><defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#324960"/><stop offset="100%" stop-color="#fff" stop-opacity="0"/></linearGradient></defs><path d="${areaPath}" fill="url(#${gid})" style="opacity:0.15"/><path d="${linePath}" class="chart-line"/>${circles}${badges}</svg>`;
+    }
+
+    async function loadPersonelMap(sb) {
+      const { data, error } = await sb.from('kullanicilar').select('id, adsoyad');
+      if (error) throw error;
+      const m = {};
+      (data || []).forEach(k => {
+        if (k.id) m[String(k.id)] = k.adsoyad || '—';
+      });
+      return m;
+    }
+
+    function rebuildPersonelSelect(personelMap, hedefRowsAll, preservedValue) {
+      const sel = document.getElementById('selPersonelRapor');
+      if (!sel) return;
+      const prev = preservedValue != null ? preservedValue : sel.value;
+      sel.innerHTML = '';
+      const oAll = document.createElement('option');
+      oAll.value = '__all__';
+      oAll.textContent = 'Tüm personel';
+      sel.appendChild(oAll);
+      Object.entries(personelMap)
+        .map(([id, ad]) => ({ id, ad: ad || '—' }))
+        .sort((a, b) => a.ad.localeCompare(b.ad, 'tr'))
+        .forEach(({ id, ad }) => {
+          const o = document.createElement('option');
+          o.value = id;
+          o.textContent = ad;
+          sel.appendChild(o);
+        });
+      if ((hedefRowsAll || []).some(r => String(r.personel_uid) === '__kurban_diger__')) {
+        const o = document.createElement('option');
+        o.value = '__kurban_diger__';
+        o.textContent = 'Diğer';
+        sel.appendChild(o);
+      }
+      const ok = [...sel.options].some(op => op.value === prev);
+      sel.value = ok ? prev : '__all__';
+    }
+
+    const KURBAN_MERGED_ATANMIS_DIGER = 'Atanmamış / Diğer';
+
+    function displayNameForPersonelSecim(selVal, personelMap) {
+      if (selVal === '__all__') return '';
+      if (selVal === '__kurban_diger__') return KURBAN_MERGED_ATANMIS_DIGER;
+      return personelMap[selVal] || '—';
+    }
+
+    function rowsForPersonelFilter(selVal, bagisRows, etliRows, hedefRows) {
+      if (selVal === '__all__') {
+        return { b: bagisRows, e: etliRows, h: hedefRows };
+      }
+      if (selVal === '__kurban_diger__') {
+        const atanmamisKayit = r =>
+          r == null || r.created_by_uid == null || String(r.created_by_uid).trim() === '';
+        return {
+          b: (bagisRows || []).filter(atanmamisKayit),
+          e: (etliRows || []).filter(atanmamisKayit),
+          h: (hedefRows || []).filter(r => String(r.personel_uid) === '__kurban_diger__')
+        };
+      }
+      const uid = String(selVal);
+      return {
+        b: bagisRows.filter(r => String(r.created_by_uid) === uid),
+        e: etliRows.filter(r => String(r.created_by_uid) === uid),
+        h: hedefRows.filter(r => String(r.personel_uid) === uid)
+      };
+    }
+
+    function emptyYilAgg() {
+      const o = {};
+      TUM_YILLAR.forEach(y => {
+        o[y] = { bagisN: 0, etliHisseToplam: 0 };
+      });
+      return o;
+    }
+
+    /** Personel tablolarında «Atanmamış» ile hedef «Diğer» satırını tek satırda birleştirir. */
+    function mergeAtanmisVeDiger(perStats, hedefByPerson) {
+      const A = 'Atanmamış';
+      const B = 'Diğer';
+      const M = KURBAN_MERGED_ATANMIS_DIGER;
+      const hadStats = !!(perStats[A] || perStats[B]);
+      const hadHedef = !!(hedefByPerson[A] || hedefByPerson[B]);
+      if (!hadStats && !hadHedef) return;
+      if (hadStats) {
+        const agg = emptyYilAgg();
+        [A, B].forEach(k => {
+          if (!perStats[k]) return;
+          TUM_YILLAR.forEach(y => {
+            agg[y].bagisN += perStats[k][y].bagisN;
+            agg[y].etliHisseToplam += perStats[k][y].etliHisseToplam;
+          });
+          delete perStats[k];
+        });
+        perStats[M] = agg;
+      }
+      if (hadHedef) {
+        const hag = emptyYilHedefAgg();
+        [A, B].forEach(k => {
+          if (!hedefByPerson[k]) return;
+          TUM_YILLAR.forEach(y => {
+            hag[y].bagisHedef += hedefByPerson[k][y].bagisHedef;
+            hag[y].etliHedef += hedefByPerson[k][y].etliHedef;
+          });
+          delete hedefByPerson[k];
+        });
+        hedefByPerson[M] = hag;
+      }
+    }
+
+    const personelSortState = {
+      tblPersonelBagis: { si: null, dir: 1 },
+      tblPersonelEtli: { si: null, dir: 1 }
+    };
+
+    function tdSortValue(td) {
+      if (!td) return -1e15;
+      const s = td.getAttribute('data-sort');
+      if (s == null || s === '') return -1e15;
+      const v = parseFloat(s, 10);
+      return Number.isFinite(v) ? v : -1e15;
+    }
+
+    function sortPersonelTbody(tableId, si, dir) {
+      const table = document.getElementById(tableId);
+      if (!table) return;
+      const tbody = document.getElementById(table.dataset.sortBody);
+      if (!tbody) return;
+      const rows = [...tbody.querySelectorAll('tr')];
+      const dataRows = rows.filter(tr => !tr.querySelector('td[colspan]'));
+      const metaRows = rows.filter(tr => tr.querySelector('td[colspan]'));
+      const colIndex = si + 1;
+      dataRows.sort((ra, rb) => {
+        const va = tdSortValue(ra.children[colIndex]);
+        const vb = tdSortValue(rb.children[colIndex]);
+        if (va === vb) return 0;
+        return (va < vb ? -1 : 1) * dir;
+      });
+      tbody.innerHTML = '';
+      dataRows.forEach(tr => tbody.appendChild(tr));
+      metaRows.forEach(tr => tbody.appendChild(tr));
+    }
+
+    function handlePersonelSortClick(ev) {
+      const th = ev.target.closest('th.th-sort');
+      const table = ev.target.closest('table.tbl-personel-sort');
+      if (!th || !table || !table.id) return;
+      const si = parseInt(th.getAttribute('data-si'), 10);
+      if (!Number.isFinite(si)) return;
+      const st = personelSortState[table.id];
+      if (!st) return;
+      if (st.si === si) st.dir *= -1;
+      else {
+        st.si = si;
+        st.dir = 1;
+      }
+      sortPersonelTbody(table.id, si, st.dir);
+    }
+
+    const DURUM_SORT_RANK = { Daimi: 0, Yeni: 1, Pasif: 2, Değişken: 3 };
+    const isimOzetSortState = {
+      bagis: { key: 'ad', dir: 1 },
+      etli: { key: 'ad', dir: 1 }
+    };
+
+    function durumSortKey(text) {
+      const t = String(text || '').trim();
+      return Object.prototype.hasOwnProperty.call(DURUM_SORT_RANK, t) ? DURUM_SORT_RANK[t] : 99;
+    }
+
+    function sortIsimOzetTbody(kind) {
+      const table = document.querySelector(`table.tbl-isim[data-isim-kind="${kind}"]`);
+      if (!table) return;
+      const tbody = table.querySelector('tbody');
+      if (!tbody) return;
+      const st = isimOzetSortState[kind];
+      if (!st || !st.key) return;
+      const dataRows = [...tbody.querySelectorAll('tr')].filter(tr => !tr.querySelector('td[colspan]'));
+      const metaRows = [...tbody.querySelectorAll('tr')].filter(tr => tr.querySelector('td[colspan]'));
+      const k = st.key;
+      const dir = st.dir;
+      dataRows.sort((ra, rb) => {
+        const a0 = ra.children[0];
+        const b0 = rb.children[0];
+        const a1 = ra.children[1];
+        const b1 = rb.children[1];
+        const ta = a0 ? a0.textContent : '';
+        const tb = b0 ? b0.textContent : '';
+        const da = durumSortKey(a1 ? a1.textContent : '');
+        const db = durumSortKey(b1 ? b1.textContent : '');
+        let cmp = 0;
+        if (k === 'durum') {
+          cmp = da - db;
+          if (cmp === 0) cmp = ta.localeCompare(tb, 'tr');
+        } else {
+          cmp = ta.localeCompare(tb, 'tr');
+          if (cmp === 0) cmp = da - db;
+        }
+        if (cmp === 0) return 0;
+        return cmp * dir;
+      });
+      tbody.innerHTML = '';
+      dataRows.forEach(tr => tbody.appendChild(tr));
+      metaRows.forEach(tr => tbody.appendChild(tr));
+    }
+
+    function handleIsimOzetSortClick(ev) {
+      const th = ev.target.closest('th.th-isim-sort');
+      const table = ev.target.closest('table.tbl-isim[data-isim-kind]');
+      if (!th || !table) return;
+      const kind = table.getAttribute('data-isim-kind');
+      const key = th.getAttribute('data-isim-sort');
+      if (!kind || (key !== 'ad' && key !== 'durum')) return;
+      const st = isimOzetSortState[kind];
+      if (!st) return;
+      if (st.key === key) st.dir *= -1;
+      else {
+        st.key = key;
+        st.dir = 1;
+      }
+      sortIsimOzetTbody(kind);
+    }
+
+    function personelKey(personelMap, createdByUid) {
+      if (!createdByUid) return 'Atanmamış';
+      return personelMap[String(createdByUid)] || 'Bilinmeyen kullanıcı';
+    }
+
+    function sinifGecmisPencere(yearsSet) {
+      const has = y => yearsSet.has(y);
+      if (has(2023) && has(2024) && has(2025)) return 'daimi';
+      const onlyPast = [...yearsSet].filter(y => YILLAR_GECMIS.includes(y)).sort((a, b) => a - b);
+      if (onlyPast.length === 1 && onlyPast[0] === 2025) return 'yeni_2025';
+      if (!has(2025) && (has(2023) || has(2024))) return 'pasif_2025';
+      return 'diger';
+    }
+
+    function statCard(label, value, accent, extraClass) {
+      const ex = extraClass ? ' ' + extraClass : '';
+      return `<div class="stat-card${accent ? ' accent' : ''}${ex}">
+        <div class="stat-label">${escapeHtml(label)}</div>
+        <div class="stat-value">${value}</div>
+      </div>`;
+    }
+
+    function yilOzetiHtml(yil, b, bHedef, etliHisseToplam, etliHedef) {
+      return `<div class="yil-kutu">
+        <div class="yil-baslik">${yil}</div>
+        <div class="yil-blok">
+          <div class="yil-alt-baslik">Bağış hisse</div>
+          <div class="yil-metrik"><span>Hedef</span><span class="sayi">${fmtSayi(bHedef)}</span></div>
+          <div class="yil-metrik"><span>Temin</span><span class="sayi">${fmtSayi(b)}</span></div>
+          <div class="yil-metrik"><span>Ulaşma nispeti</span>${yilUlasmaCellHtml(b, bHedef)}</div>
+        </div>
+        <div class="yil-blok yil-blok-etli">
+          <div class="yil-alt-baslik">Etli hisse</div>
+          <div class="yil-metrik"><span>Hedef</span><span class="sayi">${fmtSayi(etliHedef)}</span></div>
+          <div class="yil-metrik"><span>Temin</span><span class="sayi">${fmtSayi(etliHisseToplam)}</span></div>
+          <div class="yil-metrik"><span>Ulaşma nispeti</span>${yilUlasmaCellHtml(etliHisseToplam, etliHedef)}</div>
+        </div>
+      </div>`;
+    }
+
+    function drawKurbanRaporCharts(bagisGercekArr, bagisHedefArr, etliGercekArr, etliHedefArr) {
+      if (typeof Chart === 'undefined') return;
+      destroyRaporCharts();
+      const labels = TUM_YILLAR.map(String);
+      const tick = chartCssColor('--muted', '#64748b');
+      const grid = chartCssColor('--stroke', 'rgba(148, 163, 184, 0.35)');
+      const ink = chartCssColor('--ink', '#0f172a');
+      const commonOpts = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { color: ink, font: { size: 11 } } }
+        },
+        scales: {
+          x: {
+            ticks: { color: tick, font: { size: 11 } },
+            grid: { color: grid }
+          },
+          y: {
+            beginAtZero: true,
+            ticks: { color: tick, font: { size: 11 }, precision: 0 },
+            grid: { color: grid }
+          }
+        }
+      };
+      const elB = document.getElementById('chartKurbanBagis');
+      const elE = document.getElementById('chartKurbanEtli');
+      if (elB) {
+        raporChartBagis = new Chart(elB, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [
+              { label: 'Gerçekleşen (kayıt)', data: bagisGercekArr, backgroundColor: 'rgba(59, 130, 246, 0.75)', borderRadius: 6 },
+              { label: 'Hedef', data: bagisHedefArr, backgroundColor: 'rgba(148, 163, 184, 0.55)', borderRadius: 6 }
+            ]
+          },
+          options: commonOpts
+        });
+      }
+      if (elE) {
+        raporChartEtli = new Chart(elE, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [
+              { label: 'Gerçekleşen (hisse adedi)', data: etliGercekArr, backgroundColor: 'rgba(16, 185, 129, 0.75)', borderRadius: 6 },
+              { label: 'Hedef', data: etliHedefArr, backgroundColor: 'rgba(148, 163, 184, 0.55)', borderRadius: 6 }
+            ]
+          },
+          options: commonOpts
+        });
+      }
+    }
+
+    let kurbanRaporListenersBound = false;
+    let kurbanRaporYukleFn = null;
+    let modalKurbanAraTimer = null;
+    let modalKurbanFilter = '';
+
+    function personelAdiKurbanModal(uid) {
+      const m = window.__kurbanRaporPersonelMap || {};
+      if (!uid) return 'Atanmamış';
+      return m[String(uid)] || 'Bilinmeyen';
+    }
+
+    function yilSelectOptionsHtml(selected) {
+      return YILLAR_GECMIS.map(y =>
+        `<option value="${y}"${Number(selected) === y ? ' selected' : ''}>${y}</option>`
+      ).join('');
+    }
+
+    function personelSelectOptionsHtml(selectedUid) {
+      const m = window.__kurbanRaporPersonelMap || {};
+      const sel = selectedUid == null || selectedUid === '' ? '' : String(selectedUid);
+      let html = '<option value="">Atanmamış</option>';
+      Object.entries(m)
+        .map(([id, ad]) => ({ id: String(id), ad: ad || '—' }))
+        .sort((a, b) => a.ad.localeCompare(b.ad, 'tr'))
+        .forEach(({ id, ad }) => {
+          html += `<option value="${escapeHtml(id)}"${sel === id ? ' selected' : ''}>${escapeHtml(ad)}</option>`;
+        });
+      return html;
+    }
+
+    function dedupeRowsById(rows) {
+      const seen = new Set();
+      return (rows || []).filter(r => {
+        if (!r || r.id == null || String(r.id).trim() === '') return true;
+        const id = String(r.id);
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      });
+    }
+
+    function sortRowsBagisModal(rows) {
+      return [...rows].sort((a, b) => {
+        const y = (Number(b.yil) || 0) - (Number(a.yil) || 0);
+        if (y !== 0) return y;
+        return String(a.ad_soyad || '').localeCompare(String(b.ad_soyad || ''), 'tr');
+      });
+    }
+
+    function sortRowsEtliModal(rows) {
+      return [...rows].sort((a, b) => {
+        const y = (Number(b.yil) || 0) - (Number(a.yil) || 0);
+        if (y !== 0) return y;
+        return String(a.hisedar_ad_soyad || '').localeCompare(String(b.hisedar_ad_soyad || ''), 'tr');
+      });
+    }
+
+    function rowHtmlModalBagis(r) {
+      const id = String(r.id || '');
+      const idDisp = id.length > 14 ? id.slice(0, 8) + '…' : id;
+      const ad = String(r.ad_soyad ?? '');
+      const tel = String(r.telefon ?? '');
+      const fiyat = r.fiyat != null && r.fiyat !== '' ? String(r.fiyat) : '0';
+      const ac = String(r.aciklama ?? '');
+      const durum = String(r.durum ?? 'kayit_alindi');
+      const yil = Number(r.yil) || YILLAR_GECMIS[0];
+      return `<div class="modal-kurban-row" data-kind="bagis" data-id="${escapeHtml(id)}">
+        <div class="modal-kurban-row-h">
+          <span class="modal-kurban-row-id" title="${escapeHtml(id)}">Kayıt: ${escapeHtml(idDisp)}</span>
+          <span>${escapeHtml(personelAdiKurbanModal(r.created_by_uid))}</span>
+        </div>
+        <div class="modal-kurban-grid">
+          <label style="grid-column:1/-1">Kayıt personeli<select class="fld-created_by_uid">${personelSelectOptionsHtml(r.created_by_uid)}</select></label>
+          <label>Yıl<select class="fld-yil">${yilSelectOptionsHtml(yil)}</select></label>
+          <label>Ad soyad<input type="text" class="fld-ad_soyad" value="${escapeHtml(ad)}" maxlength="500" autocomplete="off" /></label>
+          <label>Telefon<input type="text" class="fld-telefon" value="${escapeHtml(tel)}" maxlength="80" autocomplete="off" /></label>
+          <label>Fiyat (₺)<input type="number" class="fld-fiyat" value="${escapeHtml(fiyat)}" step="0.01" min="0" /></label>
+          <label>Durum<input type="text" class="fld-durum" value="${escapeHtml(durum)}" maxlength="200" list="listKurbanDurumBagis" autocomplete="off" /></label>
+          <label style="grid-column:1/-1">Açıklama<textarea class="fld-aciklama" rows="2">${escapeHtml(ac)}</textarea></label>
+        </div>
+        <div class="modal-kurban-row-ft">
+          <button type="button" class="btn-kaydet-mini" data-save-bagis>Kaydet</button>
+        </div>
+      </div>`;
+    }
+
+    function rowHtmlModalEtli(r) {
+      const id = String(r.id || '');
+      const idDisp = id.length > 14 ? id.slice(0, 8) + '…' : id;
+      const ad = String(r.hisedar_ad_soyad ?? '');
+      const tel = String(r.telefon ?? '');
+      const ha = String(r.hisse_adedi ?? '1');
+      const hg = String(r.hisse_grubu ?? '');
+      const ac = String(r.aciklama ?? '');
+      const yil = Number(r.yil) || YILLAR_GECMIS[0];
+      return `<div class="modal-kurban-row" data-kind="etli" data-id="${escapeHtml(id)}">
+        <div class="modal-kurban-row-h">
+          <span class="modal-kurban-row-id" title="${escapeHtml(id)}">Kayıt: ${escapeHtml(idDisp)}</span>
+          <span>${escapeHtml(personelAdiKurbanModal(r.created_by_uid))}</span>
+        </div>
+        <div class="modal-kurban-grid">
+          <label style="grid-column:1/-1">Kayıt personeli<select class="fld-created_by_uid">${personelSelectOptionsHtml(r.created_by_uid)}</select></label>
+          <label>Yıl<select class="fld-yil">${yilSelectOptionsHtml(yil)}</select></label>
+          <label>Hissedar ad soyad<input type="text" class="fld-hisedar_ad_soyad" value="${escapeHtml(ad)}" maxlength="500" autocomplete="off" /></label>
+          <label>Telefon<input type="text" class="fld-telefon" value="${escapeHtml(tel)}" maxlength="80" autocomplete="off" /></label>
+          <label>Hisse adedi<input type="number" class="fld-hisse_adedi" value="${escapeHtml(ha)}" min="1" step="1" /></label>
+          <label>Hisse grubu<input type="text" class="fld-hisse_grubu" value="${escapeHtml(hg)}" maxlength="200" autocomplete="off" /></label>
+          <label style="grid-column:1/-1">Açıklama<textarea class="fld-aciklama" rows="2">${escapeHtml(ac)}</textarea></label>
+        </div>
+        <div class="modal-kurban-row-ft">
+          <button type="button" class="btn-kaydet-mini" data-save-etli>Kaydet</button>
+        </div>
+      </div>`;
+    }
+
+    function renderModalKurbanLists() {
+      const f = modalKurbanFilter;
+      const bagisEl = document.getElementById('modalKurbanListeBagis');
+      const etliEl = document.getElementById('modalKurbanListeEtli');
+      const bagisRows = window.__kurbanRaporEditBagis || [];
+      const etliRows = window.__kurbanRaporEditEtli || [];
+      const match = (r, fields) => {
+        if (!f) return true;
+        return fields.some(x => String(x ?? '').toLowerCase().includes(f));
+      };
+      const bMatched = bagisRows.filter(r =>
+        match(r, [
+          r.ad_soyad,
+          r.telefon,
+          r.yil,
+          r.aciklama,
+          r.durum,
+          r.id,
+          personelAdiKurbanModal(r.created_by_uid)
+        ])
+      );
+      const eMatched = etliRows.filter(r =>
+        match(r, [
+          r.hisedar_ad_soyad,
+          r.telefon,
+          r.yil,
+          r.aciklama,
+          r.hisse_grubu,
+          r.id,
+          personelAdiKurbanModal(r.created_by_uid)
+        ])
+      );
+      const bDedup = dedupeRowsById(bMatched);
+      const eDedup = dedupeRowsById(eMatched);
+      const bDup = bMatched.length - bDedup.length;
+      const eDup = eMatched.length - eDedup.length;
+      const bFiltered = sortRowsBagisModal(bDedup);
+      const eFiltered = sortRowsEtliModal(eDedup);
+
+      const oz = document.getElementById('modalKurbanOzet');
+      if (oz) {
+        oz.hidden = false;
+        const parts = [
+          `<strong>${bFiltered.length}</strong> bağış · <strong>${eFiltered.length}</strong> etli kayıt listeleniyor (yıl önce, sonra ada göre sıralı).`
+        ];
+        if (bDup > 0) parts.push(`Bağışta aynı kayıt id’si <strong>${bDup}</strong> kez tekrarlandı; yinelenen satırlar gizlendi.`);
+        if (eDup > 0) parts.push(`Etlide aynı kayıt id’si <strong>${eDup}</strong> kez tekrarlandı; yinelenen satırlar gizlendi.`);
+        parts.push('Farklı satırlar aynı kişiyi gösteriyorsa veritabanında ayrı kayıtlar vardır; <strong>Kayıt personeli</strong> veya ad yazımını düzeltebilirsiniz.');
+        oz.innerHTML = parts.join(' ');
+      }
+
+      if (bagisEl) {
+        bagisEl.innerHTML = bFiltered.length
+          ? bFiltered.map(rowHtmlModalBagis).join('')
+          : '<p class="muted" style="padding:12px">Kayıt yok veya arama eşleşmedi.</p>';
+      }
+      if (etliEl) {
+        etliEl.innerHTML = eFiltered.length
+          ? eFiltered.map(rowHtmlModalEtli).join('')
+          : '<p class="muted" style="padding:12px">Kayıt yok veya arama eşleşmedi.</p>';
+      }
+    }
+
+    function closeModalKurbanDuzenle() {
+      const m = document.getElementById('modalKurbanDuzenle');
+      if (!m) return;
+      m.hidden = true;
+      m.setAttribute('aria-hidden', 'true');
+      const oz = document.getElementById('modalKurbanOzet');
+      if (oz) {
+        oz.hidden = true;
+        oz.textContent = '';
+      }
+    }
+
+    function openModalKurbanDuzenle() {
+      const b = window.__kurbanRaporEditBagis;
+      const e = window.__kurbanRaporEditEtli;
+      if ((!b || !b.length) && (!e || !e.length)) {
+        showToast('warning', 'Düzenle', 'Bu görünümde düzenlenecek kayıt yok. Personel seçimini veya veriyi kontrol edin.');
+        return;
+      }
+      const m = document.getElementById('modalKurbanDuzenle');
+      if (!m) return;
+      modalKurbanFilter = '';
+      const ara = document.getElementById('modalKurbanAra');
+      if (ara) ara.value = '';
+      m.querySelectorAll('.modal-kurban-tabs button').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-tab') === 'bagis');
+      });
+      const lb = document.getElementById('modalKurbanListeBagis');
+      const le = document.getElementById('modalKurbanListeEtli');
+      if (lb) lb.hidden = false;
+      if (le) le.hidden = true;
+      renderModalKurbanLists();
+      m.hidden = false;
+      m.setAttribute('aria-hidden', 'false');
+    }
+
+    async function saveModalBagisRow(rowEl) {
+      const sb = window.supabase;
+      if (!sb) {
+        showToast('error', 'Bağlantı', 'Supabase hazır değil.');
+        return;
+      }
+      const id = rowEl.getAttribute('data-id');
+      if (!id) return;
+      const yil = parseInt(rowEl.querySelector('.fld-yil').value, 10);
+      const ad_soyad = rowEl.querySelector('.fld-ad_soyad').value.trim();
+      const telefon = rowEl.querySelector('.fld-telefon').value.trim();
+      const fiyatRaw = rowEl.querySelector('.fld-fiyat').value;
+      const aciklama = rowEl.querySelector('.fld-aciklama').value.trim();
+      const durum = rowEl.querySelector('.fld-durum').value.trim() || 'kayit_alindi';
+      if (!ad_soyad || !telefon) {
+        showToast('warning', 'Bağış hisse', 'Ad soyad ve telefon zorunludur.');
+        return;
+      }
+      if (!YILLAR_GECMIS.includes(yil)) {
+        showToast('warning', 'Bağış hisse', 'Geçerli bir yıl seçin.');
+        return;
+      }
+      const fiyat = parseFloat(String(fiyatRaw).replace(',', '.')) || 0;
+      const created_by_uid = rowEl.querySelector('.fld-created_by_uid').value.trim();
+      const { error } = await sb.from('kurban_2026_bagis_hisse').update({
+        created_by_uid: created_by_uid || null,
+        yil,
+        ad_soyad,
+        telefon,
+        fiyat,
+        aciklama: aciklama || null,
+        durum
+      }).eq('id', id);
+      if (error) {
+        showToast('error', 'Kayıt', error.message || 'Güncellenemedi.');
+        return;
+      }
+      showToast('success', 'Bağış hisse', 'Kayıt güncellendi.');
+      if (typeof kurbanRaporYukleFn === 'function') await kurbanRaporYukleFn();
+      renderModalKurbanLists();
+    }
+
+    async function saveModalEtliRow(rowEl) {
+      const sb = window.supabase;
+      if (!sb) {
+        showToast('error', 'Bağlantı', 'Supabase hazır değil.');
+        return;
+      }
+      const id = rowEl.getAttribute('data-id');
+      if (!id) return;
+      const yil = parseInt(rowEl.querySelector('.fld-yil').value, 10);
+      const hisedar_ad_soyad = rowEl.querySelector('.fld-hisedar_ad_soyad').value.trim();
+      const telefon = rowEl.querySelector('.fld-telefon').value.trim();
+      const hisse_adedi = parseInt(rowEl.querySelector('.fld-hisse_adedi').value, 10);
+      const hisse_grubu = rowEl.querySelector('.fld-hisse_grubu').value.trim();
+      const aciklama = rowEl.querySelector('.fld-aciklama').value.trim();
+      if (!hisedar_ad_soyad || !telefon || !hisse_grubu) {
+        showToast('warning', 'Etli hisse', 'Hissedar, telefon ve hisse grubu zorunludur.');
+        return;
+      }
+      if (!Number.isFinite(hisse_adedi) || hisse_adedi < 1) {
+        showToast('warning', 'Etli hisse', 'Hisse adedi en az 1 olmalıdır.');
+        return;
+      }
+      if (!YILLAR_GECMIS.includes(yil)) {
+        showToast('warning', 'Etli hisse', 'Geçerli bir yıl seçin.');
+        return;
+      }
+      const created_by_uid = rowEl.querySelector('.fld-created_by_uid').value.trim();
+      const { error } = await sb.from('kurban_2026_etli_hisse').update({
+        created_by_uid: created_by_uid || null,
+        yil,
+        hisedar_ad_soyad,
+        telefon,
+        hisse_adedi,
+        hisse_grubu,
+        aciklama: aciklama || null
+      }).eq('id', id);
+      if (error) {
+        showToast('error', 'Kayıt', error.message || 'Güncellenemedi.');
+        return;
+      }
+      showToast('success', 'Etli hisse', 'Kayıt güncellendi.');
+      if (typeof kurbanRaporYukleFn === 'function') await kurbanRaporYukleFn();
+      renderModalKurbanLists();
+    }
+
+    function applyBagisIsimTabloGorunurluk() {
+      const wrap = document.getElementById('wrapBagisIsimTablo');
+      const btn = document.getElementById('btnToggleBagisIsimTablo');
+      const goster = localStorage.getItem('kurbanRapor_bagisIsimTablo') !== '0';
+      if (wrap) wrap.hidden = !goster;
+      if (btn) {
+        btn.textContent = goster ? 'Tabloyu gizle' : 'Tabloyu göster';
+        btn.setAttribute('aria-expanded', goster ? 'true' : 'false');
+      }
+    }
+
+    function applyEtliIsimTabloGorunurluk() {
+      const wrap = document.getElementById('wrapEtliIsimTablo');
+      const btn = document.getElementById('btnToggleEtliIsimTablo');
+      const goster = localStorage.getItem('kurbanRapor_etliIsimTablo') !== '0';
+      if (wrap) wrap.hidden = !goster;
+      if (btn) {
+        btn.textContent = goster ? 'Tabloyu gizle' : 'Tabloyu göster';
+        btn.setAttribute('aria-expanded', goster ? 'true' : 'false');
+      }
+    }
+
+    function acKurbanYazdirSayfasi() {
+      const payload = window.__kurbanRaporPrintPayload;
+      if (!payload) {
+        showToast('warning', 'Yazdır', 'Önce raporun yüklenmesini bekleyin.');
+        return;
+      }
+      const key = 'kurbanRaporPrint_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
+      try {
+        localStorage.setItem(key, JSON.stringify(payload));
+      } catch (err) {
+        console.error(err);
+        showToast('error', 'Yazdır', 'Tarayıcı depolamasına yazılamadı (veri çok büyük olabilir).');
+        return;
+      }
+      const baslik = payload.baslik || 'Kurban raporu';
+      const url = 'kurbanraporyazdir.html?key=' + encodeURIComponent(key) + '&personel=' + encodeURIComponent(baslik);
+      window.open(url, '_blank', 'noopener');
+    }
+
+    /** Sadece kullanıcı sekmeyi yenilediğinde (F5 vb.) true; menüden geliş / token yenilemede false. */
+    function isKurbanRaporTarayiciYenilemesi() {
+      try {
+        const nav = performance.getEntriesByType && performance.getEntriesByType('navigation')[0];
+        return !!(nav && nav.type === 'reload');
+      } catch (e) {
+        return false;
+      }
+    }
+
+    window.initPage = async function initKurbanRapor() {
+      const btnYenile = document.getElementById('btnYenile');
+      if (!btnYenile) return;
+
+      async function yukle() {
+        const sb = window.supabase;
+        const loading = document.getElementById('raporYukleniyor');
+        const kpiYillar = document.getElementById('kpiYillar');
+        const kpiKisiBagis = document.getElementById('kpiKisiBagis');
+        const kpiKisiEtli = document.getElementById('kpiKisiEtli');
+        const tblPersonelBagisBody = document.getElementById('tblPersonelBagisBody');
+        const tblPersonelEtliBody = document.getElementById('tblPersonelEtliBody');
+        const tblBagisIsimBody = document.getElementById('tblBagisIsimBody');
+        const tblEtliIsimBody = document.getElementById('tblEtliIsimBody');
+
+        if (!sb) {
+          showToast('error', 'Bağlantı', 'Supabase istemcisi hazır değil.');
+          return;
+        }
+
+        loading.style.display = 'block';
+        destroyRaporCharts();
+        personelSortState.tblPersonelBagis = { si: null, dir: 1 };
+        personelSortState.tblPersonelEtli = { si: null, dir: 1 };
+        kpiYillar.innerHTML = '';
+        const kpiTrendB = document.getElementById('kpiTrendBagis');
+        const kpiTrendE = document.getElementById('kpiTrendEtli');
+        if (kpiTrendB) {
+          kpiTrendB.innerHTML = '';
+          kpiTrendB.setAttribute('aria-hidden', 'true');
+        }
+        if (kpiTrendE) {
+          kpiTrendE.innerHTML = '';
+          kpiTrendE.setAttribute('aria-hidden', 'true');
+        }
+        if (kpiKisiBagis) kpiKisiBagis.innerHTML = '';
+        if (kpiKisiEtli) kpiKisiEtli.innerHTML = '';
+        const kpiKisiAciklama = document.getElementById('kpiKisiAciklama');
+        if (kpiKisiAciklama) kpiKisiAciklama.hidden = true;
+        const kurbanPortfoyOzeti = document.getElementById('kurbanPortfoyOzeti');
+        if (kurbanPortfoyOzeti) kurbanPortfoyOzeti.innerHTML = '';
+        if (tblPersonelBagisBody) tblPersonelBagisBody.innerHTML = '';
+        if (tblPersonelEtliBody) tblPersonelEtliBody.innerHTML = '';
+        if (tblBagisIsimBody) tblBagisIsimBody.innerHTML = '';
+        if (tblEtliIsimBody) tblEtliIsimBody.innerHTML = '';
+
+        try {
+          const selPersonelEl = document.getElementById('selPersonelRapor');
+          const secimOnce = selPersonelEl ? selPersonelEl.value : '__all__';
+
+          const personelMap = await loadPersonelMap(sb);
+
+          const [bagisRes, etliRes, hedefRes] = await Promise.all([
+            sb.from('kurban_2026_bagis_hisse')
+              .select('id, yil, created_by_uid, ad_soyad, telefon, fiyat, aciklama, durum')
+              .in('yil', TUM_YILLAR),
+            sb.from('kurban_2026_etli_hisse')
+              .select('id, yil, created_by_uid, hisedar_ad_soyad, telefon, hisse_adedi, hisse_grubu, aciklama')
+              .in('yil', TUM_YILLAR),
+            sb.from('kurban_2026_hedefler')
+              .select('personel_uid, personel, bagis_hedef, etli_hedef, yil')
+              .in('yil', TUM_YILLAR)
+          ]);
+
+          if (bagisRes.error || etliRes.error) {
+            window.__kurbanRaporPrintPayload = null;
+            window.__kurbanRaporEditBagis = null;
+            window.__kurbanRaporEditEtli = null;
+            const msg = (bagisRes.error && bagisRes.error.message) || (etliRes.error && etliRes.error.message) || '';
+            showToast('error', 'Veri', msg || 'Sorgu hatası. Yetkiniz olmayabilir (RLS).');
+            loading.style.display = 'none';
+            return;
+          }
+
+          if (hedefRes.error) {
+            showToast('warning', 'Hedefler', hedefRes.error.message || 'Hedef tablosu okunamadı; hedefler 0 kabul edildi.');
+          }
+
+          const bagisRows = bagisRes.data || [];
+          const etliRows = etliRes.data || [];
+          const hedefRows = (!hedefRes.error && hedefRes.data) ? hedefRes.data : [];
+
+          rebuildPersonelSelect(personelMap, hedefRows, secimOnce);
+          const selVal = selPersonelEl ? selPersonelEl.value : '__all__';
+          const { b: bRows, e: eRows, h: hRows } = rowsForPersonelFilter(selVal, bagisRows, etliRows, hedefRows);
+
+          const filtreAd = displayNameForPersonelSecim(selVal, personelMap);
+          const showKisiKartlari = selVal === '__all__';
+
+          const fe = document.getElementById('raporFiltreEtiket');
+          if (fe) {
+            if (selVal === '__all__') {
+              fe.style.display = 'none';
+              fe.textContent = '';
+            } else {
+              fe.style.display = '';
+              fe.textContent = '· ' + filtreAd;
+            }
+          }
+
+          const baslikBagis = document.getElementById('chartBagisBaslik');
+          const baslikEtli = document.getElementById('chartEtliBaslik');
+          const suf = selVal === '__all__' ? '' : (' — ' + filtreAd);
+          const baslikBagisPer = document.getElementById('tblBagisPersonelBaslik');
+          const baslikBagisIsim = document.getElementById('tblBagisIsimBaslik');
+          const baslikEtliPer = document.getElementById('tblEtliPersonelBaslik');
+          const baslikEtliIsim = document.getElementById('tblEtliIsimBaslik');
+          if (baslikBagis) {
+            baslikBagis.textContent = selVal === '__all__'
+              ? 'Bağış hisse — gerçekleşen ve hedef'
+              : ('Bağış hisse — ' + filtreAd);
+          }
+          if (baslikEtli) {
+            baslikEtli.textContent = selVal === '__all__'
+              ? 'Etli hisse (adet) — gerçekleşen ve hedef'
+              : ('Etli hisse (adet) — ' + filtreAd);
+          }
+          if (baslikBagisPer) baslikBagisPer.textContent = 'Bağış hisse — temin ve hedef (personel)' + suf;
+          if (baslikBagisIsim) baslikBagisIsim.textContent = 'Bağış hisse — bağışçı özeti' + suf;
+          if (baslikEtliPer) baslikEtliPer.textContent = 'Etli hisse — temin ve hedef (personel)' + suf;
+          if (baslikEtliIsim) baslikEtliIsim.textContent = 'Etli hisse — hissedar özeti' + suf;
+
+          const perStats = {};
+          function bumpPer(uidKey, yil, kind, hisseAdet) {
+            if (!perStats[uidKey]) perStats[uidKey] = emptyYilAgg();
+            const cell = perStats[uidKey][yil];
+            if (!cell) return;
+            if (kind === 'bagis') cell.bagisN += 1;
+            else cell.etliHisseToplam += Number(hisseAdet) || 0;
+          }
+
+          const donorYearsBagis = new Map();
+          const donorYearsEtli = new Map();
+
+          function touchDonorMap(map, ad, yil) {
+            const k = donorKey(ad);
+            if (!k) return;
+            if (!map.has(k)) map.set(k, new Set());
+            map.get(k).add(yil);
+          }
+
+          function donorKisiKpiSay(map) {
+            const o = { daimi: 0, yeni: 0, pasif: 0, diger: 0 };
+            map.forEach(yset => {
+              const sinif = sinifGecmisPencere(yset);
+              if (sinif === 'daimi') o.daimi++;
+              else if (sinif === 'yeni_2025') o.yeni++;
+              else if (sinif === 'pasif_2025') o.pasif++;
+              else o.diger++;
+            });
+            return o;
+          }
+
+          function kisiKpiStatCardsHtml(o) {
+            return [
+              statCard('Daimi', fmtSayi(o.daimi), false, 'stat-daimi'),
+              statCard('Yeni (sadece 2025)', fmtSayi(o.yeni), false, 'stat-yeni'),
+              statCard('Pasif (2025 yok)', fmtSayi(o.pasif), false, 'stat-pasif'),
+              statCard('Değişken', fmtSayi(o.diger), false, 'stat-degisken')
+            ].join('');
+          }
+
+          bRows.forEach(r => {
+            const y = Number(r.yil);
+            if (!TUM_YILLAR.includes(y)) return;
+            bumpPer(personelKey(personelMap, r.created_by_uid), y, 'bagis', 0);
+            touchDonorMap(donorYearsBagis, r.ad_soyad, y);
+          });
+
+          eRows.forEach(r => {
+            const y = Number(r.yil);
+            if (!TUM_YILLAR.includes(y)) return;
+            bumpPer(personelKey(personelMap, r.created_by_uid), y, 'etli', r.hisse_adedi);
+            touchDonorMap(donorYearsEtli, r.hisedar_ad_soyad, y);
+          });
+
+          const yilTop = {};
+          const hedefTop = {};
+          TUM_YILLAR.forEach(y => {
+            yilTop[y] = { b: 0, h: 0 };
+            hedefTop[y] = { bagis: 0, etli: 0 };
+          });
+
+          const hedefByPerson = {};
+          hRows.forEach(r => {
+            const y = Number(r.yil);
+            if (!TUM_YILLAR.includes(y)) return;
+            const bh = Number(r.bagis_hedef) || 0;
+            const eh = Number(r.etli_hedef) || 0;
+            hedefTop[y].bagis += bh;
+            hedefTop[y].etli += eh;
+            const nm = hedefRowToDisplayName(r, personelMap);
+            if (!hedefByPerson[nm]) hedefByPerson[nm] = emptyYilHedefAgg();
+            hedefByPerson[nm][y].bagisHedef += bh;
+            hedefByPerson[nm][y].etliHedef += eh;
+          });
+
+          bRows.forEach(r => {
+            const y = Number(r.yil);
+            if (yilTop[y]) yilTop[y].b += 1;
+          });
+          eRows.forEach(r => {
+            const y = Number(r.yil);
+            if (!yilTop[y]) return;
+            yilTop[y].h += Number(r.hisse_adedi) || 0;
+          });
+
+          kpiYillar.innerHTML = TUM_YILLAR.map(y =>
+            yilOzetiHtml(y, yilTop[y].b, hedefTop[y].bagis, yilTop[y].h, hedefTop[y].etli)
+          ).join('');
+
+          const bagisTrendEl = document.getElementById('kpiTrendBagis');
+          const etliTrendEl = document.getElementById('kpiTrendEtli');
+          if (bagisTrendEl) {
+            bagisTrendEl.innerHTML = createKurbanTrendSvg(
+              TUM_YILLAR.map(y => yilTop[y].b),
+              TUM_YILLAR,
+              'gradKpiTrendBagis'
+            );
+            bagisTrendEl.removeAttribute('aria-hidden');
+          }
+          if (etliTrendEl) {
+            etliTrendEl.innerHTML = createKurbanTrendSvg(
+              TUM_YILLAR.map(y => yilTop[y].h),
+              TUM_YILLAR,
+              'gradKpiTrendEtli'
+            );
+            etliTrendEl.removeAttribute('aria-hidden');
+          }
+
+          drawKurbanRaporCharts(
+            TUM_YILLAR.map(y => yilTop[y].b),
+            TUM_YILLAR.map(y => hedefTop[y].bagis),
+            TUM_YILLAR.map(y => yilTop[y].h),
+            TUM_YILLAR.map(y => hedefTop[y].etli)
+          );
+
+          const kisiKpiBagis = donorKisiKpiSay(donorYearsBagis);
+          const kisiKpiEtli = donorKisiKpiSay(donorYearsEtli);
+
+          if (kurbanPortfoyOzeti) {
+            kurbanPortfoyOzeti.innerHTML =
+              `<div class="portfoy-ozet-pill"><div class="lab">Bağış hisse — benzersiz kişi</div><div class="val">${fmtSayi(donorYearsBagis.size)}</div></div>` +
+              `<div class="portfoy-ozet-pill"><div class="lab">Etli hisse — benzersiz kişi</div><div class="val">${fmtSayi(donorYearsEtli.size)}</div></div>`;
+          }
+          if (kpiKisiBagis) kpiKisiBagis.innerHTML = kisiKpiStatCardsHtml(kisiKpiBagis);
+          if (kpiKisiEtli) kpiKisiEtli.innerHTML = kisiKpiStatCardsHtml(kisiKpiEtli);
+          if (kpiKisiAciklama) {
+            kpiKisiAciklama.hidden = false;
+            const ilkP = kpiKisiAciklama.querySelector('p');
+            if (ilkP) {
+              ilkP.innerHTML = showKisiKartlari
+                ? 'Üstteki portföy sayıları ilgili kayıt türündeki <strong>benzersiz kişi</strong> (normalize ad soyad). Kartlar durum desenine göre gruplar. Bağış ve etli blokları ayrı hesaplanır.'
+                : ('Seçili personel (<strong>' + escapeHtml(filtreAd) + '</strong>) için yalnızca o personelin kayıtları üzerinden portföy ve durum sayıları hesaplanmıştır.');
+            }
+          }
+
+          mergeAtanmisVeDiger(perStats, hedefByPerson);
+
+          let personelNames;
+          if (selVal === '__all__') {
+            const nameSet = new Set([...Object.keys(perStats), ...Object.keys(hedefByPerson)]);
+            personelNames = [...nameSet].sort((a, b) => a.localeCompare(b, 'tr'));
+          } else {
+            const hasKayit = bRows.length > 0 || eRows.length > 0 || hRows.length > 0;
+            personelNames = hasKayit ? [filtreAd] : [];
+          }
+
+          const colSpanBagis = 1 + TUM_YILLAR.length * 3;
+          const colSpanEtli = colSpanBagis;
+
+          const satirPersonelBagis = personelNames.map(name => {
+            const agg = perStats[name] || emptyYilAgg();
+            const hAgg = hedefByPerson[name] || emptyYilHedefAgg();
+            const cells = TUM_YILLAR.map(y => {
+              const c = agg[y];
+              const h = hAgg[y];
+              const hB = Number(h.bagisHedef) || 0;
+              const cB = Number(c.bagisN) || 0;
+              const uRaw = ulasmaPctRaw(cB, hB);
+              const oranSt = ulasmaOranStili(uRaw);
+              return `<td class="td-yil td-yil-start muted" data-sort="${hB}">${fmtSayi(h.bagisHedef)}</td>` +
+                `<td class="td-yil" data-sort="${cB}">${fmtSayi(c.bagisN)}</td>` +
+                `<td class="td-yil td-oran" data-sort="${uRaw == null ? -1e12 : uRaw}" style="${oranSt}">${ulasmaNispetiStr(cB, hB)}</td>`;
+            }).join('');
+            return `<tr><td class="td-ad">${escapeHtml(name)}</td>${cells}</tr>`;
+          }).join('');
+
+          const satirPersonelEtli = personelNames.map(name => {
+            const agg = perStats[name] || emptyYilAgg();
+            const hAgg = hedefByPerson[name] || emptyYilHedefAgg();
+            const cells = TUM_YILLAR.map(y => {
+              const c = agg[y];
+              const h = hAgg[y];
+              const hE = Number(h.etliHedef) || 0;
+              const cE = Number(c.etliHisseToplam) || 0;
+              const uRaw = ulasmaPctRaw(cE, hE);
+              const oranSt = ulasmaOranStili(uRaw);
+              return `<td class="td-yil td-yil-start muted" data-sort="${hE}">${fmtSayi(h.etliHedef)}</td>` +
+                `<td class="td-yil" data-sort="${cE}">${fmtSayi(c.etliHisseToplam)}</td>` +
+                `<td class="td-yil td-oran" data-sort="${uRaw == null ? -1e12 : uRaw}" style="${oranSt}">${ulasmaNispetiStr(cE, hE)}</td>`;
+            }).join('');
+            return `<tr><td class="td-ad">${escapeHtml(name)}</td>${cells}</tr>`;
+          }).join('');
+
+          const bagisIsimListe = buildIsimYilListesi(bRows, r => r.ad_soyad, TUM_YILLAR);
+          const etliIsimListe = buildIsimYilListesi(eRows, r => r.hisedar_ad_soyad, TUM_YILLAR);
+
+          const bosMsg = selVal === '__all__'
+            ? 'Personel veya hedef satırı yok.'
+            : 'Seçilen personel için kayıt veya hedef bulunamadı.';
+          if (tblPersonelBagisBody) {
+            tblPersonelBagisBody.innerHTML = personelNames.length
+              ? satirPersonelBagis
+              : `<tr><td colspan="${colSpanBagis}" class="muted" style="text-align:center;padding:20px">${bosMsg}</td></tr>`;
+          }
+          if (tblPersonelEtliBody) {
+            tblPersonelEtliBody.innerHTML = personelNames.length
+              ? satirPersonelEtli
+              : `<tr><td colspan="${colSpanEtli}" class="muted" style="text-align:center;padding:20px">${bosMsg}</td></tr>`;
+          }
+          if (tblBagisIsimBody) tblBagisIsimBody.innerHTML = htmlIsimDurumSatirlari(bagisIsimListe, TUM_YILLAR);
+          if (tblEtliIsimBody) tblEtliIsimBody.innerHTML = htmlIsimDurumSatirlari(etliIsimListe, TUM_YILLAR);
+          isimOzetSortState.bagis = { key: 'ad', dir: 1 };
+          isimOzetSortState.etli = { key: 'ad', dir: 1 };
+
+          const matrisYazdirYillar = YILLAR_GECMIS;
+          window.__kurbanRaporPersonelMap = personelMap;
+          window.__kurbanRaporEditBagis = bRows.slice();
+          window.__kurbanRaporEditEtli = eRows.slice();
+
+          window.__kurbanRaporPrintPayload = {
+            showKisi: showKisiKartlari,
+            baslik: selVal === '__all__' ? 'TÜM PERSONEL' : filtreAd,
+            yilOzet: YILLAR_GECMIS.map(y => ({
+              yil: y,
+              bagisGercek: yilTop[y].b,
+              bagisHedef: hedefTop[y].bagis,
+              etliGercek: yilTop[y].h,
+              etliHedef: hedefTop[y].etli
+            })),
+            portfoy: {
+              bagisBenzersizKisi: donorYearsBagis.size,
+              etliBenzersizKisi: donorYearsEtli.size,
+              kisiKpiBagis,
+              kisiKpiEtli
+            },
+            kisiKpiBagis,
+            kisiKpiEtli,
+            personelBagisTablo: personelNames.map(name => {
+              const agg = perStats[name] || emptyYilAgg();
+              const hAgg = hedefByPerson[name] || emptyYilHedefAgg();
+              const yillar = {};
+              matrisYazdirYillar.forEach(y => {
+                yillar[String(y)] = { b: agg[y].bagisN, bH: hAgg[y].bagisHedef };
+              });
+              return { ad: name, yillar };
+            }),
+            personelEtliTablo: personelNames.map(name => {
+              const agg = perStats[name] || emptyYilAgg();
+              const hAgg = hedefByPerson[name] || emptyYilHedefAgg();
+              const yillar = {};
+              matrisYazdirYillar.forEach(y => {
+                yillar[String(y)] = { h: agg[y].etliHisseToplam, hH: hAgg[y].etliHedef };
+              });
+              return { ad: name, yillar };
+            }),
+            bagisIsimMatrisi: bagisIsimListe.map(row => ({
+              isim: row.isim,
+              durum: sinifEtiket(row.sinif),
+              n2023: row.counts[2023] || 0,
+              n2024: row.counts[2024] || 0,
+              n2025: row.counts[2025] || 0
+            })),
+            etliIsimMatrisi: etliIsimListe.map(row => ({
+              isim: row.isim,
+              durum: sinifEtiket(row.sinif),
+              n2023: row.counts[2023] || 0,
+              n2024: row.counts[2024] || 0,
+              n2025: row.counts[2025] || 0
+            })),
+            bagis2025Liste: bRows
+              .filter(r => Number(r.yil) === 2025)
+              .map(r => ({
+                ad_soyad: r.ad_soyad,
+                telefon: r.telefon || '',
+                fiyat: r.fiyat,
+                durum: r.durum || ''
+              }))
+              .sort((a, b) => String(a.ad_soyad || '').localeCompare(String(b.ad_soyad || ''), 'tr')),
+            etli2025Liste: eRows
+              .filter(r => Number(r.yil) === 2025)
+              .map(r => ({
+                hissedar: r.hisedar_ad_soyad,
+                telefon: r.telefon || '',
+                hisse_adedi: r.hisse_adedi,
+                hisse_grubu: r.hisse_grubu || ''
+              }))
+              .sort((a, b) => String(a.hissedar || '').localeCompare(String(b.hissedar || ''), 'tr'))
+          };
+          const elIpucu = document.getElementById('raporYukleIpucu');
+          if (elIpucu) elIpucu.hidden = true;
+        } catch (e) {
+          console.error(e);
+          destroyRaporCharts();
+          window.__kurbanRaporPrintPayload = null;
+          window.__kurbanRaporEditBagis = null;
+          window.__kurbanRaporEditEtli = null;
+          showToast('error', 'Hata', 'Rapor yüklenemedi.');
+        } finally {
+          loading.style.display = 'none';
+        }
+      }
+
+      kurbanRaporYukleFn = yukle;
+
+      if (!kurbanRaporListenersBound) {
+        kurbanRaporListenersBound = true;
+        applyBagisIsimTabloGorunurluk();
+        applyEtliIsimTabloGorunurluk();
+        btnYenile.addEventListener('click', () => yukle());
+        document.getElementById('selPersonelRapor')?.addEventListener('change', () => yukle());
+        document.getElementById('btnKurbanYazdir')?.addEventListener('click', () => acKurbanYazdirSayfasi());
+        document.getElementById('btnKurbanDuzenle')?.addEventListener('click', () => openModalKurbanDuzenle());
+        document.getElementById('btnToggleBagisIsimTablo')?.addEventListener('click', () => {
+          const goster = localStorage.getItem('kurbanRapor_bagisIsimTablo') !== '0';
+          localStorage.setItem('kurbanRapor_bagisIsimTablo', goster ? '0' : '1');
+          applyBagisIsimTabloGorunurluk();
+        });
+        document.getElementById('btnToggleEtliIsimTablo')?.addEventListener('click', () => {
+          const goster = localStorage.getItem('kurbanRapor_etliIsimTablo') !== '0';
+          localStorage.setItem('kurbanRapor_etliIsimTablo', goster ? '0' : '1');
+          applyEtliIsimTabloGorunurluk();
+        });
+        document.getElementById('modalKurbanKapat')?.addEventListener('click', () => closeModalKurbanDuzenle());
+        document.getElementById('modalKurbanDuzenle')?.addEventListener('click', (ev) => {
+          if (ev.target.id === 'modalKurbanDuzenle') closeModalKurbanDuzenle();
+        });
+        document.querySelector('.modal-kurban-tabs')?.addEventListener('click', (ev) => {
+          const b = ev.target.closest('button[data-tab]');
+          if (!b) return;
+          const tab = b.getAttribute('data-tab');
+          document.querySelectorAll('.modal-kurban-tabs button').forEach(x => x.classList.toggle('active', x === b));
+          const lb = document.getElementById('modalKurbanListeBagis');
+          const le = document.getElementById('modalKurbanListeEtli');
+          if (tab === 'etli') {
+            if (lb) lb.hidden = true;
+            if (le) le.hidden = false;
+          } else {
+            if (lb) lb.hidden = false;
+            if (le) le.hidden = true;
+          }
+        });
+        document.getElementById('modalKurbanAra')?.addEventListener('input', (ev) => {
+          clearTimeout(modalKurbanAraTimer);
+          modalKurbanAraTimer = setTimeout(() => {
+            modalKurbanFilter = String(ev.target.value || '').trim().toLowerCase();
+            renderModalKurbanLists();
+          }, 200);
+        });
+        document.querySelector('.modal-kurban-bd')?.addEventListener('click', (ev) => {
+          const bagBtn = ev.target.closest('[data-save-bagis]');
+          if (bagBtn) {
+            const row = bagBtn.closest('.modal-kurban-row');
+            if (row) void saveModalBagisRow(row);
+            return;
+          }
+          const etBtn = ev.target.closest('[data-save-etli]');
+          if (etBtn) {
+            const row = etBtn.closest('.modal-kurban-row');
+            if (row) void saveModalEtliRow(row);
+          }
+        });
+        document.addEventListener('keydown', (ev) => {
+          if (ev.key !== 'Escape') return;
+          const m = document.getElementById('modalKurbanDuzenle');
+          if (m && !m.hidden) closeModalKurbanDuzenle();
+        });
+        document.getElementById('raporIcerik')?.addEventListener('click', (ev) => {
+          handleIsimOzetSortClick(ev);
+          handlePersonelSortClick(ev);
+        });
+      }
+      const elRaporIpucu = document.getElementById('raporYukleIpucu');
+      if (isKurbanRaporTarayiciYenilemesi()) {
+        if (elRaporIpucu) elRaporIpucu.hidden = true;
+        await yukle();
+      } else if (elRaporIpucu) {
+        elRaporIpucu.hidden = false;
+      }
+    };
+  </script>
+</body>
+
+</html>

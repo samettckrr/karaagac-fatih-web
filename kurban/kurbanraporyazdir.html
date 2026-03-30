@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Kurban Raporu — Yazdır | Karaağaç</title>
+  <link rel="icon" type="image/png" href="../img/logo.png" />
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; color: #2c3e50; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+    @media print {
+      @page { size: A4 portrait; margin: 5mm 8mm; }
+      body { padding: 0; font-size: 10pt; }
+      .page-break { page-break-after: always; height: 0; display: block; }
+      h2, h3, .charts-section, .cover-bottom-bar, .analysis-row, .op-section { page-break-after: avoid; }
+      tr { page-break-inside: avoid; }
+      thead { display: table-header-group; }
+      a[href]:after { content: none !important; }
+      .cover-page { padding: 12mm 13mm !important; }
+      .cover-chart-wrap, .cover-chart-wrap svg { max-height: 160px !important; }
+    }
+
+    .cover-page { width: 100%; min-height: 0; display: flex; flex-direction: column; justify-content: space-between; padding: 17mm 17mm; text-align: center; border: 3px solid #324960; background: white; position: relative; }
+    .cover-inner-top { flex: 0 1 auto; }
+    .cover-personel-name { font-size: 34px; font-weight: 900; color: #324960; margin: 11px 0 15px 0; text-transform: uppercase; letter-spacing: 0.78px; line-height: 1.18; }
+    .cover-muted-inline { font-size: 10px !important; margin: 4px 0 10px !important; line-height: 1.4 !important; }
+    .portfoy-headline { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin: 8px 0 14px; }
+    .portfoy-pill { flex: 1 1 200px; max-width: 345px; padding: 13px 16px; background: #f8fafc; border: 2px solid #324960; border-radius: 12px; text-align: center; }
+    .portfoy-pill .ph-lab { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.055em; margin-bottom: 6px; }
+    .portfoy-pill .ph-val { font-size: 31px; font-weight: 900; color: #324960; line-height: 1.08; }
+    .portfoy-pill .ph-sub { font-size: 9px; color: #64748b; margin-top: 5px; font-weight: 600; }
+    .portfoy-split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 680px; margin: 0 auto 15px; text-align: left; }
+    @media print { .portfoy-split { max-width: 100%; } }
+    .portfoy-col-h { font-size: 10px; font-weight: 900; color: #324960; text-transform: uppercase; letter-spacing: 0.045em; margin-bottom: 8px; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px; }
+    .mini4 { display: flex; flex-direction: column; gap: 7px; }
+    .m4 { display: flex; justify-content: space-between; align-items: center; padding: 8px 11px; border-radius: 8px; background: #f1f5f9; font-size: 11px; font-weight: 700; border-left: 5px solid #94a3b8; }
+    .m4.m4-daimi { border-left-color: #16a34a; }
+    .m4.m4-yeni { border-left-color: #2563eb; }
+    .m4.m4-pasif { border-left-color: #dc2626; }
+    .m4.m4-degisken { border-left-color: #ea580c; }
+    .m4 b { font-size: 15px; color: #0f172a; }
+    .charts-section { margin-top: 13px; display: flex; flex-direction: column; gap: 11px; align-items: center; }
+    .chart-box { width: 100%; max-width: 650px; border: 1px solid #e5e7eb; border-radius: 9px; padding: 9px 10px; position: relative; }
+    .chart-title { font-size: 11px; font-weight: 700; color: #324960; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 5px; display: block; text-align: left; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+    .cover-chart-wrap { width: 100%; max-height: 148px; overflow: hidden; line-height: 0; text-align: center; }
+    .cover-chart-wrap svg { width: 100%; max-width: 620px; height: auto; max-height: 148px; display: block; margin: 0 auto; }
+    .portfolio-explanation { font-size: 10.5px; color: #666; text-align: center; margin-top: 12px; line-height: 1.48; font-style: italic; }
+    .chart-area { fill: url(#gradientFillKurban); opacity: 0.15; }
+    .chart-line { fill: none; stroke: #324960; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+    .chart-point { fill: #fff; stroke: #324960; stroke-width: 2.5; }
+    .growth-bg { fill: #27ae60; rx: 3; } .growth-bg.negative { fill: #c0392b; }
+    .growth-badge { font-size: 9px; font-weight: bold; fill: #fff; }
+    .bar-bg { fill: #f0f2f5; rx: 4; } .bar-fill { rx: 4; } .bar-text { font-size: 10px; font-weight: 600; fill: #555; } .bar-count { font-size: 11px; font-weight: bold; fill: #324960; text-anchor: end; }
+    .cover-bottom-section { margin-top: 12px; flex-shrink: 0; }
+    .cover-text-container { margin-bottom: 12px; }
+    .cover-main-text { font-size: 17px; font-weight: 800; color: #324960; margin-bottom: 4px; }
+    .cover-year-text { font-size: 12px; color: #555; }
+    .cover-bottom-bar { border-top: 2px dashed #324960; padding-top: 13px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; }
+    .cover-logo-small { height: 42px; width: auto; }
+    .cover-bottom-title { font-size: 22px; font-weight: 900; color: #324960; letter-spacing: 0.78px; }
+
+    .summary-page { padding: 10mm 0; }
+    .page-title { font-size: 18px; font-weight: 800; color: #324960; border-bottom: 2px solid #324960; padding-bottom: 8px; margin-bottom: 15px; }
+    .year-box { border: 1px solid #ccc; border-radius: 5px; margin-bottom: 10px; break-inside: avoid; }
+    .year-header { background: #f0f0f0; padding: 6px 10px; font-weight: bold; color: #333; font-size: 12px; border-bottom: 1px solid #ccc; }
+    .year-content { display: flex; flex-wrap: wrap; padding: 5px; }
+    .year-item { width: 100%; display: flex; justify-content: space-between; padding: 4px 8px; font-size: 11px; border-bottom: 1px solid #f9f9f9; }
+    .year-subhdr { width: 100%; padding: 6px 8px 2px; font-size: 10px; font-weight: 800; color: #324960; text-transform: uppercase; letter-spacing: 0.03em; background: #fafbfc; border-top: 1px dashed #ddd; }
+    .year-subhdr:first-of-type { border-top: none; background: transparent; padding-top: 4px; }
+    .year-subhdr-gap { margin-top: 4px; }
+    .year-total-row { background: #fcfcfc; font-weight: bold; border-top: 2px solid #ddd; padding: 5px 10px; font-size: 11px; display: flex; justify-content: space-between; }
+
+    .bagisci-table { width: 100%; border-collapse: collapse; font-size: 7pt; margin-top: 10px; }
+    .bagisci-table th, .bagisci-table td { border: 1px solid #ccc; padding: 2px 3px; text-align: center; vertical-align: middle; }
+    .bagisci-table thead th { background: #324960 !important; color: #fff !important; font-weight: bold; padding: 4px 2px; }
+    .bagisci-table .sub-th { background: #f0f0f0 !important; color: #333 !important; font-weight: normal; font-size: 6pt; }
+    /* Personel hedef / temin / ulaşma: daha yüksek satır */
+    .tbl-personel-hedef.bagisci-table { font-size: 7.5pt; }
+    .tbl-personel-hedef.bagisci-table th,
+    .tbl-personel-hedef.bagisci-table td {
+      padding: 6px 7px;
+      line-height: 1.4;
+      vertical-align: middle;
+    }
+    .tbl-personel-hedef.bagisci-table thead th { padding: 8px 6px; }
+    .tbl-personel-hedef.bagisci-table .sub-th { font-size: 6.5pt; padding: 6px 5px !important; }
+    .tbl-personel-hedef.bagisci-table .col-name {
+      max-width: none;
+      min-width: 8em;
+      white-space: normal;
+      overflow: visible;
+    }
+    @media print {
+      .tbl-personel-hedef.bagisci-table th,
+      .tbl-personel-hedef.bagisci-table td { padding: 7px 6px; }
+      .tbl-personel-hedef.bagisci-table thead th { padding: 8px 5px; }
+    }
+    .col-name { text-align: left !important; width: 16%; font-weight: 600; white-space: nowrap; overflow: hidden; max-width: 100px; }
+    .col-durum { font-size: 6.5pt; font-weight: 800; white-space: nowrap; }
+    .dur-daimi { color: #16a34a !important; }
+    .dur-yeni { color: #2563eb !important; }
+    .dur-pasif { color: #dc2626 !important; }
+    .dur-degisken { color: #ea580c !important; }
+    .col-sep { border-left: 2px solid #999 !important; }
+
+    .op-section { page-break-inside: avoid; margin-bottom: 10px; }
+    .op-header { background: #324960; color: white; font-size: 11px; font-weight: bold; padding: 4px 8px; border-radius: 4px 4px 0 0; display: flex; justify-content: space-between; }
+    .op-list { border: 1px solid #ccc; border-top: none; border-radius: 0 0 4px 4px; font-size: 9px; max-height: 180px; overflow: auto; }
+    .op-row { display: flex; border-bottom: 1px solid #eee; padding: 4px 6px; align-items: center; }
+    .op-row:last-child { border-bottom: none; }
+    .op-row:nth-child(even) { background: #f9f9f9; }
+    .op-name { flex: 1; font-weight: 600; color: #333; }
+
+    .bar-fill.bg-daimi, .bg-daimi { fill: #16a34a; }
+    .bar-fill.bg-yeni, .bg-yeni { fill: #2563eb; }
+    .bar-fill.bg-pasif, .bg-pasif { fill: #dc2626; }
+    .bar-fill.bg-diger, .bg-diger { fill: #ea580c; }
+    .legend-box { margin: 10px 0; text-align: center; font-size: 10px; }
+    .legend-badge { display: inline-block; width: 12px; height: 12px; line-height: 12px; text-align: center; color: #fff; border-radius: 3px; margin-right: 3px; font-size: 8px; }
+    .muted-note { font-size: 10px; color: #7f8c8d; margin: 8px 0; }
+    .grid-2-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: start; }
+    .tik-cell { font-size: 12px; font-weight: 800; text-align: center; }
+    .tik-cell-count { font-size: 11px; font-weight: 900; color: #1e3a5f; }
+    .liste-2025-table { margin-top: 8px; font-size: 8pt; width: 100%; }
+    .liste-2025-table .col-2025-isim { text-align: left !important; font-weight: 600; padding: 4px 6px !important; word-break: break-word; }
+    .liste-2025-table .col-2025-adet { text-align: center; font-weight: 800; width: 18%; min-width: 2.5em; white-space: nowrap; }
+    .y2025-page .page-title { margin-bottom: 10px; }
+    .y2025-intro { margin-bottom: 12px !important; text-align: center; }
+    .y2025-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+    .y2025-col { min-width: 0; }
+    .y2025-col-etli { border-left: 2px solid #cbd5e1; padding-left: 16px; }
+    .y2025-col-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: #324960;
+      margin: 0 0 6px 0;
+      padding-bottom: 5px;
+      border-bottom: 2px solid #324960;
+      text-align: left;
+    }
+    .y2025-col .muted-note { font-size: 9px; margin: 0 0 6px 0 !important; text-align: left; }
+    .y2025-col .liste-2025-table { margin-top: 4px; font-size: 7.5pt; }
+    @media print {
+      .y2025-split { gap: 12px; }
+      .y2025-col-etli { padding-left: 12px; border-left-color: #94a3b8; }
+    }
+    table.bagisci-table-mat { table-layout: fixed; }
+    table.bagisci-table-mat .col-ish { width: 40%; text-align: left !important; }
+    table.bagisci-table-mat .col-idurum { width: 13%; }
+    table.bagisci-table-mat .col-iy { width: 15.6%; }
+    .section-gap { margin-top: 18px; }
+  </style>
+</head>
+<body>
+  <div id="raporContent">
+    <div style="text-align:center; padding:50px;">
+      <h3 style="color:#666">Rapor verisi yükleniyor…</h3>
+      <p style="font-size:12px; color:#999">Bekleyiniz…</p>
+    </div>
+  </div>
+
+  <script>
+    try {
+      const p = new URLSearchParams(window.location.search);
+      const personelParam = p.get('personel') || 'Rapor';
+      let data = null;
+
+      if (p.get('key')) {
+        try {
+          const raw = localStorage.getItem(p.get('key'));
+          if (raw) {
+            data = JSON.parse(raw);
+            localStorage.removeItem(p.get('key'));
+          }
+        } catch (e) { console.error('Storage:', e); }
+      } else if (p.get('data')) {
+        try {
+          data = JSON.parse(decodeURIComponent(p.get('data')));
+        } catch (e) { console.error('URL data:', e); }
+      }
+
+      if (!data || !Array.isArray(data.yilOzet)) {
+        throw new Error('Rapor verisi bulunamadı. Ana rapor sayfasından «Yazdır» ile açın.');
+      }
+
+      renderKurbanPrint(personelParam, data);
+
+      setTimeout(() => { window.print(); }, 1500);
+    } catch (err) {
+      document.getElementById('raporContent').innerHTML =
+        '<div style="padding:40px; text-align:center; font-family:sans-serif;">' +
+        '<h2 style="color:#c0392b">Rapor oluşturulamadı</h2>' +
+        '<p style="color:#333; margin-top:10px">' + esc(err.message) + '</p></div>';
+    }
+
+    function esc(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function ulasmaPct(temin, hedef) {
+      const t = Number(temin) || 0;
+      const h = Number(hedef) || 0;
+      if (h <= 0) return '—';
+      const pct = (t / h) * 100;
+      return new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1, minimumFractionDigits: 0 }).format(pct) + '%';
+    }
+
+    function ulasmaCellPrint(temin, hedef) {
+      const t = Number(temin) || 0;
+      const h = Number(hedef) || 0;
+      if (h <= 0) return '—';
+      const raw = (t / h) * 100;
+      const text = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1, minimumFractionDigits: 0 }).format(raw) + '%';
+      let col = '#64748b';
+      if (raw < 25) col = '#dc2626';
+      else if (raw < 50) col = '#ea580c';
+      else if (raw < 75) col = '#2563eb';
+      else if (raw <= 100) col = '#16a34a';
+      else col = '#15803d';
+      return `<span style="color:${col};font-weight:800">${esc(text)}</span>`;
+    }
+
+    function renderKurbanPrint(ad, d) {
+      const YAZ_YIL = [2023, 2024, 2025];
+      let yilOzet = (d.yilOzet || []).filter(o => YAZ_YIL.includes(Number(o.yil)));
+      if (!yilOzet.length && Array.isArray(d.yilOzet)) {
+        yilOzet = d.yilOzet.filter(o => Number(o.yil) <= 2025).slice(0, 3);
+      }
+      if (!yilOzet.length) {
+        yilOzet = YAZ_YIL.map(y => ({
+          yil: y,
+          bagisGercek: 0,
+          bagisHedef: 0,
+          etliGercek: 0,
+          etliHedef: 0
+        }));
+      }
+      const bagisSeri = yilOzet.map(x => Number(x.bagisGercek) || 0);
+      const etliSeri = yilOzet.map(x => Number(x.etliGercek) || 0);
+      const yillar = yilOzet.map(x => x.yil);
+      const showKisi = d.showKisi !== false;
+      function normalizeKisiBlock(obj) {
+        const o = obj && typeof obj === 'object' ? obj : {};
+        return {
+          daimi: Number(o.daimi) || 0,
+          yeni: Number(o.yeni) || 0,
+          pasif: Number(o.pasif) || 0,
+          diger: Number(o.diger) || 0
+        };
+      }
+      const kb = normalizeKisiBlock(d.kisiKpiBagis);
+      let ke = normalizeKisiBlock(d.kisiKpiEtli);
+      const kLegacy = d.kisiKpi && typeof d.kisiKpi === 'object' && !Array.isArray(d.kisiKpi) ? normalizeKisiBlock(d.kisiKpi) : null;
+      const sumKb = kb.daimi + kb.yeni + kb.pasif + kb.diger;
+      const sumKe = ke.daimi + ke.yeni + ke.pasif + ke.diger;
+      if (sumKb === 0 && kLegacy) {
+        kb.daimi = kLegacy.daimi;
+        kb.yeni = kLegacy.yeni;
+        kb.pasif = kLegacy.pasif;
+        kb.diger = kLegacy.diger;
+      }
+      if (sumKe === 0 && kLegacy) {
+        ke.daimi = kLegacy.daimi;
+        ke.yeni = kLegacy.yeni;
+        ke.pasif = kLegacy.pasif;
+        ke.diger = kLegacy.diger;
+      }
+      const pf = d.portfoy && typeof d.portfoy === 'object' ? d.portfoy : {};
+      let nBagPf = Number(pf.bagisBenzersizKisi);
+      let nEtPf = Number(pf.etliBenzersizKisi);
+      if (!Number.isFinite(nBagPf)) nBagPf = null;
+      if (!Number.isFinite(nEtPf)) nEtPf = null;
+
+      function mini4Html(c) {
+        return `<div class="mini4">
+          <div class="m4 m4-daimi"><span>Daimi</span><b>${fmt(c.daimi)}</b></div>
+          <div class="m4 m4-yeni"><span>Yeni</span><b>${fmt(c.yeni)}</b></div>
+          <div class="m4 m4-pasif"><span>Pasif</span><b>${fmt(c.pasif)}</b></div>
+          <div class="m4 m4-degisken"><span>Değişken</span><b>${fmt(c.diger)}</b></div>
+        </div>`;
+      }
+      function durumPrintClass(etiket) {
+        const raw = String(etiket);
+        const t = raw.toLowerCase();
+        if (t.includes('daimi')) return 'dur-daimi';
+        if (t.includes('yeni')) return 'dur-yeni';
+        if (t.includes('pasif')) return 'dur-pasif';
+        if (raw.indexOf('Değişken') >= 0 || t.includes('değişken') || t.includes('degisken')) return 'dur-degisken';
+        return '';
+      }
+
+      const tabBagis = d.personelBagisTablo || [];
+      const tabEtli = d.personelEtliTablo || [];
+      const matBagis = d.bagisIsimMatrisi || [];
+      const matEtli = d.etliIsimMatrisi || [];
+
+      const portfoyFiltreNotu = showKisi ? '' : '<p class="muted-note cover-muted-inline">Personel filtresi: portföy ve durum seçili kayıtlara göre.</p>';
+
+      const cover = `
+        <div class="cover-page">
+          <div class="cover-inner-top">
+            <div class="cover-personel-name">${esc(ad)}</div>
+            ${portfoyFiltreNotu}
+            <div class="portfoy-headline">
+              <div class="portfoy-pill">
+                <div class="ph-lab">Bağış hisse — portföy (benzersiz kişi)</div>
+                <div class="ph-val">${nBagPf != null ? fmt(nBagPf) : '—'}</div>
+              </div>
+              <div class="portfoy-pill">
+                <div class="ph-lab">Etli hisse — portföy (benzersiz kişi)</div>
+                <div class="ph-val">${nEtPf != null ? fmt(nEtPf) : '—'}</div>
+              </div>
+            </div>
+            <div class="portfoy-split">
+              <div>
+                <div class="portfoy-col-h">Bağış — durum dağılımı</div>
+                ${mini4Html(kb)}
+              </div>
+              <div>
+                <div class="portfoy-col-h">Etli — durum dağılımı</div>
+                ${mini4Html(ke)}
+              </div>
+            </div>
+            <div class="charts-section">
+              <div class="chart-box"><span class="chart-title">Bağış kayıt — trend (2023–2025)</span><div class="cover-chart-wrap">${createTrendN(bagisSeri, yillar, 'gradKurbanB')}</div></div>
+              <div class="chart-box"><span class="chart-title">Etli hisse — trend (2023–2025)</span><div class="cover-chart-wrap">${createTrendN(etliSeri, yillar, 'gradKurbanE')}</div></div>
+            </div>
+          </div>
+          <div class="cover-bottom-section">
+            <div class="cover-text-container">
+              <div class="cover-main-text">KURBAN ANALİZİ</div>
+            </div>
+            <div class="cover-bottom-bar">
+              <img src="../img/logo.png" class="cover-logo-small" alt="" onerror="this.style.display='none'"/>
+              <div class="cover-bottom-title">KARAAĞAÇ FATİH</div>
+            </div>
+          </div>
+        </div>
+        <div class="page-break"></div>`;
+
+      const headB = YAZ_YIL.map(y => `<th colspan="3" class="col-sep">${y}</th>`).join('');
+      const subB = YAZ_YIL.map(() => '<th class="sub-th col-sep">Hedef</th><th class="sub-th">Temin</th><th class="sub-th">Ulaşma</th>').join('');
+      const rowsB = tabBagis.length
+        ? tabBagis.map(row => {
+            const cells = YAZ_YIL.map(y => {
+              const yy = String(y);
+              const c = row.yillar && row.yillar[yy] ? row.yillar[yy] : { b: 0, bH: 0 };
+              return `<td class="col-sep">${fmt(c.bH)}</td><td>${fmt(c.b)}</td><td>${ulasmaCellPrint(c.b, c.bH)}</td>`;
+            }).join('');
+            return `<tr><td class="col-name">${esc(row.ad)}</td>${cells}</tr>`;
+          }).join('')
+        : `<tr><td colspan="10">Kayıt yok.</td></tr>`;
+
+      const headE = YAZ_YIL.map(y => `<th colspan="3" class="col-sep">${y}</th>`).join('');
+      const subE = YAZ_YIL.map(() => '<th class="sub-th col-sep">Hedef</th><th class="sub-th">Temin</th><th class="sub-th">Ulaşma</th>').join('');
+      const rowsE = tabEtli.length
+        ? tabEtli.map(row => {
+            const cells = YAZ_YIL.map(y => {
+              const yy = String(y);
+              const c = row.yillar && row.yillar[yy] ? row.yillar[yy] : { h: 0, hH: 0 };
+              return `<td class="col-sep">${fmt(c.hH)}</td><td>${fmt(c.h)}</td><td>${ulasmaCellPrint(c.h, c.hH)}</td>`;
+            }).join('');
+            return `<tr><td class="col-name">${esc(row.ad)}</td>${cells}</tr>`;
+          }).join('')
+        : `<tr><td colspan="10">Kayıt yok.</td></tr>`;
+
+      function inferDurumEtiket(r) {
+        if (r.durum != null && String(r.durum).trim() !== '') return String(r.durum).trim();
+        const has = y => {
+          const n = r['n' + y];
+          if (n != null && Number(n) > 0) return true;
+          return !!r['t' + y];
+        };
+        if (has(2023) && has(2024) && has(2025)) return 'Daimi';
+        const past = YAZ_YIL.filter(has);
+        if (past.length === 1 && past[0] === 2025) return 'Yeni';
+        if (!has(2025) && (has(2023) || has(2024))) return 'Pasif';
+        return 'Değişken';
+      }
+
+      const DURUM_MATRIS_SIRA = { Daimi: 0, Yeni: 1, Değişken: 2, Pasif: 3 };
+
+      function sortMatrisByDurum(rows) {
+        return [...(rows || [])].sort((a, b) => {
+          const da = inferDurumEtiket(a);
+          const db = inferDurumEtiket(b);
+          const ra = Object.prototype.hasOwnProperty.call(DURUM_MATRIS_SIRA, da) ? DURUM_MATRIS_SIRA[da] : 99;
+          const rb = Object.prototype.hasOwnProperty.call(DURUM_MATRIS_SIRA, db) ? DURUM_MATRIS_SIRA[db] : 99;
+          if (ra !== rb) return ra - rb;
+          return String(a.isim || '').localeCompare(String(b.isim || ''), 'tr');
+        });
+      }
+
+      function matrisYilHucre(r, y) {
+        const nRaw = r['n' + y];
+        const n = Number(nRaw);
+        const legacy = r['t' + y] ? 1 : 0;
+        const c = Number.isFinite(n) && n > 0 ? n : legacy;
+        if (c <= 0) return '';
+        if (c === 1) return '✓';
+        return `<span class="tik-cell-count" title="${c} kayıt">${esc(String(c))}</span>`;
+      }
+
+      const matBagisSorted = sortMatrisByDurum(matBagis);
+      const matEtliSorted = sortMatrisByDurum(matEtli);
+
+      const rowsMat = rows => rows.length
+        ? rows.map(r => {
+            const rawDur = inferDurumEtiket(r);
+            const dur = esc(rawDur);
+            const dcls = durumPrintClass(rawDur);
+            return `<tr><td class="col-name">${esc(r.isim)}</td><td class="col-durum ${dcls}">${dur}</td>` +
+              YAZ_YIL.map(y => `<td class="tik-cell">${matrisYilHucre(r, y)}</td>`).join('') + '</tr>';
+          }).join('')
+        : `<tr><td colspan="5">Kayıt yok.</td></tr>`;
+
+      const tableHtml = `
+        <div class="summary-page">
+          <div class="page-title">BAĞIŞ HİSSE — PERSONEL (HEDEF · TEMİN · ULAŞMA)</div>
+          <table class="bagisci-table tbl-personel-hedef">
+            <thead><tr><th style="text-align:left">Personel</th>${headB}</tr><tr><th></th>${subB}</tr></thead>
+            <tbody>${rowsB}</tbody>
+          </table>
+          <div class="page-title section-gap">BAĞIŞ HİSSE — İSİM × YIL</div>
+          <p class="muted-note">Sıra: Daimi → Yeni → Değişken → Pasif. Yıl hücresi: tek kayıt ✓, birden fazla sayı.</p>
+          <table class="bagisci-table bagisci-table-mat">
+            <thead><tr><th class="col-ish" style="text-align:left">Ad soyad</th><th class="col-idurum">Durum</th>${YAZ_YIL.map(y => `<th class="col-iy">${y}</th>`).join('')}</tr></thead>
+            <tbody>${rowsMat(matBagisSorted)}</tbody>
+          </table>
+        </div>
+        <div class="page-break"></div>
+        <div class="summary-page">
+          <div class="page-title">ETLİ HİSSE — PERSONEL (HEDEF · TEMİN · ULAŞMA)</div>
+          <table class="bagisci-table tbl-personel-hedef">
+            <thead><tr><th style="text-align:left">Personel</th>${headE}</tr><tr><th></th>${subE}</tr></thead>
+            <tbody>${rowsE}</tbody>
+          </table>
+          <div class="page-title section-gap">ETLİ HİSSE — İSİM × YIL</div>
+          <p class="muted-note">Sıra: Daimi → Yeni → Değişken → Pasif. Yıl hücresi: tek kayıt ✓, birden fazla sayı.</p>
+          <table class="bagisci-table bagisci-table-mat">
+            <thead><tr><th class="col-ish" style="text-align:left">Hissedar</th><th class="col-idurum">Durum</th>${YAZ_YIL.map(y => `<th class="col-iy">${y}</th>`).join('')}</tr></thead>
+            <tbody>${rowsMat(matEtliSorted)}</tbody>
+          </table>
+        </div>
+        <div class="page-break"></div>`;
+
+      const bagis25 = Array.isArray(d.bagis2025Liste) ? d.bagis2025Liste : [];
+      const etli25 = Array.isArray(d.etli2025Liste) ? d.etli2025Liste : [];
+
+      function normListeIsim(s) {
+        return String(s || '').replace(/\s+/g, ' ').trim();
+      }
+
+      /** Aynı ad soyad satırlarını birleştirir; bağışta her satır 1 kayıt = hisse adedi. */
+      function aggregateBagis2025(rows) {
+        const m = new Map();
+        for (const x of rows) {
+          const key = normListeIsim(x.ad_soyad);
+          if (!key) continue;
+          m.set(key, (m.get(key) || 0) + 1);
+        }
+        return [...m.entries()]
+          .sort((a, b) => a[0].localeCompare(b[0], 'tr'))
+          .map(([isim, adet]) => ({ isim, adet }));
+      }
+
+      /** Aynı hissedar için hisse_adedi toplamı. */
+      function aggregateEtli2025(rows) {
+        const m = new Map();
+        for (const x of rows) {
+          const key = normListeIsim(x.hissedar);
+          if (!key) continue;
+          m.set(key, (m.get(key) || 0) + (Number(x.hisse_adedi) || 0));
+        }
+        return [...m.entries()]
+          .sort((a, b) => a[0].localeCompare(b[0], 'tr'))
+          .map(([isim, adet]) => ({ isim, adet }));
+      }
+
+      const ozetBagis25 = aggregateBagis2025(bagis25);
+      const ozetEtli25 = aggregateEtli2025(etli25);
+
+      const rows2025Bagis = ozetBagis25.length
+        ? ozetBagis25.map(x =>
+            `<tr><td class="col-2025-isim">${esc(x.isim)}</td><td class="col-2025-adet">${fmt(x.adet)}</td></tr>`
+          ).join('')
+        : '<tr><td colspan="2" class="muted-note">2025 yılı için bağış hisse kaydı yok.</td></tr>';
+
+      const rows2025Etli = ozetEtli25.length
+        ? ozetEtli25.map(x =>
+            `<tr><td class="col-2025-isim">${esc(x.isim)}</td><td class="col-2025-adet">${fmt(x.adet)}</td></tr>`
+          ).join('')
+        : '<tr><td colspan="2" class="muted-note">2025 yılı için etli hisse kaydı yok.</td></tr>';
+
+      const section2025 = `
+        <div class="summary-page y2025-page">
+          <div class="page-title">2025 — Özet</div>
+          <p class="muted-note y2025-intro">Sol sütun: bağış hisse. Sağ sütun: etli hissedar. Aynı kişi tekrarları birleştirilmiştir.</p>
+          <div class="y2025-split">
+            <div class="y2025-col y2025-col-bagis">
+              <div class="y2025-col-title">Bağış hisse</div>
+              <p class="muted-note">Aynı ad soyad tek satır; adet = 2025 kayıt sayısı.</p>
+              <table class="bagisci-table liste-2025-table">
+                <thead><tr><th class="col-2025-isim" style="text-align:left">Ad soyad</th><th class="col-2025-adet">Adet</th></tr></thead>
+                <tbody>${rows2025Bagis}</tbody>
+              </table>
+            </div>
+            <div class="y2025-col y2025-col-etli">
+              <div class="y2025-col-title">Etli hissedar</div>
+              <p class="muted-note">Aynı hissedar birleştirildi; adet = hisse toplamı.</p>
+              <table class="bagisci-table liste-2025-table">
+                <thead><tr><th class="col-2025-isim" style="text-align:left">Hissedar</th><th class="col-2025-adet">Adet</th></tr></thead>
+                <tbody>${rows2025Etli}</tbody>
+              </table>
+            </div>
+          </div>
+        </div>`;
+
+      document.getElementById('raporContent').innerHTML = cover + tableHtml + section2025;
+    }
+
+    function fmt(n) {
+      return new Intl.NumberFormat('tr-TR').format(Number(n) || 0);
+    }
+
+    function createTrendN(values, labels, gradId) {
+      const gid = gradId || 'gradientFillKurban';
+      const n = Math.max(1, values.length);
+      const maxVal = Math.max(1, ...values, 1);
+      const w = 580;
+      const h = 120;
+      const pad = 30;
+      const span = w - 2 * pad;
+      const step = n <= 1 ? 0 : span / (n - 1);
+      const scaleY = v => h - 18 - ((v / (maxVal * 1.15)) * (h - 36));
+      const pts = values.map((v, i) => ({
+        x: pad + i * step,
+        y: scaleY(v),
+        v,
+        yr: labels[i] != null ? labels[i] : (2023 + i)
+      }));
+      let linePath = '';
+      pts.forEach((p, i) => { linePath += (i === 0 ? 'M ' : ' L ') + p.x + ' ' + p.y; });
+      const last = pts[pts.length - 1];
+      const first = pts[0];
+      const areaPath = linePath + ` L ${last.x} ${h} L ${first.x} ${h} Z`;
+
+      const getGrowth = (v1, v2) => {
+        if (v1 === 0) return v2 > 0 ? '+100%' : '0%';
+        const p = ((v2 - v1) / v1) * 100;
+        return (p > 0 ? '+' : '') + Math.round(p) + '%';
+      };
+
+      let badges = '';
+      for (let i = 0; i < pts.length - 1; i++) {
+        const p1 = pts[i];
+        const p2 = pts[i + 1];
+        const g = getGrowth(p1.v, p2.v);
+        const neg = g.indexOf('-') === 0 ? ' negative' : '';
+        const mx = (p1.x + p2.x) / 2;
+        const my = (p1.y + p2.y) / 2;
+        badges += `<rect x="${mx - 22}" y="${my - 22}" width="44" height="16" class="growth-bg${neg}" rx="3"/>
+          <text x="${mx}" y="${my - 11}" class="growth-badge" text-anchor="middle">${esc(g)}</text>`;
+      }
+
+      const circles = pts.map(p =>
+        `<line x1="${p.x}" y1="${p.y}" x2="${p.x}" y2="${h - 12}" stroke="#eee" stroke-dasharray="3"/>
+        <circle cx="${p.x}" cy="${p.y}" r="4" class="chart-point"/>
+        <text x="${p.x}" y="${h - 2}" style="font-size:9px;fill:#666;text-anchor:middle">${esc(p.yr)}</text>
+        <text x="${p.x}" y="${p.y - 8}" style="font-size:10px;font-weight:bold;fill:#324960;text-anchor:middle">${fmt(p.v)}</text>`
+      ).join('');
+
+      return `<svg viewBox="0 0 ${w} ${h}"><defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#324960"/><stop offset="100%" stop-color="#fff" stop-opacity="0"/></linearGradient></defs><path d="${areaPath}" fill="url(#${gid})" style="opacity:0.15"/><path d="${linePath}" class="chart-line"/>${circles}${badges}</svg>`;
+    }
+
+  </script>
+</body>
+</html>
