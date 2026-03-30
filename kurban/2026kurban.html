@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>2026 Kurban | Karaağaç</title>
+  <title>Kurban | Karaağaç</title>
   <link rel="icon" type="image/png" href="../img/logo.png" />
   <meta name="theme-color" content="#324960" />
   <style>
@@ -67,6 +67,56 @@
     }
     .hero-header .back-btn:hover {
       background: rgba(255, 255, 255, 0.3);
+    }
+    .hero-year-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 2px;
+      width: 100%;
+    }
+    .hero-year-row label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      opacity: 0.92;
+      margin: 0;
+    }
+    .hero-year-row select#kurbanPortalYil {
+      min-width: 168px;
+      max-width: calc(100% - 24px);
+      padding: 9px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    }
+    .hero-year-row select#kurbanPortalYil:focus {
+      outline: 2px solid rgba(255, 255, 255, 0.65);
+      outline-offset: 2px;
+    }
+    .hero-year-row select#kurbanPortalYil option {
+      color: #1e293b;
+      background: #fff;
+      font-weight: 600;
+    }
+    .hero-year-hint {
+      width: 100%;
+      text-align: center;
+      font-size: 11px;
+      opacity: 0.88;
+      line-height: 1.35;
+      margin: 0;
+      padding: 0 8px;
     }
 
     /* Duyuru bandı */
@@ -910,7 +960,12 @@
 
   <header class="hero-header">
     <a href="../panel.html" class="back-btn">← Panele Dön</a>
-    <h1>2026 Kurban</h1>
+    <h1 id="heroKurbanTitle">Kurban</h1>
+    <div class="hero-year-row">
+      <label for="kurbanPortalYil">Sezon</label>
+      <select id="kurbanPortalYil" aria-label="Aktif kurban sezonu (yıl)"></select>
+    </div>
+    <p class="hero-year-hint" id="heroKurbanHint" hidden></p>
   </header>
 
   <main class="main">
@@ -1269,6 +1324,83 @@
     });
   }
 
+  var portalKategorilerAktif = [];
+  function getSeciliKurbanYil() {
+    var el = document.getElementById('kurbanPortalYil');
+    if (!el || el.value === '' || el.value == null) return 2026;
+    var n = parseInt(el.value, 10);
+    return isNaN(n) ? 2026 : n;
+  }
+  function updateHeroBaslikSezon() {
+    var sel = document.getElementById('kurbanPortalYil');
+    var titleEl = document.getElementById('heroKurbanTitle');
+    if (!sel || !titleEl || sel.selectedIndex < 0) return;
+    var opt = sel.options[sel.selectedIndex];
+    var t = opt ? opt.textContent.trim() : 'Kurban';
+    titleEl.textContent = t;
+    document.title = t + ' | Karaağaç';
+  }
+  async function loadKurbanKategorilerPortal() {
+    var sel = document.getElementById('kurbanPortalYil');
+    var hint = document.getElementById('heroKurbanHint');
+    var titleEl = document.getElementById('heroKurbanTitle');
+    if (!sel) return;
+    sel.innerHTML = '';
+    var supabase = await getSupabase();
+    if (!supabase) {
+      var o0 = document.createElement('option');
+      o0.value = '2026';
+      o0.textContent = '2026 Kurban';
+      sel.appendChild(o0);
+      if (hint) {
+        hint.hidden = false;
+        hint.textContent = 'Bağlantı yok; varsayılan yıl kullanılıyor.';
+      }
+      if (titleEl) titleEl.textContent = '2026 Kurban';
+      document.title = '2026 Kurban | Karaağaç';
+      return;
+    }
+    var res = await supabase.from('kurban_kategoriler').select('yil,label,aktif').eq('aktif', true).order('yil', { ascending: false });
+    var err = res.error;
+    var data = res.data || [];
+    portalKategorilerAktif = data;
+    if (err || !portalKategorilerAktif.length) {
+      var oy = document.createElement('option');
+      oy.value = '2026';
+      oy.textContent = '2026 Kurban';
+      sel.appendChild(oy);
+      if (hint) {
+        hint.hidden = false;
+        hint.textContent = err
+          ? 'Sezon listesi alınamadı; 2026 varsayıldı.'
+          : 'Aktif sezon tanımlı değil; 2026 varsayıldı. Kurban yönetiminde bir yılı «Aktif» işaretleyin.';
+      }
+      if (titleEl) titleEl.textContent = '2026 Kurban';
+      document.title = '2026 Kurban | Karaağaç';
+      return;
+    }
+    portalKategorilerAktif.forEach(function (k) {
+      var opt = document.createElement('option');
+      opt.value = String(k.yil);
+      opt.textContent = (k.label && String(k.label).trim()) ? String(k.label).trim() : (k.yil + ' Kurban');
+      sel.appendChild(opt);
+    });
+    sel.selectedIndex = 0;
+    updateHeroBaslikSezon();
+    if (hint) {
+      hint.textContent = '';
+      hint.hidden = true;
+    }
+  }
+  function refreshDataForSezonDegisimi() {
+    updateHeroBaslikSezon();
+    loadAnaDurum();
+    var active = document.querySelector('.tabbar-item.active');
+    var tab = active ? active.getAttribute('data-tab') : 'ana';
+    if (tab === 'bagiskayitlar') loadBagisKayitlar(true);
+    else if (tab === 'etlikayitlar') loadEtliKayitlar(true);
+  }
+
   // Tabbar
   var tabToPanel = { ana: 'Ana', bagiskayitlar: 'BagisKayitlar', etlikayitlar: 'EtliKayitlar', analiz: 'Analiz' };
   document.querySelectorAll('.tabbar-item').forEach(function (el) {
@@ -1479,7 +1611,14 @@
     }
     var uid = null;
     try { var u = await supabase.auth.getUser(); if (u && u.data && u.data.user) uid = u.data.user.id; } catch (err) {}
-    var row = { ad_soyad: ad_soyad, telefon: tel.normalized, fiyat: 1, aciklama: aciklama || null, created_by_uid: uid };
+    var row = {
+      ad_soyad: ad_soyad,
+      telefon: tel.normalized,
+      fiyat: 1,
+      aciklama: aciklama || null,
+      created_by_uid: uid,
+      yil: getSeciliKurbanYil()
+    };
     var { error } = await supabase.from('kurban_2026_bagis_hisse').insert(row);
     if (error) {
       showToast('error', 'Hata', error.message || 'Kayıt eklenemedi.');
@@ -1617,7 +1756,7 @@
     }
     var uid = null;
     try { var u = await supabase.auth.getUser(); if (u && u.data && u.data.user) uid = u.data.user.id; } catch (err) {}
-    var KURBAN_YIL = 2026;
+    var KURBAN_YIL = getSeciliKurbanYil();
     var baseRow = {
       hisedar_ad_soyad: hissedar_ad_soyad,
       telefon: tel.normalized,
@@ -1717,12 +1856,13 @@
       return;
     }
 
+    var yilAna = getSeciliKurbanYil();
     var grupKeys = ['1.Grup', '2.Grup', '3.Grup', '4.Grup'];
     try {
       var sayimPromises = []
         .concat(
         grupKeys.map(function (k) {
-          return supabase.from('kurban_2026_etli_hisse').select('id', { count: 'exact', head: true }).eq('hisse_grubu', k);
+          return supabase.from('kurban_2026_etli_hisse').select('id', { count: 'exact', head: true }).eq('hisse_grubu', k).eq('yil', yilAna);
         })
       );
 
@@ -1776,10 +1916,12 @@
     }
     var uid = null;
     try { var u = await supabase.auth.getUser(); if (u && u.data && u.data.user) uid = u.data.user.id; } catch (err) {}
-    var countQuery = supabase.from('kurban_2026_bagis_hisse').select('id', { count: 'exact', head: true });
+    var yilBagis = getSeciliKurbanYil();
+    var countQuery = supabase.from('kurban_2026_bagis_hisse').select('id', { count: 'exact', head: true }).eq('yil', yilBagis);
     var listQuery = supabase
       .from('kurban_2026_bagis_hisse')
       .select('id,ad_soyad,telefon,fiyat,aciklama,created_at,created_by_uid')
+      .eq('yil', yilBagis)
       .order('created_at', { ascending: false })
       .range(bagisOffset, bagisOffset + PAGE_SIZE - 1);
     if (uid) {
@@ -1795,7 +1937,7 @@
         .from('kurban_2026_hedefler')
         .select('bagis_hedef')
         .eq('personel_uid', uid)
-        .eq('yil', 2026)
+        .eq('yil', yilBagis)
         .limit(1);
       var hedef = hedefRows && hedefRows.length ? (parseInt(hedefRows[0].bagis_hedef, 10) || 0) : 0;
       var temin = toplam;
@@ -1895,9 +2037,11 @@
     }
     var uid = null;
     try { var u = await supabase.auth.getUser(); if (u && u.data && u.data.user) uid = u.data.user.id; } catch (err) {}
+    var yilEtli = getSeciliKurbanYil();
     var listQuery = supabase
       .from('kurban_2026_etli_hisse')
-      .select('id,hisedar_ad_soyad,telefon,hisse_grubu,hisse_adedi,aciklama,created_at,created_by_uid,ana_hisse_id');
+      .select('id,hisedar_ad_soyad,telefon,hisse_grubu,hisse_adedi,aciklama,created_at,created_by_uid,ana_hisse_id')
+      .eq('yil', yilEtli);
     if (uid) {
       listQuery = listQuery.eq('created_by_uid', uid);
     }
@@ -1938,7 +2082,7 @@
         .from('kurban_2026_hedefler')
         .select('etli_hedef')
         .eq('personel_uid', uid)
-        .eq('yil', 2026)
+        .eq('yil', yilEtli)
         .limit(1);
       var hedef = hedefRows && hedefRows.length ? (parseInt(hedefRows[0].etli_hedef, 10) || 0) : 0;
       var temin = toplam;
@@ -2053,7 +2197,18 @@
 
   document.getElementById('panelAnaliz').addEventListener('click', function () { loadAnaliz(); }, { once: true });
 
-  loadAnaDurum();
+  var kurbanPortalYilEl = document.getElementById('kurbanPortalYil');
+  if (kurbanPortalYilEl && !kurbanPortalYilEl.dataset.bound) {
+    kurbanPortalYilEl.dataset.bound = '1';
+    kurbanPortalYilEl.addEventListener('change', function () {
+      refreshDataForSezonDegisimi();
+    });
+  }
+
+  (async function initKurbanPortal() {
+    await loadKurbanKategorilerPortal();
+    loadAnaDurum();
+  })();
 })();
   </script>
 </body>
