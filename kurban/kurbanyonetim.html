@@ -634,6 +634,7 @@
           </div>
           <div class="toolbar-actions">
             <button type="button" class="btn btn-ghost" id="btnEtliYenile" title="Aktif sekmenin verisini yenile">🔄 Yenile</button>
+            <button type="button" class="btn btn-ghost" id="btnEtliIkiTekilPaketle" title="İki tekil kaydı kök + alt olarak birleştir">🔗 İki tekil paketle</button>
             <button type="button" class="btn btn-success" id="btnYeniEtli">+ Yeni Etli Hisse</button>
           </div>
         </div>
@@ -915,6 +916,7 @@
         <div class="form-group">
           <label>Hisse Adedi *</label>
           <input type="number" id="etliAdet" min="1" value="1" required />
+          <p style="font-size:12px;color:var(--muted);margin:6px 0 0;line-height:1.45">Adedi <strong>1’den büyük</strong> yapınca sistem <strong>çok satırlı paket</strong> oluşturur (her satır 1 hisse). Kurban sırasına atanmış tek satırlık kayıtta adet artırılamaz; önce Kurban Yönetiminden boşaltın.</p>
         </div>
         <div class="form-group" id="etliTopluOrtakWrap" style="display:none">
           <label style="display:flex;align-items:flex-start;gap:10px;font-weight:500;cursor:pointer">
@@ -942,6 +944,27 @@
           <button type="submit" class="btn btn-primary">Kaydet</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal: İki tekil → paket (alt satırı köke bağla) -->
+  <div class="modal" id="modalEtliIkiTekilPaketle">
+    <div class="sheet">
+      <h3>İki tekil kayıt paketle</h3>
+      <p style="font-size:12px;color:var(--muted);margin:-6px 0 12px;line-height:1.45">Önce <strong>alt satırı</strong> (pakete bağlanacak), sonra <strong>kökü</strong> (ana satır) seçin. Aynı yıl ve hisse grubunda, kurban atanmamış, tek satırlık kayıtlar. Üstteki yıl / grup filtreleri aşağıdaki listeyi daraltır.</p>
+      <div id="etliPaketleUyari" style="display:none;font-size:12px;color:#b45309;background:rgba(245,158,11,0.12);padding:10px;border-radius:10px;margin-bottom:12px;line-height:1.4"></div>
+      <div class="form-group">
+        <label for="etliPaketleAlt">Alt satır (pakete bağlanacak) *</label>
+        <select id="etliPaketleAlt" style="width:100%;max-width:100%;height:40px;border-radius:10px;border:1px solid var(--stroke);padding:0 10px;font:inherit"></select>
+      </div>
+      <div class="form-group">
+        <label for="etliPaketleKok">Kök (ana satır) *</label>
+        <select id="etliPaketleKok" style="width:100%;max-width:100%;height:40px;border-radius:10px;border:1px solid var(--stroke);padding:0 10px;font:inherit"></select>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn btn-ghost" id="btnEtliPaketleIptal">İptal</button>
+        <button type="button" class="btn btn-primary" id="btnEtliPaketleUygula">Paketle</button>
+      </div>
     </div>
   </div>
 
@@ -3320,6 +3343,15 @@
     const kok = etliPaketKokId(rows[0]);
     return rows.every(r => etliPaketKokId(r) === kok) ? kok : null;
   }
+  /** Kurbanı yok, üst paket yok, aynı kök altında tek DB satırı (tekil) */
+  function etliSatirTekilBagimsizMi(x, tumListe) {
+    const liste = tumListe == null ? etliList : tumListe;
+    if (!x || x.id == null) return false;
+    if (x.ana_hisse_id != null && String(x.ana_hisse_id).trim() !== '') return false;
+    if (x.kurban_id != null && String(x.kurban_id).trim() !== '') return false;
+    const xid = String(x.id);
+    return liste.filter(y => etliPaketKokId(y) === xid).length === 1;
+  }
   /** Aynı yıl/grupta, kurbanı olmayan tek satırlık kök kayıtlar (pakete bağlanabilir) */
   function etliTekilPaketeBaglanabilirAdaylar(tumListe, paketKokId, yil, grup) {
     const kid = String(paketKokId);
@@ -3329,12 +3361,127 @@
     return tumListe.filter(x => {
       const xid = String(x.id);
       if (paketUyeleri.has(xid)) return false;
-      if (x.ana_hisse_id != null && String(x.ana_hisse_id).trim() !== '') return false;
-      if (x.kurban_id != null && String(x.kurban_id).trim() !== '') return false;
       if (String(x.yil || '') !== yilStr) return false;
       if ((x.hisse_grubu || '') !== grupStr) return false;
-      return tumListe.filter(y => etliPaketKokId(y) === xid).length === 1;
+      return etliSatirTekilBagimsizMi(x, tumListe);
     });
+  }
+  function etliIkiTekilFiltrelenmisListe() {
+    const yilFiltre = document.getElementById('etliYilFiltre')?.value || '';
+    const grupFiltre = document.getElementById('etliGrupFiltre')?.value || '';
+    return etliList.filter(r => {
+      if (yilFiltre && String(r.yil || '') !== yilFiltre) return false;
+      if (grupFiltre && (r.hisse_grubu || '') !== grupFiltre) return false;
+      return true;
+    });
+  }
+  function etliIkiTekilEtiket(r) {
+    const ad = (r.hisedar_ad_soyad || r.hissedar_ad_soyad || '').trim() || '(İsimsiz)';
+    const tel = (r.telefon || '').trim() || '—';
+    return `${ad} — ${tel} · ${r.yil || ''} · ${r.hisse_grubu || ''}`;
+  }
+  function refreshEtliPaketleKokSelect() {
+    const altSel = document.getElementById('etliPaketleAlt');
+    const kokSel = document.getElementById('etliPaketleKok');
+    if (!altSel || !kokSel) return;
+    const altId = altSel.value;
+    kokSel.innerHTML = '<option value="">Seçiniz…</option>';
+    if (!altId) return;
+    const altRow = etliList.find(x => String(x.id) === altId);
+    if (!altRow) return;
+    const yilStr = String(altRow.yil || '');
+    const grupStr = altRow.hisse_grubu || '';
+    const kokAday = etliList.filter(r =>
+      etliSatirTekilBagimsizMi(r) &&
+      String(r.id) !== altId &&
+      String(r.yil || '') === yilStr &&
+      (r.hisse_grubu || '') === grupStr
+    );
+    kokAday.sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+    kokSel.innerHTML = '<option value="">Seçiniz…</option>' + kokAday.map(r =>
+      `<option value="${String(r.id)}">${esc(etliIkiTekilEtiket(r))}</option>`
+    ).join('');
+  }
+  function populateEtliIkiTekilPaketleModal() {
+    const altSel = document.getElementById('etliPaketleAlt');
+    const kokSel = document.getElementById('etliPaketleKok');
+    const uyari = document.getElementById('etliPaketleUyari');
+    if (!altSel || !kokSel) return;
+    const base = etliIkiTekilFiltrelenmisListe().filter(r => etliSatirTekilBagimsizMi(r));
+    base.sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+    const prevAlt = altSel.value;
+    altSel.innerHTML = '<option value="">Seçiniz…</option>' + base.map(r =>
+      `<option value="${String(r.id)}">${esc(etliIkiTekilEtiket(r))}</option>`
+    ).join('');
+    if (prevAlt && base.some(r => String(r.id) === prevAlt)) altSel.value = prevAlt;
+    refreshEtliPaketleKokSelect();
+    if (uyari) {
+      if (base.length === 0) {
+        uyari.style.display = 'block';
+        uyari.textContent = 'Bu filtrelerle uygun tekil kayıt yok. Yıl/grup seçimini genişletin veya «Yenile» ile listeyi güncelleyin.';
+      } else {
+        uyari.style.display = 'none';
+        uyari.textContent = '';
+      }
+    }
+  }
+  function openEtliIkiTekilPaketleModal() {
+    const m = document.getElementById('modalEtliIkiTekilPaketle');
+    if (!m) return;
+    populateEtliIkiTekilPaketleModal();
+    m.classList.add('show');
+    addModalOpen();
+  }
+  function closeEtliIkiTekilPaketleModal() {
+    const m = document.getElementById('modalEtliIkiTekilPaketle');
+    if (m) m.classList.remove('show');
+    removeModalOpen();
+  }
+  async function etliIkiTekilPaketleUygula() {
+    const altSel = document.getElementById('etliPaketleAlt');
+    const kokSel = document.getElementById('etliPaketleKok');
+    const altId = altSel?.value;
+    const kokId = kokSel?.value;
+    if (!altId || !kokId) {
+      showToast('warning', 'Seçim', 'Alt satır ve kök satır seçin.');
+      return;
+    }
+    if (altId === kokId) {
+      showToast('warning', 'Seçim', 'Alt ve kök aynı kayıt olamaz.');
+      return;
+    }
+    const altRow = etliList.find(x => String(x.id) === altId);
+    const kokRow = etliList.find(x => String(x.id) === kokId);
+    if (!altRow || !kokRow) {
+      showToast('error', 'Kayıt', 'Kayıt bulunamadı; listeyi yenileyip tekrar deneyin.');
+      return;
+    }
+    if (!etliSatirTekilBagimsizMi(altRow) || !etliSatirTekilBagimsizMi(kokRow)) {
+      showToast('warning', 'Uygun değil', 'Yalnızca kurban atanmamış, tek satırlık kayıtlar paketlenebilir.');
+      return;
+    }
+    if (String(altRow.yil || '') !== String(kokRow.yil || '') || (altRow.hisse_grubu || '') !== (kokRow.hisse_grubu || '')) {
+      showToast('warning', 'Uyumsuzluk', 'Yıl ve hisse grubu eşleşmeli.');
+      return;
+    }
+    const msg = 'Alt satır seçilen köke bağlansın mı?\n\nKök: ' + etliIkiTekilEtiket(kokRow) + '\nAlt: ' + etliIkiTekilEtiket(altRow);
+    if (!confirm(msg)) return;
+    const sb = getSupabase();
+    if (!sb) return;
+    const selCols = 'id, created_at, created_by_uid, hisedar_ad_soyad, telefon, hisse_grubu, hisse_adedi, aciklama, yil, kurban_id, kapora, tahsilat, ana_hisse_id';
+    try {
+      const { data: patched, error } = await sb.from('kurban_2026_etli_hisse').update({ ana_hisse_id: kokId }).eq('id', altId).select(selCols).single();
+      if (error) throw error;
+      const ix = etliList.findIndex(x => String(x.id) === altId);
+      if (ix !== -1 && patched) etliList[ix] = patched;
+      showToast('success', 'Başarılı', 'Tekil kayıtlar paketlendi (alt satır köke bağlandı).');
+      closeEtliIkiTekilPaketleModal();
+      await refreshEtliAfterMutation(sb);
+      loadOzet();
+      if (getActiveTab() === 'kurban') void loadKurbanYonetim();
+    } catch (err) {
+      showToast('error', 'Hata', err.message || 'Paketlenemedi.');
+    }
   }
   document.getElementById('formEtli').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -3414,11 +3561,50 @@
           if (ekAdet > 0) par.push(`${ekAdet} boş satır pakete eklendi`);
           showToast('success', 'Başarılı', par.length ? `${par.join('. ')}.` : 'İşlem tamam.');
         } else {
-          const { data: updatedRow, error } = await sb.from('kurban_2026_etli_hisse').update(row).eq('id', id).select('*').single();
-          if (error) throw error;
-          const idx = etliList.findIndex(x => x.id === id);
-          if (idx !== -1) etliList[idx] = updatedRow;
-          showToast('success', 'Başarılı', 'Etli hisse güncellendi.');
+          const existing = etliList.find(x => String(x.id) === String(id));
+          const kokId = existing ? etliPaketKokId(existing) : '';
+          const paketUyeleri = existing ? etliList.filter(r => etliPaketKokId(r) === kokId) : [];
+          const kokDuzenleniyor = existing && String(existing.id) === kokId;
+          const tekilCogulaDon = kokDuzenleniyor && paketUyeleri.length === 1 && adet > 1;
+          const etliRowSel = 'id, created_at, created_by_uid, hisedar_ad_soyad, telefon, hisse_grubu, hisse_adedi, aciklama, yil, kurban_id, kapora, tahsilat, ana_hisse_id';
+          if (tekilCogulaDon) {
+            if (existing.kurban_id != null && String(existing.kurban_id).trim() !== '') {
+              showToast('warning', 'Kurban', 'Kurban sırasına atanmış kayıt çoğul pakete bölünemez. Önce Kurban Yönetiminden boşaltın.');
+              return;
+            } else {
+              const rootRow = { ...row, hisse_adedi: 1 };
+              const { data: updatedRoot, error: eRoot } = await sb.from('kurban_2026_etli_hisse').update(rootRow).eq('id', id).select(etliRowSel).single();
+              if (eRoot) throw eRoot;
+              const cocuklar = [];
+              for (let i = 0; i < adet - 1; i++) {
+                cocuklar.push({
+                  hisedar_ad_soyad: row.hisedar_ad_soyad,
+                  telefon: row.telefon,
+                  hisse_grubu: row.hisse_grubu,
+                  hisse_adedi: 1,
+                  aciklama: row.aciklama,
+                  yil: row.yil,
+                  created_by_uid: row.created_by_uid,
+                  ana_hisse_id: id,
+                  kurban_id: null,
+                  kapora: null,
+                  tahsilat: null
+                });
+              }
+              const { data: insertedKids, error: eKids } = await sb.from('kurban_2026_etli_hisse').insert(cocuklar).select(etliRowSel);
+              if (eKids) throw eKids;
+              const idx = etliList.findIndex(x => String(x.id) === String(id));
+              if (idx !== -1 && updatedRoot) etliList[idx] = updatedRoot;
+              if (insertedKids?.length) etliList = [...insertedKids, ...etliList];
+              showToast('success', 'Başarılı', `Tekil kayıt ${adet} satırlı pakete dönüştürüldü (kök + ${adet - 1} alt satır).`);
+            }
+          } else {
+            const { data: updatedRow, error } = await sb.from('kurban_2026_etli_hisse').update(row).eq('id', id).select(etliRowSel).single();
+            if (error) throw error;
+            const idx = etliList.findIndex(x => x.id === id);
+            if (idx !== -1) etliList[idx] = updatedRow;
+            showToast('success', 'Başarılı', 'Etli hisse güncellendi.');
+          }
         }
       } else {
         const rows = [];
@@ -3526,7 +3712,7 @@
       showToast('warning', 'Zaten paket', 'Bu kayıt zaten bir pakete bağlı.');
       return;
     }
-    if (etliList.filter(y => etliPaketKokId(y) === String(tid)).length !== 1) {
+    if (!etliSatirTekilBagimsizMi(hedef, etliList)) {
       showToast('warning', 'Paket', 'Yalnızca tek satırlık (çoğul olmayan) kayıtlar bağlanabilir.');
       return;
     }
@@ -3766,6 +3952,10 @@
   // Yeni butonları event listener ile bağla (inline onclick yerine)
   document.getElementById('btnYeniBagis')?.addEventListener('click', () => openBagisModal());
   document.getElementById('btnYeniEtli')?.addEventListener('click', () => openEtliModal());
+  document.getElementById('btnEtliIkiTekilPaketle')?.addEventListener('click', () => openEtliIkiTekilPaketleModal());
+  document.getElementById('btnEtliPaketleIptal')?.addEventListener('click', () => closeEtliIkiTekilPaketleModal());
+  document.getElementById('btnEtliPaketleUygula')?.addEventListener('click', () => void etliIkiTekilPaketleUygula());
+  document.getElementById('etliPaketleAlt')?.addEventListener('change', () => refreshEtliPaketleKokSelect());
   document.getElementById('btnYeniHedef')?.addEventListener('click', () => openHedefModal());
   ['btnOzetYenile', 'btnBagisYenile', 'btnEtliYenile', 'btnKurbanYenile', 'btnOnkayitYenile', 'btnHedefYenile', 'btnAyarlarYenile'].forEach(yid => {
     document.getElementById(yid)?.addEventListener('click', function () {
@@ -3777,6 +3967,7 @@
   window.closeKategoriModal = closeKategoriModal;
   window.closeBagisModal = closeBagisModal;
   window.closeEtliModal = closeEtliModal;
+  window.closeEtliIkiTekilPaketleModal = closeEtliIkiTekilPaketleModal;
   window.closeHedefModal = closeHedefModal;
   window.closeKurbanModal = closeKurbanModal;
 
