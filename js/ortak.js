@@ -344,6 +344,31 @@ let CURRENT_DENY = window.CURRENT_DENY;
 if(typeof window.norm === 'undefined'){
   window.norm = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 }
+/**
+ * Kurban kayıtlarında yıllar arası kişi eşlemesi için isim anahtarı (telefon yerine).
+ * NFKC + görünmez/narrow NBSP temizliği, tr-TR küçük harf, birleşik işaret silme, ı→i (ÇAKIR/Çakır uyumu).
+ */
+if (typeof window.normalizeKurbanIsim === 'undefined') {
+  window.normalizeKurbanIsim = function (s) {
+    var t = String(s || '')
+      .normalize('NFKC')
+      .replace(/[\u200b-\u200d\ufeff\uFEFF]/g, '')
+      .replace(/[\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000]/g, ' ')
+      .trim()
+      .replace(/\s+/g, ' ')
+      .replace(/[.\u00b7\-_,;:/\\]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    try {
+      t = t.toLocaleLowerCase('tr-TR');
+    } catch (e) {
+      t = t.toLowerCase();
+    }
+    t = t.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    t = t.replace(/\u0131/g, 'i');
+    return t.replace(/\s+/g, ' ').trim();
+  };
+}
 // Referans al (local scope'ta)
 const norm = window.norm;
 
