@@ -113,6 +113,39 @@
     .tab-content.active { display: block; }
     .card { background: var(--card); border: 1px solid var(--stroke); border-radius: 16px; padding: 16px; margin: 12px 0; box-shadow: var(--shadow); }
     .table-wrap { overflow: auto; border: 1px solid var(--stroke); border-radius: 14px; background: var(--card); }
+    #tblAnaliz { min-width: 1100px; }
+    #tblAnaliz thead th {
+      font-size: 11.5px;
+      line-height: 1.3;
+      vertical-align: middle;
+      text-align: center;
+      max-width: none;
+      padding: 10px 8px;
+    }
+    #tblAnaliz thead th.analiz-sort-th {
+      cursor: pointer;
+      user-select: none;
+    }
+    #tblAnaliz thead th.analiz-sort-th:hover { color: var(--ink); background: rgba(0, 0, 0, 0.03); }
+    #tblAnaliz tbody td {
+      font-size: 13px;
+      text-align: center;
+      vertical-align: middle;
+    }
+    #tblAnaliz .cell-num { font-variant-numeric: tabular-nums; }
+    #tblAnaliz .analiz-pct {
+      font-weight: 700;
+      border-radius: 8px;
+      padding: 4px 10px;
+      display: inline-block;
+      min-width: 2.75em;
+      line-height: 1.25;
+    }
+    #tblAnaliz .analiz-pct--high { color: #047857; background: rgba(16, 185, 129, 0.2); }
+    #tblAnaliz .analiz-pct--mid { color: #b45309; background: rgba(245, 158, 11, 0.22); }
+    #tblAnaliz .analiz-pct--low { color: #b91c1c; background: rgba(239, 68, 68, 0.16); }
+    #tblAnaliz .analiz-pct--na { color: var(--muted); font-weight: 600; background: rgba(100, 116, 139, 0.1); }
+    #analizKarsilastirmaMeta { margin: 0 0 10px; font-size: 13px; color: var(--muted); line-height: 1.45; }
     table { width: 100%; border-collapse: collapse; background: var(--card); min-width: 700px; }
     thead th { position: sticky; top: 0; background: var(--surface); border-bottom: 2px solid var(--stroke); font-weight: 600; text-align: left; font-size: 13px; color: var(--muted); padding: 12px; z-index: 1; }
     tbody td { border-bottom: 1px solid var(--stroke); padding: 12px; font-size: 14px; color: var(--ink); }
@@ -548,6 +581,7 @@
       <button class="tab" data-tab="kurban">🔪 Kurban Yönetim</button>
       <button class="tab" data-tab="onkayit">📝 Ön Kayıt</button>
       <button class="tab" data-tab="hedefler">🎯 Hedefler</button>
+      <button class="tab" data-tab="analiz">📈 Analiz</button>
       <button class="tab" data-tab="ayarlar">⚙️ Ayarlar</button>
     </div>
 
@@ -792,6 +826,39 @@
           </table>
         </div>
         <div id="hedeflerEmpty" style="display:none;padding:32px;text-align:center;color:var(--muted)">Henüz hedef tanımlanmamış.</div>
+      </div>
+    </div>
+
+    <!-- Tab: Analiz (personel × yıllık karşılaştırma — 2026kurban portal analizi ile aynı mantık) -->
+    <div class="tab-content" id="tab-analiz">
+      <div class="card">
+        <div class="toolbar">
+          <div class="toolbar-filters" style="align-items:center">
+            <label for="analizYilFiltre" class="muted" style="font-size:13px;font-weight:600;margin:0">Aktif yıl (bu yıl)</label>
+            <select id="analizYilFiltre" class="filter-year" aria-label="Analiz için bu yıl"></select>
+          </div>
+          <div class="toolbar-actions">
+            <button type="button" class="btn btn-ghost" id="btnAnalizYenile" title="Analiz tablosunu yenile">🔄 Yenile</button>
+          </div>
+        </div>
+        <p id="analizKarsilastirmaMeta" class="muted">Önceki yıl, kategorilerde seçili yıldan küçük en büyük yıldır. Metrikler portal «Kişisel yıllık karşılaştırma» ile aynı hesaplanır.</p>
+        <div class="table-wrap">
+          <table id="tblAnaliz">
+            <thead>
+              <tr>
+                <th class="analiz-sort-th" data-analiz-col="0" scope="col">Personel</th>
+                <th class="analiz-sort-th" data-analiz-col="1" scope="col">Önceki yıl<br>bağış hisse kayıt adedi</th>
+                <th class="analiz-sort-th" data-analiz-col="2" scope="col">Önceki yıl<br>etli hisse kayıt adedi</th>
+                <th class="analiz-sort-th" data-analiz-col="3" scope="col">Bu yıl<br>bağış hisse geri kazanım yüzdesi</th>
+                <th class="analiz-sort-th" data-analiz-col="4" scope="col">Bu yıl<br>etli hisse geri kazanım yüzdesi</th>
+                <th class="analiz-sort-th" data-analiz-col="5" scope="col">Bu yıl<br>bağış hisse kayıt karşılama yüzdesi</th>
+                <th class="analiz-sort-th" data-analiz-col="6" scope="col">Bu yıl<br>etli hisse kayıt karşılama yüzdesi</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyAnaliz"></tbody>
+          </table>
+        </div>
+        <div id="analizEmpty" style="display:none;padding:32px;text-align:center;color:var(--muted)">Personel listesi boş veya veri yok.</div>
       </div>
     </div>
 
@@ -1225,6 +1292,7 @@
       else if (btn.dataset.tab === 'kurban') void loadKurbanYonetim();
       else if (btn.dataset.tab === 'onkayit') loadOnkayit();
       else if (btn.dataset.tab === 'hedefler') loadHedefler();
+      else if (btn.dataset.tab === 'analiz') void loadKurbanPersonelAnaliz();
       else if (btn.dataset.tab === 'ayarlar') loadKategoriler();
       else if (btn.dataset.tab === 'ozet') loadOzet();
     });
@@ -1256,10 +1324,10 @@
   function populateKategoriDropdowns() {
     const list = kategorilerList.length ? kategorilerList : [{ yil: 2026, label: '2026 Kurban', aktif: true }];
     const opt = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; return o; };
-    const selIds = ['bagisYilFiltre', 'etliYilFiltre', 'onkayitYilFiltre', 'hedefYil', 'bagisKategori', 'etliKategori', 'hedefKategori', 'kurbanYil', 'ozetYilFiltre', 'kurbanYilFiltre'];
+    const selIds = ['bagisYilFiltre', 'etliYilFiltre', 'onkayitYilFiltre', 'hedefYil', 'bagisKategori', 'etliKategori', 'hedefKategori', 'kurbanYil', 'ozetYilFiltre', 'kurbanYilFiltre', 'analizYilFiltre'];
     const withTumu = ['bagisYilFiltre', 'etliYilFiltre', 'onkayitYilFiltre'];
     const kurbanYilOnly = ['kurbanYil'];
-    const tekYilAktifVarsayilan = ['hedefYil', 'ozetYilFiltre', 'kurbanYilFiltre'];
+    const tekYilAktifVarsayilan = ['hedefYil', 'ozetYilFiltre', 'kurbanYilFiltre', 'analizYilFiltre'];
     const aktifYil = list.find(x => x.aktif)?.yil || 2026;
     selIds.forEach(sid => {
       const el = document.getElementById(sid);
@@ -1803,6 +1871,300 @@
     }
   }
 
+  function getAnalizYil() {
+    const el = document.getElementById('analizYilFiltre');
+    if (el && el.value !== '' && el.value != null) {
+      const n = Number(el.value);
+      if (Number.isFinite(n)) return n;
+    }
+    return getAktifYil();
+  }
+
+  function normKurbanIsimPortal(s) {
+    if (typeof window.normalizeKurbanIsim === 'function') return window.normalizeKurbanIsim(s);
+    const t = String(s || '')
+      .normalize('NFKC')
+      .replace(/[\u200b-\u200d\ufeff\uFEFF]/g, '')
+      .replace(/[\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000]/g, ' ')
+      .trim()
+      .replace(/\s+/g, ' ');
+    let x = t;
+    try {
+      x = t.toLocaleLowerCase('tr-TR');
+    } catch (e) {
+      x = t.toLowerCase();
+    }
+    x = x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\u0131/g, 'i');
+    return x.replace(/\s+/g, ' ').trim();
+  }
+
+  async function analizAdminOncekiKurbanYil(sb, ySecili) {
+    const { data, error } = await sb.from('kurban_kategoriler').select('yil').lt('yil', ySecili).order('yil', { ascending: false }).limit(1);
+    if (error) return null;
+    const rows = data || [];
+    if (rows.length && rows[0].yil != null) return parseInt(rows[0].yil, 10);
+    return ySecili - 1;
+  }
+
+  async function fetchAllBagisAnalizByYil(sb, yil) {
+    const page = 1000;
+    let from = 0;
+    const all = [];
+    for (;;) {
+      const { data, error } = await sb.from('kurban_2026_bagis_hisse')
+        .select('created_by_uid,ad_soyad')
+        .eq('yil', yil)
+        .order('id', { ascending: true })
+        .range(from, from + page - 1);
+      if (error) throw error;
+      const chunk = data || [];
+      all.push(...chunk);
+      if (chunk.length < page) break;
+      from += page;
+    }
+    return all;
+  }
+
+  async function fetchAllEtliAnalizByYil(sb, yil) {
+    const page = 1000;
+    let from = 0;
+    const all = [];
+    for (;;) {
+      const { data, error } = await sb.from('kurban_2026_etli_hisse')
+        .select('created_by_uid,hisedar_ad_soyad')
+        .eq('yil', yil)
+        .order('id', { ascending: true })
+        .range(from, from + page - 1);
+      if (error) throw error;
+      const chunk = data || [];
+      all.push(...chunk);
+      if (chunk.length < page) break;
+      from += page;
+    }
+    return all;
+  }
+
+  function analizAdminUidMatch(rowUid, uid) {
+    if (rowUid == null || uid == null) return false;
+    return String(rowUid).trim() === String(uid).trim();
+  }
+
+  function analizAdminIsimSetiMap(rows, col) {
+    const map = {};
+    for (let i = 0; i < rows.length; i++) {
+      const raw = rows[i] && rows[i][col];
+      const k = normKurbanIsimPortal(raw);
+      if (!k) continue;
+      if (!map[k]) map[k] = String(raw).trim();
+    }
+    return map;
+  }
+
+  function analizAdminIsimSayimMap(rows, col) {
+    const counts = {};
+    for (let i = 0; i < rows.length; i++) {
+      const raw = rows[i] && rows[i][col];
+      const k = normKurbanIsimPortal(raw);
+      if (!k) continue;
+      counts[k] = (counts[k] || 0) + 1;
+    }
+    return counts;
+  }
+
+  function analizAdminSatirOzet(prevCounts, currCounts) {
+    let prevToplam = 0;
+    let karsilanan = 0;
+    const keys = Object.keys(prevCounts);
+    for (let i = 0; i < keys.length; i++) {
+      const kk = keys[i];
+      const p = prevCounts[kk];
+      const c = currCounts[kk] || 0;
+      prevToplam += p;
+      karsilanan += Math.min(p, c);
+    }
+    return { prevToplam, karsilanan };
+  }
+
+  function analizAdminYuzdeStr(pay, payda) {
+    if (!payda || payda <= 0) return '—';
+    return '%' + Math.round((100 * pay) / payda);
+  }
+
+  function analizAdminComputePerson(uid, bagPrevAll, bagCurrAll, etPrevAll, etCurrAll) {
+    const bagP = bagPrevAll.filter(r => analizAdminUidMatch(r.created_by_uid, uid));
+    const bagC = bagCurrAll.filter(r => analizAdminUidMatch(r.created_by_uid, uid));
+    const etP = etPrevAll.filter(r => analizAdminUidMatch(r.created_by_uid, uid));
+    const etC = etCurrAll.filter(r => analizAdminUidMatch(r.created_by_uid, uid));
+
+    const bagPrevMap = analizAdminIsimSetiMap(bagP, 'ad_soyad');
+    const bagCurrMap = analizAdminIsimSetiMap(bagC, 'ad_soyad');
+    const bagPrevSay = analizAdminIsimSayimMap(bagP, 'ad_soyad');
+    const bagCurrSay = analizAdminIsimSayimMap(bagC, 'ad_soyad');
+
+    const etPrevMap = analizAdminIsimSetiMap(etP, 'hisedar_ad_soyad');
+    const etCurrMap = analizAdminIsimSetiMap(etC, 'hisedar_ad_soyad');
+    const etPrevSay = analizAdminIsimSayimMap(etP, 'hisedar_ad_soyad');
+    const etCurrSay = analizAdminIsimSayimMap(etC, 'hisedar_ad_soyad');
+
+    const bagPrevKeys = Object.keys(bagPrevMap);
+    const etPrevKeys = Object.keys(etPrevMap);
+    let bagGeri = 0;
+    for (let i = 0; i < bagPrevKeys.length; i++) {
+      if (bagCurrMap[bagPrevKeys[i]]) bagGeri++;
+    }
+    let etGeri = 0;
+    for (let i = 0; i < etPrevKeys.length; i++) {
+      if (etCurrMap[etPrevKeys[i]]) etGeri++;
+    }
+
+    const bagSat = analizAdminSatirOzet(bagPrevSay, bagCurrSay);
+    const etSat = analizAdminSatirOzet(etPrevSay, etCurrSay);
+
+    return {
+      prevBagAdet: bagSat.prevToplam,
+      prevEtAdet: etSat.prevToplam,
+      bagGeriPct: analizAdminYuzdeStr(bagGeri, bagPrevKeys.length),
+      etGeriPct: analizAdminYuzdeStr(etGeri, etPrevKeys.length),
+      bagKarPct: analizAdminYuzdeStr(bagSat.karsilanan, bagSat.prevToplam),
+      etKarPct: analizAdminYuzdeStr(etSat.karsilanan, etSat.prevToplam)
+    };
+  }
+
+  function analizAdminPctToneClass(pctStr) {
+    const s = String(pctStr || '').trim();
+    if (s === '—' || s === '') return 'analiz-pct analiz-pct--na';
+    const m = s.match(/^%(\d+)/);
+    if (!m) return 'analiz-pct analiz-pct--na';
+    const n = parseInt(m[1], 10);
+    if (n >= 75) return 'analiz-pct analiz-pct--high';
+    if (n >= 45) return 'analiz-pct analiz-pct--mid';
+    return 'analiz-pct analiz-pct--low';
+  }
+
+  const analizSortState = { col: 0, dir: 1 };
+
+  function analizAdminSortKeyFromCell(td, col) {
+    const t = (td && td.textContent ? td.textContent : '').replace(/\s+/g, ' ').trim();
+    if (col === 0) return { na: false, str: t.toLocaleLowerCase('tr'), num: null, pct: null };
+    if (col === 1 || col === 2) {
+      const n = parseInt(t, 10);
+      return { na: false, str: '', num: Number.isFinite(n) ? n : 0, pct: null };
+    }
+    const inner = td && td.querySelector('.analiz-pct');
+    const raw = inner ? inner.textContent.trim() : t;
+    if (raw === '—' || raw === '') return { na: true, str: '', num: null, pct: null };
+    const m = raw.match(/^%(\d+)/);
+    if (!m) return { na: true, str: '', num: null, pct: null };
+    return { na: false, str: '', num: null, pct: parseInt(m[1], 10) };
+  }
+
+  function analizAdminCompareRows(ra, rb, col, dir) {
+    const a = analizAdminSortKeyFromCell(ra.cells[col], col);
+    const b = analizAdminSortKeyFromCell(rb.cells[col], col);
+    let cmp = 0;
+    if (col === 0) {
+      cmp = a.str.localeCompare(b.str, 'tr');
+    } else if (col === 1 || col === 2) {
+      cmp = (a.num || 0) - (b.num || 0);
+    } else {
+      if (a.na && b.na) cmp = 0;
+      else if (a.na) cmp = 1;
+      else if (b.na) cmp = -1;
+      else cmp = (a.pct || 0) - (b.pct || 0);
+    }
+    return cmp * dir;
+  }
+
+  function applyAnalizTableSort() {
+    const tbody = document.getElementById('tbodyAnaliz');
+    if (!tbody) return;
+    const rows = Array.from(tbody.querySelectorAll('tr')).filter(tr => tr.cells && tr.cells.length === 7);
+    if (rows.length < 2) return;
+    const col = analizSortState.col;
+    const dir = analizSortState.dir;
+    rows.sort((ra, rb) => {
+      const c = analizAdminCompareRows(ra, rb, col, dir);
+      if (c !== 0) return c;
+      return analizAdminCompareRows(ra, rb, 0, 1);
+    });
+    rows.forEach(tr => tbody.appendChild(tr));
+  }
+
+  function bindAnalizTableSortOnce() {
+    const thead = document.querySelector('#tblAnaliz thead');
+    if (!thead || thead.dataset.analizSortBound === '1') return;
+    thead.dataset.analizSortBound = '1';
+    thead.addEventListener('click', (e) => {
+      const th = e.target.closest('th[data-analiz-col]');
+      if (!th) return;
+      const c = parseInt(th.getAttribute('data-analiz-col'), 10);
+      if (!Number.isFinite(c)) return;
+      if (c === analizSortState.col) analizSortState.dir *= -1;
+      else {
+        analizSortState.col = c;
+        analizSortState.dir = 1;
+      }
+      applyAnalizTableSort();
+    });
+  }
+
+  async function loadKurbanPersonelAnaliz() {
+    const sb = getSupabase();
+    const tbody = document.getElementById('tbodyAnaliz');
+    const meta = document.getElementById('analizKarsilastirmaMeta');
+    const emptyEl = document.getElementById('analizEmpty');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="7">Yükleniyor…</td></tr>';
+    if (emptyEl) emptyEl.style.display = 'none';
+    if (!sb) {
+      tbody.innerHTML = '<tr><td colspan="7">Supabase hazır değil.</td></tr>';
+      return;
+    }
+    try {
+      const yCurr = getAnalizYil();
+      const yPrev = await analizAdminOncekiKurbanYil(sb, yCurr);
+      if (yPrev == null || !Number.isFinite(yPrev) || yPrev >= yCurr) {
+        tbody.innerHTML = '<tr><td colspan="7">Önceki kurban yılı çözülemedi; kategorileri kontrol edin.</td></tr>';
+        if (meta) meta.textContent = 'Karşılaştırma yapılamıyor.';
+        return;
+      }
+      if (meta) {
+        meta.textContent = `Karşılaştırma: önceki yıl ${yPrev} → bu yıl ${yCurr}. Bağış: ad_soyad; etli: hisedar_ad_soyad; portal ile aynı normalizasyon ve kayıt adedi mantığı.`;
+      }
+      const [bagPrevAll, bagCurrAll, etPrevAll, etCurrAll, kuRes] = await Promise.all([
+        fetchAllBagisAnalizByYil(sb, yPrev),
+        fetchAllBagisAnalizByYil(sb, yCurr),
+        fetchAllEtliAnalizByYil(sb, yPrev),
+        fetchAllEtliAnalizByYil(sb, yCurr),
+        sb.from('kullanicilar').select('id,adsoyad').order('adsoyad', { ascending: true })
+      ]);
+      if (kuRes.error) throw kuRes.error;
+      const kullanicilar = kuRes.data || [];
+      tbody.innerHTML = '';
+      if (!kullanicilar.length) {
+        if (emptyEl) emptyEl.style.display = 'block';
+        return;
+      }
+      if (emptyEl) emptyEl.style.display = 'none';
+      for (const ku of kullanicilar) {
+        const m = analizAdminComputePerson(ku.id, bagPrevAll, bagCurrAll, etPrevAll, etCurrAll);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${esc(ku.adsoyad)}</td>` +
+          `<td class="cell-num">${m.prevBagAdet}</td>` +
+          `<td class="cell-num">${m.prevEtAdet}</td>` +
+          `<td class="cell-num"><span class="${analizAdminPctToneClass(m.bagGeriPct)}">${esc(m.bagGeriPct)}</span></td>` +
+          `<td class="cell-num"><span class="${analizAdminPctToneClass(m.etGeriPct)}">${esc(m.etGeriPct)}</span></td>` +
+          `<td class="cell-num"><span class="${analizAdminPctToneClass(m.bagKarPct)}">${esc(m.bagKarPct)}</span></td>` +
+          `<td class="cell-num"><span class="${analizAdminPctToneClass(m.etKarPct)}">${esc(m.etKarPct)}</span></td>`;
+        tbody.appendChild(tr);
+      }
+      applyAnalizTableSort();
+    } catch (e) {
+      tbody.innerHTML = `<tr><td colspan="7">Hata: ${esc(e.message || e)}</td></tr>`;
+      showToast('error', 'Analiz', e.message || String(e));
+    }
+  }
+
   function addModalOpen() { document.body.classList.add('modal-open'); }
   function removeModalOpen() { document.body.classList.remove('modal-open'); }
   function getActiveTab() {
@@ -1826,6 +2188,7 @@
       else if (tab === 'etli') await loadEtli();
       else if (tab === 'onkayit') await loadOnkayit();
       else if (tab === 'hedefler') await loadHedefler();
+      else if (tab === 'analiz') await loadKurbanPersonelAnaliz();
       else if (tab === 'ayarlar') await loadKategoriler();
       else if (tab === 'kurban') await loadKurbanYonetim();
       else await loadOzet();
@@ -3957,7 +4320,7 @@
   document.getElementById('btnEtliPaketleUygula')?.addEventListener('click', () => void etliIkiTekilPaketleUygula());
   document.getElementById('etliPaketleAlt')?.addEventListener('change', () => refreshEtliPaketleKokSelect());
   document.getElementById('btnYeniHedef')?.addEventListener('click', () => openHedefModal());
-  ['btnOzetYenile', 'btnBagisYenile', 'btnEtliYenile', 'btnKurbanYenile', 'btnOnkayitYenile', 'btnHedefYenile', 'btnAyarlarYenile'].forEach(yid => {
+  ['btnOzetYenile', 'btnBagisYenile', 'btnEtliYenile', 'btnKurbanYenile', 'btnOnkayitYenile', 'btnHedefYenile', 'btnAnalizYenile', 'btnAyarlarYenile'].forEach(yid => {
     document.getElementById(yid)?.addEventListener('click', function () {
       void refreshActiveTabData(this);
     });
@@ -3993,6 +4356,7 @@
   document.getElementById('onkayitTurFiltre')?.addEventListener('change', () => void withTableUiPreserved('tblOnkayit', null, () => renderOnkayitTable()));
   document.getElementById('hedefYil')?.addEventListener('change', () => loadHedefler());
   document.getElementById('ozetYilFiltre')?.addEventListener('change', () => loadOzet());
+  document.getElementById('analizYilFiltre')?.addEventListener('change', () => void loadKurbanPersonelAnaliz());
   document.getElementById('kurbanYilFiltre')?.addEventListener('change', () => void loadKurbanYonetim());
 
   function waitAndInit() {
@@ -4005,12 +4369,16 @@
         else if (tab === 'kurban') void loadKurbanYonetim();
         else if (tab === 'onkayit') loadOnkayit();
         else if (tab === 'hedefler') loadHedefler();
+        else if (tab === 'analiz') void loadKurbanPersonelAnaliz();
       });
       return;
     }
     setTimeout(waitAndInit, 100);
   }
-  document.addEventListener('DOMContentLoaded', waitAndInit);
+  document.addEventListener('DOMContentLoaded', () => {
+    bindAnalizTableSortOnce();
+    waitAndInit();
+  });
 })();
   </script>
 </body>
