@@ -220,7 +220,7 @@
 
       <form id="resetForm" autocomplete="on">
         <div class="field">
-          <input type="email" id="email" placeholder="E-posta adresiniz" required inputmode="email" readonly />
+          <input type="email" id="email" name="email" placeholder="E-posta adresiniz" required inputmode="email" autocomplete="email" />
         </div>
         <div class="field">
           <input type="password" id="password" placeholder="Yeni şifreniz (min. 6 karakter)" required minlength="6" />
@@ -250,7 +250,12 @@
       
       function initSupabase() {
         if (typeof supabase !== 'undefined' && typeof supabase.createClient === 'function') {
-          window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+          window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+            auth: {
+              detectSessionInUrl: true,
+              persistSession: true
+            }
+          });
           return true;
         }
         return false;
@@ -501,6 +506,62 @@
       }
       
       console.log('✅ Token bulundu, form gösteriliyor');
+
+      /**
+       * Maildeki link çoğu zaman ?email= taşımaz; token hash’te olur.
+       * Client hash’i işleyince getSession / onAuthStateChange ile e-posta gelir.
+       */
+      (function fillEmailFromRecoverySession(){
+        const trySessionEmail = async function(sb){
+          if (!sb || !sb.auth) return false;
+          try {
+            const { data: { session } } = await sb.auth.getSession();
+            const em = session && session.user && session.user.email;
+            if (!em) return false;
+            if (!String(emailInput.value || '').trim()) {
+              emailInput.value = em;
+              return true;
+            }
+            return true;
+          } catch (err) {
+            console.warn('getSession (şifre yenileme):', err);
+            return false;
+          }
+        };
+        (async function(){
+          let sb = null;
+          for (let i = 0; i < 60; i++) {
+            if (window.supabase && window.supabase.auth) {
+              sb = window.supabase;
+              break;
+            }
+            await new Promise(function(r){ setTimeout(r, 80); });
+          }
+          if (!sb) {
+            console.warn('Supabase yüklenemedi; e-postayı elle girin.');
+            return;
+          }
+          sb.auth.onAuthStateChange(function(_evt, session){
+            const em = session && session.user && session.user.email;
+            if (em && !String(emailInput.value || '').trim()) {
+              emailInput.value = em;
+            }
+          });
+          if (String(emailInput.value || '').trim()) {
+            return;
+          }
+          for (let j = 0; j < 45; j++) {
+            await trySessionEmail(sb);
+            if (String(emailInput.value || '').trim()) {
+              break;
+            }
+            await new Promise(function(r){ setTimeout(r, 120); });
+          }
+          if (!String(emailInput.value || '').trim()) {
+            console.warn('E-posta oturumdan alınamadı; alanı elle doldurun (şifre sıfırlama için hesabınızın adresi).');
+          }
+        })();
+      })();
 
       // Şifre göster/gizle
       document.getElementById('togglePass').addEventListener('click', () => {

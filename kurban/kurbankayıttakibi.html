@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Bağış Hisse Kayıt Takibi</title>
+  <link rel="icon" type="image/png" href="../img/logo.png" />
+  <link rel="stylesheet" href="../css/app-shell.css" />
+  <style>
+    body { padding-top: var(--appbar-h) !important; overflow-x: hidden; overflow-y: auto; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 22px 20px 32px; }
+    .page-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 18px; margin-bottom: 28px; }
+    .page-head h1 { margin: 0; font-size: 1.35rem; font-weight: 800; color: var(--ink); flex: 1 1 200px; min-width: 0; }
+    .head-tools { display: inline-flex; flex-wrap: nowrap; align-items: center; gap: 10px 12px; flex: 0 0 auto; margin-left: auto; }
+    .head-tools label { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; margin: 0; }
+    .head-tools select { min-width: 140px; height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--stroke); background: var(--card); font: inherit; color: var(--ink); }
+    .head-tools .btn-ghost { height: 40px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--stroke); background: var(--surface); font-weight: 600; cursor: pointer; font-size: 14px; color: var(--ink); }
+    .card { background: var(--card); border: 1px solid var(--stroke); border-radius: 16px; padding: 20px 22px; margin-bottom: 24px; box-shadow: var(--shadow); }
+    .card-ozet { padding: 0; overflow: hidden; }
+    .card-ozet .table-wrap { border: none; border-radius: 16px; }
+    .card-ozet .table-wrap table { min-width: 960px; }
+    .card h2 { margin: 0 0 18px; font-size: 16px; font-weight: 800; color: var(--ink); }
+    .filtre { margin-bottom: 16px; }
+    .filtre input { width: 100%; max-width: 320px; height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--stroke); font: inherit; font-size: 14px; background: var(--card); color: var(--ink); box-sizing: border-box; }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--stroke); border-radius: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 480px; }
+    th { text-align: left; padding: 12px 14px; background: var(--surface); font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--muted); border-bottom: 2px solid var(--stroke); white-space: nowrap; }
+    td { padding: 12px 14px; border-bottom: 1px solid var(--stroke); color: var(--ink); vertical-align: top; }
+    tbody tr:last-child td { border-bottom: none; }
+    .tbl-ozet td:nth-child(2),
+    .tbl-ozet td:nth-child(3),
+    .tbl-ozet td:nth-child(5) { font-variant-numeric: tabular-nums; text-align: center; }
+    .tbl-ozet th:nth-child(2),
+    .tbl-ozet th:nth-child(3),
+    .tbl-ozet th:nth-child(5) { text-align: center; }
+    .tbl-ozet td.col-ulasma,
+    .tbl-ozet th.col-ulasma { text-align: center; vertical-align: middle; min-width: 220px; width: 30%; }
+    .tbl-ozet td.col-ulasma-text { text-align: center !important; font-weight: 800; font-variant-numeric: tabular-nums; font-size: 14px; }
+    .tbl-ozet td.col-ulasma .progress,
+    .tbl-ozet td.col-ulasma .progress-empty,
+    .tbl-ozet td.col-ulasma .oransal-wrap { margin-left: auto; margin-right: auto; }
+    .tbl-ozet td.col-gunluk-artis { font-weight: 600; text-align: center; }
+    .tbl-ozet td.col-gunluk-artis.ga-low { color: #b91c1c; }
+    .tbl-ozet td.col-gunluk-artis.ga-mid { color: #b45309; }
+    .tbl-ozet td.col-gunluk-artis.ga-high { color: #047857; }
+    .tbl-ozet tbody tr.section td { font-weight: 700; background: rgba(50, 73, 96, 0.06); border-bottom-color: var(--stroke); }
+    .card-ozet .tbl-ozet th,
+    .card-ozet .tbl-ozet td { padding: 16px 22px; }
+    .card-ozet .tbl-ozet th:first-child,
+    .card-ozet .tbl-ozet td:first-child { min-width: 240px; }
+    /* personel/hedef-grafik.html ile aynı ulaşma çubuğu */
+    .tbl-ozet .progress {
+      position: relative;
+      width: 100%;
+      max-width: 320px;
+      height: 28px;
+      border-radius: 999px;
+      border: 1px solid var(--stroke);
+      background: var(--surface);
+      overflow: hidden;
+    }
+    .tbl-ozet .progress > .fill {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, var(--brand2), var(--brand));
+    }
+    .tbl-ozet .progress > .fill.danger { background: linear-gradient(90deg, #dc2626, #ef4444); }
+    .tbl-ozet .progress > .fill.warn { background: linear-gradient(90deg, #ea580c, #f97316); }
+    .tbl-ozet .progress > .fill.good { background: linear-gradient(90deg, #16a34a, #22c55e); }
+    .tbl-ozet .progress > .fill.ok {
+      background: linear-gradient(90deg, var(--good), #059669);
+    }
+    .tbl-ozet .progress > .label {
+      position: relative;
+      z-index: 2;
+      font-weight: 800;
+      line-height: 28px;
+      font-size: 12px;
+      padding: 0 8px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(0,0,0,.4), 0 0 1px rgba(0,0,0,.5);
+    }
+    .tbl-ozet .progress > .label.danger { color: #dc2626; text-shadow: none; }
+    .tbl-ozet .progress > .label.warn { color: var(--ink); text-shadow: none; }
+    .tbl-ozet .progress-empty {
+      max-width: 320px;
+      height: 28px;
+      border-radius: 999px;
+      border: 1px solid var(--stroke);
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .tbl-ozet .oransal-wrap { display: flex; flex-direction: column; gap: 4px; max-width: 320px; }
+    .tbl-ozet .prog-footer { font-size: 12px; font-weight: 800; color: var(--ink); text-align: center; }
+    tbody tr.tr-talebe-kayit,
+    tbody tr.tr-ihvan-kayit,
+    tbody tr.tr-ahavat-birim-kayit { cursor: pointer; }
+    tbody tr.tr-talebe-kayit:hover,
+    tbody tr.tr-ihvan-kayit:hover,
+    tbody tr.tr-ahavat-birim-kayit:hover { background: rgba(50, 73, 96, 0.06); }
+    .col-sn { width: 3rem; text-align: center; font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
+    th.col-sn { text-align: center; }
+    .col-kayit { white-space: nowrap; font-size: 13px; font-weight: 600; }
+    .pill-kayit { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: 0.02em; white-space: nowrap; }
+    .pill-kayit.pill-oto { background: rgba(16, 185, 129, 0.28); color: #047857; }
+    .pill-kayit.pill-man { background: rgba(251, 191, 36, 0.45); color: #9a3412; }
+    .pill-kayit.pill-yok { background: rgba(239, 68, 68, 0.22); color: #b91c1c; }
+    .kayit-ozet-pills { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .tr-ahavat-parent td { vertical-align: middle; }
+    .btn-ahavat-expand { height: 34px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--stroke); background: var(--surface); font-weight: 700; font-size: 12px; cursor: pointer; color: var(--ink); white-space: nowrap; }
+    .btn-ahavat-expand:hover { background: rgba(50, 73, 96, 0.08); }
+    tr.tr-ahavat-birim-panel td { padding: 0 !important; border-bottom: 1px solid var(--stroke); background: var(--surface); }
+    .birim-panel-inner { padding: 14px 16px 18px; }
+    .birim-panel-inner table { min-width: 360px; font-size: 13px; }
+    .birim-panel-inner th { font-size: 10px; }
+    .inp-birim-isim { width: 100%; max-width: 220px; min-width: 120px; height: 36px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--stroke); font: inherit; font-size: 13px; background: var(--card); color: var(--ink); box-sizing: border-box; }
+    .inp-birim-isim:focus { outline: 2px solid rgba(50, 73, 96, 0.25); border-color: var(--brand); }
+    .birim-panel-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; font-size: 12px; color: var(--muted); }
+    .birim-panel-bar .btn-row-clear { height: 30px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--stroke); background: var(--card); font-weight: 600; font-size: 12px; cursor: pointer; color: var(--ink); }
+    .muted { color: var(--muted); font-size: 13px; }
+    .toolbar-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 16px; }
+    .empty-state { padding: 36px 24px; text-align: center; color: var(--muted); font-size: 14px; }
+    .ahavat-hint { font-size: 12px; color: var(--muted); line-height: 1.45; margin: 0 0 16px; }
+    .ahavat-hint a { color: var(--brand); font-weight: 600; }
+    .btn-primary { height: 40px; padding: 0 18px; border-radius: 10px; border: none; background: var(--brand); color: #fff; font-weight: 700; cursor: pointer; font-size: 14px; }
+    .btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+    .modal-backdrop { display: none; position: fixed; inset: 0; z-index: 2000; background: rgba(15, 23, 42, 0.45); align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
+    .modal-backdrop.open { display: flex; }
+    .modal-panel { background: var(--card); border-radius: 16px; border: 1px solid var(--stroke); box-shadow: 0 20px 50px rgba(0,0,0,0.2); max-width: 420px; width: 100%; padding: 20px 22px; }
+    .modal-panel h3 { margin: 0 0 8px; font-size: 17px; font-weight: 800; color: var(--ink); }
+    .modal-panel .modal-meta { font-size: 13px; color: var(--muted); line-height: 1.45; margin-bottom: 16px; }
+    .modal-actions { display: flex; flex-direction: column; gap: 10px; }
+    .modal-actions .btn-row { display: flex; flex-wrap: wrap; gap: 10px; }
+    .btn-var { flex: 1; min-width: 120px; height: 44px; border-radius: 12px; border: none; font-weight: 800; cursor: pointer; background: rgba(16, 185, 129, 0.2); color: #047857; font-size: 14px; }
+    .btn-yok { flex: 1; min-width: 120px; height: 44px; border-radius: 12px; border: none; font-weight: 800; cursor: pointer; background: rgba(239, 68, 68, 0.15); color: #b91c1c; font-size: 14px; }
+    .btn-muted { width: 100%; height: 40px; border-radius: 10px; border: 1px solid var(--stroke); background: var(--surface); font-weight: 600; cursor: pointer; color: var(--muted); font-size: 13px; }
+    .btn-close-modal { margin-top: 12px; width: 100%; height: 40px; border-radius: 10px; border: 1px solid var(--stroke); background: transparent; font-weight: 600; cursor: pointer; color: var(--ink); }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="../src/supabase.js"></script>
+  <script src="../src/supabase-auth-wrapper.js"></script>
+  <script src="../src/supabase-db-wrapper.js"></script>
+  <script>
+    (function () {
+      function initAuth() {
+        if (typeof window.getSupabaseAuth === 'function') {
+          window.auth = window.getSupabaseAuth();
+          return true;
+        }
+        return false;
+      }
+      function waitAndTriggerInit() {
+        if (typeof window.auth !== 'undefined' && window.auth && typeof window.initAppShellAuth === 'function') {
+          try { window.initAppShellAuth(); } catch (e) { console.error('initAppShellAuth:', e); }
+        } else if (typeof window.initAppShellAuth === 'function') { setTimeout(waitAndTriggerInit, 300); }
+      }
+      function bootstrap() {
+        if (!initAuth()) setTimeout(bootstrap, 200);
+        else setTimeout(waitAndTriggerInit, 200);
+      }
+      bootstrap();
+    })();
+  </script>
+  <script src="../js/ortak.js"></script>
+</head>
+<body>
+  <div class="appbar">
+    <div class="brand" onclick="location.href='../panel.html'">
+      <img src="../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
+    </div>
+    <nav class="nav-center"><ul class="nav-list" id="navMain"></ul></nav>
+    <div class="nav-right">
+      <button class="btn hamb" id="hamburger" title="Menü">☰</button>
+      <div class="nav-item">
+        <button class="iconbtn" id="btnProfile" title="Profil">
+          <span class="avatar"></span> <span id="profName" class="muted">Profil</span>
+        </button>
+        <div class="dropdown drop-right" id="profDropdown">
+          <a href="../diger/kullanici-yonetimi.html">👤 Profil</a>
+          <a href="../diger/sistem-ayarlari.html">⚙️ Sistem Ayarları</a>
+          <a href="#" id="btnLogout">🚪 Çıkış Yap</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <aside class="drawer" id="drawer"></aside>
+  <div class="toast-container" id="toastContainer"></div>
+
+  <div class="modal-backdrop" id="modalDurum" aria-hidden="true">
+    <div class="modal-panel" role="dialog" aria-labelledby="modalDurumTitle">
+      <h3 id="modalDurumTitle">Kayıt durumu</h3>
+      <div class="modal-meta" id="modalDurumMeta"></div>
+      <div class="modal-actions">
+        <div class="btn-row">
+          <button type="button" class="btn-var" id="btnModalVar">Kayıt var</button>
+          <button type="button" class="btn-yok" id="btnModalYok">Kayıt yok</button>
+        </div>
+        <button type="button" class="btn-muted" id="btnModalManuelKaldir">Manuel işareti kaldır (otomatik eşleşme)</button>
+        <button type="button" class="btn-close-modal" id="btnModalKapat">Kapat</button>
+      </div>
+    </div>
+  </div>
+
+  <main class="wrap">
+    <div class="page-head">
+      <h1>Bağış Hisse Kayıt Takibi</h1>
+      <div class="head-tools">
+        <label for="selYil">Kurban yılı</label>
+        <select id="selYil" aria-label="Kurban yılı"></select>
+        <button type="button" class="btn-ghost" id="btnYenile">Yenile</button>
+      </div>
+    </div>
+
+    <div class="card card-ozet">
+      <div class="table-wrap">
+        <table class="tbl-ozet">
+          <thead>
+            <tr>
+              <th scope="col">Kategori</th>
+              <th scope="col">Toplam kişi</th>
+              <th scope="col">Kayıt adedi</th>
+              <th scope="col" class="col-ulasma">Ulaşma nispeti</th>
+              <th scope="col">Günlük artış</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyOzet"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Talebeler</h2>
+      <div class="toolbar-row">
+        <div class="filtre"><input type="search" id="araTalebe" placeholder="Talebe adında ara…" enterkeyhint="search" autocomplete="off" /></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="col-sn" scope="col">SN</th>
+              <th scope="col">Kayıt</th>
+              <th scope="col">Talebe adı</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyTalebe"></tbody>
+        </table>
+      </div>
+      <div class="empty-state" id="emptyTalebe" style="display:none">Liste boş veya erişim yok (RLS).</div>
+    </div>
+
+    <div class="card">
+      <h2>İhvan</h2>
+      <div class="toolbar-row">
+        <div class="filtre"><input type="search" id="araIhvan" placeholder="Kurum veya ad soyad ara…" enterkeyhint="search" autocomplete="off" /></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="col-sn" scope="col">SN</th>
+              <th scope="col">Kayıt</th>
+              <th scope="col">Kurum</th>
+              <th scope="col">Ad soyad</th>
+              <th scope="col">Telefon</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyIhvan"></tbody>
+        </table>
+      </div>
+      <div class="empty-state" id="emptyIhvan" style="display:none">Liste boş veya erişim yok (RLS).</div>
+    </div>
+
+    <div class="card">
+      <h2>Ahavat — bağış hisse takibi</h2>
+      <p class="ahavat-hint">Çoklu <code>adet</code> için her birim ayrı takip edilir: <strong>Birimler</strong> ile paneli açıp satıra tıklayarak <strong>kurban_kayit_takip</strong> (<code>tur = ahavat</code>, <code>birim_indeks</code> 1…adet) kaydı girin. <strong>İsim</strong> sütununa yazıp alanı terk edince (değişiklik kaydı) <code>birim_isim</code> kaydedilir. Rozetler: yeşil <em>Var · otomatik</em>, turuncu <em>Var · manuel</em>, kırmızı <em>Kayıt yok</em>. Satır geneli için <code>birim_indeks = -1</code> kullanılabilir.</p>
+      <div class="toolbar-row">
+        <div class="filtre"><input type="search" id="araAhavat" placeholder="Kurum veya ad soyad ara…" enterkeyhint="search" autocomplete="off" /></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="col-sn" scope="col">SN</th>
+              <th scope="col">Kayıt</th>
+              <th scope="col">Kurum</th>
+              <th scope="col">Ad soyad</th>
+              <th scope="col">Adet (kayıt)</th>
+              <th scope="col">Bağış eşleşen</th>
+              <th scope="col">Tarih</th>
+              <th scope="col">Birimler</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyAhavatListe"></tbody>
+        </table>
+      </div>
+      <div class="empty-state" id="emptyAhavatListe" style="display:none">Bu yıl için ahavat kaydı yok.</div>
+    </div>
+  </main>
+
+  <script>
+(function () {
+  const esc = (s) => (typeof window.escapeHtml === 'function' ? window.escapeHtml(s) : String(s ?? ''));
+  const normIsim = (s) => (typeof window.normalizeKurbanIsim === 'function' ? window.normalizeKurbanIsim(s) : String(s || '').toLowerCase().trim());
+
+  function showToast(t, title, msg) {
+    if (typeof window.showToast === 'function') window.showToast(t, title || '', msg || '');
+  }
+
+  function getSb() {
+    return window.supabase && typeof window.supabase.from === 'function' ? window.supabase : null;
+  }
+
+  /** hedef-grafik.html tablo oran sütunu ile aynı mantık (progress + renk eşikleri) */
+  function ulasmaBarHtml(eslesen, toplam) {
+    if (toplam <= 0) {
+      return '<td class="col-ulasma"><div class="progress-empty" title="Payda yok">–</div></td>';
+    }
+    const pct = (100 * eslesen) / toplam;
+    const bar = Math.max(0, Math.min(100, pct));
+    const oranStr = pct.toLocaleString('tr-TR', { maximumFractionDigits: 1, minimumFractionDigits: 1 });
+    const titleStr = '%' + oranStr;
+    const fillClasses = ['fill'];
+    const labClasses = ['label'];
+    if (pct < 30) { fillClasses.push('danger'); labClasses.push('danger'); }
+    else if (pct < 50) { fillClasses.push('warn'); labClasses.push('warn'); }
+    else if (pct < 75) { /* varsayılan mavi */ }
+    else if (pct < 100) { fillClasses.push('good'); }
+    else { fillClasses.push('ok'); }
+    const labText = '%' + esc(oranStr);
+    const progInner =
+      '<div class="progress" title="' + esc(titleStr) + '">' +
+      '<div class="' + esc(fillClasses.join(' ')) + '" style="width:' + esc(String(bar)) + '%"></div>' +
+      '<div class="' + esc(labClasses.join(' ')) + '">' + labText + '</div></div>';
+    if (pct > 100) {
+      return '<td class="col-ulasma"><div class="oransal-wrap">' + progInner +
+        '<div class="prog-footer">Hedefi aştı</div></div></td>';
+    }
+    return '<td class="col-ulasma">' + progInner + '</td>';
+  }
+
+  function ulasmaMetinTd(eslesen, toplam) {
+    let text = '–';
+    if (toplam > 0) {
+      const p = (100 * eslesen) / toplam;
+      text = p.toLocaleString('tr-TR', { maximumFractionDigits: 1, minimumFractionDigits: 1 }) + '%';
+    }
+    return '<td class="col-ulasma col-ulasma-text">' + esc(text) + '</td>';
+  }
+
+  /** Hedef grafikteki bağış günlük artış ile aynı: kayıt bugün oluşturuldu mu (yerel gün). */
+  function isCreatedToday(createdat) {
+    if (!createdat) return false;
+    const d = new Date(typeof createdat === 'string' ? createdat : createdat);
+    if (isNaN(d.getTime())) return false;
+    const now = new Date();
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+  }
+
+  function tdGunlukArtis(n, maxGa) {
+    const base = 'col-gunluk-artis';
+    if (!n || n <= 0) {
+      return '<td class="' + base + ' muted" title="Bugün bu kategoride yeni kayıt yok">–</td>';
+    }
+    let cls = base + ' ';
+    const gaNorm = maxGa > 0 ? n / maxGa : 1;
+    if (gaNorm <= 0.33) cls += 'ga-low';
+    else if (gaNorm <= 0.66) cls += 'ga-mid';
+    else cls += 'ga-high';
+    return '<td class="' + cls + '" title="Bugün oluşturulan kayıt sayısı (created_at)">+' + esc(String(n)) + '</td>';
+  }
+
+  function buildBagisHavuzu(bagisRows) {
+    const m = new Map();
+    (bagisRows || []).forEach((r) => {
+      const k = normIsim(r.ad_soyad);
+      if (!k) return;
+      m.set(k, (m.get(k) || 0) + 1);
+    });
+    return m;
+  }
+
+  function havuzdanTuket(havuz, isim) {
+    const k = normIsim(isim);
+    if (!k) return false;
+    const n = havuz.get(k) || 0;
+    if (n <= 0) return false;
+    havuz.set(k, n - 1);
+    return true;
+  }
+
+  function mapTrueCount(m) {
+    let c = 0;
+    m.forEach((v) => { if (v) c++; });
+    return c;
+  }
+
+  const BIRIM_SATIR = -1;
+
+  function pillKayitHtml(ef, manuel, oto) {
+    const m = manuel || '';
+    if (!ef) return '<span class="pill-kayit pill-yok">Kayıt yok</span>';
+    if (m === 'var') return '<span class="pill-kayit pill-man">Var · manuel</span>';
+    if (oto) return '<span class="pill-kayit pill-oto">Var · otomatik</span>';
+    return '<span class="pill-kayit pill-yok">Kayıt yok</span>';
+  }
+
+  function ahavatBirimDurum(rid, i, es, rowMap, birimMap) {
+    const bk = rid + ':' + i;
+    const b = birimMap.get(bk) || '';
+    const r = rowMap.get(rid) || '';
+    let ef = false;
+    if (b === 'var') ef = true;
+    else if (b === 'yok') ef = false;
+    else if (r === 'var') ef = true;
+    else if (r === 'yok') ef = false;
+    else ef = i <= es;
+    if (!ef) return { ef: false, pill: 'pill-yok', text: 'Kayıt yok' };
+    if (b === 'var') return { ef: true, pill: 'pill-man', text: 'Var · manuel' };
+    if (r === 'var') return { ef: true, pill: 'pill-man', text: 'Var · manuel' };
+    return { ef: true, pill: 'pill-oto', text: 'Var · otomatik' };
+  }
+
+  function ahavatOzetPillsHtml(rid, n, es, rowMap, birimMap) {
+    let nOto = 0;
+    let nMan = 0;
+    let nYok = 0;
+    for (let i = 1; i <= n; i++) {
+      const d = ahavatBirimDurum(rid, i, es, rowMap, birimMap);
+      if (!d.ef) nYok++;
+      else if (d.pill === 'pill-man') nMan++;
+      else nOto++;
+    }
+    const parts = [];
+    if (nOto) parts.push('<span class="pill-kayit pill-oto">' + esc(String(nOto)) + ' oto</span>');
+    if (nMan) parts.push('<span class="pill-kayit pill-man">' + esc(String(nMan)) + ' man.</span>');
+    if (nYok) parts.push('<span class="pill-kayit pill-yok">' + esc(String(nYok)) + ' yok</span>');
+    return '<div class="kayit-ozet-pills">' + (parts.length ? parts.join(' ') : '<span class="muted">–</span>') + '</div>';
+  }
+
+  /** Otomatik bağış eşleşmesi + manuel kurban_kayit_takip (var önce, yok iptal) */
+  function mergeManual(autoBoolMap, manualStrMap) {
+    const out = new Map();
+    autoBoolMap.forEach((autoVal, id) => {
+      const man = manualStrMap.get(id);
+      if (man === 'yok') out.set(id, false);
+      else if (man === 'var') out.set(id, true);
+      else out.set(id, autoVal);
+    });
+    return out;
+  }
+
+  async function fetchKurbanKayitTakip(sb, yil) {
+    const { data, error } = await sb
+      .from('kurban_kayit_takip')
+      .select('tur, ref_id, durum, birim_indeks, birim_isim')
+      .eq('yil', yil);
+    if (error) throw error;
+    const talebe = new Map();
+    const ihvan = new Map();
+    const ahavatRow = new Map();
+    const ahavatBirim = new Map();
+    const ahavatBirimIsim = new Map();
+    (data || []).forEach((row) => {
+      const ref = String(row.ref_id || '');
+      const bi = row.birim_indeks != null ? Number(row.birim_indeks) : BIRIM_SATIR;
+      if (row.tur === 'talebe' && bi === BIRIM_SATIR) talebe.set(ref, row.durum);
+      else if (row.tur === 'ihvan' && bi === BIRIM_SATIR) ihvan.set(ref, row.durum);
+      else if (row.tur === 'ahavat' && bi === BIRIM_SATIR) ahavatRow.set(ref, row.durum);
+      else if (row.tur === 'ahavat' && bi >= 1) {
+        const bk = ref + ':' + bi;
+        if (row.durum === 'var' || row.durum === 'yok') ahavatBirim.set(bk, row.durum);
+        const is = row.birim_isim != null ? String(row.birim_isim).trim() : '';
+        if (is) ahavatBirimIsim.set(bk, is);
+      }
+    });
+    return { talebe, ihvan, ahavatRow, ahavatBirim, ahavatBirimIsim };
+  }
+
+  async function fetchAllTalebeler(sb) {
+    const page = 1000;
+    let from = 0;
+    const out = [];
+    for (;;) {
+      const { data, error } = await sb
+        .from('talebeler')
+        .select('id, talebe_adi, aktif, created_at')
+        .eq('aktif', true)
+        .order('talebe_adi', { ascending: true })
+        .range(from, from + page - 1);
+      if (error) throw error;
+      const chunk = data || [];
+      out.push(...chunk);
+      if (chunk.length < page) break;
+      from += page;
+    }
+    return out;
+  }
+
+  async function fetchIhvanAhavatYil(sb, yil) {
+    const page = 1000;
+    let from = 0;
+    const out = [];
+    for (;;) {
+      const { data, error } = await sb
+        .from('ihvan_ahavat')
+        .select('id, kayit_tipi, kurum_adi, ad_soyad, telefon, adet, yil, created_at')
+        .eq('yil', yil)
+        .in('kayit_tipi', ['ihvan', 'ahavat'])
+        .order('created_at', { ascending: false })
+        .range(from, from + page - 1);
+      if (error) throw error;
+      const chunk = data || [];
+      out.push(...chunk);
+      if (chunk.length < page) break;
+      from += page;
+    }
+    return out;
+  }
+
+  async function fetchBagisYil(sb, yil) {
+    const page = 1000;
+    let from = 0;
+    const out = [];
+    for (;;) {
+      const { data, error } = await sb
+        .from('kurban_2026_bagis_hisse')
+        .select('id, ad_soyad, yil, created_at')
+        .eq('yil', yil)
+        .order('id', { ascending: false })
+        .range(from, from + page - 1);
+      if (error) throw error;
+      const chunk = data || [];
+      out.push(...chunk);
+      if (chunk.length < page) break;
+      from += page;
+    }
+    return out;
+  }
+
+  async function loadKategorilerYil(sb, sel) {
+    let years = [2026, 2025, 2027];
+    try {
+      const { data, error } = await sb.from('kurban_kategoriler').select('yil, aktif').order('yil', { ascending: false });
+      if (!error && data && data.length) {
+        years = [...new Set(data.map((x) => x.yil).filter((y) => y != null))].sort((a, b) => b - a);
+      }
+    } catch (e) { console.warn(e); }
+    const aktif = 2026;
+    sel.innerHTML = '';
+    years.forEach((y) => {
+      const o = document.createElement('option');
+      o.value = String(y);
+      o.textContent = String(y);
+      sel.appendChild(o);
+    });
+    if (![...sel.options].some((o) => o.value === String(aktif))) {
+      const o = document.createElement('option');
+      o.value = String(aktif);
+      o.textContent = String(aktif);
+      sel.appendChild(o);
+    }
+    sel.value = String(aktif);
+  }
+
+  function renderOzet(opts) {
+    const tb = document.getElementById('tbodyOzet');
+    const talebeT = opts.talebeToplam;
+    const talebeK = opts.talebeEslesen;
+    const ihvanT = opts.ihvanToplam;
+    const ihvanK = opts.ihvanEslesen;
+    const ahavatBirimToplam = opts.ahavatBirimToplam;
+    const ahavatKayitEfektif = opts.ahavatKayitEfektifSayisi;
+    const hedefKisi = opts.hedefToplamKisi;
+    const genelKayitAdedi = opts.genelKayitAdedi;
+    const gTalebe = opts.gunlukTalebe || 0;
+    const gIhvan = opts.gunlukIhvan || 0;
+    const gAhavat = opts.gunlukAhavat || 0;
+    const gunlukGenel = gTalebe + gIhvan + gAhavat;
+    const maxGa = Math.max(gTalebe, gIhvan, gAhavat, gunlukGenel, 1);
+
+    const rows = [
+      { kat: 'Talebe (aktif)', top: talebeT, kay: talebeK, ga: gTalebe },
+      { kat: 'İhvan', top: ihvanT, kay: ihvanK, ga: gIhvan },
+      {
+        kat: 'Ahavat',
+        top: ahavatBirimToplam,
+        kay: ahavatKayitEfektif,
+        ga: gAhavat
+      },
+      { kat: 'Genel (hedef — bağış)', top: hedefKisi, kay: genelKayitAdedi, ga: gunlukGenel, section: true }
+    ];
+
+    tb.innerHTML = rows.map((r) => {
+      const cls = r.section ? ' class="section"' : '';
+      const ulTd = r.section ? ulasmaMetinTd(r.kay, r.top) : ulasmaBarHtml(r.kay, r.top);
+      return '<tr' + cls + '><td>' + esc(r.kat) + '</td><td>' + esc(String(r.top)) + '</td><td>' + esc(String(r.kay)) + '</td>' + ulTd + tdGunlukArtis(r.ga, maxGa) + '</tr>';
+    }).join('');
+  }
+
+  let mapManualTalebe = new Map();
+  let mapManualIhvan = new Map();
+  let mapManualAhavatRow = new Map();
+  let mapManualAhavatBirim = new Map();
+  let mapAhavatBirimIsim = new Map();
+  let mapTalebeBagis = new Map();
+  let mapIhvanBagis = new Map();
+  let mapTalebeEfektif = new Map();
+  let mapIhvanEfektif = new Map();
+  const expandedAhavatIds = new Set();
+
+  function renderTalebeler(talebeler) {
+    const tbody = document.getElementById('tbodyTalebe');
+    const empty = document.getElementById('emptyTalebe');
+    const ara = (document.getElementById('araTalebe').value || '').trim().toLocaleLowerCase('tr-TR');
+    const rows = talebeler.filter((t) => !ara || (t.talebe_adi || '').toLocaleLowerCase('tr-TR').includes(ara));
+    const tw = tbody.closest('.table-wrap');
+    tbody.innerHTML = '';
+    rows.forEach((t, idx) => {
+      const auto = !!mapTalebeBagis.get(t.id);
+      const man = mapManualTalebe.get(String(t.id)) || '';
+      const ef = !!mapTalebeEfektif.get(t.id);
+      const tr = document.createElement('tr');
+      tr.className = 'tr-talebe-kayit';
+      tr.dataset.talebeId = String(t.id);
+      tr.dataset.talebeAdi = String(t.talebe_adi || '');
+      tr.dataset.bagisOto = auto ? '1' : '0';
+      tr.dataset.manuelDurum = man;
+      tr.dataset.kayitEfektif = ef ? '1' : '0';
+      tr.setAttribute('tabindex', '0');
+      const kayHtml = pillKayitHtml(ef, man, auto);
+      tr.innerHTML =
+        '<td class="col-sn">' + esc(String(idx + 1)) + '</td>' +
+        '<td class="col-kayit">' + kayHtml + '</td>' +
+        '<td>' + esc(t.talebe_adi || '–') + '</td>';
+      tbody.appendChild(tr);
+    });
+    if (rows.length === 0) {
+      tw.style.display = 'none';
+      empty.style.display = 'block';
+      empty.textContent = talebeler.length === 0
+        ? 'Liste boş veya erişim yok (RLS).'
+        : 'Arama kriterine uygun kayıt yok.';
+    } else {
+      tw.style.display = '';
+      empty.style.display = 'none';
+    }
+  }
+
+  function renderIhvan(ihvanListe) {
+    const tbody = document.getElementById('tbodyIhvan');
+    const empty = document.getElementById('emptyIhvan');
+    const ara = (document.getElementById('araIhvan').value || '').trim().toLocaleLowerCase('tr-TR');
+    const rows = ihvanListe.filter((r) => {
+      if (!ara) return true;
+      const k = ((r.kurum_adi || '') + ' ' + (r.ad_soyad || '')).toLocaleLowerCase('tr-TR');
+      return k.includes(ara);
+    });
+    const tw = tbody.closest('.table-wrap');
+    tbody.innerHTML = '';
+    rows.forEach((r, idx) => {
+      const rid = String(r.id);
+      const auto = !!mapIhvanBagis.get(rid);
+      const man = mapManualIhvan.get(rid) || '';
+      const ef = !!mapIhvanEfektif.get(rid);
+      const tr = document.createElement('tr');
+      tr.className = 'tr-ihvan-kayit';
+      tr.dataset.ihvanId = rid;
+      tr.dataset.kurumAdi = String(r.kurum_adi || '');
+      tr.dataset.adSoyad = String(r.ad_soyad || '');
+      tr.dataset.telefon = String(r.telefon || '');
+      tr.dataset.bagisOto = auto ? '1' : '0';
+      tr.dataset.manuelDurum = man;
+      tr.dataset.kayitEfektif = ef ? '1' : '0';
+      tr.setAttribute('tabindex', '0');
+      const kayHtml = pillKayitHtml(ef, man, auto);
+      tr.innerHTML =
+        '<td class="col-sn">' + esc(String(idx + 1)) + '</td>' +
+        '<td class="col-kayit">' + kayHtml + '</td>' +
+        '<td>' + esc(r.kurum_adi || '–') + '</td>' +
+        '<td>' + esc(r.ad_soyad || '–') + '</td>' +
+        '<td>' + esc(r.telefon || '–') + '</td>';
+      tbody.appendChild(tr);
+    });
+    if (rows.length === 0) {
+      tw.style.display = 'none';
+      empty.style.display = 'block';
+      empty.textContent = ihvanListe.length === 0
+        ? 'Liste boş veya erişim yok (RLS).'
+        : 'Arama kriterine uygun kayıt yok.';
+    } else {
+      tw.style.display = '';
+      empty.style.display = 'none';
+    }
+  }
+
+  let cacheTalebeler = [];
+  let cacheIhvan = [];
+  let cacheAhavatRows = [];
+  let cacheMapAhavatBagisEslesen = new Map();
+  let cacheBagis = [];
+
+  function fmtKisaTarih(iso) {
+    if (!iso) return '–';
+    try {
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return '–';
+      return d.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    } catch (e) { return '–'; }
+  }
+
+  function renderAhavatListe() {
+    const tbody = document.getElementById('tbodyAhavatListe');
+    const empty = document.getElementById('emptyAhavatListe');
+    const tw = tbody.closest('.table-wrap');
+    const ara = (document.getElementById('araAhavat').value || '').trim().toLocaleLowerCase('tr-TR');
+    const rows = [...(cacheAhavatRows || [])]
+      .filter((r) => {
+        if (!ara) return true;
+        const k = ((r.kurum_adi || '') + ' ' + (r.ad_soyad || '')).toLocaleLowerCase('tr-TR');
+        return k.includes(ara);
+      })
+      .sort((a, b) => {
+        const ta = new Date(a.created_at || 0).getTime();
+        const tb = new Date(b.created_at || 0).getTime();
+        return tb - ta;
+      });
+    tbody.innerHTML = '';
+    rows.forEach((r, idx) => {
+      const rid = String(r.id);
+      const n = Math.max(1, parseInt(r.adet, 10) || 1);
+      const rawEs = cacheMapAhavatBagisEslesen.get(rid);
+      const es = typeof rawEs === 'number' ? rawEs : 0;
+      const tam = es >= n;
+      const bagStr = tam
+        ? '<span style="color:#047857;font-weight:700">' + es + ' / ' + n + '</span>'
+        : '<span style="color:#b45309;font-weight:700">' + es + ' / ' + n + '</span>';
+      const ozetHtml = ahavatOzetPillsHtml(rid, n, es, mapManualAhavatRow, mapManualAhavatBirim);
+      const expanded = expandedAhavatIds.has(rid);
+      const rowMan = mapManualAhavatRow.get(rid) || '';
+
+      const trP = document.createElement('tr');
+      trP.className = 'tr-ahavat-parent';
+      trP.dataset.ahavatId = rid;
+      trP.innerHTML =
+        '<td class="col-sn">' + esc(String(idx + 1)) + '</td>' +
+        '<td class="col-kayit">' + ozetHtml + '</td>' +
+        '<td>' + esc(r.kurum_adi || '–') + '</td>' +
+        '<td>' + esc(r.ad_soyad || '–') + '</td>' +
+        '<td>' + esc(String(n)) + '</td>' +
+        '<td>' + bagStr + '</td>' +
+        '<td class="muted" style="font-size:13px">' + esc(fmtKisaTarih(r.created_at)) + '</td>' +
+        '<td><button type="button" class="btn-ahavat-expand" data-ahavat-id="' + esc(rid) + '" aria-expanded="' + (expanded ? 'true' : 'false') + '">' +
+        esc(String(n)) + ' birim ' + (expanded ? '▲' : '▼') + '</button></td>';
+      tbody.appendChild(trP);
+
+      const trPanel = document.createElement('tr');
+      trPanel.className = 'tr-ahavat-birim-panel';
+      trPanel.dataset.parentAhavatId = rid;
+      trPanel.style.display = expanded ? '' : 'none';
+      const birimRows = [];
+      for (let i = 1; i <= n; i++) {
+        const d = ahavatBirimDurum(rid, i, es, mapManualAhavatRow, mapManualAhavatBirim);
+        const bk = rid + ':' + i;
+        const bMan = mapManualAhavatBirim.get(bk) || '';
+        const otoTek = i <= es;
+        const isimVal = mapAhavatBirimIsim.get(bk) || '';
+        birimRows.push(
+          '<tr class="tr-ahavat-birim-kayit" tabindex="0" data-ahavat-id="' + esc(rid) + '" data-birim-indeks="' + esc(String(i)) + '"' +
+          ' data-kurum-adi="' + esc(r.kurum_adi || '') + '" data-ad-soyad="' + esc(r.ad_soyad || '') + '"' +
+          ' data-adet-n="' + esc(String(n)) + '" data-bagis-es="' + esc(String(es)) + '"' +
+          ' data-oto-birim="' + (otoTek ? '1' : '0') + '" data-manuel-birim="' + esc(bMan) + '"' +
+          ' data-kayit-efektif="' + (d.ef ? '1' : '0') + '">' +
+          '<td class="col-sn">' + esc(String(i)) + '</td>' +
+          '<td class="col-kayit"><span class="pill-kayit ' + esc(d.pill) + '">' + esc(d.text) + '</span></td>' +
+          '<td><input type="text" class="inp-birim-isim" maxlength="200" placeholder="İsim…" ' +
+          'data-ahavat-id="' + esc(rid) + '" data-birim-indeks="' + esc(String(i)) + '" value="' + esc(isimVal) + '" autocomplete="off" /></td>' +
+          '<td class="muted">Birim ' + esc(String(i)) + ' / ' + esc(String(n)) + '</td>' +
+          '</tr>'
+        );
+      }
+      let bar = '';
+      if (rowMan) {
+        bar =
+          '<div class="birim-panel-bar">Satır geneli manuel: <strong>' + esc(rowMan === 'var' ? 'Kayıt var' : 'Kayıt yok') + '</strong> ' +
+          '<button type="button" class="btn-row-clear" data-clear-ahavat-row="' + esc(rid) + '">Satır genelini kaldır</button></div>';
+      }
+      trPanel.innerHTML =
+        '<td colspan="8">' +
+        '<div class="birim-panel-inner">' + bar +
+        '<div class="table-wrap" style="border:none;border-radius:8px">' +
+        '<table><thead><tr><th class="col-sn">SN</th><th>Kayıt</th><th>İsim</th><th>Birim</th></tr></thead><tbody>' +
+        birimRows.join('') +
+        '</tbody></table></div></div></td>';
+      tbody.appendChild(trPanel);
+    });
+    if (rows.length === 0) {
+      tw.style.display = 'none';
+      empty.style.display = 'block';
+      empty.textContent = (cacheAhavatRows || []).length === 0
+        ? 'Bu yıl için ihvan_ahavat tablosunda ahavat kaydı yok.'
+        : 'Arama kriterine uygun kayıt yok.';
+    } else {
+      tw.style.display = '';
+      empty.style.display = 'none';
+    }
+  }
+
+  function recomputeEfektifAndRender() {
+    mapTalebeEfektif = mergeManual(mapTalebeBagis, mapManualTalebe);
+    mapIhvanEfektif = mergeManual(mapIhvanBagis, mapManualIhvan);
+
+    const talebeToplam = cacheTalebeler.length;
+    const ihvanToplam = cacheIhvan.length;
+    const talebeEslesen = mapTrueCount(mapTalebeEfektif);
+    const ihvanEslesen = mapTrueCount(mapIhvanEfektif);
+    const ahavatBirimToplam = cacheAhavatRows.reduce((s, r) => s + Math.max(1, parseInt(r.adet, 10) || 1), 0);
+    let ahavatKayitEfektifSayisi = 0;
+    cacheAhavatRows.forEach((row) => {
+      const rid = String(row.id);
+      const n = Math.max(1, parseInt(row.adet, 10) || 1);
+      const raw = cacheMapAhavatBagisEslesen.get(rid);
+      const es = typeof raw === 'number' ? raw : 0;
+      for (let i = 1; i <= n; i++) {
+        if (ahavatBirimDurum(rid, i, es, mapManualAhavatRow, mapManualAhavatBirim).ef) ahavatKayitEfektifSayisi++;
+      }
+    });
+    const hedefToplamKisi = talebeToplam + ihvanToplam + ahavatBirimToplam;
+    const gunlukTalebe = cacheTalebeler.filter((t) => isCreatedToday(t.created_at)).length;
+    const gunlukIhvan = cacheIhvan.filter((r) => isCreatedToday(r.created_at)).length;
+    const gunlukAhavat = cacheAhavatRows.filter((r) => isCreatedToday(r.created_at)).length;
+    const genelKayitAdedi = talebeEslesen + ihvanEslesen + ahavatKayitEfektifSayisi;
+
+    renderOzet({
+      talebeToplam,
+      talebeEslesen,
+      ihvanToplam,
+      ihvanEslesen,
+      ahavatBirimToplam,
+      ahavatKayitEfektifSayisi,
+      hedefToplamKisi,
+      genelKayitAdedi,
+      gunlukTalebe,
+      gunlukIhvan,
+      gunlukAhavat
+    });
+    renderTalebeler(cacheTalebeler);
+    renderIhvan(cacheIhvan);
+    renderAhavatListe();
+  }
+
+  async function saveAhavatBirimIsim(rid, bi, raw) {
+    const sb = getSb();
+    if (!sb) return;
+    const yil = parseInt(document.getElementById('selYil').value, 10);
+    if (!Number.isFinite(yil)) return;
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) {
+      showToast('error', 'Oturum', 'Giriş gerekli.');
+      return;
+    }
+    const bk = String(rid) + ':' + bi;
+    const trimmed = String(raw || '').replace(/\s+/g, ' ').trim();
+    const now = new Date().toISOString();
+    const bMan = mapManualAhavatBirim.get(bk);
+
+    const { data: existing, error: selErr } = await sb
+      .from('kurban_kayit_takip')
+      .select('durum, birim_isim')
+      .eq('yil', yil)
+      .eq('tur', 'ahavat')
+      .eq('ref_id', String(rid))
+      .eq('birim_indeks', bi)
+      .maybeSingle();
+    if (selErr) {
+      showToast('error', 'İsim', selErr.message || String(selErr));
+      return;
+    }
+
+    if (!trimmed) {
+      if (!existing) {
+        mapAhavatBirimIsim.delete(bk);
+        renderAhavatListe();
+        return;
+      }
+      const d = existing.durum;
+      if (d === 'var' || d === 'yok') {
+        const { error } = await sb
+          .from('kurban_kayit_takip')
+          .update({ birim_isim: null, updated_at: now, updated_by_uid: user.id })
+          .eq('yil', yil)
+          .eq('tur', 'ahavat')
+          .eq('ref_id', String(rid))
+          .eq('birim_indeks', bi);
+        if (error) {
+          showToast('error', 'İsim', error.message || String(error));
+          return;
+        }
+      } else {
+        const { error } = await sb
+          .from('kurban_kayit_takip')
+          .delete()
+          .eq('yil', yil)
+          .eq('tur', 'ahavat')
+          .eq('ref_id', String(rid))
+          .eq('birim_indeks', bi);
+        if (error) {
+          showToast('error', 'İsim', error.message || String(error));
+          return;
+        }
+      }
+      mapAhavatBirimIsim.delete(bk);
+      showToast('success', 'İsim', 'İsim alanı güncellendi.');
+      renderAhavatListe();
+      return;
+    }
+
+    const payload = {
+      yil,
+      tur: 'ahavat',
+      ref_id: String(rid),
+      birim_indeks: bi,
+      birim_isim: trimmed,
+      updated_by_uid: user.id,
+      updated_at: now
+    };
+    if (bMan === 'var' || bMan === 'yok') payload.durum = bMan;
+    else payload.durum = null;
+
+    const { error } = await sb.from('kurban_kayit_takip').upsert(payload, { onConflict: 'yil,tur,ref_id,birim_indeks' });
+    if (error) {
+      showToast('error', 'İsim', error.message || String(error));
+      return;
+    }
+    mapAhavatBirimIsim.set(bk, trimmed);
+    showToast('success', 'İsim', 'Kaydedildi.');
+    renderAhavatListe();
+  }
+
+  async function refreshAll() {
+    const sb = getSb();
+    const sel = document.getElementById('selYil');
+    if (!sb) {
+      showToast('error', 'Hata', 'Supabase hazır değil.');
+      return;
+    }
+    const yil = parseInt(sel.value, 10);
+    if (!Number.isFinite(yil)) return;
+
+    try {
+      const [talebeler, iaList, bagisList, takip] = await Promise.all([
+        fetchAllTalebeler(sb),
+        fetchIhvanAhavatYil(sb, yil),
+        fetchBagisYil(sb, yil),
+        fetchKurbanKayitTakip(sb, yil).catch((err) => {
+          console.warn('kurban_kayit_takip:', err);
+          return { talebe: new Map(), ihvan: new Map(), ahavatRow: new Map(), ahavatBirim: new Map(), ahavatBirimIsim: new Map() };
+        })
+      ]);
+
+      cacheTalebeler = talebeler;
+      cacheBagis = bagisList;
+      mapManualTalebe = takip.talebe;
+      mapManualIhvan = takip.ihvan;
+      mapManualAhavatRow = takip.ahavatRow || new Map();
+      mapManualAhavatBirim = takip.ahavatBirim || new Map();
+      mapAhavatBirimIsim = takip.ahavatBirimIsim || new Map();
+
+      const havuz = buildBagisHavuzu(bagisList);
+      mapTalebeBagis = new Map();
+      [...cacheTalebeler]
+        .sort((a, b) => String(a.talebe_adi || '').localeCompare(String(b.talebe_adi || ''), 'tr'))
+        .forEach((t) => {
+          mapTalebeBagis.set(t.id, havuzdanTuket(havuz, t.talebe_adi));
+        });
+      mapIhvanBagis = new Map();
+      cacheIhvan = iaList.filter((x) => x.kayit_tipi === 'ihvan');
+      [...cacheIhvan]
+        .sort((a, b) => String(a.created_at || a.id || '').localeCompare(String(b.created_at || b.id || '')))
+        .forEach((r) => {
+          mapIhvanBagis.set(String(r.id), havuzdanTuket(havuz, r.ad_soyad));
+        });
+
+      cacheAhavatRows = iaList.filter((x) => x.kayit_tipi === 'ahavat');
+      cacheMapAhavatBagisEslesen = new Map();
+      [...cacheAhavatRows]
+        .sort((a, b) => String(a.created_at || a.id || '').localeCompare(String(b.created_at || b.id || '')))
+        .forEach((row) => {
+          const rid = String(row.id);
+          const adet = Math.max(1, parseInt(row.adet, 10) || 1);
+          let es = 0;
+          for (let i = 0; i < adet; i++) {
+            if (havuzdanTuket(havuz, row.ad_soyad)) es++;
+          }
+          cacheMapAhavatBagisEslesen.set(rid, es);
+        });
+
+      recomputeEfektifAndRender();
+    } catch (e) {
+      console.error(e);
+      showToast('error', 'Veri', (e && e.message) ? e.message : String(e) + ' Yetkiniz olmayabilir (RLS).');
+    }
+  }
+
+  const modalEl = document.getElementById('modalDurum');
+  const modalMeta = document.getElementById('modalDurumMeta');
+  let modalCtx = null;
+
+  function openModalDurum() {
+    modalEl.classList.add('open');
+    modalEl.setAttribute('aria-hidden', 'false');
+  }
+  function closeModalDurum() {
+    modalEl.classList.remove('open');
+    modalEl.setAttribute('aria-hidden', 'true');
+    modalCtx = null;
+  }
+
+  function fillModalFromCtx() {
+    if (!modalCtx) return;
+    const yil = parseInt(document.getElementById('selYil').value, 10);
+    let lines = [];
+    if (modalCtx.tur === 'talebe') {
+      document.getElementById('modalDurumTitle').textContent = 'Talebe — kayıt durumu';
+      lines.push('<strong>' + esc(modalCtx.adGoster) + '</strong>');
+      lines.push('Yıl: ' + esc(String(yil)));
+      lines.push('Bağış hisse (otomatik isim eşleşmesi): ' + (modalCtx.oto ? 'Eşleşti' : 'Eşleşmedi'));
+      const m = modalCtx.manuel || '';
+      lines.push('Manuel işaret: ' + (m === 'var' ? 'Kayıt var' : m === 'yok' ? 'Kayıt yok' : 'Yok (otomatik kullanılıyor)'));
+      lines.push('<strong>Etkin sonuç:</strong> ' + (modalCtx.efektif ? 'Kayıt var sayılır' : 'Kayıt yok sayılır'));
+    } else if (modalCtx.tur === 'ihvan') {
+      document.getElementById('modalDurumTitle').textContent = 'İhvan — kayıt durumu';
+      lines.push('<strong>' + esc(modalCtx.adGoster) + '</strong>');
+      if (modalCtx.kurum) lines.push('Kurum: ' + esc(modalCtx.kurum));
+      lines.push('Yıl: ' + esc(String(yil)));
+      lines.push('Bağış hisse (otomatik): ' + (modalCtx.oto ? 'Eşleşti' : 'Eşleşmedi'));
+      const m = modalCtx.manuel || '';
+      lines.push('Manuel işaret: ' + (m === 'var' ? 'Kayıt var' : m === 'yok' ? 'Kayıt yok' : 'Yok'));
+      lines.push('<strong>Etkin sonuç:</strong> ' + (modalCtx.efektif ? 'Kayıt var sayılır' : 'Kayıt yok sayılır'));
+    } else if (modalCtx.tur === 'ahavat' && modalCtx.birimIndeks >= 1) {
+      document.getElementById('modalDurumTitle').textContent =
+        'Ahavat — birim ' + esc(String(modalCtx.birimIndeks)) + ' / ' + esc(String(modalCtx.adetN || '1'));
+      lines.push('<strong>' + esc(modalCtx.adGoster) + '</strong>');
+      if (modalCtx.kurum) lines.push('Kurum: ' + esc(modalCtx.kurum));
+      lines.push('Yıl: ' + esc(String(yil)));
+      lines.push('Bu birim için bağış (sıra): ' + (modalCtx.oto ? 'Otomatik eşleşme var' : 'Otomatik eşleşme yok'));
+      lines.push('Toplam satır: ' + esc(String(modalCtx.bagisEs || '0')) + ' / ' + esc(String(modalCtx.adetN || '1')) + ' bağış birimi');
+      const m = modalCtx.manuel || '';
+      lines.push('Manuel işaret (birim_indeks ' + esc(String(modalCtx.birimIndeks)) + '): ' + (m === 'var' ? 'Kayıt var' : m === 'yok' ? 'Kayıt yok' : 'Yok'));
+      const ism = (modalCtx.birimIsim || '').trim();
+      lines.push('Alt birim ismi: ' + (ism ? '<strong>' + esc(ism) + '</strong>' : '—'));
+      lines.push('<strong>Etkin sonuç:</strong> ' + (modalCtx.efektif ? 'Kayıt var sayılır' : 'Kayıt yok sayılır'));
+    } else {
+      document.getElementById('modalDurumTitle').textContent = 'Ahavat — satır geneli';
+      lines.push('<strong>' + esc(modalCtx.adGoster) + '</strong>');
+      if (modalCtx.kurum) lines.push('Kurum: ' + esc(modalCtx.kurum));
+      lines.push('Yıl: ' + esc(String(yil)));
+      const m = modalCtx.manuel || '';
+      lines.push('Manuel işaret (birim_indeks -1): ' + (m === 'var' ? 'Kayıt var' : m === 'yok' ? 'Kayıt yok' : 'Yok'));
+      lines.push('<strong>Etkin sonuç:</strong> ' + (modalCtx.efektif ? 'Kayıt var sayılır' : 'Kayıt yok sayılır'));
+    }
+    modalMeta.innerHTML = lines.join('<br/>');
+  }
+
+  document.getElementById('tbodyTalebe').addEventListener('click', (e) => {
+    const tr = e.target.closest('tr.tr-talebe-kayit');
+    if (!tr) return;
+    modalCtx = {
+      tur: 'talebe',
+      refId: tr.dataset.talebeId,
+      birimIndeks: BIRIM_SATIR,
+      adGoster: tr.dataset.talebeAdi || '',
+      oto: tr.dataset.bagisOto === '1',
+      manuel: tr.dataset.manuelDurum || '',
+      efektif: tr.dataset.kayitEfektif === '1'
+    };
+    fillModalFromCtx();
+    openModalDurum();
+  });
+
+  document.getElementById('tbodyIhvan').addEventListener('click', (e) => {
+    const tr = e.target.closest('tr.tr-ihvan-kayit');
+    if (!tr) return;
+    modalCtx = {
+      tur: 'ihvan',
+      refId: tr.dataset.ihvanId,
+      birimIndeks: BIRIM_SATIR,
+      adGoster: tr.dataset.adSoyad || '',
+      kurum: tr.dataset.kurumAdi || '',
+      oto: tr.dataset.bagisOto === '1',
+      manuel: tr.dataset.manuelDurum || '',
+      efektif: tr.dataset.kayitEfektif === '1'
+    };
+    fillModalFromCtx();
+    openModalDurum();
+  });
+
+  document.getElementById('tbodyAhavatListe').addEventListener('click', async (e) => {
+    const btnEx = e.target.closest('.btn-ahavat-expand');
+    if (btnEx) {
+      e.preventDefault();
+      const rid = btnEx.getAttribute('data-ahavat-id');
+      if (!rid) return;
+      if (expandedAhavatIds.has(rid)) expandedAhavatIds.delete(rid);
+      else expandedAhavatIds.add(rid);
+      renderAhavatListe();
+      return;
+    }
+    const btnClr = e.target.closest('[data-clear-ahavat-row]');
+    if (btnClr) {
+      e.preventDefault();
+      const rid = btnClr.getAttribute('data-clear-ahavat-row');
+      if (!rid) return;
+      const sb = getSb();
+      if (!sb) return;
+      const yil = parseInt(document.getElementById('selYil').value, 10);
+      const { error } = await sb
+        .from('kurban_kayit_takip')
+        .delete()
+        .eq('yil', yil)
+        .eq('tur', 'ahavat')
+        .eq('ref_id', rid)
+        .eq('birim_indeks', BIRIM_SATIR);
+      if (error) {
+        showToast('error', 'Sil', error.message || String(error));
+        return;
+      }
+      mapManualAhavatRow.delete(rid);
+      showToast('success', 'Kaldırıldı', 'Satır geneli manuel kayıt silindi.');
+      recomputeEfektifAndRender();
+      return;
+    }
+    if (e.target.closest('.inp-birim-isim')) return;
+    const tr = e.target.closest('tr.tr-ahavat-birim-kayit');
+    if (!tr) return;
+    const bi = parseInt(tr.dataset.birimIndeks, 10);
+    if (!Number.isFinite(bi) || bi < 1) return;
+    const rid0 = String(tr.dataset.ahavatId || '');
+    const birimIsim = mapAhavatBirimIsim.get(rid0 + ':' + bi) || '';
+    modalCtx = {
+      tur: 'ahavat',
+      refId: tr.dataset.ahavatId,
+      birimIndeks: bi,
+      adGoster: tr.dataset.adSoyad || '',
+      kurum: tr.dataset.kurumAdi || '',
+      adetN: tr.dataset.adetN || '1',
+      bagisEs: tr.dataset.bagisEs || '0',
+      oto: tr.dataset.otoBirim === '1',
+      manuel: tr.dataset.manuelBirim || '',
+      efektif: tr.dataset.kayitEfektif === '1',
+      birimIsim
+    };
+    fillModalFromCtx();
+    openModalDurum();
+  });
+
+  async function upsertTakipDurum(durum) {
+    const sb = getSb();
+    if (!sb || !modalCtx) return;
+    const yil = parseInt(document.getElementById('selYil').value, 10);
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) {
+      showToast('error', 'Oturum', 'Giriş gerekli.');
+      return;
+    }
+    const now = new Date().toISOString();
+    const bi = modalCtx.birimIndeks != null && modalCtx.birimIndeks >= 1 ? modalCtx.birimIndeks : BIRIM_SATIR;
+    const row = {
+      yil,
+      tur: modalCtx.tur,
+      ref_id: String(modalCtx.refId),
+      birim_indeks: bi,
+      durum,
+      updated_by_uid: user.id,
+      updated_at: now
+    };
+    if (modalCtx.tur === 'ahavat' && bi >= 1) {
+      const ism = mapAhavatBirimIsim.get(String(modalCtx.refId) + ':' + bi);
+      if (ism) row.birim_isim = ism;
+    }
+    const { error } = await sb.from('kurban_kayit_takip').upsert(row, { onConflict: 'yil,tur,ref_id,birim_indeks' });
+    if (error) {
+      showToast('error', 'Kayıt', error.message || String(error));
+      return;
+    }
+    if (modalCtx.tur === 'talebe') mapManualTalebe.set(String(modalCtx.refId), durum);
+    else if (modalCtx.tur === 'ihvan') mapManualIhvan.set(String(modalCtx.refId), durum);
+    else if (modalCtx.tur === 'ahavat' && bi >= 1) mapManualAhavatBirim.set(String(modalCtx.refId) + ':' + bi, durum);
+    else if (modalCtx.tur === 'ahavat') mapManualAhavatRow.set(String(modalCtx.refId), durum);
+    modalCtx.manuel = durum;
+    if (modalCtx.tur === 'ahavat' && bi >= 1) {
+      const rid = String(modalCtx.refId);
+      const n = Math.max(1, parseInt(modalCtx.adetN, 10) || 1);
+      const raw = cacheMapAhavatBagisEslesen.get(rid);
+      const es = typeof raw === 'number' ? raw : 0;
+      modalCtx.efektif = durum === 'var' ? true : durum === 'yok' ? false : (bi <= es);
+    } else {
+      modalCtx.efektif = durum === 'var' ? true : durum === 'yok' ? false : modalCtx.oto;
+    }
+    fillModalFromCtx();
+    recomputeEfektifAndRender();
+    showToast('success', 'Kaydedildi', durum === 'var' ? 'Kayıt var olarak işaretlendi.' : 'Kayıt yok olarak işaretlendi.');
+  }
+
+  async function deleteTakipManuel() {
+    const sb = getSb();
+    if (!sb || !modalCtx) return;
+    const yil = parseInt(document.getElementById('selYil').value, 10);
+    const bi = modalCtx.birimIndeks != null && modalCtx.birimIndeks >= 1 ? modalCtx.birimIndeks : BIRIM_SATIR;
+    const now = new Date().toISOString();
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) {
+      showToast('error', 'Oturum', 'Giriş gerekli.');
+      return;
+    }
+
+    if (modalCtx.tur === 'ahavat' && bi >= 1) {
+      const bkey = String(modalCtx.refId) + ':' + bi;
+      const ism = mapAhavatBirimIsim.get(bkey);
+      if (ism) {
+        const { error } = await sb
+          .from('kurban_kayit_takip')
+          .update({ durum: null, updated_at: now, updated_by_uid: user.id })
+          .eq('yil', yil)
+          .eq('tur', 'ahavat')
+          .eq('ref_id', String(modalCtx.refId))
+          .eq('birim_indeks', bi);
+        if (error) {
+          showToast('error', 'Sil', error.message || String(error));
+          return;
+        }
+      } else {
+        const { error } = await sb
+          .from('kurban_kayit_takip')
+          .delete()
+          .eq('yil', yil)
+          .eq('tur', 'ahavat')
+          .eq('ref_id', String(modalCtx.refId))
+          .eq('birim_indeks', bi);
+        if (error) {
+          showToast('error', 'Sil', error.message || String(error));
+          return;
+        }
+      }
+      mapManualAhavatBirim.delete(bkey);
+    } else {
+      const { error } = await sb
+        .from('kurban_kayit_takip')
+        .delete()
+        .eq('yil', yil)
+        .eq('tur', modalCtx.tur)
+        .eq('ref_id', String(modalCtx.refId))
+        .eq('birim_indeks', bi);
+      if (error) {
+        showToast('error', 'Sil', error.message || String(error));
+        return;
+      }
+      if (modalCtx.tur === 'talebe') mapManualTalebe.delete(String(modalCtx.refId));
+      else if (modalCtx.tur === 'ihvan') mapManualIhvan.delete(String(modalCtx.refId));
+      else if (modalCtx.tur === 'ahavat') mapManualAhavatRow.delete(String(modalCtx.refId));
+    }
+    modalCtx.manuel = '';
+    if (modalCtx.tur === 'ahavat' && bi >= 1) {
+      const rid = String(modalCtx.refId);
+      const b = parseInt(modalCtx.birimIndeks, 10);
+      const raw = cacheMapAhavatBagisEslesen.get(rid);
+      const es = typeof raw === 'number' ? raw : 0;
+      modalCtx.efektif = b <= es;
+    } else {
+      modalCtx.efektif = modalCtx.oto;
+    }
+    fillModalFromCtx();
+    recomputeEfektifAndRender();
+    showToast('success', 'Kaldırıldı', 'Manuel işaret silindi; otomatik eşleşme geçerli.');
+  }
+
+  document.getElementById('btnModalVar').addEventListener('click', () => upsertTakipDurum('var'));
+  document.getElementById('btnModalYok').addEventListener('click', () => upsertTakipDurum('yok'));
+  document.getElementById('btnModalManuelKaldir').addEventListener('click', () => deleteTakipManuel());
+  document.getElementById('btnModalKapat').addEventListener('click', closeModalDurum);
+  modalEl.addEventListener('click', (e) => { if (e.target === modalEl) closeModalDurum(); });
+
+  document.getElementById('btnYenile').addEventListener('click', refreshAll);
+  document.getElementById('selYil').addEventListener('change', refreshAll);
+  document.getElementById('araTalebe').addEventListener('input', () => renderTalebeler(cacheTalebeler));
+  document.getElementById('araIhvan').addEventListener('input', () => renderIhvan(cacheIhvan));
+  document.getElementById('araAhavat').addEventListener('input', () => renderAhavatListe());
+
+  document.getElementById('tbodyAhavatListe').addEventListener('change', async (e) => {
+    const inp = e.target.closest('.inp-birim-isim');
+    if (!inp) return;
+    const rid = inp.getAttribute('data-ahavat-id');
+    const bi = parseInt(inp.getAttribute('data-birim-indeks'), 10);
+    if (!rid || !Number.isFinite(bi) || bi < 1) return;
+    await saveAhavatBirimIsim(rid, bi, inp.value);
+  });
+
+  window.initPage = async function () {
+    const sb = getSb();
+    const sel = document.getElementById('selYil');
+    if (sb) await loadKategorilerYil(sb, sel);
+    await refreshAll();
+  };
+})();
+  </script>
+</body>
+</html>

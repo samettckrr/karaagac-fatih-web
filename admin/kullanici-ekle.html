@@ -161,6 +161,7 @@
   (function() {
     const SUPABASE_URL = 'https://lmwfibippjvqctccxiwb.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxtd2ZpYmlwcGp2cWN0Y2N4aXdiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NjE2NzA1NCwiZXhwIjoyMDgxNzQzMDU0fQ.lzoudrJx_V4RdCCxPRfgLA1riWNKZ3HyFzeqRynYHeQ';
+    window.__KF_SUPABASE__ = { url: SUPABASE_URL, key: SUPABASE_KEY };
     
     function initSupabase() {
       if (typeof supabase !== 'undefined' && typeof supabase.createClient === 'function') {
@@ -437,7 +438,7 @@
         </div>
 
         <div id="sayfaWrap" class="sayfa-grid" style="display:none"></div>
-        <div id="usersCardsWrap" class="gridcards" style="display:none"></div>
+        <div id="usersCardsWrap" class="gridcards" style="display:grid"></div>
       </section>
     </section>
 
@@ -625,6 +626,78 @@ const getSupabase = async () => {
   return null;
 };
 
+/**
+ * Edge Function: SDK functions.invoke bazı ortamlarda asılı kalabiliyor.
+ * fetch + oturum access_token + apikey ile çağır; AbortController ile zaman aşımı.
+ */
+const ADMIN_CREATE_USER_TIMEOUT_MS = 120000;
+async function invokeAdminCreateUser(supabase, body){
+  const cfg = window.__KF_SUPABASE__;
+  if(!cfg || !cfg.url || !cfg.key){
+    return { data: null, error: { message: 'Supabase URL/anahtar yapılandırması eksik (__KF_SUPABASE__)' } };
+  }
+  const { data: sessWrap, error: sessErr } = await supabase.auth.getSession();
+  if(sessErr){
+    console.warn('getSession uyarısı:', sessErr);
+  }
+  const token = sessWrap?.session?.access_token;
+  if(!token){
+    return { data: null, error: { message: 'Oturum bulunamadı veya süresi doldu. Sayfayı yenileyip tekrar giriş yapın.' } };
+  }
+  const base = String(cfg.url).replace(/\/$/, '');
+  const url = `${base}/functions/v1/admin-create-user`;
+  const controller = new AbortController();
+  const tid = setTimeout(() => controller.abort(), ADMIN_CREATE_USER_TIMEOUT_MS);
+  try{
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'apikey': cfg.key
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+    const text = await res.text();
+    let parsed = null;
+    try{
+      parsed = text ? JSON.parse(text) : null;
+    }catch(parseErr){
+      parsed = { _raw: text, _parseError: String(parseErr) };
+    }
+    if(!res.ok){
+      const msg = parsed && typeof parsed === 'object'
+        ? (parsed.error || parsed.message || `HTTP ${res.status}`)
+        : `HTTP ${res.status}`;
+      const details = parsed && typeof parsed === 'object' && parsed.details
+        ? (typeof parsed.details === 'string' ? parsed.details : JSON.stringify(parsed.details))
+        : '';
+      return {
+        data: null,
+        error: {
+          message: details ? `${msg}: ${details}` : String(msg),
+          status: res.status,
+          context: { body: parsed }
+        }
+      };
+    }
+    return { data: parsed, error: null };
+  }catch(e){
+    if(e && e.name === 'AbortError'){
+      return {
+        data: null,
+        error: {
+          message: 'Sunucu zaman aşımı (' + Math.round(ADMIN_CREATE_USER_TIMEOUT_MS / 1000) + ' sn). Edge Function yanıt vermiyor veya ağ kesildi; Supabase Dashboard → Edge Functions → Logs kontrol edin.'
+        }
+      };
+    }
+    return { data: null, error: { message: e?.message || String(e) } };
+  }finally{
+    clearTimeout(tid);
+  }
+}
+
 const getAuth = () => {
   // Önce window.auth'u kontrol et (ortak.js uyumluluğu için)
   if(window.auth && window.auth.onAuthStateChanged){
@@ -759,14 +832,29 @@ function renderPermTree(targetSel, selected=[]){
     grp.appendChild(head); grp.appendChild(grid);
     wrap.appendChild(grp);
   });
-  const target=$(targetSel); if(target){ target.innerHTML=''; target.appendChild(wrap); }
+  const target=$(targetSel);
+  if(!target) return;
+  target.innerHTML='';
+  target.appendChild(wrap);
 
-  // Grup butonları
-  target.querySelectorAll("[data-gsel]").forEach(btn=>{
-    btn.onclick=()=>{ const g=btn.dataset.gsel; target.querySelectorAll(`.perm-group[data-group="${g}"] input`).forEach(c=>c.checked=true); };
+  // Grup butonları (wrap içinde bağla; özel karakterli panel anahtarında querySelector kırılmasın)
+  wrap.querySelectorAll("[data-gsel]").forEach(btn=>{
+    btn.onclick=()=>{
+      const g=btn.dataset.gsel;
+      wrap.querySelectorAll(".perm-group").forEach(grpEl=>{
+        if(grpEl.dataset.group!==g) return;
+        grpEl.querySelectorAll("input[type=checkbox]").forEach(c=>{ c.checked=true; });
+      });
+    };
   });
-  target.querySelectorAll("[data-gclr]").forEach(btn=>{
-    btn.onclick=()=>{ const g=btn.dataset.gclr; target.querySelectorAll(`.perm-group[data-group="${g}"] input`).forEach(c=>c.checked=false); };
+  wrap.querySelectorAll("[data-gclr]").forEach(btn=>{
+    btn.onclick=()=>{
+      const g=btn.dataset.gclr;
+      wrap.querySelectorAll(".perm-group").forEach(grpEl=>{
+        if(grpEl.dataset.group!==g) return;
+        grpEl.querySelectorAll("input[type=checkbox]").forEach(c=>{ c.checked=false; });
+      });
+    };
   });
 }
 const getChecked = root => Array.from(document.querySelectorAll(`${root} input[type=checkbox]:checked`)).map(i=>i.value);
@@ -1248,13 +1336,19 @@ async function sendPermissionUpdateEmail(email, adSoyad, eskiRol, yeniRol, eskiG
 // Bu fonksiyon kaldırıldı
 if($("#btnPrevOk")){
   $("#btnPrevOk").onclick=async()=>{
-    // Modal'ı hemen kapat (işlem başlar başlamaz)
-    if(mPrev) mPrev.classList.remove('open');
-    
     const btn=$("#btnPrevOk");
     const originalText=btn.textContent;
+    const btnPreview = $("#btnPreview");
+    const btnSubmit = $("#btnSubmit");
+    const prevPreviewDisabled = btnPreview?.disabled;
+    const prevSubmitDisabled = btnSubmit?.disabled;
     btn.disabled=true;
     btn.textContent='⏳ Kaydediliyor...';
+    if(btnPreview){ btnPreview.disabled = true; }
+    if(btnSubmit){ btnSubmit.disabled = true; }
+    if(typeof window.showToast === 'function'){
+      window.showToast('info', 'İşlem sürüyor', 'Kullanıcı kaydı sunucuya gönderiliyor; lütfen bekleyin.');
+    }
     
     try{
       console.log('🔵 Adım 1: Form verileri alınıyor...');
@@ -1296,9 +1390,10 @@ if($("#btnPrevOk")){
       // Edge Function service role key kullanır, bu yüzden admin session korunur
       console.log('🔵 Adım 4: Edge Function çağrılıyor (yeni kullanıcı veya güncelleme)...');
       
-      // Admin UID'sini al (şifre kaydı için)
-      const { data: { user: adminUser } } = await supabase.auth.getUser();
-      const adminUid = adminUser?.id || null;
+      // Admin UID: getUser() yerine getSession() (ekstra ağ turu yok; takılma riski azalır)
+      const { data: sessQuick } = await supabase.auth.getSession();
+      const adminUid = sessQuick?.session?.user?.id || null;
+      console.log('✅ Adım 4a - Oturum kontrolü:', adminUid ? 'OK' : 'UYARI: admin uid yok (şifre kaydı zayıf)');
       
       // Debug: Gönderilen veriyi konsola yazdır
       const requestBody = {
@@ -1310,13 +1405,12 @@ if($("#btnPrevOk")){
         yetkiler: yetkiler || [],
         adminUid: adminUid
       };
-      console.log('📤 Adım 4a - Gönderilen Veri:', requestBody);
+      console.log('📤 Adım 4b - Gönderilen Veri (şifre hariç log):', { ...requestBody, password: '***' });
       
-      // Edge Function'ı çağır - body direkt obje olarak gönder (Supabase SDK otomatik JSON'a çevirir)
-      const { data: edgeData, error: edgeError } = await supabase.functions.invoke('admin-create-user', {
-        body: requestBody
-      });
-      console.log('✅ Adım 4b tamamlandı - Edge Function yanıtı alındı');
+      // Edge Function (fetch + zaman aşımı)
+      console.log('🔵 Adım 4c - HTTP isteği başlıyor...');
+      const { data: edgeData, error: edgeError } = await invokeAdminCreateUser(supabase, requestBody);
+      console.log('✅ Adım 4d - Edge Function yanıtı işlendi');
       
       if(edgeError){
         console.error('❌ Edge Function hatası (tam obje):', edgeError);
@@ -1404,22 +1498,25 @@ if($("#btnPrevOk")){
         throw new Error(errorMessage);
       }
       
-      console.log('🔵 Adım 4c: Edge Function yanıtı kontrol ediliyor...');
+      console.log('🔵 Adım 4e: Edge Function yanıtı kontrol ediliyor...');
       if(!edgeData || !edgeData.success || !edgeData.user){
-        console.error('❌ Adım 4c hatası - Edge Function başarısız yanıt:', edgeData);
+        console.error('❌ Adım 4e hatası - Edge Function başarısız yanıt:', edgeData);
         throw new Error('Kullanıcı işlemi başarısız: Edge Function başarısız yanıt döndü');
       }
       
       const uid = edgeData.user.id;
       // Edge Function yeni kullanıcı oluşturduysa success döner, güncelleme yaptıysa da success döner
       // Edge Function içinde kontrol yapılıyor, burada sadece başarı mesajını gösteriyoruz
-      console.log('✅ Adım 4c tamamlandı - Kullanıcı işlemi başarılı - ID:', uid);
+      console.log('✅ Adım 4e tamamlandı - Kullanıcı işlemi başarılı - ID:', uid);
       console.log('✅ Kullanıcı bilgileri:', edgeData.user);
       
       // Şifreyi sakla (form reset edilmeden önce)
       const savedPassword = sifre;
       const savedAdSoyad = adSoyad;
       const savedEmail = email;
+      
+      // Başarılı — önizleme modalını kapat
+      if(mPrev) mPrev.classList.remove('open');
       
       // Formu temizle ve UI'ı güncelle
       console.log('🔵 Adım 5: Form temizleniyor ve UI güncelleniyor...');
@@ -1466,6 +1563,8 @@ if($("#btnPrevOk")){
     }finally{
       btn.disabled=false;
       btn.textContent=originalText;
+      if(btnPreview){ btnPreview.disabled = !!prevPreviewDisabled; }
+      if(btnSubmit){ btnSubmit.disabled = !!prevSubmitDisabled; }
       console.log('🔚 İşlem sonlandırıldı (finally bloğu)');
     }
   };
@@ -1473,43 +1572,58 @@ if($("#btnPrevOk")){
 
 /* ===== Kullanıcılar ===== */
 let USERS=[]; let unsubUsers=null;
+/** Aynı anda iki listenUsers (initPage + auth) kanalı çifte kuruyordu; subscribe sonrası .on() hatası veriyordu. */
+let _listenUsersPromise = null;
 function normalizeYetkiler(v){ if(Array.isArray(v)) return v.map(s=>String(s).trim()).filter(Boolean); if(typeof v==='string') return v.split(/[,\n;]+/).map(s=>s.trim()).filter(Boolean); return []; }
 
-async function listenUsers(){
-  try {
-    if(unsubUsers) unsubUsers();
-    const supabase = await getSupabase(); 
-    if(!supabase) {
-      console.warn('⚠️ listenUsers: Supabase bağlantısı yok');
-      return;
-    }
-    
-    // İlk yükleme
-    await loadUsers();
-    
-    // Real-time subscription (Supabase)
-    const channel = supabase.channel('kullanicilar-changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'kullanicilar' },
-        () => {
-          loadUsers().catch(err => {
-            console.error('Real-time kullanıcı güncelleme hatası:', err);
-          });
-        }
-      )
-      .subscribe();
-    
-    unsubUsers = () => {
-      try {
-        supabase.removeChannel(channel);
-      } catch(e) {
-        console.error('Channel kaldırma hatası:', e);
-      }
-    };
-  } catch(e) {
-    console.error('listenUsers fonksiyonu hatası:', e);
-    throw e;
+function _newRealtimeChannelId(prefix){
+  if(typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'){
+    return prefix + crypto.randomUUID();
   }
+  return prefix + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+}
+
+async function listenUsers(){
+  if(_listenUsersPromise) return _listenUsersPromise;
+  _listenUsersPromise = (async () => {
+    try {
+      if(typeof unsubUsers === 'function'){
+        try{
+          await Promise.resolve(unsubUsers());
+        }catch(e){
+          console.warn('unsubUsers:', e);
+        }
+        unsubUsers = null;
+      }
+      const supabase = await getSupabase(); 
+      if(!supabase) {
+        console.warn('⚠️ listenUsers: Supabase bağlantısı yok');
+        return;
+      }
+      
+      await loadUsers();
+      
+      const channelName = _newRealtimeChannelId('kullanicilar-rt-');
+      const channel = supabase.channel(channelName)
+        .on('postgres_changes', 
+          { event: '*', schema: 'public', table: 'kullanicilar' },
+          () => {
+            loadUsers().catch(err => {
+              console.error('Real-time kullanıcı güncelleme hatası:', err);
+            });
+          }
+        )
+        .subscribe();
+      
+      unsubUsers = () => supabase.removeChannel(channel);
+    } catch(e) {
+      console.error('listenUsers fonksiyonu hatası:', e);
+      throw e;
+    } finally {
+      _listenUsersPromise = null;
+    }
+  })();
+  return _listenUsersPromise;
 }
 
 async function loadUsers(){
@@ -1663,72 +1777,60 @@ $("#btnRef").onclick=()=>{
   }
 };
 
+/** Tek delegasyon: kartlar her render’da yenilense de tıklama çalışır (onclick kaybı olmaz). */
 function bindListButtons(scope){
-  if(!scope) {
-    console.error('❌ bindListButtons: scope boş');
-    return;
-  }
-  
-  console.log('🔵 bindListButtons çağrıldı, scope:', scope);
-  
-  // Düzenle butonları
-  const editButtons = scope.querySelectorAll("[data-edit]");
-  console.log('🔵 Düzenle butonları bulundu:', editButtons.length);
-  editButtons.forEach(b=> {
-    console.log('🔵 Düzenle butonu bağlanıyor, data-edit:', b.dataset.edit);
-    b.onclick=()=> {
-      console.log('🔵 Düzenle butonuna tıklandı, uid:', b.dataset.edit);
-      openEdit(b.dataset.edit);
-    };
-  });
-  
-  scope.querySelectorAll("[data-reset]").forEach(b=> {
-    b.onclick=()=> {
-      console.log('🔵 Şifre sıfırla butonuna tıklandı, email:', b.dataset.reset);
-      resetPass(b.dataset.reset);
-    };
-  });
-  
-  scope.querySelectorAll("[data-show-password]").forEach(b=> {
-    b.onclick=()=> {
-      console.log('🔵 Şifre göster butonuna tıklandı, uid:', b.dataset.showPassword);
-      showPassword(b.dataset.showPassword);
-    };
-  });
-  
-  scope.querySelectorAll("[data-reset-and-save]").forEach(b=> {
-    b.onclick=()=> {
-      try {
-        const userInfo = JSON.parse(b.dataset.resetAndSave);
-        console.log('🔵 Şifre sıfırla ve kaydet butonuna tıklandı, userInfo:', userInfo);
+  void scope;
+}
+function setupUsersCardsDelegation(){
+  const wrap = document.getElementById('usersCardsWrap');
+  if(!wrap || wrap.dataset.kfDelegBound === '1') return;
+  wrap.dataset.kfDelegBound = '1';
+  wrap.addEventListener('click', function(ev){
+    const btn = ev.target && ev.target.closest ? ev.target.closest('button') : null;
+    if(!btn || !wrap.contains(btn)) return;
+    if(btn.dataset.edit){
+      ev.preventDefault();
+      openEdit(btn.dataset.edit);
+      return;
+    }
+    if(btn.dataset.reset != null && btn.dataset.reset !== ''){
+      ev.preventDefault();
+      resetPass(btn.dataset.reset);
+      return;
+    }
+    if(btn.dataset.showPassword){
+      ev.preventDefault();
+      showPassword(btn.dataset.showPassword);
+      return;
+    }
+    if(btn.dataset.resetAndSave){
+      ev.preventDefault();
+      try{
+        const userInfo = JSON.parse(btn.dataset.resetAndSave);
         resetAndSavePassword(userInfo);
-      } catch(e) {
-        console.error('❌ JSON parse hatası:', e);
-        if(typeof window.showToast==='function') window.showToast('error','Hata','Veri parse edilemedi');
+      }catch(err){
+        console.error('JSON parse (resetAndSave):', err);
+        if(typeof window.showToast==='function') window.showToast('error','Hata','Veri okunamadı');
       }
-    };
-  });
-  
-  scope.querySelectorAll("[data-toggle]").forEach(b=> {
-    b.onclick=()=> {
-      try {
-        const data = JSON.parse(b.dataset.toggle);
-        console.log('🔵 Toggle butonuna tıklandı, data:', data);
-        toggleActive(data);
-      } catch(e) {
-        console.error('❌ JSON parse hatası:', e);
-        if(typeof window.showToast==='function') window.showToast('error','Hata','Veri parse edilemedi');
+      return;
+    }
+    if(btn.dataset.toggle){
+      ev.preventDefault();
+      try{
+        toggleActive(JSON.parse(btn.dataset.toggle));
+      }catch(err){
+        console.error('JSON parse (toggle):', err);
+        if(typeof window.showToast==='function') window.showToast('error','Hata','Veri okunamadı');
       }
-    };
-  });
-  
-  scope.querySelectorAll("[data-softdel]").forEach(b=> {
-    b.onclick=()=> {
-      console.log('🔵 Sil butonuna tıklandı, uid:', b.dataset.softdel);
-      softDelete(b.dataset.softdel);
-    };
+      return;
+    }
+    if(btn.dataset.softdel){
+      ev.preventDefault();
+      softDelete(btn.dataset.softdel);
+    }
   });
 }
+setupUsersCardsDelegation();
 
 /* ===== Sayfa Görünümü ===== */
 function renderSayfa(){
@@ -1817,14 +1919,14 @@ function renderSayfa(){
     
     const title=document.createElement('div');
     title.className="sayfa-card-title";
-    title.textContent=escapeHtml(page.pageTitle);
+    title.textContent=String(page.pageTitle||'');
     header.appendChild(title);
     
     const meta=document.createElement('div');
     meta.className="sayfa-card-meta";
     meta.innerHTML=`
-      <span class="pill" style="font-size:11px;padding:4px 8px">${escapeHtml(page.panelTitle)}</span>
-      <span style="font-family:monospace;font-size:11px;color:var(--muted)">${escapeHtml(page.pagePath)}</span>
+      <span class="pill" style="font-size:11px;padding:4px 8px">${kfEscapeForHtml(page.panelTitle)}</span>
+      <span style="font-family:monospace;font-size:11px;color:var(--muted)">${kfEscapeForHtml(page.pagePath)}</span>
     `;
     header.appendChild(meta);
     card.appendChild(header);
@@ -1897,8 +1999,7 @@ function renderSayfa(){
   });
 }
 
-function escapeHtml(text){
-  // Sayfa içi özel escapeHtml - window.escapeHtml'i kullanmıyoruz (sonsuz döngü önleme)
+function kfEscapeForHtml(text){
   const div=document.createElement('div');
   div.textContent=String(text||'');
   return div.innerHTML;
@@ -1950,10 +2051,13 @@ function renderUsers(){
     
     // Supabase'de timestamp string olarak gelir
     const d = u.eklenmetarihi ? (typeof u.eklenmetarihi === 'string' ? new Date(u.eklenmetarihi) : (u.eklenmetarihi?.toDate ? u.eklenmetarihi.toDate() : null)) : null;
-    const adSoyad=escape(u.adSoyad||"-");
-    const email=escape(u.email||"-");
-    const rol=escape(u.rol||"-");
-    const gorev=escape(u.gorev||"-");
+    const rawAd = String(u.adSoyad || u.adsoyad || '').trim() || '—';
+    const rawEmail = String(u.email || '').trim();
+    const rawRol = String(u.rol || '').trim() || '—';
+    const rawGorev = String(u.gorev || '').trim() || '—';
+    const emailDisp=escape(rawEmail || '—');
+    const rolDisp=escape(rawRol);
+    const gorevDisp=escape(rawGorev);
     const yetkiCount=(u.yetkiler||[]).length;
     const dateStr=d? d.toLocaleDateString("tr-TR"):"-";
     const toggleData=JSON.stringify({uid:u.uid,aktif:!!u.aktif});
@@ -1974,12 +2078,12 @@ function renderUsers(){
       name.style.fontWeight="800";
       name.style.fontSize="16px";
       name.style.marginBottom="4px";
-      name.textContent=adSoyad;
+      name.textContent=rawAd;
       const info=document.createElement('div');
       info.style.fontSize="12px";
       info.style.color="var(--muted)";
       info.style.lineHeight="1.5";
-      info.innerHTML=`<div>📧 ${email}</div><div>👤 ${rol} · ${gorev}</div><div>📅 ${dateStr}</div><div>🔑 ${yetkiCount} yetki</div>`;
+      info.innerHTML=`<div>📧 ${emailDisp}</div><div>👤 ${rolDisp} · ${gorevDisp}</div><div>📅 ${escape(dateStr)}</div><div>🔑 ${yetkiCount} yetki</div>`;
       left.appendChild(name);
       left.appendChild(info);
       
@@ -2003,7 +2107,7 @@ function renderUsers(){
       
       const btnReset=document.createElement('button');
       btnReset.className="btn";
-      btnReset.dataset.reset=email; // Email için escape gerekmez (data attribute)
+      btnReset.dataset.reset=rawEmail;
       btnReset.textContent="🔑 Şifre";
       btnReset.style.fontSize="12px";
       btnReset.style.padding="6px 10px";
@@ -2020,7 +2124,7 @@ function renderUsers(){
       const btnResetAndSave=document.createElement('button');
       btnResetAndSave.className="btn";
       // JSON string için escape gerekmez, data attribute otomatik encode eder
-      btnResetAndSave.dataset.resetAndSave=JSON.stringify({uid: u.uid, email: email, adSoyad: u.adSoyad || u.adsoyad});
+      btnResetAndSave.dataset.resetAndSave=JSON.stringify({uid: u.uid, email: rawEmail, adSoyad: rawAd});
       btnResetAndSave.textContent="🔄 Şifre Sıfırla ve Kaydet";
       btnResetAndSave.style.fontSize="12px";
       btnResetAndSave.style.padding="6px 10px";
@@ -2183,32 +2287,36 @@ if($("#btnEditSave")){
       // Değişiklik var mı kontrol et
       const rolDegisti = eskiRol !== yeniRol;
       const gorevDegisti = eskiGorev !== yeniGorev;
-      const yetkiDegisti = JSON.stringify(eskiYetkiler.sort()) !== JSON.stringify(yeniYetkiler.sort());
+      const yetkiDegisti = JSON.stringify([...eskiYetkiler].sort()) !== JSON.stringify([...yeniYetkiler].sort());
       const degisiklikVar = rolDegisti || gorevDegisti || yetkiDegisti;
       
       const { error } = await supabase.from('kullanicilar').update({adsoyad:ad, rol, gorev, aktif, yetkiler}).eq('id', uid);
-      if(error) throw error;
-      
-      // Kullanıcı email'ini al (mail göndermek için)
-      const email = $("#e_mail")?.value?.trim() || '';
-      
-      // Değişiklik varsa mail gönder
-      if(degisiklikVar && email && eskiKullaniciVerileri){
-        try {
-          await sendPermissionUpdateEmail(email, ad, eskiRol, yeniRol, eskiGorev, yeniGorev, eskiYetkiler, yeniYetkiler);
-        } catch(mailErr) {
-          console.warn('Yetki güncelleme maili gönderilemedi (kritik değil):', mailErr);
-        }
+      if(error){
+        const hint = [error.message, error.details, error.hint].filter(Boolean).join(' — ');
+        throw new Error(hint || error.message || 'Veritabanı güncellenemedi');
       }
       
-      // Eski değerleri temizle
+      // Eski değerleri temizle (mail için eski değerler zaten yukarıda kopyalandı)
       eskiKullaniciVerileri = null;
       
       if(mEdit) mEdit.classList.remove('open');
       if(typeof window.showToast==='function') window.showToast('success','Başarılı','Güncellendi');
+      
+      // Yetki maili: await ETME — Edge Function takılırsa "Kaydediliyor"da kalınıyordu
+      const email = $("#e_mail")?.value?.trim() || '';
+      if(degisiklikVar && email){
+        void sendPermissionUpdateEmail(email, ad, eskiRol, yeniRol, eskiGorev, yeniGorev, eskiYetkiler, yeniYetkiler).then((ok)=>{
+          if(!ok && typeof window.showToast === 'function'){
+            window.showToast('warning','Bilgi','Kayıt güncellendi; yetki bildirim e-postası gönderilemedi.');
+          }
+        }).catch((mailErr)=>{
+          console.warn('Yetki güncelleme maili (arka plan):', mailErr);
+        });
+      }
     }catch(e){
       console.error('Güncelleme hatası:', e);
-      if(typeof window.showToast==='function') window.showToast('error','Hata',e?.message||e||'Bilinmeyen hata');
+      const errText = e?.message || e?.details || e?.hint || (typeof e === 'string' ? e : 'Bilinmeyen hata');
+      if(typeof window.showToast==='function') window.showToast('error','Hata', errText);
     }finally{
       btn.disabled=false;
       btn.textContent=originalText;
@@ -2373,21 +2481,18 @@ async function savePasswordReset(){
       throw new Error('Supabase bağlantısı yok');
     }
     
-    // Admin UID'sini al
-    const { data: { user: adminUser } } = await supabase.auth.getUser();
-    const adminUid = adminUser?.id || null;
+    const { data: pwSess } = await supabase.auth.getSession();
+    const adminUid = pwSess?.session?.user?.id || null;
     
-    // Edge Function'ı çağır (şifre güncelleme)
-    const { data: edgeData, error: edgeError } = await supabase.functions.invoke('admin-create-user', {
-      body: {
-        email: userInfo.email,
-        password: newPassword,
-        adSoyad: userInfo.adSoyad,
-        rol: userInfo.rol,
-        gorev: userInfo.gorev,
-        yetkiler: [],
-        adminUid: adminUid
-      }
+    // Edge Function'ı çağır (şifre güncelleme) — fetch + zaman aşımı
+    const { data: edgeData, error: edgeError } = await invokeAdminCreateUser(supabase, {
+      email: userInfo.email,
+      password: newPassword,
+      adSoyad: userInfo.adSoyad,
+      rol: userInfo.rol,
+      gorev: userInfo.gorev,
+      yetkiler: [],
+      adminUid: adminUid
     });
     
     if(edgeError){
@@ -2525,22 +2630,43 @@ async function softDelete(uid){
 }
 
 /* ===== Manifest listener ===== */
+let unsubManifest = null;
+let _listenManifestPromise = null;
+
 async function listenManifest(){
-  const supabase = await getSupabase(); 
-  if(!supabase) return;
-  
-  // İlk yükleme
-  loadManifest();
-  
-  // Real-time subscription (Supabase)
-  const channel = supabase.channel('sayfa-manifesti-changes')
-    .on('postgres_changes', 
-      { event: '*', schema: 'public', table: 'sayfa_manifesti' },
-      () => {
-        loadManifest();
+  if(_listenManifestPromise) return _listenManifestPromise;
+  _listenManifestPromise = (async () => {
+    try {
+      const supabase = await getSupabase(); 
+      if(!supabase) return;
+      
+      if(typeof unsubManifest === 'function'){
+        try{
+          await Promise.resolve(unsubManifest());
+        }catch(e){
+          console.warn('unsubManifest:', e);
+        }
+        unsubManifest = null;
       }
-    )
-    .subscribe();
+      
+      loadManifest();
+      
+      const channelName = _newRealtimeChannelId('manifest-rt-');
+      const channel = supabase.channel(channelName)
+        .on('postgres_changes', 
+          { event: '*', schema: 'public', table: 'sayfa_manifesti' },
+          () => {
+            loadManifest();
+          }
+        )
+        .subscribe();
+      
+      unsubManifest = () => supabase.removeChannel(channel);
+    } finally {
+      _listenManifestPromise = null;
+    }
+  })();
+  return _listenManifestPromise;
 }
 
 async function loadManifest(){
@@ -3068,7 +3194,7 @@ window.initPage = async function() {
       }
     }
     
-    // İlk açılışta "Kullanıcılar" sekmesi ve "Sayfa" görünümü açık olsun
+    // İlk açılış: Kullanıcılar sekmesi + Personel kartları (Düzenle / Şifre butonları burada; "Sayfa" görünümünde yok)
     setTimeout(()=>{
       if($("#tabList")){
         if(typeof setActiveTab==='function') setActiveTab("tabList");
@@ -3076,7 +3202,7 @@ window.initPage = async function() {
         $("#viewMan").style.display="none";
         $("#viewList").style.display="block";
         setTimeout(()=>{
-          if($("#btnSayfa")) $("#btnSayfa").click();
+          if($("#btnPersonel")) $("#btnPersonel").click();
         }, 50);
       }
     }, 200);

@@ -139,6 +139,54 @@ CREATE TABLE public.hedefler (
   updatedby text,
   CONSTRAINT hedefler_pkey PRIMARY KEY (id)
 );
+CREATE TABLE public.ihvan_ahavat (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  created_at timestamp with time zone DEFAULT now(),
+  created_by_uid text,
+  kayit_tipi text NOT NULL CHECK (kayit_tipi = ANY (ARRAY['ihvan'::text, 'ahavat'::text])),
+  kurum_adi text NOT NULL,
+  ad_soyad text NOT NULL,
+  telefon text,
+  adet integer NOT NULL DEFAULT 1 CHECK (adet >= 1),
+  aciklama text,
+  yil integer NOT NULL DEFAULT 2026,
+  CONSTRAINT ihvan_ahavat_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.kurban_kayit_takip (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  yil integer NOT NULL,
+  tur text NOT NULL CHECK (tur = ANY (ARRAY['talebe'::text, 'ihvan'::text, 'ahavat'::text])),
+  ref_id text NOT NULL,
+  birim_indeks integer NOT NULL DEFAULT -1 CHECK (birim_indeks = -1 OR birim_indeks >= 1),
+  durum text CHECK (durum IS NULL OR durum = ANY (ARRAY['var'::text, 'yok'::text])),
+  birim_isim text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  updated_by_uid text,
+  CONSTRAINT kurban_kayit_takip_pkey PRIMARY KEY (id),
+  CONSTRAINT kurban_kayit_takip_yil_tur_ref_birim_uq UNIQUE (yil, tur, ref_id, birim_indeks),
+  CONSTRAINT kurban_kayit_takip_durum_kural_chk CHECK (
+    (tur IN ('talebe', 'ihvan') AND birim_indeks = -1 AND durum IS NOT NULL AND durum = ANY (ARRAY['var'::text, 'yok'::text]))
+    OR (tur = 'ahavat' AND birim_indeks = -1 AND durum IS NOT NULL AND durum = ANY (ARRAY['var'::text, 'yok'::text]))
+    OR (tur = 'ahavat' AND birim_indeks >= 1 AND (durum IS NULL OR durum = ANY (ARRAY['var'::text, 'yok'::text])))
+  )
+);
+CREATE TABLE public.kurban_ahavat_hedef (
+  yil integer NOT NULL,
+  hedef_adet integer NOT NULL CHECK (hedef_adet >= 0),
+  updated_at timestamp with time zone DEFAULT now(),
+  updated_by_uid text,
+  CONSTRAINT kurban_ahavat_hedef_pkey PRIMARY KEY (yil)
+);
+CREATE TABLE public.kurban_ahavat_bagis_izle (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  yil integer NOT NULL,
+  ad_soyad text NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  created_by_uid text,
+  CONSTRAINT kurban_ahavat_bagis_izle_pkey PRIMARY KEY (id),
+  CONSTRAINT kurban_ahavat_bagis_izle_yil_ad_unique UNIQUE (yil, ad_soyad)
+);
 CREATE TABLE public.islem_log (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   islem text NOT NULL,
@@ -838,6 +886,24 @@ CREATE TABLE public.talebeler (
   talebe_adi text NOT NULL,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
+  kimlik_adi text,
+  kull_adi text,
+  dogum_tarihi date,
+  mezhep text,
+  kan_grubu text,
+  durum text DEFAULT 'ensar'::text,
+  okul_seviye text,
+  okul_durum text,
+  universite text,
+  bolum text,
+  baba_adi text,
+  baba_tel text,
+  baba_durum text,
+  anne_adi text,
+  anne_tel text,
+  maddi_durum text,
+  kardes_sayisi integer DEFAULT 0,
+  aktif boolean DEFAULT true,
   CONSTRAINT talebeler_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.teberru_arsiv (
@@ -929,4 +995,20 @@ CREATE TABLE public.yoklama (
   createdat timestamp with time zone DEFAULT now(),
   updatedat timestamp with time zone DEFAULT now(),
   CONSTRAINT yoklama_pkey PRIMARY KEY (devre, gun, talebeuid)
+);
+CREATE TABLE public.yoklama_namazlar (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  devre text NOT NULL,
+  gun date NOT NULL,
+  talebeuid text NOT NULL,
+  talebe_adi text,
+  sabah boolean DEFAULT false,
+  ogle boolean DEFAULT false,
+  ikindi boolean DEFAULT false,
+  aksam boolean DEFAULT false,
+  yatsi boolean DEFAULT false,
+  personeluid text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT yoklama_namazlar_pkey PRIMARY KEY (id)
 );

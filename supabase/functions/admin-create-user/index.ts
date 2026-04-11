@@ -367,12 +367,29 @@ Deno.serve(async (req) => {
       if (createError.message && createError.message.includes('already been registered')) {
         console.log('🔄 Kullanıcı zaten kayıtlı, güncelleme moduna geçiliyor...');
         
-        // listUsers ile tüm sayfaları al (pagination)
         let foundUser: { id: string; email?: string } | null = null;
+
+        // Önce public.kullanicilar üzerinden e-posta ile çöz (O(1) — listUsers sayfalama çok yavaş olabiliyordu)
+        const emailTrim = String(email || '').trim();
+        const { data: rowByEmail, error: rowLookupError } = await supabaseAdmin
+          .from('kullanicilar')
+          .select('id')
+          .eq('email', emailTrim)
+          .maybeSingle();
+
+        if (rowLookupError) {
+          console.warn('kullanicilar e-posta araması hatası (Auth listesine düşülecek):', rowLookupError);
+        } else if (rowByEmail?.id) {
+          foundUser = { id: String(rowByEmail.id), email: emailTrim };
+          console.log('✅ Kullanıcı public.kullanicilar üzerinden bulundu:', foundUser.id);
+        }
+
+        // Satır yoksa (Auth'ta var, tabloda yok / e-posta eşleşmedi) Auth Admin listUsers ile ara — sınırlı sayfa
         let page = 1;
-        const perPage = 1000; // Maksimum sayfa boyutu
-        
-        while (!foundUser && page <= 10) { // Maksimum 10 sayfa kontrol et
+        const perPage = 200;
+        const maxPages = 5;
+
+        while (!foundUser && page <= maxPages) {
           const { data: usersList, error: listError } = await supabaseAdmin.auth.admin.listUsers({
             page: page,
             perPage: perPage
@@ -384,12 +401,14 @@ Deno.serve(async (req) => {
           }
           
           if (usersList && usersList.users) {
-            foundUser = usersList.users.find((u: { id: string; email?: string }) => u.email === email) || null;
+            foundUser = usersList.users.find((u: { id: string; email?: string }) =>
+              String(u.email || '').toLowerCase() === emailTrim.toLowerCase()
+            ) || null;
             if (foundUser) {
+              console.log('✅ Kullanıcı Auth listUsers ile bulundu:', foundUser.id);
               break;
             }
             
-            // Eğer bu sayfada daha az kullanıcı varsa, son sayfadayız demektir
             if (usersList.users.length < perPage) {
               break;
             }
