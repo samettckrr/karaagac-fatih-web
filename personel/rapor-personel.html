@@ -228,6 +228,21 @@
       font-weight: 700;
     }
 
+    /* Bu Ay Tahsilat: sütun ortada, tutar bloğu sağa yaslı */
+    #rankTbl th.rank-col-buay,
+    #rankTbl td.rank-col-buay {
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    #rankTbl td.rank-col-buay .rank-buay-val {
+      display: inline-block;
+      text-align: right;
+      min-width: 7.5em;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
     /* Faaliyet Grid */
     .faaliyet-grid {
       display: grid;
@@ -545,6 +560,7 @@
               <th class="right">Toplam Tahsilat</th>
               <th class="rank-col-kalan">Kalan</th>
               <th style="width:200px">Tahsilat Nispeti</th>
+              <th class="rank-col-buay" title="Ödeme tarihi bu ay; seçili yılda tahakkuku olan borca yazılan tahsilat (tahsilat kaydındaki yıl alanından bağımsız)">Bu Ay Tahsilat</th>
             </tr>
           </thead>
           <tbody id="rankTbody"></tbody>
@@ -625,6 +641,87 @@
             } catch (e) { return ''; }
           }
           return '';
+        }
+
+        /** Tahsilat tarihini yerel takvim YYYY-MM-DD yapar (ay sınırı için; UTC kayması olmasın). */
+        function tahsilatTarihiLocalYmd(v) {
+          if (v == null || v === '') return '';
+          if (typeof v === 'string') {
+            const s = v.trim();
+            if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+          }
+          try {
+            const d = v instanceof Date ? v : new Date(v);
+            if (isNaN(d.getTime())) return '';
+            const y = d.getFullYear();
+            const mo = String(d.getMonth() + 1).padStart(2, '0');
+            const da = String(d.getDate()).padStart(2, '0');
+            return `${y}-${mo}-${da}`;
+          } catch (e) {
+            return '';
+          }
+        }
+
+        function currentLocalYearMonth() {
+          const now = new Date();
+          return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        }
+
+        /**
+         * Personel -> bu ay tahsilatı.
+         * Ödeme tarihi: gerçek takvimdeki mevcut ay (YYYY-MM).
+         * Yıl filtresi: sadece seçilen borç yılına (tahakkuk.yil) bağlı tahsilatlar; kaynak allTahsilat (satırdaki tahsilat.yil ile sınırlanmaz).
+         * Eşleşme: tahakkukid -> tahakkuk kaydı; yoksa eski kural (tahakkuk yılı + faaliyet + personel + borçlu, tahsilat.yil ile aynı satır).
+         * Tüm yıllar: mevcut ayda yapılan tüm tahsilatlar.
+         */
+        function sumTahsilatCurrentMonthByPerson(selectedYil) {
+          const curYm = currentLocalYearMonth();
+          const map = {};
+          const tahById = new Map(allTahakkuk.map(t => [String(t.id), t]));
+          let legacyKeySet = null;
+          if (selectedYil !== 'tum') {
+            legacyKeySet = new Set();
+            allTahakkuk.forEach(t => {
+              if (String(t.yil) === String(selectedYil)) {
+                legacyKeySet.add(`${String(t.yil)}|${t.faaliyet}|${t.personel}|${t.borclu}`);
+              }
+            });
+          }
+
+          (allTahsilat || []).forEach(s => {
+            const ymd = tahsilatTarihiLocalYmd(s.tarih);
+            if (!ymd || ymd.slice(0, 7) !== curYm) return;
+            if (legacyKeySet) {
+              const kid = s.tahakkukid;
+              const hasKid = kid != null && String(kid).trim() !== '';
+              let ok = false;
+              if (hasKid) {
+                const t = tahById.get(String(kid));
+                ok = !!(t && String(t.yil) === String(selectedYil));
+              } else {
+                ok = legacyKeySet.has(`${String(s.yil)}|${s.faaliyet}|${s.personel}|${s.borclu}`);
+              }
+              if (!ok) return;
+            }
+            const p = s.personel;
+            map[p] = (map[p] || 0) + (Number(s.tutar) || 0);
+          });
+          return map;
+        }
+
+        /** Bu Ay Tahsilat sütunu: tablodaki en yüksek tutara göre yeşil (yüksek) → turuncu → kırmızı (düşük). */
+        function rankBuAyMoneyColor(amount, maxPositive) {
+          const n = Number(amount) || 0;
+          if (n <= 0) return '#94a3b8';
+          const maxv = Math.max(maxPositive, 1e-9);
+          const t = Math.min(1, n / maxv);
+          const lerp = (a, b, u) => Math.round(a + (b - a) * u);
+          if (t <= 0.5) {
+            const u = t * 2;
+            return `rgb(${lerp(239, 245, u)},${lerp(68, 158, u)},${lerp(68, 11, u)})`;
+          }
+          const u = (t - 0.5) * 2;
+          return `rgb(${lerp(245, 34, u)},${lerp(158, 197, u)},${lerp(11, 94, u)})`;
         }
 
         // --- Ana Mantık ---
@@ -985,10 +1082,13 @@
             stats[p].s += (t.tutar || 0);
           });
 
+          const ayIciByPerson = sumTahsilatCurrentMonthByPerson(yil);
+
           let list = Object.entries(stats).map(([p, v]) => {
             const k = v.t - v.s;
             const n = v.t > 0 ? (v.s / v.t) * 100 : 0;
-            return { p, t: v.t, s: v.s, k, n, isAyrilan: AYRILANLAR.includes(normTR(p)) };
+            const am = ayIciByPerson[p] || 0;
+            return { p, t: v.t, s: v.s, k, n, am, isAyrilan: AYRILANLAR.includes(normTR(p)) };
           });
 
           // Ayrılan personelleri ayır
@@ -1029,6 +1129,7 @@
           <th class="right" data-key="s">Toplam Tahsilat</th>
           <th class="rank-col-kalan" data-key="k">Kalan</th>
           <th style="width:200px" data-key="n">Tahsilat Nispeti</th>
+          <th class="rank-col-buay" data-key="am" title="Ödeme tarihi bu ay; seçili yılda tahakkuku olan borca yazılan tahsilat (tahsilat kaydındaki yıl alanından bağımsız)">Bu Ay Tahsilat</th>
         </tr>
       `;
 
@@ -1063,12 +1164,19 @@
           rBody.innerHTML = '';
           let sep = false;
 
+          const maxBuAy = Math.max(
+            0,
+            ...[...aktifList, ...ayrilanList].map(x => Number(x.am) || 0).filter(x => x > 0)
+          );
+
           // Aktif personelleri göster
           aktifList.forEach((r, idx) => {
             let color = '#ef4444';
             if (r.n >= 50) color = '#f59e0b';
             if (r.n >= 80) color = '#22c55e';
             if (r.n >= 100) color = '#15803d';
+
+            const buAyColor = rankBuAyMoneyColor(r.am, maxBuAy);
 
             rBody.innerHTML += `
           <tr>
@@ -1083,18 +1191,21 @@
                 <span class="progress-text" style="color:${color}">%${r.n.toFixed(1)}</span>
               </div>
             </td>
+            <td class="rank-col-buay"><span class="rank-buay-val" style="color:${buAyColor}">${money(r.am)}</span></td>
           </tr>
         `;
           });
 
           // Ayrılan personelleri göster
           if (ayrilanList.length > 0) {
-            rBody.innerHTML += `<tr class="separator-row"><td colspan="6">AYRILAN PERSONEL</td></tr>`;
+            rBody.innerHTML += `<tr class="separator-row"><td colspan="7">AYRILAN PERSONEL</td></tr>`;
             ayrilanList.forEach((r) => {
               let color = '#ef4444';
               if (r.n >= 50) color = '#f59e0b';
               if (r.n >= 80) color = '#22c55e';
               if (r.n >= 100) color = '#15803d';
+
+              const buAyColor = rankBuAyMoneyColor(r.am, maxBuAy);
 
               rBody.innerHTML += `
             <tr class="ayrilan-row">
@@ -1109,6 +1220,7 @@
                   <span class="progress-text" style="color:${color}">%${r.n.toFixed(1)}</span>
                 </div>
               </td>
+              <td class="rank-col-buay"><span class="rank-buay-val" style="color:${buAyColor}">${money(r.am)}</span></td>
             </tr>
           `;
             });
