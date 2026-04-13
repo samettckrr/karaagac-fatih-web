@@ -517,6 +517,52 @@
     .reminder-modal .reminder-body { font-size: 0.9rem; line-height: 1.6; color: var(--text); }
     .reminder-modal .reminder-body p { margin: 0 0 12px; }
     .reminder-modal .reminder-body p:last-child { margin-bottom: 0; }
+    .app-promo-modal .modal-sheet { max-width: 420px; }
+    .app-promo-modal .app-promo-body { font-size: 0.9rem; line-height: 1.55; color: var(--text); }
+    .app-promo-modal .app-promo-body p { margin: 0 0 12px; }
+    .app-promo-modal .app-promo-body p:last-child { margin-bottom: 0; }
+    .app-promo-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 4px;
+    }
+    .app-promo-actions .btn-app-store {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      transition: opacity 0.2s, transform 0.15s;
+      box-sizing: border-box;
+    }
+    .app-promo-actions .btn-app-store:active { transform: scale(0.98); }
+    .btn-app-ios {
+      background: #000;
+      color: #fff;
+    }
+    .btn-app-ios:hover { opacity: 0.92; }
+    .btn-app-android {
+      background: #0d47a1;
+      color: #fff;
+    }
+    .btn-app-android:hover { opacity: 0.92; }
+    .app-promo-hint {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      font-size: 0.78rem;
+      line-height: 1.45;
+      color: var(--muted);
+    }
     body.modal-open {
       overflow: hidden;
     }
@@ -2079,6 +2125,29 @@
     </div>
   </div>
 
+  <!-- Mobil uygulama tanıtımı (her sayfa yüklemesinde) -->
+  <div id="modalMobilApp" class="modal-overlay reminder-modal app-promo-modal" role="dialog" aria-modal="true" aria-labelledby="modalMobilAppTitle">
+    <div class="modal-sheet">
+      <div class="modal-handle" aria-hidden="true"></div>
+      <div class="modal-header">
+        <h2 id="modalMobilAppTitle">Telefonuna indir</h2>
+        <button type="button" class="modal-close" id="modalMobilAppKapat" aria-label="Kapat">×</button>
+      </div>
+      <div class="modal-scroll">
+        <div class="app-promo-body">
+          <p><strong>Karaağaç Fatih</strong> uygulamasını telefonuna indirerek daha rahat erişebilirsin. En güncel sürümler ve yenilikler doğrudan cihazında olur.</p>
+        </div>
+        <div class="app-promo-actions">
+          <a class="btn-app-store btn-app-ios" id="btnMobilAppIos" href="https://apps.apple.com/us/app/karaa%C4%9Fa%C3%A7-fatih/id6751279623" target="_blank" rel="noopener noreferrer">App Store (iPhone)</a>
+          <a class="btn-app-store btn-app-android" id="btnMobilAppAndroid" href="#" target="_blank" rel="noopener noreferrer">Android</a>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btnMobilAppSonra" style="flex: 1;">Şimdilik devam et</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast-container" id="toastContainer"></div>
 
   <script src="../js/ortak.js"></script>
@@ -2126,6 +2195,10 @@
 
   var BAGIS_FIYAT_TEK_TIP = 14000;
   var BAGIS_FIYAT_TEK_TIP_GOSTERIM = '14.000₺';
+  /** Android: WhatsApp wa.me (ülke kodu + 10 hane, baştaki 0 yok). */
+  var WHATSAPP_ANDROID_ULKE_KODU = '90';
+  var WHATSAPP_ANDROID_NUMARA = '5445585534';
+  var WHATSAPP_ANDROID_MESAJ = 'Karaağaç Fatih uygulamasını android telefonuma indirmek istiyorum.';
 
   function normalizeTelefon(value) {
     var digits = (value || '').replace(/\D/g, '');
@@ -2246,7 +2319,7 @@
   });
 
   // Modal aç/kapa (arka plan kaydırma kilidi, Escape, odak)
-  var modalOrder = ['modalEtliHatirlatma', 'modalEtliBilgi', 'modalEtli', 'modalBagis'];
+  var modalOrder = ['modalEtliHatirlatma', 'modalEtliBilgi', 'modalEtli', 'modalBagis', 'modalMobilApp'];
   function syncBodyModalLock() {
     var any = document.querySelector('.modal-overlay.open');
     if (any) document.body.classList.add('modal-open');
@@ -2337,6 +2410,24 @@
   document.getElementById('modalEtliHatirlatma').addEventListener('click', function (e) {
     if (e.target === this) closeModal('modalEtliHatirlatma');
   });
+
+  (function setupMobilAppModal() {
+    var overlay = document.getElementById('modalMobilApp');
+    var waBtn = document.getElementById('btnMobilAppAndroid');
+    if (waBtn) {
+      var cc = String(WHATSAPP_ANDROID_ULKE_KODU || '').replace(/\D/g, '');
+      var num = String(WHATSAPP_ANDROID_NUMARA || '').replace(/\D/g, '');
+      if (num.charAt(0) === '0') num = num.slice(1);
+      var tel = cc + num;
+      waBtn.href = 'https://wa.me/' + tel + '?text=' + encodeURIComponent(WHATSAPP_ANDROID_MESAJ || '');
+    }
+    function kapatMobilApp() { closeModal('modalMobilApp'); }
+    var kapat = document.getElementById('modalMobilAppKapat');
+    var sonra = document.getElementById('btnMobilAppSonra');
+    if (kapat) kapat.addEventListener('click', kapatMobilApp);
+    if (sonra) sonra.addEventListener('click', kapatMobilApp);
+    if (overlay) overlay.addEventListener('click', function (e) { if (e.target === overlay) kapatMobilApp(); });
+  })();
 
   var duyuruBandi = document.getElementById('duyuruBandi');
   var duyuruKapat = document.getElementById('duyuruKapat');
@@ -3650,6 +3741,8 @@
       refreshDataForSezonDegisimi();
     });
   }
+
+  openModal('modalMobilApp');
 
   (async function initKurbanPortal() {
     await loadKurbanKategorilerPortal();
