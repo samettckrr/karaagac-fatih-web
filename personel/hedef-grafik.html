@@ -25,15 +25,69 @@
     }
 
     .hero {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 16px;
       background: var(--card);
       border: 1px solid var(--stroke);
       border-radius: 14px;
       padding: 16px;
       margin: 16px 0;
+    }
+
+    /* Alttaki Tablo (9) + Özet (3) grid’i ile aynı sütun hizası */
+    .hero-split-grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 14px;
+      align-items: start;
+    }
+
+    .hero-split-main {
+      grid-column: span 9;
+      min-width: 0;
+    }
+
+    .hero-split-ozet {
+      grid-column: span 3;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .hero-kurban-split:not(.hero-has-kurban-cd) .hero-split-main {
+      grid-column: 1 / -1;
+    }
+
+    .hero-kurban-split:not(.hero-has-kurban-cd) .hero-split-ozet {
+      display: none;
+    }
+
+    .hero-main {
+      min-width: 0;
+    }
+
+    /* Özet kartının üstündeki sütunla hizalı “son gün” kutusu */
+    .hero-kurban-ozet-slot {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px 12px 11px;
+      border-radius: 12px;
+      background: linear-gradient(160deg, #e0f2fe 0%, #f8fafc 55%);
+      border: 1px solid rgba(14, 165, 233, 0.22);
+      justify-content: center;
+    }
+
+    .hero-kurban-ozet-slot .kf-ksg-num {
+      font-size: clamp(32px, 5.2vw, 48px);
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      color: #0a3d5c;
+    }
+
+    .hero-kurban-ozet-slot .kf-ksg-prefix,
+    .hero-kurban-ozet-slot .kf-ksg-suffix {
+      font-size: 14px;
+      font-weight: 600;
+      color: #0c4a6e;
     }
 
     .hero h2 {
@@ -663,6 +717,11 @@
     }
 
     @media (max-width: 1024px) {
+      .hero-split-main,
+      .hero-split-ozet {
+        grid-column: span 12;
+      }
+
       .ozet {
         grid-template-columns: repeat(2, minmax(0, 1fr))
       }
@@ -804,6 +863,7 @@
 
     .kf-topline-right {
       flex: 1;
+      min-width: 0;
       display: flex;
       flex-direction: column;
       gap: 6px;
@@ -929,6 +989,65 @@
     .kf-kpi-section-bagis {
       border-left: 4px solid #0ea5e9;
     }
+
+    .kf-kurban-son-gun {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: center;
+      flex-shrink: 0;
+      line-height: 1.15;
+      text-align: right;
+    }
+
+    .kf-kurban-son-gun[hidden] {
+      display: none !important;
+    }
+
+    .kf-ksg-row {
+      display: flex;
+      flex-direction: row;
+      align-items: baseline;
+      justify-content: flex-end;
+      flex-wrap: nowrap;
+      gap: 8px 10px;
+    }
+
+    .kf-ksg-prefix {
+      font-size: 20px;
+      font-weight: 600;
+      color: #0369a1;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
+
+    .kf-ksg-num {
+      font-size: clamp(24px, 4.2vw, 32px);
+      font-weight: 800;
+      color: #0c4a6e;
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
+
+    .kf-ksg-suffix {
+      font-size: 20px;
+      font-weight: 600;
+      color: #0369a1;
+      white-space: nowrap;
+    }
+
+    .kf-ksg-date {
+      font-size: 11px;
+      font-weight: 500;
+      color: #64748b;
+      margin-top: 6px;
+      line-height: 1.3;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
     .kf-kpi-section-bagis .kf-kpi-title {
       color: #0369a1;
     }
@@ -1147,6 +1266,12 @@
         justify-content: space-between;
       }
 
+      .hero-kurban-ozet-slot .kf-ksg-date {
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+      }
+
       .kf-metrics {
         grid-template-columns: 1fr;
       }
@@ -1261,20 +1386,34 @@
   <div class="toast-container" id="toastContainer"></div>
 
   <main class="wrap">
-    <section class="hero">
-      <div>
-        <h2><span id="kapsamUst">-</span> Grafiği</h2>
-        <div class="hero-sub">Personelin seçili ayda/kategoriye göre yaptığı;</div>
-        <div class="hero-sub1">toplam teberru, tahsilat, kurban + seçili kategorideki hedef/temin → ulaşma
-          nispeti.</div>
-        <div class="mini">
-          <span class="pill">🕒 Son Güncelleme: <b id="guncellemeZamani">yükleniyor…</b></span>
-          <span class="pill">📅 Kapsam: <b id="kapsamPill">-</b></span>
-          <span class="pill">Versiyon: <b>5.1</b></span>
-          <button class="pill" id="ekranButonu"
-            style="cursor:pointer; border:1px solid var(--stroke); background:var(--pill); font-size:12px; padding:6px 10px; border-radius:999px; color:var(--text);">Ekran:
-            <b id="ekranAdi">Hedef</b></button>
+    <section class="hero hero-kurban-split" id="hedefHero">
+      <div class="hero-split-grid">
+        <div class="hero-split-main">
+          <div class="hero-main">
+            <h2><span id="kapsamUst">-</span> Grafiği</h2>
+            <div class="hero-sub">Personelin seçili ayda/kategoriye göre yaptığı;</div>
+            <div class="hero-sub1">toplam teberru, tahsilat, kurban + seçili kategorideki hedef/temin → ulaşma
+              nispeti.</div>
+            <div class="mini">
+              <span class="pill">🕒 Son Güncelleme: <b id="guncellemeZamani">yükleniyor…</b></span>
+              <span class="pill">📅 Kapsam: <b id="kapsamPill">-</b></span>
+              <span class="pill">Versiyon: <b>5.1</b></span>
+              <button class="pill" id="ekranButonu"
+                style="cursor:pointer; border:1px solid var(--stroke); background:var(--pill); font-size:12px; padding:6px 10px; border-radius:999px; color:var(--text);">Ekran:
+                <b id="ekranAdi">Hedef</b></button>
+            </div>
+          </div>
         </div>
+        <aside class="hero-split-ozet" aria-label="Kurban bayramına kalan süre">
+          <div class="kf-kurban-son-gun hero-kurban-ozet-slot" id="kurbanSonGunBlock" hidden>
+            <div class="kf-ksg-row" id="kurbanSonGunSatir1">
+              <span class="kf-ksg-prefix" id="kurbanSonGunUst">Son</span>
+              <span class="kf-ksg-num" id="kurbanSonGunSayi">—</span>
+              <span class="kf-ksg-suffix" id="kurbanSonGunAlt">Gün</span>
+            </div>
+            <span class="kf-ksg-date" id="kurbanSonGunTarihEtiket">27 Mayıs 2026 · Çarşamba · Kurban Bayramı</span>
+          </div>
+        </aside>
       </div>
     </section>
 
@@ -1903,6 +2042,59 @@
             setTimeout(() => personelKolonunuGuncelle(), 50);
           }
 
+          /** Kurban ekranında, seçili yıl 2026 iken 27 Mayıs 2026 Kurban Bayramı’na kalan gün (yerel takvim). */
+          function guncelleKurbanBayramiGerisayim() {
+            const block = document.getElementById('kurbanSonGunBlock');
+            const elSayi = document.getElementById('kurbanSonGunSayi');
+            const elUst = document.getElementById('kurbanSonGunUst');
+            const elAlt = document.getElementById('kurbanSonGunAlt');
+            const elTarih = document.getElementById('kurbanSonGunTarihEtiket');
+            const heroEl = document.getElementById('hedefHero');
+            const setHeroKurbanCd = (on) => {
+              if (heroEl) heroEl.classList.toggle('hero-has-kurban-cd', !!on);
+            };
+            if (!block || !elSayi) {
+              setHeroKurbanCd(false);
+              return;
+            }
+            if (ekranModu !== 'Kurban') {
+              block.setAttribute('hidden', '');
+              setHeroKurbanCd(false);
+              return;
+            }
+            const rawYil = kategoriSecimi && kategoriSecimi.value;
+            const yil = rawYil != null && /^\d+$/.test(String(rawYil)) ? Number(rawYil) : null;
+            if (yil !== 2026) {
+              block.setAttribute('hidden', '');
+              setHeroKurbanCd(false);
+              return;
+            }
+            const bayram = new Date(2026, 4, 27);
+            const bugun = new Date();
+            const dn = (d) => Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000);
+            const gunKaldi = dn(bayram) - dn(bugun);
+            if (elTarih) elTarih.textContent = '27 Mayıs 2026 · Çarşamba · Kurban Bayramı';
+            const satir1 = document.getElementById('kurbanSonGunSatir1');
+            if (gunKaldi > 0) {
+              block.removeAttribute('hidden');
+              setHeroKurbanCd(true);
+              if (satir1) satir1.style.display = '';
+              if (elUst) { elUst.style.display = ''; elUst.textContent = 'Son'; }
+              if (elAlt) { elAlt.style.display = ''; elAlt.textContent = 'Gün'; }
+              elSayi.textContent = String(gunKaldi);
+            } else if (gunKaldi === 0) {
+              block.removeAttribute('hidden');
+              setHeroKurbanCd(true);
+              if (satir1) satir1.style.display = '';
+              if (elUst) elUst.style.display = 'none';
+              if (elAlt) elAlt.style.display = 'none';
+              elSayi.textContent = 'Bugün';
+            } else {
+              block.setAttribute('hidden', '');
+              setHeroKurbanCd(false);
+            }
+          }
+
           function ozetMetrikleriniGuncelle() {
             const teberruEl = document.getElementById('toplamTeberru');
             const tahsilatEl = document.getElementById('toplamTahsilat');
@@ -1985,6 +2177,7 @@
               if (kurbanGridKurbanModu) kurbanGridKurbanModu.style.display = 'none';
               if (kurbanOzetAciklama) kurbanOzetAciklama.textContent = 'Bu kapsamda toplanan adetler';
             }
+            guncelleKurbanBayramiGerisayim();
           }
 
           function tabloyuYenidenYaz(veriler) {
@@ -3708,6 +3901,7 @@
                 sel.value = optionExists ? saved : String(list[0]?.yil || 2026);
                 localStorage.setItem('hedefGrafik_kurbanYil', sel.value);
                 filtrelereGoreGoster();
+                guncelleKurbanBayramiGerisayim();
               } catch (err) {
                 console.error('Kurban kategorileri okunamadı:', err);
                 if (showToast) showToast('error', 'Hata', 'Kurban yılları yüklenirken bir hata oluştu.');
