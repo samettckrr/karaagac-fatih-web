@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Nehari Talebe Kayıt Formu | Karaağaç Fatih</title>
+  <link rel="icon" type="image/png" href="../img/logo.png" />
+  <link rel="stylesheet" href="../css/app-shell.css" />
+  <style>
+    body { padding-top: var(--appbar-h) !important; overflow-x: hidden; overflow-y: auto; font-size: 15px; }
+    main.container { max-width: 920px; margin: 0 auto; padding: 24px 20px 48px; box-sizing: border-box; }
+    .page-head { margin-bottom: 20px; }
+    .page-head h1 { margin: 0 0 8px; font-size: 22px; color: var(--text); }
+    .page-head p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+    .back-link { display: inline-block; margin-bottom: 12px; font-size: 14px; color: var(--brand); text-decoration: none; font-weight: 600; }
+    .back-link:hover { text-decoration: underline; }
+    .wizard-card {
+      background: var(--card);
+      border: 1px solid var(--stroke);
+      border-radius: 14px;
+      padding: 24px;
+      box-shadow: var(--shadow);
+    }
+    .step-track {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--stroke);
+    }
+    .step-pill {
+      flex: 1;
+      min-width: 100px;
+      text-align: center;
+      padding: 10px 8px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+    }
+    .step-pill.aktif { background: linear-gradient(135deg, var(--brand), var(--brand2)); color: #fff; border-color: transparent; }
+    .step-pill.tamam { background: rgba(16,185,129,.15); color: #047857; border-color: rgba(16,185,129,.35); }
+    .step-panel { display: none; }
+    .step-panel.acik { display: block; animation: fadeIn .2s ease; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px 20px;
+    }
+    @media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
+    .form-grid .span-2 { grid-column: 1 / -1; }
+    .wizard-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: space-between;
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid var(--stroke);
+    }
+    .wizard-actions .sağ { display: flex; gap: 10px; flex-wrap: wrap; }
+    .kardes-blok { margin-top: 20px; padding-top: 16px; border-top: 1px dashed var(--stroke); }
+    .kardes-blok h3 { margin: 0 0 12px; font-size: 15px; color: var(--text); }
+    .kardes-satir {
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .kardes-satir h4 { margin: 0 0 12px; font-size: 13px; color: var(--muted); font-weight: 600; }
+    .preview-bölüm { margin-bottom: 20px; }
+    .preview-bölüm h3 {
+      margin: 0 0 10px;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      padding-bottom: 6px;
+      border-bottom: 2px solid var(--brand);
+    }
+    .preview-dl { display: grid; grid-template-columns: minmax(120px, 38%) 1fr; gap: 8px 12px; font-size: 14px; }
+    .preview-dl dt { color: var(--muted); font-weight: 600; margin: 0; }
+    .preview-dl dd { margin: 0; color: var(--text); word-break: break-word; }
+    .hint-inline { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .dogum-satir {
+      display: grid;
+      grid-template-columns: 1fr 1.35fr 1.1fr;
+      gap: 12px;
+      align-items: end;
+    }
+    @media (max-width: 640px) { .dogum-satir { grid-template-columns: 1fr; } }
+    .dogum-satir .field { margin-bottom: 0; }
+    .foto-adim .foto-kutu {
+      border: 2px dashed var(--stroke);
+      border-radius: 14px;
+      padding: 20px;
+      text-align: center;
+      background: var(--surface);
+    }
+    .foto-adim #fotoOnizle {
+      display: none;
+      max-width: 220px;
+      max-height: 220px;
+      border-radius: 12px;
+      margin: 16px auto 8px;
+      object-fit: cover;
+      box-shadow: var(--shadow);
+    }
+    .foto-adim .foto-aksiyon { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 12px; }
+    #fotoMeta { font-size: 13px; color: var(--muted); margin-top: 8px; }
+  </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="../src/supabase.js"></script>
+  <script src="../src/supabase-auth-wrapper.js"></script>
+  <script src="../src/supabase-db-wrapper.js"></script>
+  <script>
+    (function () {
+      function initAuth() {
+        if (typeof window.getSupabaseAuth === 'function') {
+          window.auth = window.getSupabaseAuth();
+          return true;
+        }
+        return false;
+      }
+      function waitAndTriggerInit() {
+        if (typeof window.auth !== 'undefined' && window.auth && typeof window.initAppShellAuth === 'function') {
+          try { window.initAppShellAuth(); } catch (e) { console.error('initAppShellAuth:', e); }
+        } else if (typeof window.initAppShellAuth === 'function') {
+          setTimeout(waitAndTriggerInit, 300);
+        }
+      }
+      function bootstrap() {
+        if (!initAuth()) setTimeout(bootstrap, 200);
+        else setTimeout(waitAndTriggerInit, 200);
+      }
+      bootstrap();
+    })();
+  </script>
+  <script src="../js/ortak.js"></script>
+</head>
+<body>
+  <div class="appbar">
+    <div class="brand" onclick="location.href='../panel.html'">
+      <img src="../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
+    </div>
+    <nav class="nav-center"><ul class="nav-list" id="navMain"></ul></nav>
+    <div class="nav-right">
+      <button class="btn hamb" id="hamburger" title="Menü">☰</button>
+      <div class="nav-item">
+        <button class="iconbtn" id="btnNotif" title="Bildirimler">🔔
+          <span class="badge" id="notifBadge" style="display:none">0</span>
+        </button>
+        <div class="dropdown drop-right" id="notifDropdown">
+          <div class="muted" style="padding:6px 8px">Son bildirimler</div>
+          <div id="notifList" style="max-height:300px;overflow:auto"></div>
+        </div>
+      </div>
+      <div class="nav-item">
+        <button class="iconbtn" id="btnProfile" title="Profil">
+          <span class="avatar"></span> <span id="profName" class="muted">Profil</span>
+        </button>
+        <div class="dropdown drop-right" id="profDropdown">
+          <a href="/diger/kullanici-yonetimi.html">👤 Profil</a>
+          <a href="/diger/sistem-ayarlari.html">⚙️ Sistem Ayarları</a>
+          <a href="#" id="btnLogout">🚪 Çıkış Yap</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <aside class="drawer" id="drawer"></aside>
+  <div class="toast-container" id="toastContainer"></div>
+
+  <main class="container">
+    <a class="back-link" href="nehari.html">← Nehari ana sayfa</a>
+    <div class="page-head">
+      <h1>Nehari talebe kayıt formu</h1>
+      <p>Mevcut talebeyi seçin; ardından adım adım bilgileri doldurun. Son adımda önizleyip kaydedin.</p>
+    </div>
+
+    <div class="wizard-card">
+      <div class="step-track" id="stepTrack" aria-hidden="true">
+        <div class="step-pill aktif" data-i="0">1 · Talebe</div>
+        <div class="step-pill" data-i="1">2 · Bilgiler</div>
+        <div class="step-pill" data-i="2">3 · Adres</div>
+        <div class="step-pill" data-i="3">4 · Aile</div>
+        <div class="step-pill" data-i="4">5 · Foto</div>
+        <div class="step-pill" data-i="5">6 · Önizleme</div>
+      </div>
+
+      <form id="kayitForm" novalidate>
+        <!-- Adım 0 -->
+        <div class="step-panel acik" data-step="0">
+          <div class="field span-2">
+            <label for="talebeSelect">Mevcut talebe seçin</label>
+            <select id="talebeSelect" required>
+              <option value="">— Yükleniyor / seçin —</option>
+            </select>
+            <p class="hint">Listede yoksa önce yönetimden talebe ekleyin. Bu talebe için daha önce doldurulmuş detay formu varsa otomatik yüklenir; güncelleyebilirsiniz.</p>
+          </div>
+        </div>
+
+        <!-- Adım 1 -->
+        <div class="step-panel" data-step="1">
+          <div class="form-grid">
+            <div class="field"><label for="fAd">Ad</label><input type="text" id="fAd" required maxlength="80" /></div>
+            <div class="field"><label for="fSoyad">Soyad</label><input type="text" id="fSoyad" required maxlength="80" /></div>
+            <div class="field">
+              <label for="fSinif">Sınıf</label>
+              <select id="fSinif" required></select>
+            </div>
+            <div class="field span-2">
+              <span style="display:block;margin-bottom:6px;font-size:13px;font-weight:600;color:var(--muted)">Doğum tarihi</span>
+              <div class="dogum-satir">
+                <div class="field">
+                  <label for="fDogumGun">Gün</label>
+                  <select id="fDogumGun" required></select>
+                </div>
+                <div class="field">
+                  <label for="fDogumAy">Ay</label>
+                  <select id="fDogumAy" required></select>
+                </div>
+                <div class="field">
+                  <label for="fDogumYil">Yıl</label>
+                  <select id="fDogumYil" required></select>
+                </div>
+              </div>
+              <span class="hint-inline">Takvim yerine gün / ay / yıl seçerek daha hızlı girebilirsiniz.</span>
+            </div>
+            <div class="field span-2"><label for="fMemleket">Memleket</label><input type="text" id="fMemleket" required maxlength="120" /></div>
+            <div class="field span-2">
+              <label for="fTc">T.C. kimlik no</label>
+              <input type="text" id="fTc" inputmode="numeric" maxlength="11" placeholder="11 hane (opsiyonel)" />
+              <span class="hint-inline">Boş bırakılabilir; dolu ise 11 rakam olmalıdır.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Adım 2 -->
+        <div class="step-panel" data-step="2">
+          <div class="form-grid">
+            <div class="field"><label for="fIl">İl</label><input type="text" id="fIl" required maxlength="80" /></div>
+            <div class="field"><label for="fIlce">İlçe</label><input type="text" id="fIlce" required maxlength="80" /></div>
+            <div class="field span-2"><label for="fMahalle">Mahalle</label><input type="text" id="fMahalle" required maxlength="120" /></div>
+            <div class="field"><label for="fCadde">Cadde</label><input type="text" id="fCadde" maxlength="120" /></div>
+            <div class="field"><label for="fSokak">Sokak</label><input type="text" id="fSokak" maxlength="120" /></div>
+            <div class="field span-2"><label for="fSite">Site veya apartman</label><input type="text" id="fSite" maxlength="120" /></div>
+            <div class="field"><label for="fBina">Bina no</label><input type="text" id="fBina" maxlength="32" /></div>
+            <div class="field"><label for="fKat">Kat</label><input type="text" id="fKat" maxlength="16" /></div>
+            <div class="field span-2"><label for="fDaire">Daire</label><input type="text" id="fDaire" maxlength="32" /></div>
+          </div>
+        </div>
+
+        <!-- Adım 3 -->
+        <div class="step-panel" data-step="3">
+          <div class="form-grid">
+            <div class="field"><label for="fAnneAd">Anne adı</label><input type="text" id="fAnneAd" required maxlength="80" /></div>
+            <div class="field"><label for="fAnneMeslek">Anne meslek</label><input type="text" id="fAnneMeslek" required maxlength="80" /></div>
+            <div class="field span-2">
+              <label for="fAnneDurum">Anne durum</label>
+              <select id="fAnneDurum" required>
+                <option value="">Seçin</option>
+                <option value="ahavat">Ahavat</option>
+                <option value="muhibban">Muhibban</option>
+                <option value="diger">Diğer</option>
+              </select>
+            </div>
+            <div class="field"><label for="fBabaAd">Baba adı</label><input type="text" id="fBabaAd" required maxlength="80" /></div>
+            <div class="field"><label for="fBabaMeslek">Baba meslek</label><input type="text" id="fBabaMeslek" required maxlength="80" /></div>
+            <div class="field span-2">
+              <label for="fBabaDurum">Baba durum</label>
+              <select id="fBabaDurum" required>
+                <option value="">Seçin</option>
+                <option value="ihvan">İhvan</option>
+                <option value="muhibban">Muhibban</option>
+                <option value="diger">Diğer</option>
+              </select>
+            </div>
+            <div class="field span-2">
+              <span style="display:block;margin-bottom:6px;font-size:13px;font-weight:600;color:var(--muted)">Anne–baba beraber mi?</span>
+              <label style="display:inline-flex;align-items:center;gap:8px;margin-right:20px;font-weight:500;color:var(--text)">
+                <input type="radio" name="beraber" value="evet" required /> Evet
+              </label>
+              <label style="display:inline-flex;align-items:center;gap:8px;font-weight:500;color:var(--text)">
+                <input type="radio" name="beraber" value="hayir" /> Hayır
+              </label>
+            </div>
+            <div class="field span-2">
+              <label for="fMaddi">Aile maddi durum</label>
+              <select id="fMaddi" required>
+                <option value="">Seçin</option>
+                <option value="zayif">Zayıf</option>
+                <option value="orta">Orta</option>
+                <option value="iyi">İyi</option>
+              </select>
+            </div>
+            <div class="field span-2">
+              <label for="fKardesSay">Kardeş sayısı (kendisi hariç)</label>
+              <input type="number" id="fKardesSay" min="0" max="20" value="0" required />
+            </div>
+          </div>
+          <div class="kardes-blok" id="kardesBlok" style="display:none">
+            <h3>Kardeş bilgileri</h3>
+            <p class="hint" style="margin:0 0 12px">Bu alanlar isteğe bağlıdır. Doldurduğunuz satırlar kayda yazılır; boş bırakılan satırlar yok sayılır.</p>
+            <div id="kardesRows"></div>
+          </div>
+        </div>
+
+        <!-- Adım 4 profil fotoğrafı -->
+        <div class="step-panel foto-adim" data-step="4">
+          <h2 style="margin:0 0 8px;font-size:17px;color:var(--text)">Profil fotoğrafı</h2>
+          <p class="hint" style="margin:0 0 16px">İsteğe bağlı. Yüklemeden önce görsel tarayıcıda yeniden boyutlanır ve sıkıştırılır; çoğu fotoğrafta kalite korunur, dosya boyutu düşer.</p>
+          <div class="foto-kutu">
+            <img id="fotoOnizle" alt="Önizleme" />
+            <div id="fotoMeta"></div>
+            <div class="foto-aksiyon">
+              <label class="btn btn-primary" style="cursor:pointer;margin:0">
+                Fotoğraf seç
+                <input type="file" id="fotoInput" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" style="display:none" />
+              </label>
+              <button type="button" class="btn" id="btnFotoKaldir">Kaldır</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Adım 5 önizleme -->
+        <div class="step-panel" data-step="5">
+          <p class="hint" style="margin-top:0">Kayıt öncesi bilgileri kontrol edin. Onayladığınızda veritabanına yazılır.</p>
+          <div id="previewRoot"></div>
+        </div>
+
+        <div class="wizard-actions">
+          <button type="button" class="btn" id="btnPrev" disabled>Geri</button>
+          <div class="sağ">
+            <button type="button" class="btn btn-primary" id="btnNext">İleri</button>
+            <button type="submit" class="btn btn-primary" id="btnSubmit" style="display:none">Kaydet</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      var STEP_MAX = 5;
+      var STORAGE_BUCKET = 'nehari_talebe_kayit_foto';
+      var step = 0;
+      var talebeMap = {};
+      var compressedPhoto = null;
+      var photoObjectUrl = null;
+      var aktifKayitId = null;
+      var mevcutProfilFotoUrl = null;
+
+      function esc(s) {
+        s = s == null ? '' : String(s);
+        if (typeof escapeHtml === 'function') return escapeHtml(s);
+        var d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+      }
+
+      function $(id) { return document.getElementById(id); }
+
+      function toast(type, title, msg) {
+        if (typeof window.showToast === 'function') window.showToast(type, title, msg);
+      }
+
+      function sinifOpts() {
+        var sel = $('fSinif');
+        if (!sel || sel.options.length) return;
+        for (var s = 1; s <= 12; s++) {
+          var o = document.createElement('option');
+          o.value = String(s);
+          o.textContent = s + '. sınıf';
+          sel.appendChild(o);
+        }
+      }
+
+      function pad2(n) {
+        return (n < 10 ? '0' : '') + n;
+      }
+
+      function initDogumSelects() {
+        var gun = $('fDogumGun');
+        var ay = $('fDogumAy');
+        var yil = $('fDogumYil');
+        if (!gun || !ay || !yil || gun.options.length > 0) return;
+        var g0 = document.createElement('option');
+        g0.value = '';
+        g0.textContent = 'Gün';
+        gun.appendChild(g0);
+        var i;
+        for (i = 1; i <= 31; i++) {
+          var og = document.createElement('option');
+          og.value = String(i);
+          og.textContent = String(i);
+          gun.appendChild(og);
+        }
+        var a0 = document.createElement('option');
+        a0.value = '';
+        a0.textContent = 'Ay';
+        ay.appendChild(a0);
+        var ayAd = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+        for (i = 1; i <= 12; i++) {
+          var oa = document.createElement('option');
+          oa.value = String(i);
+          oa.textContent = ayAd[i - 1];
+          ay.appendChild(oa);
+        }
+        var y0 = document.createElement('option');
+        y0.value = '';
+        y0.textContent = 'Yıl';
+        yil.appendChild(y0);
+        var cy = new Date().getFullYear();
+        for (var y = cy - 2; y >= cy - 24; y--) {
+          var oy = document.createElement('option');
+          oy.value = String(y);
+          oy.textContent = String(y);
+          yil.appendChild(oy);
+        }
+      }
+
+      function getDogumIso() {
+        var g = $('fDogumGun') && $('fDogumGun').value;
+        var a = $('fDogumAy') && $('fDogumAy').value;
+        var y = $('fDogumYil') && $('fDogumYil').value;
+        if (!g || !a || !y) return '';
+        var dd = parseInt(g, 10);
+        var mm = parseInt(a, 10);
+        var yy = parseInt(y, 10);
+        var d = new Date(yy, mm - 1, dd);
+        if (d.getFullYear() !== yy || d.getMonth() !== mm - 1 || d.getDate() !== dd) return '';
+        return yy + '-' + pad2(mm) + '-' + pad2(dd);
+      }
+
+      function setDogumFromIso(iso) {
+        if (!$('fDogumGun') || !$('fDogumAy') || !$('fDogumYil')) return;
+        if (!iso || typeof iso !== 'string') {
+          $('fDogumGun').value = '';
+          $('fDogumAy').value = '';
+          $('fDogumYil').value = '';
+          return;
+        }
+        var p = iso.split('-');
+        if (p.length !== 3) return;
+        $('fDogumYil').value = p[0];
+        $('fDogumAy').value = String(parseInt(p[1], 10));
+        $('fDogumGun').value = String(parseInt(p[2], 10));
+      }
+
+      function formatDogumTr(iso) {
+        if (!iso) return '—';
+        try {
+          var p = iso.split('-');
+          if (p.length !== 3) return iso;
+          var d = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+          return isNaN(d.getTime()) ? iso : d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+        } catch (_) {
+          return iso;
+        }
+      }
+
+      function revokePhotoUrl() {
+        if (photoObjectUrl) {
+          try { URL.revokeObjectURL(photoObjectUrl); } catch (_) {}
+          photoObjectUrl = null;
+        }
+      }
+
+      function clearPhotoSelection() {
+        compressedPhoto = null;
+        revokePhotoUrl();
+        if ($('fotoInput')) $('fotoInput').value = '';
+        var img = $('fotoOnizle');
+        if (img) {
+          img.removeAttribute('src');
+          img.style.display = 'none';
+        }
+        if ($('fotoMeta')) $('fotoMeta').textContent = '';
+      }
+
+      function gosterKayitliProfilFoto(url) {
+        var img = $('fotoOnizle');
+        var meta = $('fotoMeta');
+        if (!img) return;
+        if (url) {
+          img.src = url;
+          img.style.display = 'block';
+          if (meta) meta.textContent = 'Kayıtlı profil fotoğrafı. Yenisini seçerek değiştirebilirsiniz.';
+        } else {
+          img.removeAttribute('src');
+          img.style.display = 'none';
+          if (meta && !compressedPhoto) meta.textContent = '';
+        }
+      }
+
+      function updateFotoMeta() {
+        var el = $('fotoMeta');
+        if (!el) return;
+        if (!compressedPhoto || !compressedPhoto.blob) {
+          el.textContent = '';
+          return;
+        }
+        var kb = (compressedPhoto.blob.size / 1024).toFixed(1);
+        el.textContent = 'Sıkıştırılmış: ~' + kb + ' KB · ' + (compressedPhoto.mime === 'image/webp' ? 'WebP' : 'JPEG');
+      }
+
+      function loadImageForCanvas(file) {
+        if (typeof createImageBitmap === 'function') {
+          return createImageBitmap(file);
+        }
+        return new Promise(function (resolve, reject) {
+          var u = URL.createObjectURL(file);
+          var im = new Image();
+          im.onload = function () {
+            URL.revokeObjectURL(u);
+            resolve(im);
+          };
+          im.onerror = function () {
+            URL.revokeObjectURL(u);
+            reject(new Error('Görsel okunamadı'));
+          };
+          im.src = u;
+        });
+      }
+
+      function shrinkCanvas(c, factor) {
+        var nw = Math.max(280, Math.round(c.width * factor));
+        var nh = Math.max(280, Math.round(c.height * factor));
+        var out = document.createElement('canvas');
+        out.width = nw;
+        out.height = nh;
+        var x = out.getContext('2d');
+        x.imageSmoothingEnabled = true;
+        x.imageSmoothingQuality = 'high';
+        x.drawImage(c, 0, 0, nw, nh);
+        return out;
+      }
+
+      function compressProfileImage(file) {
+        return loadImageForCanvas(file).then(function (source) {
+          return new Promise(function (resolve, reject) {
+            (async function () {
+              try {
+                var w = source.width || source.naturalWidth;
+                var h = source.height || source.naturalHeight;
+                if (!w || !h) throw new Error('Görsel okunamadı');
+                function fit(edge) {
+                  var sc = Math.min(1, edge / Math.max(w, h));
+                  var cw = Math.max(1, Math.round(w * sc));
+                  var ch = Math.max(1, Math.round(h * sc));
+                  var c = document.createElement('canvas');
+                  c.width = cw;
+                  c.height = ch;
+                  var g = c.getContext('2d');
+                  g.imageSmoothingEnabled = true;
+                  g.imageSmoothingQuality = 'high';
+                  g.drawImage(source, 0, 0, cw, ch);
+                  return c;
+                }
+                var cur = fit(1400);
+                try {
+                  if (typeof ImageBitmap !== 'undefined' && source instanceof ImageBitmap) source.close();
+                } catch (_) {}
+                function blobP(c, type, q) {
+                  return new Promise(function (res) {
+                    c.toBlob(function (b) { res(b); }, type, q);
+                  });
+                }
+                var target = 480000;
+                var guard = 0;
+                while (guard++ < 48) {
+                  var q;
+                  for (q = 0.9; q >= 0.64; q -= 0.05) {
+                    var bw = await blobP(cur, 'image/webp', q);
+                    if (bw && bw.size <= target && bw.size > 100) {
+                      resolve({ blob: bw, mime: 'image/webp', ext: 'webp' });
+                      return;
+                    }
+                  }
+                  for (q = 0.88; q >= 0.63; q -= 0.05) {
+                    var bj = await blobP(cur, 'image/jpeg', q);
+                    if (bj && bj.size <= target && bj.size > 100) {
+                      resolve({ blob: bj, mime: 'image/jpeg', ext: 'jpg' });
+                      return;
+                    }
+                  }
+                  if (cur.width <= 320 && cur.height <= 320) {
+                    var last = await blobP(cur, 'image/jpeg', 0.72);
+                    resolve({ blob: last, mime: 'image/jpeg', ext: 'jpg' });
+                    return;
+                  }
+                  cur = shrinkCanvas(cur, 0.86);
+                }
+                var fallback = await blobP(cur, 'image/jpeg', 0.7);
+                resolve({ blob: fallback, mime: 'image/jpeg', ext: 'jpg' });
+              } catch (e) {
+                reject(e);
+              }
+            })();
+          });
+        });
+      }
+
+      function setStep(n) {
+        step = Math.max(0, Math.min(STEP_MAX, n));
+        document.querySelectorAll('.step-panel').forEach(function (p) {
+          p.classList.toggle('acik', parseInt(p.getAttribute('data-step'), 10) === step);
+        });
+        document.querySelectorAll('.step-pill').forEach(function (pill, i) {
+          pill.classList.remove('aktif', 'tamam');
+          if (i < step) pill.classList.add('tamam');
+          else if (i === step) pill.classList.add('aktif');
+        });
+        $('btnPrev').disabled = step === 0;
+        $('btnNext').style.display = step === STEP_MAX ? 'none' : 'inline-flex';
+        $('btnSubmit').style.display = step === STEP_MAX ? 'inline-flex' : 'none';
+        if (step === STEP_MAX) renderPreview();
+      }
+
+      function val(id) {
+        var el = $(id);
+        return el ? el.value.trim() : '';
+      }
+
+      function getBeraber() {
+        var r = document.querySelector('input[name="beraber"]:checked');
+        if (!r) return null;
+        return r.value === 'evet';
+      }
+
+      function validateTc(tc) {
+        if (!tc) return true;
+        return /^\d{11}$/.test(tc);
+      }
+
+      function validateStep(s) {
+        if (s === 0) {
+          if (!val('talebeSelect')) {
+            toast('error', 'Eksik', 'Lütfen bir talebe seçin.');
+            return false;
+          }
+          return true;
+        }
+        if (s === 1) {
+          if (!val('fAd') || !val('fSoyad') || !val('fSinif') || !getDogumIso() || !val('fMemleket')) {
+            toast('error', 'Eksik', 'Talebe bilgilerinde zorunlu alanları doldurun (doğum için gün, ay ve yıl seçin).');
+            return false;
+          }
+          if (!validateTc(val('fTc'))) {
+            toast('error', 'T.C.', 'T.C. kimlik numarası 11 rakam olmalı veya boş bırakılmalıdır.');
+            return false;
+          }
+          return true;
+        }
+        if (s === 2) {
+          if (!val('fIl') || !val('fIlce') || !val('fMahalle')) {
+            toast('error', 'Eksik', 'İl, ilçe ve mahalle zorunludur.');
+            return false;
+          }
+          return true;
+        }
+        if (s === 3) {
+          if (!val('fAnneAd') || !val('fAnneMeslek') || !val('fAnneDurum') || !val('fBabaAd') || !val('fBabaMeslek') || !val('fBabaDurum') || !val('fMaddi')) {
+            toast('error', 'Eksik', 'Aile bilgilerinde zorunlu alanları doldurun.');
+            return false;
+          }
+          if (getBeraber() === null) {
+            toast('error', 'Eksik', 'Anne–baba beraberlik seçimini yapın.');
+            return false;
+          }
+          var ks = parseInt(val('fKardesSay'), 10);
+          if (isNaN(ks) || ks < 0 || ks > 20) {
+            toast('error', 'Kardeş', 'Kardeş sayısı 0–20 arasında olmalıdır.');
+            return false;
+          }
+          return true;
+        }
+        return true;
+      }
+
+      function kardesSayChanged() {
+        var n = parseInt(($('fKardesSay') && $('fKardesSay').value) || '0', 10);
+        var blok = $('kardesBlok');
+        var host = $('kardesRows');
+        if (!blok || !host) return;
+        if (!n || n < 1) {
+          blok.style.display = 'none';
+          host.innerHTML = '';
+          return;
+        }
+        blok.style.display = 'block';
+        host.innerHTML = '';
+        for (var i = 0; i < n; i++) {
+          var wrap = document.createElement('div');
+          wrap.className = 'kardes-satir';
+          wrap.innerHTML =
+            '<h4>Kardeş ' + (i + 1) + '</h4>' +
+            '<div class="form-grid">' +
+            '<div class="field"><label>Adı (isteğe bağlı)</label><input type="text" class="kr-ad" maxlength="80" /></div>' +
+            '<div class="field"><label>Okulu (isteğe bağlı)</label><input type="text" class="kr-okul" maxlength="120" /></div>' +
+            '<div class="field"><label>Yaş (isteğe bağlı)</label><input type="number" class="kr-yas" min="0" max="120" step="1" /></div>' +
+            '<div class="field span-2"><label style="display:flex;align-items:center;gap:10px;font-weight:500;color:var(--text)">' +
+            '<input type="checkbox" class="kr-kursta" /> Kursta mı?</label></div></div>';
+          host.appendChild(wrap);
+        }
+      }
+
+      function collectKardeslerForSave() {
+        var out = [];
+        document.querySelectorAll('#kardesRows .kardes-satir').forEach(function (row) {
+          var adEl = row.querySelector('.kr-ad');
+          var okEl = row.querySelector('.kr-okul');
+          var kuEl = row.querySelector('.kr-kursta');
+          var yasEl = row.querySelector('.kr-yas');
+          var ad = adEl ? adEl.value.trim() : '';
+          var okul = okEl ? okEl.value.trim() : '';
+          var km = !!(kuEl && kuEl.checked);
+          var yasNum = null;
+          if (yasEl && yasEl.value !== '') {
+            var yi = parseInt(yasEl.value, 10);
+            if (!isNaN(yi) && yi >= 0 && yi <= 120) yasNum = yi;
+          }
+          if (!ad && !okul && !km && (yasEl.value === '' || yasNum === null)) return;
+          var o = { ad: ad, okul: okul, kursta_mi: km };
+          if (yasNum !== null) o.yas = yasNum;
+          out.push(o);
+        });
+        return out;
+      }
+
+      function etiketDurumAnne(v) {
+        if (v === 'ahavat') return 'Ahavat';
+        if (v === 'muhibban') return 'Muhibban';
+        if (v === 'diger') return 'Diğer';
+        return v || '—';
+      }
+      function etiketDurumBaba(v) {
+        if (v === 'ihvan') return 'İhvan';
+        if (v === 'muhibban') return 'Muhibban';
+        if (v === 'diger') return 'Diğer';
+        return v || '—';
+      }
+      function etiketMaddi(v) {
+        if (v === 'zayif') return 'Zayıf';
+        if (v === 'orta') return 'Orta';
+        if (v === 'iyi') return 'İyi';
+        return v || '—';
+      }
+
+      function renderPreview() {
+        var root = $('previewRoot');
+        if (!root) return;
+        var tc = val('fTc');
+        var tcGoster = tc ? esc(tc) : '—';
+        var ks = parseInt(val('fKardesSay'), 10) || 0;
+        var kardesler = collectKardeslerForSave();
+        var ber = getBeraber();
+        var html = '';
+        html += '<div class="preview-bölüm"><h3>Talebe bilgileri</h3><dl class="preview-dl">';
+        html += '<dt>Ad soyad</dt><dd>' + esc(val('fAd') + ' ' + val('fSoyad')) + '</dd>';
+        html += '<dt>Sınıf</dt><dd>' + esc(val('fSinif')) + '</dd>';
+        html += '<dt>Doğum tarihi</dt><dd>' + esc(formatDogumTr(getDogumIso())) + '</dd>';
+        html += '<dt>Memleket</dt><dd>' + esc(val('fMemleket')) + '</dd>';
+        html += '<dt>T.C. kimlik no</dt><dd>' + tcGoster + '</dd>';
+        html += '</dl></div>';
+
+        html += '<div class="preview-bölüm"><h3>Adres</h3><dl class="preview-dl">';
+        html += '<dt>İl / İlçe</dt><dd>' + esc(val('fIl') + ' / ' + val('fIlce')) + '</dd>';
+        html += '<dt>Mahalle</dt><dd>' + esc(val('fMahalle')) + '</dd>';
+        html += '<dt>Cadde / Sokak</dt><dd>' + esc(val('fCadde') + ' / ' + val('fSokak')) + '</dd>';
+        html += '<dt>Site / apartman</dt><dd>' + esc(val('fSite') || '—') + '</dd>';
+        html += '<dt>Bina / Kat / Daire</dt><dd>' + esc([val('fBina'), val('fKat'), val('fDaire')].filter(Boolean).join(' · ') || '—') + '</dd>';
+        html += '</dl></div>';
+
+        html += '<div class="preview-bölüm"><h3>Aile</h3><dl class="preview-dl">';
+        html += '<dt>Anne</dt><dd>' + esc(val('fAnneAd') + ' — ' + val('fAnneMeslek') + ' (' + etiketDurumAnne(val('fAnneDurum')) + ')') + '</dd>';
+        html += '<dt>Baba</dt><dd>' + esc(val('fBabaAd') + ' — ' + val('fBabaMeslek') + ' (' + etiketDurumBaba(val('fBabaDurum')) + ')') + '</dd>';
+        html += '<dt>Anne–baba beraber</dt><dd>' + esc(ber === true ? 'Evet' : ber === false ? 'Hayır' : '—') + '</dd>';
+        html += '<dt>Maddi durum</dt><dd>' + esc(etiketMaddi(val('fMaddi'))) + '</dd>';
+        html += '<dt>Kardeş sayısı</dt><dd>' + esc(String(ks)) + '</dd>';
+        if (ks > 0 && kardesler.length === 0) {
+          html += '<dt>Kardeş detayı</dt><dd>Girilmedi (opsiyonel)</dd>';
+        }
+        html += '</dl>';
+        if (kardesler.length) {
+          html += '<table style="width:100%;border-collapse:collapse;margin-top:12px;font-size:14px"><thead><tr><th style="text-align:left;padding:8px;border:1px solid var(--stroke)">Ad</th><th style="text-align:left;padding:8px;border:1px solid var(--stroke)">Okul</th><th style="text-align:left;padding:8px;border:1px solid var(--stroke)">Yaş</th><th style="text-align:left;padding:8px;border:1px solid var(--stroke)">Kursta mı?</th></tr></thead><tbody>';
+          kardesler.forEach(function (k) {
+            var yg = k.yas != null && k.yas !== '' ? String(k.yas) : '—';
+            html += '<tr><td style="padding:8px;border:1px solid var(--stroke)">' + esc(k.ad || '—') + '</td><td style="padding:8px;border:1px solid var(--stroke)">' + esc(k.okul || '—') + '</td><td style="padding:8px;border:1px solid var(--stroke)">' + esc(yg) + '</td><td style="padding:8px;border:1px solid var(--stroke)">' + (k.kursta_mi ? 'Evet' : 'Hayır') + '</td></tr>';
+          });
+          html += '</tbody></table>';
+        }
+        html += '</div>';
+        html += '<div class="preview-bölüm"><h3>Profil fotoğrafı</h3><dl class="preview-dl">';
+        if (photoObjectUrl && compressedPhoto) {
+          html += '<dt>Önizleme</dt><dd><img src="' + photoObjectUrl + '" alt="" style="max-width:160px;max-height:160px;border-radius:12px;object-fit:cover;border:1px solid var(--stroke)" /></dd>';
+          html += '<dt>Dosya</dt><dd>' + esc((compressedPhoto.mime === 'image/webp' ? 'WebP' : 'JPEG') + ', ~' + (compressedPhoto.blob.size / 1024).toFixed(1) + ' KB') + '</dd>';
+        } else if (mevcutProfilFotoUrl) {
+          var pu = String(mevcutProfilFotoUrl).replace(/"/g, '').replace(/</g, '');
+          html += '<dt>Önizleme</dt><dd><img src="' + pu + '" alt="" style="max-width:160px;max-height:160px;border-radius:12px;object-fit:cover;border:1px solid var(--stroke)" /></dd>';
+          html += '<dt>Durum</dt><dd>Kayıtlı fotoğraf (yeni seçilmediyse aynı kalır)</dd>';
+        } else {
+          html += '<dt>Önizleme</dt><dd>Eklenmedi (opsiyonel)</dd>';
+        }
+        html += '</dl></div>';
+        root.innerHTML = html;
+      }
+
+      function parseKardeslerJson(raw) {
+        if (raw == null) return [];
+        if (Array.isArray(raw)) return raw;
+        if (typeof raw === 'string') {
+          try {
+            var p = JSON.parse(raw);
+            return Array.isArray(p) ? p : [];
+          } catch (_) {
+            return [];
+          }
+        }
+        return [];
+      }
+
+      function applyKayitFormToUI(k) {
+        if (!k || !k.id) return;
+        aktifKayitId = k.id;
+        if ($('fAd')) $('fAd').value = k.ad != null ? String(k.ad) : '';
+        if ($('fSoyad')) $('fSoyad').value = k.soyad != null ? String(k.soyad) : '';
+        if ($('fSinif') && k.sinif != null) $('fSinif').value = String(k.sinif);
+        setDogumFromIso(k.dogum_tarihi || '');
+        if ($('fMemleket')) $('fMemleket').value = k.memleket != null ? String(k.memleket) : '';
+        if ($('fTc')) $('fTc').value = k.tc_kimlik_no != null ? String(k.tc_kimlik_no) : '';
+        if ($('fIl')) $('fIl').value = k.adres_il != null ? String(k.adres_il) : '';
+        if ($('fIlce')) $('fIlce').value = k.adres_ilce != null ? String(k.adres_ilce) : '';
+        if ($('fMahalle')) $('fMahalle').value = k.adres_mahalle != null ? String(k.adres_mahalle) : '';
+        if ($('fCadde')) $('fCadde').value = k.adres_cadde != null ? String(k.adres_cadde) : '';
+        if ($('fSokak')) $('fSokak').value = k.adres_sokak != null ? String(k.adres_sokak) : '';
+        if ($('fSite')) $('fSite').value = k.adres_site_apartman != null ? String(k.adres_site_apartman) : '';
+        if ($('fBina')) $('fBina').value = k.adres_bina_no != null ? String(k.adres_bina_no) : '';
+        if ($('fKat')) $('fKat').value = k.adres_kat != null ? String(k.adres_kat) : '';
+        if ($('fDaire')) $('fDaire').value = k.adres_daire != null ? String(k.adres_daire) : '';
+        if ($('fAnneAd')) $('fAnneAd').value = k.anne_adi != null ? String(k.anne_adi) : '';
+        if ($('fAnneMeslek')) $('fAnneMeslek').value = k.anne_meslek != null ? String(k.anne_meslek) : '';
+        if ($('fAnneDurum')) $('fAnneDurum').value = k.anne_durum != null ? String(k.anne_durum) : '';
+        if ($('fBabaAd')) $('fBabaAd').value = k.baba_adi != null ? String(k.baba_adi) : '';
+        if ($('fBabaMeslek')) $('fBabaMeslek').value = k.baba_meslek != null ? String(k.baba_meslek) : '';
+        if ($('fBabaDurum')) $('fBabaDurum').value = k.baba_durum != null ? String(k.baba_durum) : '';
+        if ($('fMaddi')) $('fMaddi').value = k.aile_maddi_durum != null ? String(k.aile_maddi_durum) : '';
+        document.querySelectorAll('input[name="beraber"]').forEach(function (el) {
+          el.checked = false;
+        });
+        if (k.anne_baba_beraber === true) {
+          var ev = document.querySelector('input[name="beraber"][value="evet"]');
+          if (ev) ev.checked = true;
+        } else if (k.anne_baba_beraber === false) {
+          var hy = document.querySelector('input[name="beraber"][value="hayir"]');
+          if (hy) hy.checked = true;
+        }
+        var arr = parseKardeslerJson(k.kardesler);
+        var ks = parseInt(String(k.kardes_sayisi != null ? k.kardes_sayisi : 0), 10) || 0;
+        var n = Math.min(20, Math.max(ks, arr.length));
+        if ($('fKardesSay')) $('fKardesSay').value = String(n);
+        kardesSayChanged();
+        var rows = document.querySelectorAll('#kardesRows .kardes-satir');
+        for (var i = 0; i < rows.length; i++) {
+          var item = arr[i] || {};
+          var ad = rows[i].querySelector('.kr-ad');
+          var ok = rows[i].querySelector('.kr-okul');
+          var ya = rows[i].querySelector('.kr-yas');
+          var ku = rows[i].querySelector('.kr-kursta');
+          if (ad) ad.value = item.ad != null ? String(item.ad) : '';
+          if (ok) ok.value = item.okul != null ? String(item.okul) : '';
+          if (ya) ya.value = item.yas != null && item.yas !== '' ? String(item.yas) : '';
+          if (ku) ku.checked = !!item.kursta_mi;
+        }
+        mevcutProfilFotoUrl = k.profil_foto_url || null;
+        if (mevcutProfilFotoUrl && !compressedPhoto) gosterKayitliProfilFoto(mevcutProfilFotoUrl);
+        else if (!compressedPhoto) gosterKayitliProfilFoto(null);
+      }
+
+      function resetKayitFormuEkAlanlar() {
+        ['fMemleket', 'fTc', 'fIl', 'fIlce', 'fMahalle', 'fCadde', 'fSokak', 'fSite', 'fBina', 'fKat', 'fDaire'].forEach(function (fid) {
+          var el = $(fid);
+          if (el) el.value = '';
+        });
+        if ($('fAnneDurum')) $('fAnneDurum').value = '';
+        if ($('fBabaDurum')) $('fBabaDurum').value = '';
+        if ($('fMaddi')) $('fMaddi').value = '';
+        document.querySelectorAll('input[name="beraber"]').forEach(function (el) {
+          el.checked = false;
+        });
+        if ($('fKardesSay')) {
+          $('fKardesSay').value = '0';
+          kardesSayChanged();
+        }
+      }
+
+      async function onTalebeChange() {
+        var id = val('talebeSelect');
+        aktifKayitId = null;
+        mevcutProfilFotoUrl = null;
+        clearPhotoSelection();
+        if (!id) return;
+        var t = talebeMap[id];
+        if (!t) return;
+        $('fAd').value = t.ad || '';
+        $('fSoyad').value = t.soyad || '';
+        if (t.sinif) $('fSinif').value = String(t.sinif);
+        setDogumFromIso(t.dogum_tarihi || '');
+        $('fAnneAd').value = t.anne_adi || '';
+        $('fBabaAd').value = t.baba_adi || '';
+        $('fAnneMeslek').value = t.anne_meslek || '';
+        $('fBabaMeslek').value = t.baba_meslek || '';
+        resetKayitFormuEkAlanlar();
+        if (!window.supabase || !window.supabase.from) return;
+        try {
+          var selCols =
+            'id, talebe_id, ad, soyad, sinif, dogum_tarihi, memleket, tc_kimlik_no, adres_il, adres_ilce, adres_mahalle, adres_cadde, adres_sokak, adres_site_apartman, adres_bina_no, adres_kat, adres_daire, anne_adi, anne_meslek, anne_durum, baba_adi, baba_meslek, baba_durum, anne_baba_beraber, aile_maddi_durum, kardes_sayisi, kardesler, profil_foto_url';
+          var r = await window.supabase
+            .from('nehari_talebe_kayit_formu')
+            .select(selCols)
+            .eq('talebe_id', id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (r.error) throw r.error;
+          if (r.data) {
+            applyKayitFormToUI(r.data);
+            toast('info', 'Önceki kayıt', 'Bu talebe için kayıtlı form yüklendi; düzenleyebilir veya eksikleri tamamlayıp kaydedebilirsiniz.');
+          }
+        } catch (e) {
+          var m = e && e.message ? e.message : String(e);
+          if (m.indexOf('permission') >= 0 || m.indexOf('RLS') >= 0) {
+            toast('warning', 'Kayıt formu', 'Detay formu okunamadı (yetki / RLS).');
+          }
+        }
+      }
+
+      async function loadTalebeler() {
+        var sel = $('talebeSelect');
+        if (!window.supabase || !window.supabase.from) {
+          sel.innerHTML = '<option value="">Supabase hazır değil</option>';
+          return;
+        }
+        try {
+          var res = await window.supabase
+            .from('nehari_talebeler')
+            .select('id, ad, soyad, sinif, dogum_tarihi, anne_adi, baba_adi, anne_meslek, baba_meslek, durum')
+            .order('ad', { ascending: true });
+          if (res.error) throw res.error;
+          var list = (res.data || []).filter(function (r) { return r.durum !== 'pasif'; });
+          talebeMap = {};
+          sel.innerHTML = '<option value="">— Talebe seçin —</option>';
+          list.forEach(function (r) {
+            talebeMap[r.id] = r;
+            var o = document.createElement('option');
+            o.value = r.id;
+            o.textContent = (r.ad || '') + ' ' + (r.soyad || '') + ' · ' + (r.sinif || '') + '. sınıf';
+            sel.appendChild(o);
+          });
+          if (list.length === 0) {
+            sel.innerHTML = '<option value="">Kayıtlı talebe yok</option>';
+            toast('info', 'Bilgi', 'Önce yönetimden talebe ekleyin.');
+          }
+        } catch (e) {
+          sel.innerHTML = '<option value="">Yüklenemedi</option>';
+          var msg = (e && e.message) ? e.message : String(e);
+          toast('error', 'Veri', msg.indexOf('permission') >= 0 || msg.indexOf('RLS') >= 0 ? 'Yetkiniz olmayabilir (RLS).' : msg);
+        }
+      }
+
+      async function handleSubmit(e) {
+        e.preventDefault();
+        for (var i = 0; i <= 4; i++) {
+          if (!validateStep(i)) {
+            setStep(i);
+            return;
+          }
+        }
+        var sb = window.supabase;
+        if (!sb || !sb.from) {
+          toast('error', 'Hata', 'Veritabanı bağlantısı hazır değil.');
+          return;
+        }
+        var talebeId = val('talebeSelect');
+        if (!talebeId) {
+          toast('error', 'Hata', 'Talebe seçimi kayboldu; baştan seçin.');
+          return;
+        }
+        var tcRaw = val('fTc');
+        var userRes = await sb.auth.getUser();
+        var uid = userRes && userRes.data && userRes.data.user ? userRes.data.user.id : null;
+
+        var corePayload = {
+          talebe_id: talebeId,
+          ad: val('fAd'),
+          soyad: val('fSoyad'),
+          sinif: parseInt(val('fSinif'), 10),
+          dogum_tarihi: getDogumIso() || null,
+          memleket: val('fMemleket') || null,
+          tc_kimlik_no: tcRaw || null,
+          adres_il: val('fIl'),
+          adres_ilce: val('fIlce'),
+          adres_mahalle: val('fMahalle'),
+          adres_cadde: val('fCadde') || null,
+          adres_sokak: val('fSokak') || null,
+          adres_site_apartman: val('fSite') || null,
+          adres_bina_no: val('fBina') || null,
+          adres_kat: val('fKat') || null,
+          adres_daire: val('fDaire') || null,
+          anne_adi: val('fAnneAd'),
+          anne_meslek: val('fAnneMeslek'),
+          anne_durum: val('fAnneDurum'),
+          baba_adi: val('fBabaAd'),
+          baba_meslek: val('fBabaMeslek'),
+          baba_durum: val('fBabaDurum'),
+          anne_baba_beraber: getBeraber() === true,
+          aile_maddi_durum: val('fMaddi'),
+          kardes_sayisi: parseInt(val('fKardesSay'), 10) || 0,
+          kardesler: collectKardeslerForSave()
+        };
+
+        var wasUpdate = !!aktifKayitId;
+
+        $('btnSubmit').disabled = true;
+        try {
+          var rowId;
+          if (aktifKayitId) {
+            var upRes = await sb
+              .from('nehari_talebe_kayit_formu')
+              .update(corePayload)
+              .eq('id', aktifKayitId)
+              .select('id')
+              .single();
+            if (upRes.error) throw upRes.error;
+            rowId = aktifKayitId;
+          } else {
+            var ins = await sb
+              .from('nehari_talebe_kayit_formu')
+              .insert(Object.assign({}, corePayload, { olusturan: uid }))
+              .select('id')
+              .single();
+            if (ins.error) throw ins.error;
+            rowId = ins.data && ins.data.id;
+          }
+          if (compressedPhoto && compressedPhoto.blob && rowId && sb.storage) {
+            var ext = compressedPhoto.ext || 'jpg';
+            var path = rowId + '/profil.' + ext;
+            var up = await sb.storage.from(STORAGE_BUCKET).upload(path, compressedPhoto.blob, {
+              contentType: compressedPhoto.mime || 'image/jpeg',
+              upsert: true
+            });
+            if (up.error) {
+              toast('warning', 'Fotoğraf', 'Kayıt kaydedildi ancak fotoğraf yüklenemedi: ' + (up.error.message || String(up.error)));
+            } else {
+              var pub = sb.storage.from(STORAGE_BUCKET).getPublicUrl(path);
+              var pubUrl = pub && pub.data ? pub.data.publicUrl : null;
+              if (pubUrl) {
+                var upd = await sb.from('nehari_talebe_kayit_formu').update({ profil_foto_url: pubUrl }).eq('id', rowId);
+                if (upd.error) {
+                  toast('warning', 'Fotoğraf', 'Dosya yüklendi ancak bağlantı kaydedilemedi.');
+                }
+              }
+            }
+          }
+          toast('success', wasUpdate ? 'Güncellendi' : 'Kaydedildi', wasUpdate ? 'Form güncellendi.' : 'Form başarıyla kaydedildi.');
+          aktifKayitId = null;
+          mevcutProfilFotoUrl = null;
+          $('kayitForm').reset();
+          clearPhotoSelection();
+          if ($('fKardesSay')) $('fKardesSay').value = '0';
+          kardesSayChanged();
+          setDogumFromIso('');
+          setStep(0);
+          await loadTalebeler();
+        } catch (err) {
+          var m = err && err.message ? err.message : String(err);
+          toast('error', 'Kayıt hatası', m.indexOf('permission') >= 0 || m.indexOf('RLS') >= 0 ? 'Yetkiniz olmayabilir (RLS).' : m);
+        } finally {
+          $('btnSubmit').disabled = false;
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', function () {
+        sinifOpts();
+        initDogumSelects();
+        setStep(0);
+
+        $('talebeSelect').addEventListener('change', onTalebeChange);
+
+        $('fKardesSay').addEventListener('change', kardesSayChanged);
+        $('fKardesSay').addEventListener('input', kardesSayChanged);
+
+        var fotoIn = $('fotoInput');
+        if (fotoIn) {
+          fotoIn.addEventListener('change', function () {
+            var f = this.files && this.files[0];
+            if (!f) return;
+            if (f.size > 28 * 1024 * 1024) {
+              toast('error', 'Fotoğraf', 'Dosya çok büyük (en fazla ~28 MB seçin).');
+              this.value = '';
+              return;
+            }
+            toast('info', 'İşleniyor', 'Fotoğraf sıkıştırılıyor…');
+            compressProfileImage(f)
+              .then(function (out) {
+                compressedPhoto = out;
+                revokePhotoUrl();
+                photoObjectUrl = URL.createObjectURL(out.blob);
+                var img = $('fotoOnizle');
+                if (img) {
+                  img.src = photoObjectUrl;
+                  img.style.display = 'block';
+                }
+                updateFotoMeta();
+                toast('success', 'Hazır', 'Profil fotoğrafı optimize edildi.');
+              })
+              .catch(function (err) {
+                clearPhotoSelection();
+                toast('error', 'Fotoğraf', (err && err.message) || 'Görsel işlenemedi.');
+              });
+          });
+        }
+        var btnFk = $('btnFotoKaldir');
+        if (btnFk) {
+          btnFk.addEventListener('click', function () {
+            clearPhotoSelection();
+            if (mevcutProfilFotoUrl) gosterKayitliProfilFoto(mevcutProfilFotoUrl);
+            toast('info', 'Fotoğraf', 'Yeni seçim kaldırıldı.');
+          });
+        }
+
+        $('btnNext').addEventListener('click', function () {
+          if (!validateStep(step)) return;
+          setStep(step + 1);
+        });
+        $('btnPrev').addEventListener('click', function () {
+          setStep(step - 1);
+        });
+
+        $('kayitForm').addEventListener('submit', handleSubmit);
+
+        function waitSb() {
+          if (window.supabase && window.supabase.from) loadTalebeler();
+          else setTimeout(waitSb, 200);
+        }
+        waitSb();
+      });
+    })();
+  </script>
+</body>
+</html>
