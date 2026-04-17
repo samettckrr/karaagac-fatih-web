@@ -567,9 +567,11 @@ CREATE TABLE public.nehari_talebe_kayit_formu (
   adres_daire text,
   anne_adi text NOT NULL,
   anne_meslek text NOT NULL,
+  anne_telefon text,
   anne_durum text NOT NULL,
   baba_adi text NOT NULL,
   baba_meslek text NOT NULL,
+  baba_telefon text,
   baba_durum text NOT NULL,
   anne_baba_beraber boolean NOT NULL,
   aile_maddi_durum text NOT NULL,
@@ -582,8 +584,8 @@ CREATE TABLE public.nehari_talebe_kayit_formu (
   CONSTRAINT nehari_talebe_kayit_formu_pkey PRIMARY KEY (id),
   CONSTRAINT nehari_talebe_kayit_formu_talebe_id_fkey FOREIGN KEY (talebe_id) REFERENCES public.nehari_talebeler(id),
   CONSTRAINT nehari_talebe_kayit_formu_sinif_check CHECK (sinif >= 1 AND sinif <= 12),
-  CONSTRAINT nehari_talebe_kayit_formu_anne_durum_check CHECK (anne_durum = ANY (ARRAY['ahavat'::text, 'muhibban'::text, 'diger'::text])),
-  CONSTRAINT nehari_talebe_kayit_formu_baba_durum_check CHECK (baba_durum = ANY (ARRAY['ihvan'::text, 'muhibban'::text, 'diger'::text])),
+  CONSTRAINT nehari_talebe_kayit_formu_anne_durum_check CHECK (anne_durum = ANY (ARRAY['ahavat'::text, 'muhibban'::text, 'diger'::text, 'hocahanim'::text])),
+  CONSTRAINT nehari_talebe_kayit_formu_baba_durum_check CHECK (baba_durum = ANY (ARRAY['ihvan'::text, 'muhibban'::text, 'diger'::text, 'hocaefendi'::text])),
   CONSTRAINT nehari_talebe_kayit_formu_maddi_check CHECK (aile_maddi_durum = ANY (ARRAY['zayif'::text, 'orta'::text, 'iyi'::text])),
   CONSTRAINT nehari_talebe_kayit_formu_kardes_sayisi_check CHECK (kardes_sayisi >= 0 AND kardes_sayisi <= 20)
 );

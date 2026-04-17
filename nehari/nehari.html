@@ -116,6 +116,28 @@
     .durum-aktif { background: #d1fae5; color: #065f46; }
     .durum-pasif { background: #f3f4f6; color: #6b7280; }
 
+    .btn-talebe-pdf {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--stroke);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 600;
+      text-decoration: none;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s, color 0.2s;
+    }
+    .btn-talebe-pdf:hover {
+      border-color: var(--brand);
+      background: var(--card);
+      color: var(--brand);
+    }
+
     /* Aidat: Durum (Tam/Eksik/Alınmadı) */
     .badge-aidat { display: inline-block; padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; }
     .aidat-tam { background: #d1fae5; color: #065f46; }
@@ -289,7 +311,10 @@
         if (!window.supabase) { body.className = 'hata'; body.innerHTML = 'Bağlantı hazır değil.'; return; }
         try {
           var [tRes, aRes] = await Promise.all([
-            window.supabase.from('nehari_talebeler').select('*').order('ad', { ascending: true }),
+            window.supabase
+              .from('nehari_talebeler')
+              .select('id, ad, soyad, sinif, dogum_tarihi, anne_adi, baba_adi, anne_meslek, baba_meslek, durum')
+              .order('ad', { ascending: true }),
             window.supabase.from('nehari_aidat').select('talebe_id, aylik_tutar, baslangic_yil, baslangic_ay, bitis_yil, bitis_ay')
           ]);
           if (tRes.error) throw tRes.error;
@@ -314,7 +339,7 @@
             body.innerHTML = 'Henüz talebe kaydı yok.';
             return;
           }
-          var html = '<table><thead><tr><th>Sıra</th><th>Ad Soyad</th><th>Sınıf</th><th>Doğum Tarihi</th><th>Anne</th><th>Baba</th><th>Aidat</th><th>Durum</th></tr></thead><tbody>';
+          var html = '<table><thead><tr><th>Sıra</th><th>Ad Soyad</th><th>Sınıf</th><th>Doğum Tarihi</th><th>Anne</th><th>Baba</th><th>Aidat</th><th>Durum</th><th>Özet</th></tr></thead><tbody>';
           data.forEach(function(r, i) {
             var aidat = aidatMap[r.id] != null ? paraFmt(aidatMap[r.id]) : '—';
             var durumKey = (r.durum === 'pasif') ? 'pasif' : 'aktif';
@@ -324,7 +349,8 @@
             var sinifTxt = sinifVal ? sinifVal + '. Sınıf' : '—';
             var sinifClass = 'badge-sinif sinif-' + (sinifVal >= 1 && sinifVal <= 12 ? sinifVal : 0);
             var durumClass = 'badge-durum durum-' + durumKey;
-            html += '<tr><td data-label="Sıra">' + (i+1) + '</td><td data-label="Ad Soyad"><strong>' + adSoyad + '</strong></td><td data-label="Sınıf"><span class="' + sinifClass + '">' + sinifTxt + '</span></td><td data-label="Doğum Tarihi">' + tarihFmt(r.dogum_tarihi) + '</td><td data-label="Anne">' + (r.anne_adi || '—') + '</td><td data-label="Baba">' + (r.baba_adi || '—') + '</td><td data-label="Aidat">' + aidat + '</td><td data-label="Durum"><span class="' + durumClass + '">' + durumTxt + '</span></td></tr>';
+            var pdfHref = 'nehari-talebe-pdf.html?id=' + encodeURIComponent(r.id);
+            html += '<tr><td data-label="Sıra">' + (i+1) + '</td><td data-label="Ad Soyad"><strong>' + adSoyad + '</strong></td><td data-label="Sınıf"><span class="' + sinifClass + '">' + sinifTxt + '</span></td><td data-label="Doğum Tarihi">' + tarihFmt(r.dogum_tarihi) + '</td><td data-label="Anne">' + (r.anne_adi || '—') + '</td><td data-label="Baba">' + (r.baba_adi || '—') + '</td><td data-label="Aidat">' + aidat + '</td><td data-label="Durum"><span class="' + durumClass + '">' + durumTxt + '</span></td><td data-label="Özet"><a class="btn-talebe-pdf" href="' + pdfHref + '" target="_blank" rel="noopener noreferrer">PDF / Yazdır</a></td></tr>';
           });
           body.className = '';
           body.innerHTML = html + '</tbody></table>';

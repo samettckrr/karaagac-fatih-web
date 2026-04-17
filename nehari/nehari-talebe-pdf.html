@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ömerli Nehari Merkezi — Talebe özeti</title>
+  <link rel="icon" type="image/png" href="../img/logo.png" />
+  <link rel="stylesheet" href="../css/app-shell.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <style>
+    body {
+      padding-top: var(--appbar-h) !important;
+      background: var(--surface);
+      font-size: 14px;
+    }
+    .toolbar {
+      max-width: 720px;
+      margin: 0 auto 16px;
+      padding: 0 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .toolbar .sol { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .print-sheet {
+      max-width: 190mm;
+      min-height: auto;
+      margin: 0 auto 32px;
+      padding: 9mm 12mm 7mm;
+      box-sizing: border-box;
+      background: #fff;
+      color: #111827;
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      display: block;
+    }
+    /* Ekranda kutuyu bozmadan işaretleme; yazdırmada @media ile blok olur */
+    .print-orta {
+      display: contents;
+    }
+    /* Yalnızca yazdırmada: footer ile içerik arasındaki boşluğu burada toplar (içerik bloğunda değil) */
+    .print-flex-fill {
+      display: none;
+    }
+    .print-ana-baslik {
+      text-align: center;
+      margin: 0 0 26px;
+      padding-bottom: 10px;
+      border-bottom: 3px solid #0369a1;
+      font-size: 26pt;
+      font-weight: 900;
+      letter-spacing: 0.02em;
+      color: #082f47;
+      line-height: 1.15;
+    }
+    .blok-baslik {
+      margin: 30px 0 14px;
+      font-size: 14.5pt;
+      font-weight: 900;
+      color: #1e3a5f;
+      border-bottom: 2px solid #94a3b8;
+      padding-bottom: 6px;
+      letter-spacing: 0.02em;
+    }
+    .talebe-ust {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-rows: auto auto;
+      align-items: start;
+      column-gap: 18px;
+      row-gap: 10px;
+    }
+    .talebe-foto-wrap {
+      grid-column: 2;
+      grid-row: 2;
+      align-self: start;
+      width: 55mm;
+      height: 65mm;
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+      overflow: hidden;
+      background: #f9fafb;
+    }
+    .talebe-foto-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .talebe-foto-wrap.yok {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      color: #9ca3af;
+      text-align: center;
+      padding: 6px;
+      box-sizing: border-box;
+    }
+    /* Ad satırı: tüm genişlik (foto bu satırda yok) */
+    .talebe-metin-ust {
+      grid-column: 1 / -1;
+      grid-row: 1;
+      min-width: 0;
+    }
+    /* Bölüm başlığı + grid: foto ile aynı satırda */
+    .talebe-metin-alt {
+      grid-column: 1;
+      grid-row: 2;
+      min-width: 0;
+      text-align: left;
+    }
+    .talebe-adsoyad {
+      font-size: 16pt;
+      font-weight: 900;
+      line-height: 1.15;
+      color: #111827;
+      margin: 0 0 8px;
+    }
+    /* Ad soyad: bölüm başlığı yerinde (ana başlık altı) */
+    .talebe-adsoyad-ana {
+      font-size: 20pt;
+      margin: 0 auto 6px;
+      text-align: center;
+    }
+    .talebe-ad-alt-cizgi {
+      border: 0;
+      border-top: 2px solid #bdc8d8;
+      margin: 0 0 8px;
+      max-width: 92%;
+      opacity: 0.30;
+    }
+    .talebe-ad-alt-cizgi-ana {
+      max-width: 78%;
+      margin: 0 auto 12px;
+      opacity: 0.35;
+    }
+    .talebe-metin-alt > .blok-baslik {
+      margin-top: 0;
+    }
+    /* Etiket : değer — yalnızca bu grid’in içinde (bölüm yerel) hizalı */
+    .kv-grid {
+      display: grid;
+      grid-template-columns: minmax(0, max-content) min-content minmax(0, 1fr);
+      column-gap: 12px;
+      row-gap: 11px;
+      font-size: 10.5pt;
+      line-height: 1.52;
+      align-items: start;
+    }
+    .kv-grid.compakt {
+      font-size: 9.75pt;
+      row-gap: 8px;
+      line-height: 1.48;
+    }
+    .kv-etiket {
+      text-align: right;
+      justify-self: stretch;
+      font-weight: 700;
+      color: #374151;
+      white-space: normal;
+      word-break: break-word;
+    }
+    /* Talebe Bilgileri: ":" öncesi etiketler sola yaslı */
+    .kv-grid.talebe-kv .kv-etiket {
+      text-align: left;
+      justify-self: start;
+    }
+    /* Aile (anne / baba / ortak): etiketler sola yaslı */
+    .kv-grid.aile-kv .kv-etiket {
+      text-align: left;
+      justify-self: start;
+    }
+    .kv-cln {
+      text-align: center;
+      font-weight: 700;
+      color: #64748b;
+      padding: 0 4px;
+    }
+    .kv-deger {
+      text-align: left;
+      color: #111827;
+      font-weight: 500;
+      word-break: break-word;
+    }
+    .kv-deger.vurgu {
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+    /* Kardeş sayısı > 2: etiket + değer daha kompakt (A4’te taşmayı azaltır) */
+    .kv-grid.kv-kardes-sayi-dar {
+      font-size: 8.5pt;
+      column-gap: 5px;
+      row-gap: 5px;
+      line-height: 1.3;
+    }
+    .kv-grid.kv-kardes-sayi-dar .kv-cln {
+      padding: 0 2px;
+    }
+    .aile-iki {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px 26px;
+      align-items: start;
+    }
+    @media (max-width: 520px) {
+      .aile-iki { grid-template-columns: 1fr; }
+    }
+    .aile-kolon-baslik {
+      font-size: 11pt;
+      font-weight: 900;
+      color: #334155;
+      margin: 0 0 10px;
+      padding-bottom: 5px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .aile-ortak {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px dashed #cbd5e1;
+    }
+    .aile-ortak-cift {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px 20px;
+      align-items: start;
+    }
+    @media (max-width: 520px) {
+      .aile-ortak-cift { grid-template-columns: 1fr; }
+    }
+    /* Aile / Adres / Kardeş: ekran + yazdırda biraz daha ferah */
+    .print-son-bolumler {
+      margin-top: 40px;
+    }
+    .print-son-bolumler > .blok-baslik {
+      margin: 26px 0 12px;
+      padding-bottom: 7px;
+    }
+    .print-son-bolumler > .blok-baslik:first-child {
+      margin-top: 0;
+    }
+    .print-son-bolumler .aile-iki {
+      gap: 18px 28px;
+    }
+    .print-son-bolumler .aile-kolon-baslik {
+      margin-bottom: 11px;
+    }
+    .print-son-bolumler .aile-ortak {
+      margin-top: 18px;
+      padding-top: 14px;
+    }
+    .print-son-bolumler .aile-ortak-cift {
+      gap: 12px 22px;
+    }
+    .print-son-bolumler .kv-grid.compakt {
+      row-gap: 10px;
+      line-height: 1.52;
+    }
+    .print-son-bolumler .mini-table {
+      margin-top: 12px;
+      line-height: 1.48;
+    }
+    .print-son-bolumler .mini-table th,
+    .print-son-bolumler .mini-table td {
+      padding: 7px 11px;
+    }
+    .mini-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9.25pt;
+      margin-top: 10px;
+      line-height: 1.45;
+    }
+    .mini-table th, .mini-table td {
+      border: 1px solid #e5e7eb;
+      padding: 7px 9px;
+      text-align: left;
+    }
+    .mini-table th { background: #f3f4f6; font-weight: 700; }
+    /* 3+ kardeş (bildirilen sayı veya tabloda dolu satır): tek sayfaya sığdırmak için sıkı düzen */
+    .print-sheet--cok-kardes .print-ana-baslik {
+      font-size: 22pt;
+      margin: 0 0 18px;
+      padding-bottom: 8px;
+    }
+    .print-sheet--cok-kardes .blok-baslik {
+      margin: 18px 0 9px;
+      font-size: 13pt;
+      padding-bottom: 4px;
+    }
+    .print-sheet--cok-kardes .talebe-adsoyad-ana {
+      font-size: 17pt;
+    }
+    .print-sheet--cok-kardes .talebe-foto-wrap {
+      width: 40mm;
+      height: 55mm;
+    }
+    .print-sheet--cok-kardes .kv-grid {
+      row-gap: 7px;
+      font-size: 10pt;
+      line-height: 1.38;
+    }
+    .print-sheet--cok-kardes .kv-grid.compakt {
+      font-size: 8.5pt;
+      row-gap: 5px;
+      line-height: 1.32;
+    }
+    .print-sheet--cok-kardes .aile-iki {
+      gap: 10px 16px;
+    }
+    .print-sheet--cok-kardes .aile-ortak {
+      margin-top: 10px;
+      padding-top: 8px;
+    }
+    .print-sheet--cok-kardes .mini-table {
+      font-size: 8pt;
+      margin-top: 6px;
+      line-height: 1.25;
+    }
+    .print-sheet--cok-kardes .mini-table th,
+    .print-sheet--cok-kardes .mini-table td {
+      padding: 3px 5px;
+    }
+    .print-sheet--cok-kardes .print-footer img {
+      width: 36px;
+      height: auto;
+    }
+    .print-sheet--cok-kardes .print-footer .alt-metin-satir1 {
+      font-size: 12.5pt;
+    }
+    .print-sheet--cok-kardes .print-footer .alt-metin-satir2 {
+      font-size: 9pt;
+    }
+    /* Çok kardeş modunda alt üç bölüm yine biraz nefes alsın (tam sıkışık olmasın) */
+    .print-sheet--cok-kardes .print-son-bolumler > .blok-baslik {
+      margin: 15px 0 5px;
+    }
+    .print-sheet--cok-kardes .print-son-bolumler > .blok-baslik:first-child {
+      margin-top: 0;
+    }
+    .print-sheet--cok-kardes .print-son-bolumler .aile-iki {
+      gap: 12px 20px;
+    }
+    .print-sheet--cok-kardes .print-son-bolumler .aile-ortak {
+      margin-top: 12px;
+      padding-top: 10px;
+    }
+    .print-sheet--cok-kardes .print-son-bolumler .mini-table th,
+    .print-sheet--cok-kardes .print-son-bolumler .mini-table td {
+      padding: 5px 8px;
+    }
+    .bos-icerik { text-align: center; padding: 48px 16px; color: var(--muted); }
+    .print-footer {
+      margin-top: 22px;
+      text-align: center;
+      padding-top: 12px;
+      border-top: none;
+    }
+    .print-footer img {
+      display: block;
+      margin: 0 auto 10px;
+      width: 44px;
+      height: auto;
+    }
+    .print-footer .alt-metin {
+      font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+      font-optical-sizing: auto;
+      color: #0f172a;
+      line-height: 1.4;
+      -webkit-font-smoothing: antialiased;
+    }
+    .print-footer .alt-metin-satir1 {
+      display: block;
+      font-size: 14pt;
+      font-weight: 700;
+      letter-spacing: 0.055em;
+      font-variant-numeric: lining-nums;
+    }
+    .print-footer .alt-metin-satir2 {
+      display: block;
+      margin-top: 2px;
+      font-size: 10pt;
+      font-weight: 400;
+      letter-spacing: 0.09em;
+      color: #475569;
+    }
+    @page {
+      size: A4 portrait;
+      margin: 8mm;
+    }
+    @media print {
+      html {
+        width: 100%;
+        height: auto;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      body {
+        padding-top: 0 !important;
+        background: #fff !important;
+        margin: 0;
+        width: 100% !important;
+        min-width: 0 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .no-print { display: none !important; }
+      #mainRoot {
+        padding: 0 !important;
+        max-width: none !important;
+        width: 100% !important;
+      }
+      /* A4 yazdırılabilir yükseklik ≈ 297mm − @page üst/alt (8+8); boşluk print-flex-fill ile footer öncesinde */
+      .print-sheet {
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        margin: 0;
+        max-width: none !important;
+        width: 100% !important;
+        min-height: calc(297mm - 16mm);
+        height: auto;
+        display: flex !important;
+        flex-direction: column;
+        padding: 0;
+        box-sizing: border-box;
+        overflow: visible !important;
+        font-size: 98%;
+      }
+      .print-orta {
+        display: contents !important;
+      }
+      .print-flex-fill {
+        display: block !important;
+        flex: 1 1 0;
+        min-height: 0;
+        width: 100%;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: 0 !important;
+      }
+      .print-footer {
+        flex-shrink: 0;
+        margin-top: 0 !important;
+        padding-top: 6px;
+        padding-bottom: 0;
+        margin-bottom: 0;
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+      /* Büyük bloklarda avoid: Safari ölçek değişince boş sayfa / beyaz ekran hatası */
+      .talebe-ust,
+      .aile-iki {
+        break-inside: auto !important;
+        page-break-inside: auto !important;
+      }
+      /* Kardeş sayısı / satırı az iken A4 tek sayfa: abartılı dikey boşlukları yazdırmada düşür */
+      .talebe-ust {
+        margin-bottom: 2mm;
+      }
+      .mini-table tr {
+        break-inside: auto !important;
+        page-break-inside: auto !important;
+      }
+      .print-sheet:not(.print-sheet--cok-kardes) .print-ana-baslik {
+        font-size: 22pt;
+        margin: 0 0 14px;
+        padding-bottom: 8px;
+      }
+      .print-sheet:not(.print-sheet--cok-kardes) .talebe-adsoyad-ana {
+        font-size: 18pt;
+      }
+      .print-sheet:not(.print-sheet--cok-kardes) .talebe-foto-wrap {
+        width: 48mm;
+        height: 58mm;
+      }
+      .print-sheet:not(.print-sheet--cok-kardes) .blok-baslik {
+        margin: 18px 0 8px;
+        font-size: 13pt;
+        padding-bottom: 5px;
+      }
+      .print-sheet:not(.print-sheet--cok-kardes) .talebe-metin-alt > .blok-baslik {
+        margin-top: 0;
+      }
+      .print-sheet--cok-kardes .print-ana-baslik {
+        font-size: 21pt;
+      }
+      .print-sheet--cok-kardes .blok-baslik {
+        margin: 14px 0 7px;
+        font-size: 12.5pt;
+      }
+      .print-son-bolumler {
+        margin-top: 14px;
+      }
+      .print-son-bolumler > .blok-baslik {
+        margin-top: 22px;
+        margin-bottom: 10px;
+        padding-bottom: 6px;
+      }
+      .print-son-bolumler > .blok-baslik:first-child {
+        margin-top: 0;
+      }
+      .print-son-bolumler .aile-iki {
+        gap: 14px 22px;
+      }
+      .print-son-bolumler .aile-ortak {
+        margin-top: 12px;
+        padding-top: 10px;
+      }
+      .print-son-bolumler .kv-grid.compakt {
+        row-gap: 8px;
+        line-height: 1.48;
+      }
+      .print-son-bolumler .mini-table th,
+      .print-son-bolumler .mini-table td {
+        padding: 5px 8px;
+      }
+      .print-sheet--cok-kardes .talebe-ust {
+        margin-bottom: 2.5mm;
+      }
+      .print-sheet--cok-kardes .print-son-bolumler {
+        margin-top: 20px;
+      }
+      .print-sheet--cok-kardes .print-son-bolumler > .blok-baslik {
+        margin: 26px 0 12px;
+        font-size: 12.5pt;
+      }
+      .print-sheet--cok-kardes .print-son-bolumler > .blok-baslik:first-child {
+        margin-top: 0;
+      }
+      .print-sheet--cok-kardes .print-son-bolumler .aile-iki {
+        gap: 14px 22px;
+      }
+      .print-sheet--cok-kardes .print-son-bolumler .aile-ortak {
+        margin-top: 14px;
+        padding-top: 12px;
+      }
+      .print-sheet--cok-kardes .print-son-bolumler .mini-table th,
+      .print-sheet--cok-kardes .print-son-bolumler .mini-table td {
+        padding: 6px 9px;
+      }
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="../src/supabase.js"></script>
+  <script src="../src/supabase-auth-wrapper.js"></script>
+  <script src="../src/supabase-db-wrapper.js"></script>
+  <script>
+    (function () {
+      function initAuth() {
+        if (typeof window.getSupabaseAuth === 'function') {
+          window.auth = window.getSupabaseAuth();
+          return true;
+        }
+        return false;
+      }
+      function waitAndTriggerInit() {
+        if (typeof window.auth !== 'undefined' && window.auth && typeof window.initAppShellAuth === 'function') {
+          try { window.initAppShellAuth(); } catch (e) { console.error(e); }
+        } else if (typeof window.initAppShellAuth === 'function') {
+          setTimeout(waitAndTriggerInit, 300);
+        }
+      }
+      function bootstrap() {
+        if (!initAuth()) setTimeout(bootstrap, 200);
+        else setTimeout(waitAndTriggerInit, 200);
+      }
+      bootstrap();
+    })();
+  </script>
+  <script src="../js/ortak.js"></script>
+</head>
+<body>
+  <div class="appbar no-print">
+    <div class="brand" onclick="location.href='../panel.html'">
+      <img src="../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
+    </div>
+    <nav class="nav-center"><ul class="nav-list" id="navMain"></ul></nav>
+    <div class="nav-right">
+      <button class="btn hamb" id="hamburger" title="Menü">☰</button>
+      <div class="nav-item">
+        <button class="iconbtn" id="btnProfile" title="Profil">
+          <span class="avatar"></span> <span id="profName" class="muted">Profil</span>
+        </button>
+        <div class="dropdown drop-right" id="profDropdown">
+          <a href="/diger/kullanici-yonetimi.html">Profil</a>
+          <a href="#" id="btnLogout">Çıkış</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <aside class="drawer no-print" id="drawer"></aside>
+  <div class="toast-container no-print" id="toastContainer"></div>
+
+  <div class="toolbar no-print">
+    <div class="sol">
+      <a class="btn" href="nehari.html">← Nehari</a>
+      <button type="button" class="btn btn-primary" id="btnYazdir">Yazdır / PDF</button>
+    </div>
+  </div>
+
+  <main id="mainRoot" style="padding: 0 16px 32px"></main>
+
+  <script>
+    (function () {
+      function esc(s) {
+        s = s == null ? '' : String(s);
+        if (typeof escapeHtml === 'function') return escapeHtml(s);
+        var d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+      }
+      function toast(type, title, msg) {
+        if (typeof window.showToast === 'function') window.showToast(type, title, msg);
+      }
+      function tarihGunAyYil(d) {
+        if (!d) return '—';
+        try {
+          var x = new Date(d);
+          if (isNaN(x.getTime())) return '—';
+          return x.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+        } catch (_) {
+          return '—';
+        }
+      }
+      function yasHesapla(iso) {
+        if (!iso) return null;
+        var d = new Date(iso);
+        if (isNaN(d.getTime())) return null;
+        var bugun = new Date();
+        var yas = bugun.getFullYear() - d.getFullYear();
+        var ayFark = bugun.getMonth() - d.getMonth();
+        if (ayFark < 0 || (ayFark === 0 && bugun.getDate() < d.getDate())) yas--;
+        return yas >= 0 && yas < 130 ? yas : null;
+      }
+      function etiketDurumAnne(v) {
+        if (v === 'ahavat') return 'Ahavat';
+        if (v === 'muhibban') return 'Muhibban';
+        if (v === 'diger') return 'Diğer';
+        if (v === 'hocahanim') return 'Hocahanım';
+        return v || '—';
+      }
+      function etiketDurumBaba(v) {
+        if (v === 'ihvan') return 'İhvan';
+        if (v === 'muhibban') return 'Muhibban';
+        if (v === 'diger') return 'Diğer';
+        if (v === 'hocaefendi') return 'Hocaefendi';
+        return v || '—';
+      }
+      function etiketMaddi(v) {
+        if (v === 'zayif') return 'Zayıf';
+        if (v === 'orta') return 'Orta';
+        if (v === 'iyi') return 'İyi';
+        return v || '—';
+      }
+      function parseKardesler(raw) {
+        if (raw == null) return [];
+        if (Array.isArray(raw)) return raw;
+        if (typeof raw === 'string') {
+          try {
+            var p = JSON.parse(raw);
+            return Array.isArray(p) ? p : [];
+          } catch (_) {
+            return [];
+          }
+        }
+        return [];
+      }
+      function uuidOk(s) {
+        return typeof s === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
+      }
+
+      function kvRow(etiket, deger, vurgu) {
+        var cls = 'kv-deger' + (vurgu ? ' vurgu' : '');
+        return (
+          '<span class="kv-etiket">' +
+          esc(etiket) +
+          '</span><span class="kv-cln">:</span><span class="' +
+          cls +
+          '">' +
+          esc(deger) +
+          '</span>'
+        );
+      }
+
+      function render(t, k) {
+        var root = document.getElementById('mainRoot');
+        if (!root) return;
+        var kardesArr = [];
+        if (k) kardesArr = parseKardesler(k.kardesler);
+        var ksSayi = k && k.kardes_sayisi != null ? Number(k.kardes_sayisi) : 0;
+        if (isNaN(ksSayi) || ksSayi < 0) ksSayi = 0;
+        /* Tabloda 3+ dolu satır VEYA bildirilen kardeş sayısı ≥ 3 → sıkı düzen (tek sayfa) */
+        var cokKardesLayout = kardesArr.length >= 3 || ksSayi >= 3;
+        var fotoUrl = k && k.profil_foto_url ? String(k.profil_foto_url).replace(/"/g, '') : '';
+        var adSoyad = ((k && k.ad) ? k.ad : t.ad || '') + ' ' + ((k && k.soyad) ? k.soyad : t.soyad || '');
+        var sinifV = k && k.sinif != null ? k.sinif : t.sinif;
+        var sinifTxt = sinifV != null ? sinifV + '. sınıf' : '—';
+        var mem = k && k.memleket != null && String(k.memleket).trim() ? String(k.memleket) : '—';
+        var tc = k && k.tc_kimlik_no ? String(k.tc_kimlik_no) : '—';
+        var dogumIso = (k && k.dogum_tarihi) || t.dogum_tarihi || null;
+        var dogumStr = tarihGunAyYil(dogumIso);
+        var yas = yasHesapla(dogumIso);
+        var dogumDeger =
+          dogumStr === '—'
+            ? '—'
+            : dogumStr + (yas != null ? ' (' + yas + ' yaşında)' : '');
+
+        var html =
+          '<div class="print-sheet' +
+          (cokKardesLayout ? ' print-sheet--cok-kardes' : '') +
+          '" id="printSheet">';
+        html += '<h1 class="print-ana-baslik">Ömerli Nehari Merkezi</h1>';
+        html += '<div class="print-orta">';
+
+        html += '<div class="talebe-ust">';
+        html += '<div class="talebe-metin-ust">';
+        html += '<p class="talebe-adsoyad talebe-adsoyad-ana">' + esc(adSoyad.trim() || '—') + '</p>';
+        html += '<hr class="talebe-ad-alt-cizgi talebe-ad-alt-cizgi-ana" />';
+        html += '</div>';
+        html += '<div class="talebe-metin-alt">';
+        html += '<h2 class="blok-baslik">Talebe Bilgileri</h2>';
+        var okulAdiSabit = 'İBB Evliya Çelebi Okulu';
+        html += '<div class="kv-grid talebe-kv">';
+        html += kvRow('Sınıf', sinifTxt);
+        html += kvRow('Doğum', dogumDeger);
+        html += kvRow('Memleket', mem);
+        html += kvRow('T.C. kimlik no', tc, true);
+        html += kvRow('Okul Adı', okulAdiSabit);
+        html += '</div>';
+        html += '</div>';
+        html += '<div class="talebe-foto-wrap' + (fotoUrl ? '' : ' yok') + '">';
+        if (fotoUrl) html += '<img src="' + fotoUrl + '" alt="" />';
+        else html += 'Profil<br/>fotoğrafı<br/>yok';
+        html += '</div></div>';
+
+        html += '<div class="print-son-bolumler">';
+        html += '<h2 class="blok-baslik">Aile Bilgileri</h2>';
+        html += '<div class="aile-iki">';
+        html += '<div><div class="aile-kolon-baslik">Anne Bilgileri</div>';
+        html += '<div class="kv-grid compakt aile-kv">';
+        html += kvRow('Ad', ((k && k.anne_adi ? k.anne_adi : t.anne_adi) || '—'));
+        html += kvRow('Meslek', ((k && k.anne_meslek ? k.anne_meslek : t.anne_meslek) || '—'));
+        html += kvRow('Telefon No', (k && k.anne_telefon && String(k.anne_telefon).trim()) ? String(k.anne_telefon).trim() : '—');
+        if (k && k.anne_durum) {
+          html += kvRow('Durum', etiketDurumAnne(k.anne_durum));
+        }
+        html += '</div></div>';
+        html += '<div><div class="aile-kolon-baslik">Baba Bilgileri</div>';
+        html += '<div class="kv-grid compakt aile-kv">';
+        html += kvRow('Ad', ((k && k.baba_adi ? k.baba_adi : t.baba_adi) || '—'));
+        html += kvRow('Meslek', ((k && k.baba_meslek ? k.baba_meslek : t.baba_meslek) || '—'));
+        html += kvRow('Telefon No', (k && k.baba_telefon && String(k.baba_telefon).trim()) ? String(k.baba_telefon).trim() : '—');
+        if (k && k.baba_durum) {
+          html += kvRow('Durum', etiketDurumBaba(k.baba_durum));
+        }
+        html += '</div></div></div>';
+        html += '<div class="aile-ortak">';
+        html += '<div class="aile-ortak-cift">';
+        html += '<div class="kv-grid compakt aile-kv">';
+        if (k && k.aile_maddi_durum) {
+          html += kvRow('Maddi Durum', etiketMaddi(k.aile_maddi_durum));
+        } else {
+          html += kvRow('Maddi Durum', '—');
+        }
+        html += '</div>';
+        html += '<div class="kv-grid compakt aile-kv">';
+        if (k) {
+          html += kvRow(
+            'Anne–Baba Beraber',
+            k.anne_baba_beraber === true ? 'Evet' : k.anne_baba_beraber === false ? 'Hayır' : '—'
+          );
+        } else {
+          html += kvRow('Anne–Baba Beraber', '—');
+        }
+        html += '</div></div>';
+        var ksPdf = k && k.kardes_sayisi != null ? Number(k.kardes_sayisi) : NaN;
+        var kardesSayiDar = !isNaN(ksPdf) && ksPdf > 2;
+        html +=
+          '<div class="kv-grid compakt aile-kv' +
+          (kardesSayiDar ? ' kv-kardes-sayi-dar' : '') +
+          '">';
+        if (k) {
+          html += kvRow(
+            kardesSayiDar ? 'Kard. sayısı (Kendisi Hariç)' : 'Kardeş Sayısı (Kendisi Hariç)',
+            String(k.kardes_sayisi != null ? k.kardes_sayisi : '—')
+          );
+        } else {
+          html += kvRow('Kardeş Sayısı (kendisi hariç)', '—');
+        }
+        html += '</div></div>';
+
+        html += '<h2 class="blok-baslik">Adres Bilgileri</h2>';
+        if (k) {
+          html += '<div class="kv-grid compakt">';
+          html += kvRow(
+            'İl / İlçe / Mah / Cad / Sok',
+            (k.adres_il || '—') +
+              ' / ' +
+              (k.adres_ilce || '—') +
+              ' / ' +
+              (k.adres_mahalle || '—') +
+              ' / ' +
+              (k.adres_cadde || '—') +
+              ' / ' +
+              (k.adres_sokak || '—')
+          );
+          html += kvRow('Site / apartman', k.adres_site_apartman || '—');
+          html += kvRow('Bina / Kat / Daire', [k.adres_bina_no, k.adres_kat, k.adres_daire].filter(Boolean).join(' · ') || '—');
+          html += '</div>';
+        } else {
+          html += '<p style="margin:0;font-size:9.5pt;color:#6b7280">Detay formu doldurulmadığı için adres bilgisi yok.</p>';
+        }
+
+        html += '<h2 class="blok-baslik">Kardeş Bilgileri</h2>';
+        if (k) {
+          var arr = kardesArr;
+          var ks = k.kardes_sayisi != null ? Number(k.kardes_sayisi) : 0;
+          if (arr.length) {
+            html += '<table class="mini-table"><thead><tr><th>Ad</th><th>Yaş</th><th>Kursta mı</th></tr></thead><tbody>';
+            var maxR = Math.min(arr.length, 10);
+            for (var i = 0; i < maxR; i++) {
+              var it = arr[i] || {};
+              var ys = it.yas != null && it.yas !== '' ? String(it.yas) : '—';
+              html += '<tr><td>' + esc(it.ad || '—') + '</td><td>' + esc(ys) + '</td><td>' + (it.kursta_mi ? 'Evet' : 'Hayır') + '</td></tr>';
+            }
+            html += '</tbody></table>';
+            if (arr.length > 10) {
+              html +=
+                '<p style="margin:4px 0 0;font-size:8.5pt;color:#6b7280">+' +
+                (arr.length - 10) +
+                ' kardeş kaydı daha (tam liste dijital ortamda).</p>';
+            }
+          } else {
+            html +=
+              '<p style="margin:0;font-size:9.5pt;color:#6b7280">Satır girilmemiş. Bildirilen kardeş sayısı: ' +
+              esc(String(ks || 0)) +
+              '.</p>';
+          }
+        } else {
+          html += '<p style="margin:0;font-size:9.5pt;color:#6b7280">Detay formu olmadığı için kardeş tablosu yok.</p>';
+        }
+
+        html += '</div>';
+        html += '</div>';
+        html += '<div class="print-flex-fill" aria-hidden="true"></div>';
+        html += '<footer class="print-footer">';
+        html += '<img src="../img/logo.png" alt="" width="44" height="44" />';
+        html +=
+          '<div class="alt-metin"><span class="alt-metin-satir1">Karaağaç Fatih</span><span class="alt-metin-satir2">Daimi Tekamülaltı</span></div>';
+        html += '</footer>';
+
+        html += '</div>';
+        root.innerHTML = html;
+      }
+
+      document.addEventListener('DOMContentLoaded', function () {
+        var btn = document.getElementById('btnYazdir');
+        if (btn) {
+          btn.addEventListener('click', function () {
+            window.print();
+          });
+        }
+        var params = new URLSearchParams(window.location.search);
+        var id = params.get('id');
+        var root = document.getElementById('mainRoot');
+        if (!uuidOk(id)) {
+          if (root) root.innerHTML = '<div class="bos-icerik">Geçersiz veya eksik talebe bağlantısı.</div>';
+          return;
+        }
+        function waitSb(cb) {
+          if (window.supabase && window.supabase.from) cb();
+          else setTimeout(function () { waitSb(cb); }, 150);
+        }
+        waitSb(function () {
+          var sb = window.supabase;
+          var selT = 'id, ad, soyad, sinif, dogum_tarihi, anne_adi, baba_adi, anne_meslek, baba_meslek, durum';
+          var selK =
+            'ad, soyad, sinif, dogum_tarihi, memleket, tc_kimlik_no, adres_il, adres_ilce, adres_mahalle, adres_cadde, adres_sokak, adres_site_apartman, adres_bina_no, adres_kat, adres_daire, anne_adi, anne_meslek, anne_telefon, anne_durum, baba_adi, baba_meslek, baba_telefon, baba_durum, anne_baba_beraber, aile_maddi_durum, kardes_sayisi, kardesler, profil_foto_url';
+          Promise.all([
+            sb.from('nehari_talebeler').select(selT).eq('id', id).maybeSingle(),
+            sb.from('nehari_talebe_kayit_formu').select(selK).eq('talebe_id', id).order('created_at', { ascending: false }).limit(1).maybeSingle()
+          ])
+            .then(function (results) {
+              var tRes = results[0];
+              var kRes = results[1];
+              if (tRes.error) throw tRes.error;
+              if (kRes.error) throw kRes.error;
+              var t = tRes.data;
+              if (!t) {
+                if (root) root.innerHTML = '<div class="bos-icerik">Talebe bulunamadı veya erişim yok.</div>';
+                return;
+              }
+              var k = kRes.data || null;
+              render(t, k);
+            })
+            .catch(function (e) {
+              var m = e && e.message ? e.message : String(e);
+              if (root) root.innerHTML = '<div class="bos-icerik">Veri yüklenemedi. ' + esc(m) + '</div>';
+              if (m.indexOf('permission') >= 0 || m.indexOf('RLS') >= 0) {
+                toast('warning', 'Erişim', 'Yetkiniz olmayabilir (RLS).');
+              }
+            });
+        });
+      });
+    })();
+  </script>
+</body>
+</html>
