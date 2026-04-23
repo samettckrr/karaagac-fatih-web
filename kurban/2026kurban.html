@@ -517,7 +517,21 @@
     .reminder-modal .reminder-body { font-size: 0.9rem; line-height: 1.6; color: var(--text); }
     .reminder-modal .reminder-body p { margin: 0 0 12px; }
     .reminder-modal .reminder-body p:last-child { margin-bottom: 0; }
-    .app-promo-modal .modal-sheet { max-width: 420px; }
+    /* App tanıtım modalları: tam ekran tıklanabilir backdrop (flex'te e.target kaçırılmasını önler) */
+    .modal-overlay.app-promo-modal {
+      z-index: 8000;
+    }
+    .app-promo-modal .modal-app-backdrop {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .app-promo-modal .modal-sheet {
+      position: relative;
+      z-index: 1;
+      max-width: 420px;
+    }
     .app-promo-modal .app-promo-body { font-size: 0.9rem; line-height: 1.55; color: var(--text); }
     .app-promo-modal .app-promo-body p { margin: 0 0 12px; }
     .app-promo-modal .app-promo-body p:last-child { margin-bottom: 0; }
@@ -2125,6 +2139,7 @@
 
   <!-- Mobil uygulama tanıtımı (her sayfa yüklemesinde) -->
   <div id="modalMobilApp" class="modal-overlay reminder-modal app-promo-modal" role="dialog" aria-modal="true" aria-labelledby="modalMobilAppTitle">
+    <div class="modal-app-backdrop" id="modalMobilAppBackdrop" aria-hidden="true"></div>
     <div class="modal-sheet">
       <div class="modal-handle" aria-hidden="true"></div>
       <div class="modal-header">
@@ -2146,6 +2161,26 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" id="btnMobilAppSonra" style="flex: 1;">Şimdilik devam et</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- İlk indir modalı kapatılınca: web kullanım bilgisi + tekrar indir modalına yönlendirme -->
+  <div id="modalWebKullanimBilgi" class="modal-overlay reminder-modal app-promo-modal" role="dialog" aria-modal="true" aria-labelledby="modalWebKullanimBilgiTitle">
+    <div class="modal-app-backdrop" id="modalWebKullanimBackdrop" aria-hidden="true"></div>
+    <div class="modal-sheet">
+      <div class="modal-handle" aria-hidden="true"></div>
+      <div class="modal-header">
+        <h2 id="modalWebKullanimBilgiTitle">Bilgi</h2>
+        <button type="button" class="modal-close" id="modalWebKullanimBilgiKapat" aria-label="Kapat">×</button>
+      </div>
+      <div class="modal-scroll">
+        <div class="app-promo-body">
+          <p>Web sitesi şu an için kullanım dışıdır. Lütfen App Store'dan en güncel sürümü veya APK sürümünü telefonunuza indirerek kullanabilirsiniz.</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="btnWebKullanimIndir" style="flex: 1;">İndir</button>
       </div>
     </div>
   </div>
@@ -2321,7 +2356,7 @@
   });
 
   // Modal aç/kapa (arka plan kaydırma kilidi, Escape, odak)
-  var modalOrder = ['modalEtliHatirlatma', 'modalEtliBilgi', 'modalEtli', 'modalBagis', 'modalMobilApp'];
+  var modalOrder = ['modalEtliHatirlatma', 'modalEtliBilgi', 'modalEtli', 'modalBagis', 'modalMobilApp', 'modalWebKullanimBilgi'];
   function syncBodyModalLock() {
     var any = document.querySelector('.modal-overlay.open');
     if (any) document.body.classList.add('modal-open');
@@ -2348,11 +2383,23 @@
       try { el._returnFocus.focus(); } catch (err) {}
     }
   }
+  function webKullanimBilgisindenMobilPromoyaDon() {
+    closeModal('modalWebKullanimBilgi');
+    openModal('modalMobilApp');
+  }
   function closeTopModal() {
     for (var i = 0; i < modalOrder.length; i++) {
-      var m = document.getElementById(modalOrder[i]);
+      var id = modalOrder[i];
+      var m = document.getElementById(id);
       if (m && m.classList.contains('open')) {
-        closeModal(modalOrder[i]);
+        if (id === 'modalMobilApp') {
+          closeModal('modalMobilApp');
+          openModal('modalWebKullanimBilgi');
+        } else if (id === 'modalWebKullanimBilgi') {
+          webKullanimBilgisindenMobilPromoyaDon();
+        } else {
+          closeModal(id);
+        }
         return true;
       }
     }
@@ -2414,7 +2461,6 @@
   });
 
   (function setupMobilAppModal() {
-    var overlay = document.getElementById('modalMobilApp');
     var waBtn = document.getElementById('btnMobilAppAndroid');
     if (waBtn) {
       var cc = String(WHATSAPP_ANDROID_ULKE_KODU || '').replace(/\D/g, '');
@@ -2423,12 +2469,23 @@
       var tel = cc + num;
       waBtn.href = 'https://wa.me/' + tel + '?text=' + encodeURIComponent(WHATSAPP_ANDROID_MESAJ || '');
     }
-    function kapatMobilApp() { closeModal('modalMobilApp'); }
+    function kapatMobilAppVeBilgi() {
+      closeModal('modalMobilApp');
+      openModal('modalWebKullanimBilgi');
+    }
     var kapat = document.getElementById('modalMobilAppKapat');
     var sonra = document.getElementById('btnMobilAppSonra');
-    if (kapat) kapat.addEventListener('click', kapatMobilApp);
-    if (sonra) sonra.addEventListener('click', kapatMobilApp);
-    if (overlay) overlay.addEventListener('click', function (e) { if (e.target === overlay) kapatMobilApp(); });
+    var backdrop = document.getElementById('modalMobilAppBackdrop');
+    if (kapat) kapat.addEventListener('click', kapatMobilAppVeBilgi);
+    if (sonra) sonra.addEventListener('click', kapatMobilAppVeBilgi);
+    if (backdrop) backdrop.addEventListener('click', kapatMobilAppVeBilgi);
+  })();
+
+  (function setupWebKullanimBilgiModal() {
+    var kapat = document.getElementById('modalWebKullanimBilgiKapat');
+    var btnIndir = document.getElementById('btnWebKullanimIndir');
+    if (kapat) kapat.addEventListener('click', webKullanimBilgisindenMobilPromoyaDon);
+    if (btnIndir) btnIndir.addEventListener('click', webKullanimBilgisindenMobilPromoyaDon);
   })();
 
   var duyuruBandi = document.getElementById('duyuruBandi');
