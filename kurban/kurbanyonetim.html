@@ -157,6 +157,21 @@
     .badge-chip.buyukbas { background: rgba(59, 130, 246, 0.2); color: #2563eb; }
     .badge-chip.aktif { background: rgba(16, 185, 129, 0.2); color: #059669; }
     .badge-chip.pasif { background: rgba(100, 116, 139, 0.2); color: #64748b; }
+    /* Bağış Hisse sekmesi — ana tablo metni daha kompakt */
+    #tab-bagis #tblBagis thead th {
+      font-size: 10px;
+      padding: 6px 8px;
+      line-height: 1.3;
+    }
+    #tab-bagis #tblBagis tbody td {
+      font-size: 11px;
+      padding: 6px 8px;
+      line-height: 1.3;
+    }
+    #tab-bagis #tblBagis tbody td .badge-chip {
+      font-size: 9px;
+      padding: 2px 5px;
+    }
     /* Çift tıklama / işlem halinde buton */
     .btn.btn-busy { position: relative; pointer-events: none; opacity: 0.88; cursor: wait; }
     .btn.btn-busy .btn-busy-spin {
@@ -639,9 +654,12 @@
                 <th>Telefon</th>
                 <th>Personel</th>
                 <th>Adet</th>
+                <th>Fiyat</th>
+                <th>Tahsilat</th>
+                <th>Kalan</th>
                 <th>Durum</th>
                 <th>Açıklama</th>
-                <th style="width:140px">İşlemler</th>
+                <th style="width:200px">İşlemler</th>
               </tr>
             </thead>
             <tbody id="tbodyBagis"></tbody>
@@ -944,6 +962,11 @@
           <label>Açıklama</label>
           <textarea id="bagisAciklama" rows="2"></textarea>
         </div>
+        <div class="form-group">
+          <label>Hisse Fiyatı (₺)</label>
+          <input type="number" id="bagisFiyat" min="0" step="0.01" value="14000" />
+          <p style="font-size:12px;color:var(--muted);margin:6px 0 0;line-height:1.45">2026 kurban yılı için varsayılan 14.000 ₺. Kayıt başına fiyattır; adet kadar çarpılmaz.</p>
+        </div>
         <div class="actions">
           <button type="button" class="btn btn-ghost" onclick="closeBagisModal()">İptal</button>
           <button type="submit" class="btn btn-primary">Kaydet</button>
@@ -1237,6 +1260,44 @@
     </div>
   </div>
 
+  <!-- Modal: Bağış Hisse Tahsilat -->
+  <div class="modal" id="modalBagisTahsilat">
+    <div class="sheet">
+      <h3 id="modalBagisTahsilatTitle">Tahsilat</h3>
+      <p id="modalBagisTahsilatMeta" style="font-size:13px;color:var(--muted);margin:-8px 0 12px;line-height:1.4"></p>
+      <div id="tahsilatMevcutListesi" style="margin-bottom:16px"></div>
+      <hr style="border:none;border-top:1px solid var(--stroke);margin:0 0 16px">
+      <p style="font-size:14px;font-weight:700;margin:0 0 12px">Yeni Tahsilat Ekle</p>
+      <form id="formBagisTahsilat" class="form-grid">
+        <input type="hidden" id="tahsilatHedefHisseId" />
+        <div class="form-group" id="tahsilatHisseSecWrap" style="display:none">
+          <label>Hisse Seç *</label>
+          <select id="tahsilatHisseSec" style="width:100%;height:42px;border-radius:10px;border:1px solid var(--stroke);padding:0 12px;font:inherit;font-size:14px;background:var(--card);color:var(--ink)"></select>
+        </div>
+        <div class="form-group">
+          <label>Tutar (₺) *</label>
+          <input type="number" id="tahsilatTutar" min="0" step="0.01" required placeholder="Örn. 14000" />
+        </div>
+        <div class="form-group">
+          <label>Tarih *</label>
+          <input type="date" id="tahsilatTarih" required />
+        </div>
+        <div class="form-group">
+          <label>Ödeyen (opsiyonel)</label>
+          <input type="text" id="tahsilatOdeyen" placeholder="Ödemeyi yapan kişi adı" />
+        </div>
+        <div class="form-group">
+          <label>Açıklama (opsiyonel)</label>
+          <textarea id="tahsilatAciklamaInput" rows="2"></textarea>
+        </div>
+        <div class="actions">
+          <button type="button" class="btn btn-ghost" id="btnTahsilatIptal">İptal</button>
+          <button type="submit" class="btn btn-success">+ Tahsilat Ekle</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
 (function () {
   const getSupabase = () => window.supabase;
@@ -1399,6 +1460,7 @@
   }
 
   let bagisList = [], etliList = [], onkayitList = [], hedefList = [];
+  let bagisTahsilatMap = {}; // hisse_id (string) → [tahsilat kayıtları]
   /** `kurban_id` (uuid string) → `karaagac_kurban.kesim_sirasi` — Etli tablosu «Kurban» sütunu */
   let etliKurbanKesimById = {};
 
@@ -1447,6 +1509,7 @@
     return personelMap[row.created_by_uid] || row.personel || '–';
   }
   function paketDetaySatirlari(records, tur) {
+    const fs = tur === 'bagis' ? '10px' : '12px';
     return (records || []).map(function (x) {
       const personelAd = getPersonelAd(x);
       const ad = tur === 'bagis' ? (x.ad_soyad || '–') : (x.hisedar_ad_soyad || x.hissedar_ad_soyad || '–');
@@ -1457,15 +1520,15 @@
       const etliAcik = tur === 'etli'
         ? `<div style="margin-top:6px;font-size:12px;line-height:1.4;word-break:break-word"><span style="color:var(--muted)">Açıklama:</span> ${esc((x.aciklama || '').trim() || '—')}</div>`
         : '';
-      return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:#fff;margin-top:6px">
-        <div style="font-size:12px;line-height:1.4">
+      return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--stroke);border-radius:8px;background:var(--card);margin-top:6px">
+        <div style="font-size:${fs};line-height:1.4">
           <div><b>${esc(ad)}</b> <span style="color:var(--muted)">(${esc(x.telefon || '–')})</span>${grup}</div>
           <div style="color:var(--muted)">Tarih: ${esc(fmtDate(x.created_at))} | Personel: ${esc(personelAd)} | Adet: ${adet}</div>
           ${etliAcik}
         </div>
         <div style="display:flex;gap:6px;white-space:nowrap">
-          <button type="button" class="btn btn-ghost" style="padding:4px 8px;font-size:12px" onclick="${editFn}('${x.id}')">Düzenle</button>
-          <button type="button" class="btn btn-danger" style="padding:4px 8px;font-size:12px" onclick="${delFn}('${x.id}')">Sil</button>
+          <button type="button" class="btn btn-ghost" style="padding:4px 8px;font-size:${fs}" onclick="${editFn}('${x.id}')">Düzenle</button>
+          <button type="button" class="btn btn-danger" style="padding:4px 8px;font-size:${fs}" onclick="${delFn}('${x.id}')">Sil</button>
         </div>
       </div>`;
     }).join('');
@@ -1534,6 +1597,10 @@
     };
   }
 
+  function fmtTry2(n) {
+    if (n == null || n === '' || Number.isNaN(Number(n))) return '–';
+    return Number(n).toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  }
   function renderBagisTable() {
     const tbody = document.getElementById('tbodyBagis');
     const emptyEl = document.getElementById('bagisEmpty');
@@ -1589,18 +1656,36 @@
       const detayId = `bagisPaketDetay_${String(r.id || '').replace(/[^a-zA-Z0-9_-]/g, '')}`;
       const topluIds = (r.records || []).map(x => x.id).filter(Boolean);
       const encodedTopluIds = encodeURIComponent(JSON.stringify(topluIds));
+      const encodedTahsilatIds = encodeURIComponent(JSON.stringify(topluIds));
+      // Fiyat / tahsilat / kalan hesapla
+      const grupFiyat = (r.records || []).reduce((s, rec) => s + (Number(rec.fiyat) || 0), 0);
+      const grupTahsilat = (r.records || []).reduce((s, rec) => {
+        return s + (bagisTahsilatMap[String(rec.id)] || []).reduce((ts, th) => ts + (Number(th.tutar) || 0), 0);
+      }, 0);
+      const grupKalan = grupFiyat - grupTahsilat;
+      const fiyatStr = grupFiyat > 0 ? fmtTry2(grupFiyat) + ' ₺' : '–';
+      const tahsilatStr = grupTahsilat > 0 ? fmtTry2(grupTahsilat) + ' ₺' : '—';
+      let kalanHtml;
+      if (grupFiyat <= 0) {
+        kalanHtml = '–';
+      } else if (grupKalan <= 0) {
+        kalanHtml = `<span style="color:#047857;font-weight:700">${fmtTry2(grupKalan)} ₺</span>`;
+      } else {
+        kalanHtml = `<span style="color:#ef4444;font-weight:700">${fmtTry2(grupKalan)} ₺</span>`;
+      }
+      const tahsilatBtn = `<button type="button" class="btn btn-ghost" style="padding:3px 7px;font-size:10px" onclick="window.openTahsilatModal('${encodedTahsilatIds}')">💰 Tahsilat</button>`;
       const islemHtml = isTekil
-        ? `<button type="button" class="btn btn-ghost" style="padding:4px 8px;font-size:12px" onclick="window.editBagis('${r.id}')">Düzenle</button> <button type="button" class="btn btn-danger" style="padding:4px 8px;font-size:12px" onclick="window.silBagis('${r.id}')">Sil</button>`
-        : `<button type="button" class="btn btn-ghost" data-detay-btn="${detayId}" style="padding:4px 8px;font-size:12px" onclick="window.paketDetayAcKapa('${detayId}')">Detayı Aç</button> <button type="button" class="btn btn-primary" style="padding:4px 8px;font-size:12px" onclick="window.editBagisToplu('${encodedTopluIds}')">Çoğul Düzenle</button>`;
-      tr.innerHTML = `<td>${esc(fmtDate(r.created_at))}</td><td>${esc(r.ad_soyad)}</td><td>${esc(r.telefon)}</td><td>${esc(personelAd)}</td><td>${r.adet || 1}</td><td><span class="badge-chip bagis">${r.durum === 'kesildi' ? 'Kesildi' : 'Kayıt Alındı'}</span></td><td>${esc((r.aciklama || '').slice(0, 40))}${(r.aciklama || '').length > 40 ? '…' : ''}</td><td>${islemHtml}</td>`;
+        ? `${tahsilatBtn} <button type="button" class="btn btn-ghost" style="padding:3px 7px;font-size:10px" onclick="window.editBagis('${r.id}')">Düzenle</button> <button type="button" class="btn btn-danger" style="padding:3px 7px;font-size:10px" onclick="window.silBagis('${r.id}')">Sil</button>`
+        : `${tahsilatBtn} <button type="button" class="btn btn-ghost" data-detay-btn="${detayId}" style="padding:3px 7px;font-size:10px" onclick="window.paketDetayAcKapa('${detayId}')">Detayı Aç</button> <button type="button" class="btn btn-primary" style="padding:3px 7px;font-size:10px" onclick="window.editBagisToplu('${encodedTopluIds}')">Çoğul Düzenle</button>`;
+      tr.innerHTML = `<td>${esc(fmtDate(r.created_at))}</td><td>${esc(r.ad_soyad)}</td><td>${esc(r.telefon)}</td><td>${esc(personelAd)}</td><td>${r.adet || 1}</td><td style="white-space:nowrap;font-variant-numeric:tabular-nums">${fiyatStr}</td><td style="white-space:nowrap;font-variant-numeric:tabular-nums">${tahsilatStr}</td><td style="white-space:nowrap;font-variant-numeric:tabular-nums">${kalanHtml}</td><td><span class="badge-chip bagis">${r.durum === 'kesildi' ? 'Kesildi' : 'Kayıt Alındı'}</span></td><td>${esc((r.aciklama || '').slice(0, 40))}${(r.aciklama || '').length > 40 ? '…' : ''}</td><td style="white-space:nowrap">${islemHtml}</td>`;
       tbody.appendChild(tr);
       if (!isTekil) {
         const detayTr = document.createElement('tr');
         detayTr.id = detayId;
         detayTr.style.display = 'none';
-        detayTr.innerHTML = `<td colspan="8" style="background:#f8fafc;border-top:0">
+        detayTr.innerHTML = `<td colspan="11" style="background:var(--surface);border-top:0">
           <div style="padding:6px 4px 8px">
-            <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Tekil kayıtlar (${r.records.length})</div>
+            <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Tekil kayıtlar (${r.records.length})</div>
             ${paketDetaySatirlari(r.records, 'bagis')}
           </div>
         </td>`;
@@ -1748,7 +1833,7 @@
     const emptyEl = document.getElementById('bagisEmpty');
     const yilFiltre = document.getElementById('bagisYilFiltre')?.value || '';
     if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="8">Yükleniyor…</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11">Yükleniyor…</td></tr>';
     try {
       let q = sb.from('kurban_2026_bagis_hisse').select('*').order('created_at', { ascending: false });
       if (yilFiltre) q = q.eq('yil', parseInt(yilFiltre, 10));
@@ -1756,9 +1841,10 @@
       if (error) throw error;
       bagisList = data || [];
       await loadPersonelMap();
+      await loadBagisTahsilat(yilFiltre);
       renderBagisTable();
     } catch (e) {
-      tbody.innerHTML = `<tr><td colspan="8">Hata: ${esc(e.message)}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="11">Hata: ${esc(e.message)}</td></tr>`;
     }
   }
 
@@ -1782,6 +1868,21 @@
     } catch (e) {
       tbody.innerHTML = `<tr><td colspan="9">Hata: ${esc(e.message)}</td></tr>`;
     }
+  }
+
+  async function loadBagisTahsilat(yilFiltre) {
+    const sb = getSupabase();
+    if (!sb) return;
+    let q = sb.from('kurban_2026_bagis_tahsilat').select('*').order('tarih', { ascending: true });
+    if (yilFiltre) q = q.eq('yil', parseInt(yilFiltre, 10));
+    const { data } = await q;
+    const map = {};
+    (data || []).forEach(t => {
+      const key = String(t.hisse_id);
+      if (!map[key]) map[key] = [];
+      map[key].push(t);
+    });
+    bagisTahsilatMap = map;
   }
 
   function renderOnkayitTable() {
@@ -3546,6 +3647,8 @@
         document.getElementById('bagisDurum').value = r.durum || 'kayit_alindi';
         document.getElementById('bagisAciklama').value = r.aciklama || '';
         document.getElementById('bagisId').value = r.id;
+        const fiyatEl = document.getElementById('bagisFiyat');
+        if (fiyatEl) fiyatEl.value = r.fiyat != null && r.fiyat > 1 ? r.fiyat : 14000;
         if (sel && r.yil) sel.value = String(r.yil);
         await populatePersonelSelect('bagisPersonel', r.created_by_uid || '');
       }
@@ -3574,7 +3677,7 @@
       telefon: document.getElementById('bagisTelefon').value.trim().replace(/\D/g, '').replace(/^0/, ''),
       durum: document.getElementById('bagisDurum').value || 'kayit_alindi',
       aciklama: document.getElementById('bagisAciklama').value.trim() || null,
-      fiyat: 1,
+      fiyat: parseFloat(document.getElementById('bagisFiyat')?.value) || 14000,
       yil: yil,
       created_by_uid: document.getElementById('bagisPersonel')?.value || null
     };
@@ -3610,6 +3713,8 @@
       }
       closeBagisModal();
       await loadPersonelMap();
+      const byFiltre = document.getElementById('bagisYilFiltre')?.value || '';
+      await loadBagisTahsilat(byFiltre);
       await withTableUiPreserved('tblBagis', 'bagisPaketDetay_', () => renderBagisTable());
       loadOzet();
     } catch (err) {
@@ -3642,6 +3747,184 @@
       showToast('error', 'Hata', err.message || 'Silinemedi.');
     }
   };
+
+  // ——— Bağış Tahsilat ———
+  let tahsilatModalHisseIds = [];
+
+  function renderTahsilatMevcutListesi() {
+    const el = document.getElementById('tahsilatMevcutListesi');
+    if (!el) return;
+    const kayitlar = tahsilatModalHisseIds.flatMap(hid => (bagisTahsilatMap[String(hid)] || []).map(t => ({ ...t, _hid: hid })));
+    kayitlar.sort((a, b) => String(a.tarih || '').localeCompare(String(b.tarih || '')));
+    if (!kayitlar.length) {
+      el.innerHTML = '<p style="font-size:12px;color:var(--muted);margin:0">Henüz tahsilat kaydı yok.</p>';
+      return;
+    }
+    const toplam = kayitlar.reduce((s, t) => s + (Number(t.tutar) || 0), 0);
+    let html = `<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">Mevcut Tahsilatlar — Toplam: <strong style="color:var(--ink)">${toplam.toLocaleString('tr-TR')} ₺</strong></div>`;
+    html += '<div style="display:flex;flex-direction:column;gap:6px">';
+    kayitlar.forEach(t => {
+      const tarihStr = t.tarih ? new Date(t.tarih).toLocaleDateString('tr-TR') : '–';
+      html += `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 8px;border:1px solid var(--stroke);border-radius:10px;background:var(--surface)">
+        <div style="font-size:12px;line-height:1.35">
+          <strong>${(Number(t.tutar) || 0).toLocaleString('tr-TR')} ₺</strong>
+          <span style="color:var(--muted);margin-left:8px">${esc(tarihStr)}</span>
+          ${t.odeyen ? `<span style="color:var(--muted);margin-left:6px">• ${esc(t.odeyen)}</span>` : ''}
+          ${t.aciklama ? `<div style="color:var(--muted);font-size:11px;margin-top:2px">${esc(t.aciklama)}</div>` : ''}
+        </div>
+        <button type="button" class="btn btn-danger" style="padding:3px 7px;font-size:10px;flex-shrink:0" onclick="window.silBagisTahsilat('${t.id}','${t._hid}')">Sil</button>
+      </div>`;
+    });
+    html += '</div>';
+    el.innerHTML = html;
+  }
+
+  window.openTahsilatModal = async function (encodedIds) {
+    let hisseIds = [];
+    try { hisseIds = JSON.parse(decodeURIComponent(encodedIds || '%5B%5D')); } catch (e) {}
+    if (!Array.isArray(hisseIds) || !hisseIds.length) return;
+    tahsilatModalHisseIds = hisseIds.map(String);
+    // Tahsilat verisini taze çek
+    const sb = getSupabase();
+    if (sb) {
+      const { data } = await sb.from('kurban_2026_bagis_tahsilat').select('*').in('hisse_id', tahsilatModalHisseIds).order('tarih', { ascending: true });
+      (data || []).forEach(t => {
+        const key = String(t.hisse_id);
+        if (!bagisTahsilatMap[key]) bagisTahsilatMap[key] = [];
+        // güncelle: önce eskiyi sil
+      });
+      // haritayı bu hisse'ler için sıfırla
+      tahsilatModalHisseIds.forEach(hid => { bagisTahsilatMap[hid] = []; });
+      (data || []).forEach(t => {
+        const key = String(t.hisse_id);
+        if (!bagisTahsilatMap[key]) bagisTahsilatMap[key] = [];
+        bagisTahsilatMap[key].push(t);
+      });
+    }
+    // Başlık
+    const firstRecord = bagisList.find(x => String(x.id) === String(hisseIds[0]));
+    document.getElementById('modalBagisTahsilatTitle').textContent = 'Tahsilat — ' + esc(firstRecord?.ad_soyad || '');
+    const grupFiyat = hisseIds.reduce((s, hid) => {
+      const r = bagisList.find(x => String(x.id) === String(hid));
+      return s + (r ? Number(r.fiyat) || 0 : 0);
+    }, 0);
+    const grupTahsilat = hisseIds.reduce((s, hid) => s + (bagisTahsilatMap[String(hid)] || []).reduce((ts, t) => ts + (Number(t.tutar) || 0), 0), 0);
+    const kalan = grupFiyat - grupTahsilat;
+    document.getElementById('modalBagisTahsilatMeta').textContent =
+      `${hisseIds.length} hisse · Toplam fiyat: ${grupFiyat.toLocaleString('tr-TR')} ₺ · Tahsilat: ${grupTahsilat.toLocaleString('tr-TR')} ₺ · Kalan: ${kalan.toLocaleString('tr-TR')} ₺`;
+    // Hisse seçici (birden fazla hisse varsa)
+    const secWrap = document.getElementById('tahsilatHisseSecWrap');
+    const secSel = document.getElementById('tahsilatHisseSec');
+    if (hisseIds.length > 1) {
+      secSel.innerHTML = '';
+      hisseIds.forEach(hid => {
+        const r = bagisList.find(x => String(x.id) === String(hid));
+        const opt = document.createElement('option');
+        opt.value = String(hid);
+        opt.textContent = esc(r?.ad_soyad || hid) + (r?.fiyat ? ` — ${Number(r.fiyat).toLocaleString('tr-TR')} ₺` : '');
+        secSel.appendChild(opt);
+      });
+      secWrap.style.display = '';
+      document.getElementById('tahsilatHedefHisseId').value = '';
+    } else {
+      secWrap.style.display = 'none';
+      document.getElementById('tahsilatHedefHisseId').value = String(hisseIds[0]);
+    }
+    // Form sıfırla
+    document.getElementById('formBagisTahsilat').reset();
+    document.getElementById('tahsilatTarih').value = new Date().toISOString().slice(0, 10);
+    renderTahsilatMevcutListesi();
+    openModalEl('modalBagisTahsilat');
+  };
+
+  window.silBagisTahsilat = async function (tahsilatId, hisseId) {
+    if (!confirm('Bu tahsilat kaydını silmek istediğinize emin misiniz?')) return;
+    const sb = getSupabase();
+    if (!sb) return;
+    try {
+      const { error } = await sb.from('kurban_2026_bagis_tahsilat').delete().eq('id', tahsilatId);
+      if (error) throw error;
+      const hkey = String(hisseId);
+      if (bagisTahsilatMap[hkey]) {
+        bagisTahsilatMap[hkey] = bagisTahsilatMap[hkey].filter(t => String(t.id) !== String(tahsilatId));
+      }
+      renderTahsilatMevcutListesi();
+      // Meta güncelle
+      const grupFiyat = tahsilatModalHisseIds.reduce((s, hid) => {
+        const r = bagisList.find(x => String(x.id) === String(hid));
+        return s + (r ? Number(r.fiyat) || 0 : 0);
+      }, 0);
+      const grupTahsilat = tahsilatModalHisseIds.reduce((s, hid) => s + (bagisTahsilatMap[String(hid)] || []).reduce((ts, t) => ts + (Number(t.tutar) || 0), 0), 0);
+      document.getElementById('modalBagisTahsilatMeta').textContent =
+        `${tahsilatModalHisseIds.length} hisse · Toplam fiyat: ${grupFiyat.toLocaleString('tr-TR')} ₺ · Tahsilat: ${grupTahsilat.toLocaleString('tr-TR')} ₺ · Kalan: ${(grupFiyat - grupTahsilat).toLocaleString('tr-TR')} ₺`;
+      showToast('success', 'Silindi', 'Tahsilat kaydı kaldırıldı.');
+      await withTableUiPreserved('tblBagis', 'bagisPaketDetay_', () => renderBagisTable());
+    } catch (err) {
+      showToast('error', 'Hata', err.message || 'Silinemedi.');
+    }
+  };
+
+  document.getElementById('formBagisTahsilat')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    if (form.dataset.submitting === '1') return;
+    const sb = getSupabase();
+    if (!sb) return;
+    // Hedef hisse_id
+    const secSel = document.getElementById('tahsilatHisseSec');
+    const hidEl = document.getElementById('tahsilatHedefHisseId');
+    const hisseId = (tahsilatModalHisseIds.length > 1 ? secSel?.value : hidEl?.value) || tahsilatModalHisseIds[0];
+    if (!hisseId) { showToast('error', 'Hisse', 'Hisse seçin.'); return; }
+    const tutar = parseFloat(document.getElementById('tahsilatTutar').value);
+    const tarih = document.getElementById('tahsilatTarih').value;
+    const odeyen = (document.getElementById('tahsilatOdeyen').value || '').trim() || null;
+    const aciklama = (document.getElementById('tahsilatAciklamaInput').value || '').trim() || null;
+    if (!tutar || tutar <= 0) { showToast('error', 'Tutar', 'Geçerli bir tutar girin.'); return; }
+    if (!tarih) { showToast('error', 'Tarih', 'Tarih zorunludur.'); return; }
+    const hisseRow = bagisList.find(x => String(x.id) === String(hisseId));
+    const yil = hisseRow?.yil || getAktifYil();
+    const { data: { user } } = await sb.auth.getUser();
+    const row = {
+      hisse_id: hisseId,
+      yil: Number(yil),
+      tutar,
+      tarih,
+      odeyen,
+      aciklama,
+      created_by_uid: user?.id || null
+    };
+    form.dataset.submitting = '1';
+    btnSetBusy(submitBtn, true, btnBusyMarkup('Kaydediliyor…'));
+    try {
+      const { data: newRow, error } = await sb.from('kurban_2026_bagis_tahsilat').insert(row).select('*').single();
+      if (error) throw error;
+      const hkey = String(hisseId);
+      if (!bagisTahsilatMap[hkey]) bagisTahsilatMap[hkey] = [];
+      bagisTahsilatMap[hkey].push(newRow);
+      bagisTahsilatMap[hkey].sort((a, b) => String(a.tarih || '').localeCompare(String(b.tarih || '')));
+      form.reset();
+      document.getElementById('tahsilatTarih').value = new Date().toISOString().slice(0, 10);
+      renderTahsilatMevcutListesi();
+      // Meta güncelle
+      const grupFiyat = tahsilatModalHisseIds.reduce((s, hid) => {
+        const r = bagisList.find(x => String(x.id) === String(hid));
+        return s + (r ? Number(r.fiyat) || 0 : 0);
+      }, 0);
+      const grupTahsilat = tahsilatModalHisseIds.reduce((s, hid) => s + (bagisTahsilatMap[String(hid)] || []).reduce((ts, t) => ts + (Number(t.tutar) || 0), 0), 0);
+      document.getElementById('modalBagisTahsilatMeta').textContent =
+        `${tahsilatModalHisseIds.length} hisse · Toplam fiyat: ${grupFiyat.toLocaleString('tr-TR')} ₺ · Tahsilat: ${grupTahsilat.toLocaleString('tr-TR')} ₺ · Kalan: ${(grupFiyat - grupTahsilat).toLocaleString('tr-TR')} ₺`;
+      showToast('success', 'Eklendi', `${tutar.toLocaleString('tr-TR')} ₺ tahsilat kaydedildi.`);
+      await withTableUiPreserved('tblBagis', 'bagisPaketDetay_', () => renderBagisTable());
+    } catch (err) {
+      showToast('error', 'Hata', err.message || 'Kaydedilemedi.');
+    } finally {
+      form.dataset.submitting = '';
+      btnSetBusy(submitBtn, false);
+    }
+  });
+
+  document.getElementById('btnTahsilatIptal')?.addEventListener('click', () => closeModalEl('modalBagisTahsilat'));
 
   // Etli modal
   async function openEtliModal(id, options) {
