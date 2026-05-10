@@ -231,10 +231,10 @@
     }
 
     function renderKurbanPrint(ad, d) {
-      const YAZ_YIL = [2023, 2024, 2025];
+      const YAZ_YIL = [2023, 2024, 2025, 2026];
       let yilOzet = (d.yilOzet || []).filter(o => YAZ_YIL.includes(Number(o.yil)));
       if (!yilOzet.length && Array.isArray(d.yilOzet)) {
-        yilOzet = d.yilOzet.filter(o => Number(o.yil) <= 2025).slice(0, 3);
+        yilOzet = d.yilOzet.filter(o => Number(o.yil) <= 2026).slice(0, 4);
       }
       if (!yilOzet.length) {
         yilOzet = YAZ_YIL.map(y => ({
@@ -332,8 +332,8 @@
               </div>
             </div>
             <div class="charts-section">
-              <div class="chart-box"><span class="chart-title">Bağış kayıt — trend (2023–2025)</span><div class="cover-chart-wrap">${createTrendN(bagisSeri, yillar, 'gradKurbanB')}</div></div>
-              <div class="chart-box"><span class="chart-title">Etli hisse — trend (2023–2025)</span><div class="cover-chart-wrap">${createTrendN(etliSeri, yillar, 'gradKurbanE')}</div></div>
+              <div class="chart-box"><span class="chart-title">Bağış kayıt — trend (2023–2026)</span><div class="cover-chart-wrap">${createTrendN(bagisSeri, yillar, 'gradKurbanB')}</div></div>
+              <div class="chart-box"><span class="chart-title">Etli hisse — trend (2023–2026)</span><div class="cover-chart-wrap">${createTrendN(etliSeri, yillar, 'gradKurbanE')}</div></div>
             </div>
           </div>
           <div class="cover-bottom-section">
@@ -359,7 +359,7 @@
             }).join('');
             return `<tr><td class="col-name">${esc(row.ad)}</td>${cells}</tr>`;
           }).join('')
-        : `<tr><td colspan="10">Kayıt yok.</td></tr>`;
+        : `<tr><td colspan="13">Kayıt yok.</td></tr>`;
 
       const headE = YAZ_YIL.map(y => `<th colspan="3" class="col-sep">${y}</th>`).join('');
       const subE = YAZ_YIL.map(() => '<th class="sub-th col-sep">Hedef</th><th class="sub-th">Temin</th><th class="sub-th">Ulaşma</th>').join('');
@@ -372,7 +372,7 @@
             }).join('');
             return `<tr><td class="col-name">${esc(row.ad)}</td>${cells}</tr>`;
           }).join('')
-        : `<tr><td colspan="10">Kayıt yok.</td></tr>`;
+        : `<tr><td colspan="13">Kayıt yok.</td></tr>`;
 
       function inferDurumEtiket(r) {
         if (r.durum != null && String(r.durum).trim() !== '') return String(r.durum).trim();
@@ -381,10 +381,12 @@
           if (n != null && Number(n) > 0) return true;
           return !!r['t' + y];
         };
-        if (has(2023) && has(2024) && has(2025)) return 'Daimi';
+        const latestYil = YAZ_YIL[YAZ_YIL.length - 1];
+        const gecmisYillar = YAZ_YIL.slice(0, -1); // son yıl hariç geçmiş yıllar
+        if (gecmisYillar.every(y => has(y))) return 'Daimi';
         const past = YAZ_YIL.filter(has);
-        if (past.length === 1 && past[0] === 2025) return 'Yeni';
-        if (!has(2025) && (has(2023) || has(2024))) return 'Pasif';
+        if (past.length === 1 && past[0] === latestYil) return 'Yeni';
+        if (!has(latestYil) && gecmisYillar.some(y => has(y))) return 'Pasif';
         return 'Değişken';
       }
 
@@ -422,7 +424,7 @@
             return `<tr><td class="col-name">${esc(r.isim)}</td><td class="col-durum ${dcls}">${dur}</td>` +
               YAZ_YIL.map(y => `<td class="tik-cell">${matrisYilHucre(r, y)}</td>`).join('') + '</tr>';
           }).join('')
-        : `<tr><td colspan="5">Kayıt yok.</td></tr>`;
+        : `<tr><td colspan="${2 + YAZ_YIL.length}">Kayıt yok.</td></tr>`;
 
       const tableHtml = `
         <div class="summary-page">
@@ -456,6 +458,8 @@
 
       const bagis25 = Array.isArray(d.bagis2025Liste) ? d.bagis2025Liste : [];
       const etli25 = Array.isArray(d.etli2025Liste) ? d.etli2025Liste : [];
+      const bagis26 = Array.isArray(d.bagis2026Liste) ? d.bagis2026Liste : [];
+      const etli26 = Array.isArray(d.etli2026Liste) ? d.etli2026Liste : [];
 
       function normListeIsim(s) {
         return String(s || '').replace(/\s+/g, ' ').trim();
@@ -489,6 +493,8 @@
 
       const ozetBagis25 = aggregateBagis2025(bagis25);
       const ozetEtli25 = aggregateEtli2025(etli25);
+      const ozetBagis26 = aggregateBagis2025(bagis26);
+      const ozetEtli26 = aggregateEtli2025(etli26);
 
       const rows2025Bagis = ozetBagis25.length
         ? ozetBagis25.map(x =>
@@ -501,6 +507,18 @@
             `<tr><td class="col-2025-isim">${esc(x.isim)}</td><td class="col-2025-adet">${fmt(x.adet)}</td></tr>`
           ).join('')
         : '<tr><td colspan="2" class="muted-note">2025 yılı için etli hisse kaydı yok.</td></tr>';
+
+      const rows2026Bagis = ozetBagis26.length
+        ? ozetBagis26.map(x =>
+            `<tr><td class="col-2025-isim">${esc(x.isim)}</td><td class="col-2025-adet">${fmt(x.adet)}</td></tr>`
+          ).join('')
+        : '<tr><td colspan="2" class="muted-note">2026 yılı için bağış hisse kaydı yok.</td></tr>';
+
+      const rows2026Etli = ozetEtli26.length
+        ? ozetEtli26.map(x =>
+            `<tr><td class="col-2025-isim">${esc(x.isim)}</td><td class="col-2025-adet">${fmt(x.adet)}</td></tr>`
+          ).join('')
+        : '<tr><td colspan="2" class="muted-note">2026 yılı için etli hisse kaydı yok.</td></tr>';
 
       const section2025 = `
         <div class="summary-page y2025-page">
@@ -526,7 +544,31 @@
           </div>
         </div>`;
 
-      document.getElementById('raporContent').innerHTML = cover + tableHtml + section2025;
+      const section2026 = `
+        <div class="summary-page y2025-page">
+          <div class="page-title">2026 — Özet</div>
+          <p class="muted-note y2025-intro">Sol sütun: bağış hisse. Sağ sütun: etli hissedar. Aynı kişi tekrarları birleştirilmiştir.</p>
+          <div class="y2025-split">
+            <div class="y2025-col y2025-col-bagis">
+              <div class="y2025-col-title">Bağış hisse</div>
+              <p class="muted-note">Aynı ad soyad tek satır; adet = 2026 kayıt sayısı.</p>
+              <table class="bagisci-table liste-2025-table">
+                <thead><tr><th class="col-2025-isim" style="text-align:left">Ad soyad</th><th class="col-2025-adet">Adet</th></tr></thead>
+                <tbody>${rows2026Bagis}</tbody>
+              </table>
+            </div>
+            <div class="y2025-col y2025-col-etli">
+              <div class="y2025-col-title">Etli hissedar</div>
+              <p class="muted-note">Aynı hissedar birleştirildi; adet = hisse toplamı.</p>
+              <table class="bagisci-table liste-2025-table">
+                <thead><tr><th class="col-2025-isim" style="text-align:left">Hissedar</th><th class="col-2025-adet">Adet</th></tr></thead>
+                <tbody>${rows2026Etli}</tbody>
+              </table>
+            </div>
+          </div>
+        </div>`;
+
+      document.getElementById('raporContent').innerHTML = cover + tableHtml + section2025 + section2026;
     }
 
     function fmt(n) {

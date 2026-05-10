@@ -267,8 +267,16 @@
     #tblEtli col.col-etli-personel { width: 140px; }
     #tblEtli col.col-etli-grup { width: 65px; }
     #tblEtli col.col-etli-adet { width: 50px; }
-    #tblEtli col.col-etli-acik { width: auto; min-width: 0; }
-    #tblEtli col.col-etli-islem { width: 290px; min-width: 260px; }
+    #tblEtli col.col-etli-tahsilat { width: 88px; }
+    #tblEtli col.col-etli-kalan { width: 88px; }
+    #tblEtli col.col-etli-acik { width: auto; min-width: 120px; }
+    #tblEtli col.col-etli-islem { width: 300px; min-width: 280px; }
+    #tblEtli td.td-etli-para { text-align: center; font-variant-numeric: tabular-nums; font-size: 12px; white-space: nowrap; }
+    #tblEtli th.th-etli-para { text-align: center; }
+    #tblEtli td.td-etli-kalan-pozitif { color: #dc2626; }
+    #tblEtli td.td-etli-kalan-sifir { color: #059669; }
+    #tblEtli td.td-etli-islem { text-align: right; }
+    #tblEtli th.th-etli-islem { text-align: right; }
     #tblEtli thead th:nth-child(1),
     #tblEtli tbody td:nth-child(1) { white-space: nowrap; font-size: 12px; padding: 10px 6px 10px 10px; vertical-align: top; }
     #tblEtli thead th:nth-child(2),
@@ -319,17 +327,21 @@
       white-space: normal;
       word-break: break-word;
       overflow-wrap: anywhere;
-      line-height: 1.4;
+      font-size: 12px;
+      line-height: 1.5;
       vertical-align: top;
+      padding: 8px 6px;
     }
+    #tblEtli .etli-aciklama-metin { color: var(--ink); }
+    #tblEtli .etli-odeme-bilgi { margin-top: 5px; padding: 4px 7px; border-radius: 6px; background: rgba(59,130,246,.07); border: 1px solid rgba(59,130,246,.18); font-size: 11px; line-height: 1.6; color: var(--muted); }
+    #tblEtli .etli-odeme-bilgi strong { color: var(--ink); }
     #tblEtli thead th:nth-child(9) { vertical-align: top; text-align: right; padding: 10px 10px 10px 8px; white-space: nowrap; }
     #tblEtli tbody td:nth-child(9) {
       vertical-align: top;
       text-align: right;
-      padding: 10px 10px 10px 8px;
-      white-space: normal;
+      padding: 8px 10px 8px 6px;
     }
-    #tblEtli tbody td:nth-child(9) .btn { margin-left: 2px; margin-top: 2px; }
+    #tblEtli tbody td:nth-child(9) .etli-islem-wrap { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 3px; }
     .kurban-row { user-select: none; }
     .kurban-row:hover { background: var(--surface) !important; }
     .kurban-row.expanded { background: rgba(59, 130, 246, 0.06) !important; }
@@ -626,7 +638,7 @@
       <button class="tab active" data-tab="ozet">📊 Özet</button>
       <button class="tab" data-tab="bagis">🐑 Bağış Hisse</button>
       <button class="tab" data-tab="etli">🐄 Etli Hisse</button>
-      <button class="tab" data-tab="kurban">🔪 Kurban Yönetim</button>
+      <button class="tab" data-tab="kurban">🔪 Kesim Takibi</button>
       <button class="tab" data-tab="onkayit">📝 Ön Kayıt</button>
       <button class="tab" data-tab="hedefler">🎯 Hedefler</button>
       <button class="tab" data-tab="analiz">💳 Tahsilat Takibi</button>
@@ -680,6 +692,7 @@
             </select>
           </div>
           <div class="toolbar-actions">
+            <button type="button" class="btn btn-ghost" id="btnBagisYazdir" title="Mevcut filtreye göre PDF / yazdır">🖨️ Yazdır</button>
             <button type="button" class="btn btn-ghost" id="btnBagisYenile" title="Aktif sekmenin verisini yenile">🔄 Yenile</button>
             <button type="button" class="btn btn-success" id="btnYeniBagis">+ Yeni Bağış Hisse</button>
           </div>
@@ -735,8 +748,12 @@
               <option value="3.Grup">3.Grup</option>
               <option value="4.Grup">4.Grup</option>
             </select>
+            <select id="etliPersonelFiltre" class="filter-status">
+              <option value="">Tüm Personel</option>
+            </select>
           </div>
           <div class="toolbar-actions">
+            <button type="button" class="btn btn-ghost" id="btnEtliYazdir" title="Mevcut filtreye göre PDF / yazdır">🖨️ Yazdır</button>
             <button type="button" class="btn btn-ghost" id="btnEtliYenile" title="Aktif sekmenin verisini yenile">🔄 Yenile</button>
             <button type="button" class="btn btn-ghost" id="btnEtliIkiTekilPaketle" title="İki tekil kaydı kök + alt olarak birleştir">🔗 İki tekil paketle</button>
             <button type="button" class="btn btn-success" id="btnYeniEtli">+ Yeni Etli Hisse</button>
@@ -752,6 +769,8 @@
               <col class="col-etli-personel" />
               <col class="col-etli-grup" />
               <col class="col-etli-adet" />
+              <col class="col-etli-tahsilat" />
+              <col class="col-etli-kalan" />
               <col class="col-etli-acik" />
               <col class="col-etli-islem" />
             </colgroup>
@@ -764,8 +783,10 @@
                 <th>Personel</th>
                 <th>Hisse Grubu</th>
                 <th>Adet</th>
+                <th class="th-etli-para" title="Kapora + Tahsilat toplamı">Ödenen</th>
+                <th class="th-etli-para" title="Hisse fiyatı - Ödenen = Kalan">Kalan</th>
                 <th>Açıklama</th>
-                <th>İşlemler</th>
+                <th class="th-etli-islem">İşlemler</th>
               </tr>
             </thead>
             <tbody id="tbodyEtli"></tbody>
@@ -775,7 +796,7 @@
       </div>
     </div>
 
-    <!-- Tab: Kurban Yönetim (şema önizleme — veri tarayıcıda, DB sonra) -->
+    <!-- Tab: Kesim Takibi -->
     <div class="tab-content" id="tab-kurban">
       <div class="card">
         <div class="toolbar toolbar-kurban">
@@ -798,6 +819,11 @@
               <button type="button" class="btn btn-ghost" id="btnKurbanDetayKapat" title="Açık tüm hissedar detaylarını kapat">▲ Detayları kapat</button>
             </div>
           </div>
+        </div>
+        <!-- Atanmamış ama kaporası alınmış etli kayıtları özet kartı -->
+        <div id="kesimAtanmamisOzet" style="display:none;margin:0 0 12px;padding:10px 14px;border-radius:8px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);font-size:13px;color:var(--text)">
+          <strong style="color:#b45309">⚠️ Atanmamış kaporalı etli hisse:</strong>
+          <span id="kesimAtanmamisOzetText"></span>
         </div>
         <div class="table-wrap">
           <table class="tbl-kurban" id="tblKurban">
@@ -1096,11 +1122,42 @@
           </select>
         </div>
         <div class="form-group">
+          <label>Kapora (₺) <span style="font-weight:400;color:var(--muted)">(opsiyonel — kurban atamasından önce alınan ön ödeme)</span></label>
+          <input type="number" id="etliKapora" min="0" step="0.01" value="0" placeholder="0" />
+        </div>
+        <div class="form-group">
           <label>Açıklama</label>
           <textarea id="etliAciklama" rows="2"></textarea>
         </div>
         <div class="actions">
           <button type="button" class="btn btn-ghost" onclick="closeEtliModal()">İptal</button>
+          <button type="submit" class="btn btn-primary">Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Etli Ödeme -->
+  <div class="modal" id="modalEtliOdeme">
+    <div class="sheet">
+      <h3>Ödeme Bilgisi</h3>
+      <p id="modalEtliOdemeHissedar" style="font-size:13px;color:var(--muted);margin:-8px 0 12px;line-height:1.4"></p>
+      <div id="etliOdemeKurbanBilgi" style="font-size:13px;padding:8px 12px;border-radius:10px;background:var(--surface);border:1px solid var(--stroke);margin-bottom:16px;line-height:1.6"></div>
+      <form id="formEtliOdeme" class="form-grid">
+        <input type="hidden" id="etliOdemeId" />
+        <div class="form-group">
+          <label>Kapora (₺)</label>
+          <input type="number" id="etliOdemeKapora" min="0" step="0.01" value="0" />
+          <small class="muted" style="display:block;margin-top:4px;font-size:11px">Kurban atanmadan önce alınan ön ödeme</small>
+        </div>
+        <div class="form-group" id="etliOdemeTahsilatGrup">
+          <label>Tahsilat (₺)</label>
+          <input type="number" id="etliOdemeTahsilat" min="0" step="0.01" value="0" />
+          <small class="muted" style="display:block;margin-top:4px;font-size:11px">Kurban ve fiyat belirlendikten sonra alınan ek ödeme</small>
+        </div>
+        <div id="etliOdemeKalanBilgi" style="padding:10px 14px;border-radius:10px;background:var(--surface);border:1px solid var(--stroke);font-size:13px;line-height:1.7"></div>
+        <div class="actions">
+          <button type="button" class="btn btn-ghost" id="btnEtliOdemeIptal">İptal</button>
           <button type="submit" class="btn btn-primary">Kaydet</button>
         </div>
       </form>
@@ -1577,7 +1634,7 @@
     populatePersonelDropdowns(kullanicilar || []);
   }
   function populatePersonelDropdowns(kullanicilar) {
-    const selIds = ['bagisPersonelFiltre'];
+    const selIds = ['bagisPersonelFiltre', 'etliPersonelFiltre'];
     selIds.forEach(sid => {
       const el = document.getElementById(sid);
       if (!el) return;
@@ -1605,16 +1662,26 @@
       const editFn = tur === 'bagis' ? 'window.editBagis' : 'window.editEtli';
       const delFn = tur === 'bagis' ? 'window.silBagis' : 'window.silEtli';
       const etliAcik = tur === 'etli'
-        ? `<div style="margin-top:6px;font-size:12px;line-height:1.4;word-break:break-word"><span style="color:var(--muted)">Açıklama:</span> ${esc((x.aciklama || '').trim() || '—')}</div>`
+        ? `<div style="margin-top:4px;font-size:11px;line-height:1.4;word-break:break-word;color:var(--muted)">Açıklama: ${esc((x.aciklama || '').trim() || '—')}</div>`
         : '';
-      return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--stroke);border-radius:8px;background:var(--card);margin-top:6px">
-        <div style="font-size:${fs};line-height:1.4">
+      const etliOdeme = tur === 'etli' ? (() => {
+        const kap = Number(x.kapora) || 0;
+        const tah = Number(x.tahsilat) || 0;
+        if (kap === 0 && tah === 0) return '';
+        const fmtN = n => Number(n).toLocaleString('tr-TR');
+        return `<div style="margin-top:4px;font-size:11px;color:var(--muted)">💰 Kapora: ${fmtN(kap)} ₺${tah > 0 ? ` | Tahsilat: ${fmtN(tah)} ₺` : ''}</div>`;
+      })() : '';
+      const odemeBtn = tur === 'etli'
+        ? `<button type="button" class="btn btn-ghost" style="padding:4px 7px;font-size:${fs}" onclick="window.openEtliOdeme('${x.id}')">💰</button>`
+        : '';
+      return `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding:6px 8px;border:1px solid var(--stroke);border-radius:8px;background:var(--card);margin-top:6px">
+        <div style="font-size:${fs};line-height:1.4;min-width:0;flex:1">
           <div><b>${esc(ad)}</b> <span style="color:var(--muted)">(${esc(x.telefon || '–')})</span>${grup}</div>
           <div style="color:var(--muted)">Tarih: ${esc(fmtDate(x.created_at))} | Personel: ${esc(personelAd)} | Adet: ${adet}</div>
-          ${etliAcik}
+          ${etliAcik}${etliOdeme}
         </div>
-        <div style="display:flex;gap:6px;white-space:nowrap">
-          <button type="button" class="btn btn-ghost" style="padding:4px 8px;font-size:${fs}" onclick="${editFn}('${x.id}')">Düzenle</button>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;white-space:nowrap;flex-shrink:0">
+          ${odemeBtn}<button type="button" class="btn btn-ghost" style="padding:4px 8px;font-size:${fs}" onclick="${editFn}('${x.id}')">Düzenle</button>
           <button type="button" class="btn btn-danger" style="padding:4px 8px;font-size:${fs}" onclick="${delFn}('${x.id}')">Sil</button>
         </div>
       </div>`;
@@ -1798,9 +1865,11 @@
     const ara = (document.getElementById('etliAra')?.value || '').toLowerCase();
     const grupFiltre = document.getElementById('etliGrupFiltre')?.value || '';
     const yilFiltre = document.getElementById('etliYilFiltre')?.value || '';
+    const personelFiltre = document.getElementById('etliPersonelFiltre')?.value || '';
     const baseFiltered = etliList.filter(r => {
       if (yilFiltre && String(r.yil || '') !== yilFiltre) return false;
       if (grupFiltre && (r.hisse_grubu || '') !== grupFiltre) return false;
+      if (personelFiltre && (r.created_by_uid || '') !== personelFiltre) return false;
       return true;
     });
     const rootsToShow = new Set();
@@ -1832,10 +1901,44 @@
       const detayId = `etliPaketDetay_${String(r.id || '').replace(/[^a-zA-Z0-9_-]/g, '')}`;
       const topluIds = (r.records || []).map(x => x.id).filter(Boolean);
       const encodedTopluIds = encodeURIComponent(JSON.stringify(topluIds));
+      // Ödeme sütunları hesapla (tüm records'ların toplamı)
+      const fmtN = n => Number(n).toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+      const allRecs = r.records || [];
+      const toplamKapora = allRecs.reduce((s, x) => s + (Number(x.kapora) || 0), 0);
+      const toplamTahsilat = allRecs.reduce((s, x) => s + (Number(x.tahsilat) || 0), 0);
+      const toplamOdeme = toplamKapora + toplamTahsilat;
+      const adet = r.adet || allRecs.length || 1;
+      // Hisse fiyatı: kurbanListeCache'den, tüm records aynı kurban_id'ye sahip olmalı
+      let hisseFiyati = null;
+      const ilkKurbanId = allRecs.find(x => x.kurban_id)?.kurban_id;
+      if (ilkKurbanId) {
+        const ks = kurbanListeCache.find(x => String(x.id) === String(ilkKurbanId));
+        if (ks?.hisse_fiyati != null) hisseFiyati = Number(ks.hisse_fiyati) * adet;
+      }
+      const kalanVal = hisseFiyati != null ? hisseFiyati - toplamOdeme : null;
+      const odenenHtml = toplamOdeme > 0
+        ? `<span title="Kapora: ${fmtN(toplamKapora)} ₺${toplamTahsilat > 0 ? ' + Tahsilat: ' + fmtN(toplamTahsilat) + ' ₺' : ''}">${fmtN(toplamOdeme)} ₺</span>`
+        : '<span style="color:var(--muted)">—</span>';
+      let kalanHtml, kalanCls;
+      if (kalanVal === null) {
+        kalanHtml = '<span style="color:var(--muted)" title="Fiyat belirsiz">—</span>';
+        kalanCls = '';
+      } else if (kalanVal <= 0) {
+        kalanHtml = `<span title="Tamamlandı">${fmtN(kalanVal)} ₺</span>`;
+        kalanCls = 'td-etli-kalan-sifir';
+      } else {
+        kalanHtml = `${fmtN(kalanVal)} ₺`;
+        kalanCls = 'td-etli-kalan-pozitif';
+      }
+
+      const tekilRec = isTekil ? allRecs[0] : null;
+      const aciklamaHtml = `<span class="etli-aciklama-metin">${esc(r.aciklama || '')}</span>`;
+
+      const btnStyle = 'padding:4px 8px;font-size:11px';
       const islemHtml = isTekil
-        ? `<button type="button" class="btn btn-ghost" style="padding:4px 8px;font-size:12px" onclick="window.editEtli('${r.id}')">Düzenle</button> <button type="button" class="btn btn-danger" style="padding:4px 8px;font-size:12px" onclick="window.silEtli('${r.id}')">Sil</button>`
-        : `<button type="button" class="btn btn-ghost" data-detay-btn="${detayId}" style="padding:4px 8px;font-size:12px" onclick="window.paketDetayAcKapa('${detayId}')">Detayı Aç</button> <button type="button" class="btn btn-primary" style="padding:4px 8px;font-size:12px" onclick="window.editEtliToplu('${encodedTopluIds}')">Çoğul Düzenle</button> <button type="button" class="btn btn-danger" style="padding:4px 8px;font-size:12px" onclick="window.silEtliToplu('${encodedTopluIds}')">Çoğul Sil</button>`;
-      tr.innerHTML = `<td>${esc(fmtDate(r.created_at))}</td><td>${formatEtliKurbanCellForRecords(r.records)}</td><td>${esc(r.hisedar_ad_soyad || r.hissedar_ad_soyad)}</td><td>${esc(r.telefon)}</td><td>${esc(personelAd)}</td><td>${esc(r.hisse_grubu)}</td><td>${r.adet || 1}</td><td>${esc(r.aciklama || '')}</td><td>${islemHtml}</td>`;
+        ? `<div class="etli-islem-wrap"><button type="button" class="btn btn-ghost" style="${btnStyle}" onclick="window.openEtliOdeme('${r.id}')">💰</button><button type="button" class="btn btn-ghost" style="${btnStyle}" onclick="window.editEtli('${r.id}')">Düzenle</button><button type="button" class="btn btn-danger" style="${btnStyle}" onclick="window.silEtli('${r.id}')">Sil</button></div>`
+        : `<div class="etli-islem-wrap"><button type="button" class="btn btn-ghost" data-detay-btn="${detayId}" style="${btnStyle}" onclick="window.paketDetayAcKapa('${detayId}')">Detayı Aç</button><button type="button" class="btn btn-primary" style="${btnStyle}" onclick="window.editEtliToplu('${encodedTopluIds}')">Çoğul Düz.</button><button type="button" class="btn btn-danger" style="${btnStyle}" onclick="window.silEtliToplu('${encodedTopluIds}')">Çoğul Sil</button></div>`;
+      tr.innerHTML = `<td>${esc(fmtDate(r.created_at))}</td><td>${formatEtliKurbanCellForRecords(r.records)}</td><td>${esc(r.hisedar_ad_soyad || r.hissedar_ad_soyad)}</td><td>${esc(r.telefon)}</td><td>${esc(personelAd)}</td><td>${esc(r.hisse_grubu)}</td><td>${adet}</td><td class="td-etli-para">${odenenHtml}</td><td class="td-etli-para ${kalanCls}">${kalanHtml}</td><td>${aciklamaHtml}</td><td class="td-etli-islem">${islemHtml}</td>`;
       tbody.appendChild(tr);
       if (!isTekil) {
         const kokForDahil = String(r.id);
@@ -1866,7 +1969,7 @@
         const detayTr = document.createElement('tr');
         detayTr.id = detayId;
         detayTr.style.display = 'none';
-        detayTr.innerHTML = `<td colspan="9" style="background:#f8fafc;border-top:0">
+        detayTr.innerHTML = `<td colspan="11" style="background:#f8fafc;border-top:0">
           <div style="padding:6px 4px 8px">
             <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Tekil kayıtlar (${r.records.length})</div>
             ${paketDetaySatirlari(r.records, 'etli')}
@@ -1963,6 +2066,7 @@
       await hydrateEtliKurbanKesimMap(sb);
       await loadPersonelMap();
       renderEtliTable();
+      updateKesimAtanmamisOzet();
     } catch (e) {
       tbody.innerHTML = `<tr><td colspan="9">Hata: ${esc(e.message)}</td></tr>`;
     }
@@ -2082,7 +2186,7 @@
       const yilInt = yilFiltre ? parseInt(yilFiltre, 10) : null;
       let [bagRes, etliRes, kuRes, tahRes] = await Promise.all([
         (() => { let q = sb.from('kurban_2026_bagis_hisse').select('id,created_by_uid,fiyat,yil'); if (yilInt) q = q.eq('yil', yilInt); return q; })(),
-        (() => { let q = sb.from('kurban_2026_etli_hisse').select('id,created_by_uid,hisse_adedi,yil'); if (yilInt) q = q.eq('yil', yilInt); return q; })(),
+        (() => { let q = sb.from('kurban_2026_etli_hisse').select('id,created_by_uid,hisse_adedi,yil,kapora,tahsilat,kurban_id'); if (yilInt) q = q.eq('yil', yilInt); return q; })(),
         sb.from('kullanicilar').select('id,adsoyad').order('adsoyad', { ascending: true }),
         (() => { let q = sb.from('kurban_2026_bagis_tahsilat').select('hisse_id,tutar'); if (yilInt) q = q.eq('yil', yilInt); return q; })()
       ]);
@@ -2115,8 +2219,9 @@
         const bagKalan = bagFiyat - bagTah;
         const bagPct = bagFiyat > 0 ? Math.round((bagTah / bagFiyat) * 100) : null;
         const etliHisse = myEtli.reduce((s, e) => s + (Number(e.hisse_adedi) || 1), 0);
-        // Etli finansal — kurban fiyat girişleri henüz yoksa 0
-        const etliFiyat = 0, etliTah = 0, etliKalan = 0;
+        // Etli finansal — kapora + tahsilat toplanır; fiyat kurban atanana kadar belli değil
+        const etliTah = myEtli.reduce((s, e) => s + (Number(e.kapora) || 0) + (Number(e.tahsilat) || 0), 0);
+        const etliFiyat = 0, etliKalan = 0;
         const etliPct = etliFiyat > 0 ? Math.round((etliTah / etliFiyat) * 100) : null;
         totBagKayit += bagKayit; totBagFiyat += bagFiyat; totBagTah += bagTah;
         totEtliKayit += etliKayit; totEtliHisse += etliHisse;
@@ -2143,9 +2248,9 @@
           `<td style="white-space:nowrap;${kalanColor}">${bagFiyat > 0 ? fmtTry2(bagKalan) + ' ₺' : '—'}</td>` +
           `<td>${progressHtml}</td>` +
           `<td class="pa-sep">${etliHisse}</td>` +
-          `<td style="white-space:nowrap">${fmtTry2(etliFiyat)} ₺</td>` +
-          `<td style="white-space:nowrap;${etliTah > 0 ? 'color:#047857' : ''}">${fmtTry2(etliTah)} ₺</td>` +
-          `<td style="white-space:nowrap;${etliKalan > 0 ? 'color:#ef4444' : ''}">${fmtTry2(etliKalan)} ₺</td>` +
+          `<td style="white-space:nowrap">—</td>` +
+          `<td style="white-space:nowrap;${etliTah > 0 ? 'color:#047857' : ''}">${etliTah > 0 ? fmtTry2(etliTah) + ' ₺' : '—'}</td>` +
+          `<td style="white-space:nowrap">—</td>` +
           `<td>${etliProgressHtml}</td>`;
         tbody.appendChild(tr);
       });
@@ -2181,9 +2286,9 @@
         `<td style="white-space:nowrap;${totKalan > 0 ? 'color:#ef4444' : totBagFiyat > 0 ? 'color:#047857' : ''}">${totBagFiyat > 0 ? fmtTry2(totKalan) + ' ₺' : '—'}</td>` +
         `<td>${totProgress}</td>` +
         `<td class="pa-sep">${totEtliHisse}</td>` +
-        `<td style="white-space:nowrap">${fmtTry2(totEtliFiyat)} ₺</td>` +
-        `<td style="white-space:nowrap;${totEtliTah > 0 ? 'color:#047857' : ''}">${fmtTry2(totEtliTah)} ₺</td>` +
-        `<td style="white-space:nowrap;${totEtliKalan > 0 ? 'color:#ef4444' : ''}">${fmtTry2(totEtliKalan)} ₺</td>` +
+        `<td style="white-space:nowrap">—</td>` +
+        `<td style="white-space:nowrap;${totEtliTah > 0 ? 'color:#047857' : ''}">${totEtliTah > 0 ? fmtTry2(totEtliTah) + ' ₺' : '—'}</td>` +
+        `<td style="white-space:nowrap">—</td>` +
         `<td>${totEtliProgress}</td>`;
       tbody.appendChild(totTr);
       // Tfoot — sütun altlarına hizalı özet etiketleri
@@ -2201,10 +2306,10 @@
           `<td>${totBagFiyat > 0 ? fmtTry2(totKalan) + ' ₺ kalan' : '—'}</td>` +
           `<td>${bagPctLabel}</td>` +
           `<td class="pa-sep">${totEtliHisse} hisse</td>` +
-          `<td>${fmtTry2(totEtliFiyat)} ₺</td>` +
-          `<td>${fmtTry2(totEtliTah)} ₺</td>` +
-          `<td>${fmtTry2(totEtliKalan)} ₺ kalan</td>` +
-          `<td>${etliPctLabel}</td>`;
+          `<td>—</td>` +
+          `<td>${totEtliTah > 0 ? fmtTry2(totEtliTah) + ' ₺' : '—'}</td>` +
+          `<td>—</td>` +
+          `<td>—</td>`;
         tfoot.appendChild(tfTr);
       }
     } catch (e) {
@@ -2704,7 +2809,27 @@
       showToast('error', 'Kurban listesi', error.message || 'Veri alınamadı (RLS veya sütun).');
       return null;
     }
-    return (data || []).map(mapKurbanFromDb).filter(Boolean);
+    const mapped = (data || []).map(mapKurbanFromDb).filter(Boolean);
+
+    // Etli hisse kapora/tahsilat'ı doğrudan kaynaktan oku (atamalar sync güvenilmez)
+    const allEtliIds = [];
+    mapped.forEach(k => (k.atamalar || []).forEach(a => {
+      if (a.etli_kayit_id) allEtliIds.push(String(a.etli_kayit_id));
+    }));
+    if (allEtliIds.length > 0) {
+      const { data: etliOdeme } = await sb.from('kurban_2026_etli_hisse')
+        .select('id, kapora, tahsilat').in('id', allEtliIds);
+      const odemeMap = {};
+      (etliOdeme || []).forEach(e => { odemeMap[String(e.id)] = e; });
+      mapped.forEach(k => (k.atamalar || []).forEach(a => {
+        if (a.etli_kayit_id) {
+          const e = odemeMap[String(a.etli_kayit_id)];
+          if (e) { a.kapora = Number(e.kapora) || 0; a.tahsilat = Number(e.tahsilat) || 0; }
+        }
+      }));
+    }
+
+    return mapped;
   }
   async function bekleyenFetchListe() {
     const sb = getSupabase();
@@ -2734,6 +2859,31 @@
       return { ok: false };
     }
     return { ok: true };
+  }
+  /** Etli hisse kaydı güncellenince bağlı kurban slot'undaki adı/telefonu senkronize eder. */
+  async function syncEtliHisseToKurbanSlot(etliId, kurbanId, hisedar_ad_soyad, telefon, kapora, tahsilat) {
+    if (!etliId || !kurbanId) return;
+    const sb = getSupabase();
+    if (!sb) return;
+    let ks = kurbanListeCache.find(k => String(k.id) === String(kurbanId));
+    if (!ks) {
+      const { data: kurbanRow } = await sb.from('karaagac_kurban').select('id, hissedar_adedi, atamalar').eq('id', kurbanId).single();
+      if (!kurbanRow) return;
+      ks = kurbanRow;
+    }
+    const atamalar = Array.isArray(ks.atamalar) ? ks.atamalar : [];
+    const sa = atamalar.find(a => String(a.etli_kayit_id) === String(etliId));
+    if (!sa) return;
+    if (hisedar_ad_soyad !== undefined) sa.ad_soyad = hisedar_ad_soyad || sa.ad_soyad;
+    if (telefon !== undefined) sa.telefon = telefon;
+    if (kapora !== undefined) sa.kapora = Number(kapora) || 0;
+    if (tahsilat !== undefined) sa.tahsilat = Number(tahsilat) || 0;
+    const { error } = await sb.from('karaagac_kurban').update({ atamalar }).eq('id', ks.id);
+    if (error) console.warn('Kurban atama senkronizasyonu başarısız:', error.message);
+    else {
+      const cacheKs = kurbanListeCache.find(x => String(x.id) === String(ks.id));
+      if (cacheKs) cacheKs.atamalar = atamalar;
+    }
   }
   function kurbanEnsureSlots(k) {
     const n = Math.min(7, Math.max(1, Number(k.hissedar_adedi) || 1));
@@ -2795,6 +2945,34 @@
   function renderKurbanTableFromCacheOnly() {
     const list = sortKurbanListe(kurbanListeCache);
     renderKurbanTableRows(list);
+    updateKesimAtanmamisOzet();
+  }
+
+  function updateKesimAtanmamisOzet() {
+    const ozet = document.getElementById('kesimAtanmamisOzet');
+    const ozetText = document.getElementById('kesimAtanmamisOzetText');
+    if (!ozet || !ozetText) return;
+    // etliKapOzet: loadKurbanYonetim tarafından çekilen özet; etliList yüklüyse ondan da türetilebilir
+    let unassigned = etliKapOzet;
+    if (etliList.length > 0) {
+      const yilVal = document.getElementById('kurbanYilFiltre')?.value;
+      const yilInt = yilVal ? parseInt(yilVal) : null;
+      unassigned = etliList.filter(e => {
+        if (!e.kurban_id && (Number(e.kapora) || 0) > 0) {
+          if (yilInt && e.yil && parseInt(e.yil) !== yilInt) return false;
+          return true;
+        }
+        return false;
+      });
+    }
+    if (unassigned.length === 0) {
+      ozet.style.display = 'none';
+      return;
+    }
+    const toplamKapora = unassigned.reduce((s, e) => s + (Number(e.kapora) || 0), 0);
+    const toplamHisse = unassigned.reduce((s, e) => s + (Number(e.hisse_adedi) || 1), 0);
+    ozetText.textContent = ` ${unassigned.length} kayıt, ${toplamHisse} hisse — Toplam kapora: ${fmtTry2(toplamKapora)} ₺ (kurban atanmadı, tutar belirsiz)`;
+    ozet.style.display = 'block';
   }
   function renderKurbanTableRows(list) {
     const tbody = document.getElementById('tbodyKurban');
@@ -3030,7 +3208,10 @@
     await refreshEtliLookupForKurban();
     tbody.innerHTML = '<tr><td colspan="14" style="padding:24px;text-align:center;color:var(--muted)">Yükleniyor…</td></tr>';
     if (emptyEl) emptyEl.style.display = 'none';
-    const fetched = await kurbanFetchListe();
+    const [fetched] = await Promise.all([
+      kurbanFetchListe(),
+      fetchEtliKapOzetForKesim()
+    ]);
     if (fetched == null) {
       tbody.innerHTML = '';
       if (emptyEl) {
@@ -3043,6 +3224,21 @@
     const list = sortKurbanListe(fetched);
     pruneKurbanExpandedIds(list.map(k => k.id));
     renderKurbanTableRows(list);
+    updateKesimAtanmamisOzet();
+  }
+
+  // Kesim Takibi için: etli hisse kaporalılar (etliList boşsa kendi başına çeker)
+  let etliKapOzet = []; // [{id, yil, kurban_id, kapora, hisse_adedi}]
+  async function fetchEtliKapOzetForKesim() {
+    const sb = getSupabase();
+    if (!sb) return;
+    const yil = getKurbanYonetimYil();
+    const { data, error } = await sb.from('kurban_2026_etli_hisse')
+      .select('id, yil, kurban_id, kapora, hisse_adedi')
+      .eq('yil', yil)
+      .is('kurban_id', null)
+      .gt('kapora', 0);
+    if (!error) etliKapOzet = data || [];
   }
   function openModalEl(id) {
     const m = document.getElementById(id);
@@ -3717,6 +3913,7 @@
       return;
     }
     let rec;
+    let etliBoşaltIds = [];
     if (id) {
       rec = list.find(x => String(x.id) === String(id));
       if (!rec) { showToast('error', 'Hata', 'Kayıt bulunamadı.'); return; }
@@ -3725,7 +3922,8 @@
         const atamalar = Array.isArray(rec.atamalar) ? rec.atamalar : [];
         let kayip = false;
         for (let i = hissedar_adedi; i < atamalar.length; i++) {
-          if ((atamalar[i]?.ad_soyad || '').trim()) { kayip = true; break; }
+          if ((atamalar[i]?.ad_soyad || '').trim()) kayip = true;
+          if ((atamalar[i]?.etli_kayit_id || '').trim()) etliBoşaltIds.push(String(atamalar[i].etli_kayit_id));
         }
         if (kayip && !confirm('Hissedar adedi ' + hissedar_adedi + ' olacak; silinecek sıralarda atanmış hissedar var. Devam edilsin mi?')) return;
       }
@@ -3772,6 +3970,12 @@
           else showToast('error', 'Kayıt', error.message || 'Eklenemedi.');
           return;
         }
+      }
+      // Hissedar adedi düşürüldüğünde kesilen slotlardaki etli hisseleri serbest bırak
+      if (etliBoşaltIds.length > 0) {
+        const { error: etliNullErr } = await sb.from('kurban_2026_etli_hisse').update({ kurban_id: null }).in('id', etliBoşaltIds);
+        if (etliNullErr) console.warn('Etli hisse kurban_id null yapılamadı:', etliNullErr.message);
+        else etliList = etliList.map(r => etliBoşaltIds.includes(String(r.id)) ? { ...r, kurban_id: null } : r);
       }
       closeKurbanModal();
       showToast('success', 'Kaydedildi', id ? 'Kurban güncellendi.' : 'Kurban eklendi.');
@@ -4117,6 +4321,7 @@
         document.getElementById('etliGrup').value = r.hisse_grubu || '';
         document.getElementById('etliAdet').value = r.hisse_adedi || 1;
         document.getElementById('etliAciklama').value = r.aciklama || '';
+        document.getElementById('etliKapora').value = r.kapora != null ? r.kapora : 0;
         document.getElementById('etliId').value = r.id;
         if (sel && r.yil) sel.value = String(r.yil);
         await populatePersonelSelect('etliPersonel', r.created_by_uid || '');
@@ -4307,7 +4512,8 @@
       hisse_adedi: adet,
       aciklama: document.getElementById('etliAciklama').value.trim() || null,
       yil: yil,
-      created_by_uid: document.getElementById('etliPersonel')?.value || null
+      created_by_uid: document.getElementById('etliPersonel')?.value || null,
+      kapora: parseFloat(document.getElementById('etliKapora')?.value) || 0
     };
     if (id && etliTopluDuzenlemeIds.length > 1) {
       const ekAdetOn = Math.min(20, Math.max(0, parseInt(document.getElementById('etliPaketEkAdet')?.value, 10) || 0));
@@ -4333,6 +4539,11 @@
               const ix = etliList.findIndex(x => x.id === eid);
               if (ix !== -1) etliList[ix] = { ...etliList[ix], ...bulkRow };
             });
+            // Kurban atamalar senkronizasyonu: kurban sırasına atanmış satırların adı/telefonu güncellendi
+            for (const eid of etliTopluDuzenlemeIds) {
+              const er = etliList.find(x => String(x.id) === String(eid));
+              if (er?.kurban_id) await syncEtliHisseToKurbanSlot(String(eid), String(er.kurban_id), bulkRow.hisedar_ad_soyad, bulkRow.telefon);
+            }
           }
           let ekAdet = Math.min(20, Math.max(0, parseInt(document.getElementById('etliPaketEkAdet')?.value, 10) || 0));
           if (ekAdet > 0) {
@@ -4410,6 +4621,9 @@
             if (error) throw error;
             const idx = etliList.findIndex(x => x.id === id);
             if (idx !== -1) etliList[idx] = updatedRow;
+            if (updatedRow?.kurban_id) {
+              await syncEtliHisseToKurbanSlot(updatedRow.id, updatedRow.kurban_id, updatedRow.hisedar_ad_soyad, updatedRow.telefon);
+            }
             showToast('success', 'Başarılı', 'Etli hisse güncellendi.');
           }
         }
@@ -4796,6 +5010,7 @@
   document.getElementById('etliYilFiltre')?.addEventListener('change', () => loadEtli());
   document.getElementById('etliAra')?.addEventListener('input', () => void withTableUiPreserved('tblEtli', 'etliPaketDetay_', () => renderEtliTable()));
   document.getElementById('etliGrupFiltre')?.addEventListener('change', () => void withTableUiPreserved('tblEtli', 'etliPaketDetay_', () => renderEtliTable()));
+  document.getElementById('etliPersonelFiltre')?.addEventListener('change', () => void withTableUiPreserved('tblEtli', 'etliPaketDetay_', () => renderEtliTable()));
   document.getElementById('onkayitYilFiltre')?.addEventListener('change', () => loadOnkayit());
   document.getElementById('onkayitAra')?.addEventListener('input', () => void withTableUiPreserved('tblOnkayit', null, () => renderOnkayitTable()));
   document.getElementById('onkayitTurFiltre')?.addEventListener('change', () => void withTableUiPreserved('tblOnkayit', null, () => renderOnkayitTable()));
@@ -4803,6 +5018,344 @@
   document.getElementById('ozetYilFiltre')?.addEventListener('change', () => loadOzet());
   document.getElementById('tahsilatTakipYilFiltre')?.addEventListener('change', () => loadTahsilatTakip());
   document.getElementById('kurbanYilFiltre')?.addEventListener('change', () => void loadKurbanYonetim());
+  // --- Etli Ödeme Modal ---
+  window.openEtliOdeme = async function(etliId) {
+    const r = etliList.find(x => String(x.id) === String(etliId));
+    if (!r) { showToast('error', 'Hata', 'Kayıt bulunamadı; sayfayı yenileyin.'); return; }
+    document.getElementById('etliOdemeId').value = etliId;
+    const ad = r.hisedar_ad_soyad || r.hissedar_ad_soyad || '–';
+    document.getElementById('modalEtliOdemeHissedar').textContent = `${ad} — ${r.hisse_grubu || '–'}`;
+
+    // Kurban / fiyat bilgisi
+    let hisseFiyati = null;
+    const bilgiEl = document.getElementById('etliOdemeKurbanBilgi');
+    if (r.kurban_id) {
+      let ks = kurbanListeCache.find(x => String(x.id) === String(r.kurban_id));
+      if (!ks) {
+        const sb = getSupabase();
+        if (sb) {
+          const { data } = await sb.from('karaagac_kurban').select('id, kesim_sirasi, hisse_fiyati').eq('id', r.kurban_id).single();
+          if (data) { ks = data; kurbanListeCache.push(data); }
+        }
+      }
+      if (ks?.hisse_fiyati != null) hisseFiyati = Number(ks.hisse_fiyati);
+      const siraBilgi = ks?.kesim_sirasi != null ? `Sıra ${ks.kesim_sirasi}` : 'Kurban atandı';
+      bilgiEl.innerHTML = `<span style="color:#047857">✓ Kurban atandı</span> — ${esc(siraBilgi)}${hisseFiyati != null ? ` &nbsp;|&nbsp; Hisse fiyatı: <strong>${hisseFiyati.toLocaleString('tr-TR')} ₺</strong>` : ' &nbsp;|&nbsp; Fiyat: Belirsiz'}`;
+    } else {
+      bilgiEl.innerHTML = `<span style="color:var(--muted)">Henüz kurban atanmadı</span> — Fiyat kesim sonrası belirlenecek. Şimdi <strong>kapora</strong> kaydedilebilir.`;
+    }
+
+    const kapora = r.kapora != null ? r.kapora : 0;
+    const tahsilat = r.tahsilat != null ? r.tahsilat : 0;
+    document.getElementById('etliOdemeKapora').value = kapora;
+    document.getElementById('etliOdemeTahsilat').value = tahsilat;
+
+    // Tahsilat alanı: kurban atanmış ve fiyat belirlenmiş olunca göster
+    const tahsilatGrup = document.getElementById('etliOdemeTahsilatGrup');
+    if (tahsilatGrup) tahsilatGrup.style.display = (r.kurban_id && hisseFiyati != null) ? '' : 'none';
+
+    const kalanEl = document.getElementById('etliOdemeKalanBilgi');
+    const updKalan = () => {
+      const kap = parseFloat(document.getElementById('etliOdemeKapora').value) || 0;
+      const tah = parseFloat(document.getElementById('etliOdemeTahsilat').value) || 0;
+      const fmtN = n => n.toLocaleString('tr-TR');
+      if (hisseFiyati != null) {
+        const kalan = hisseFiyati - kap - tah;
+        const renk = kalan > 0 ? '#dc2626' : kalan === 0 ? '#059669' : '#b45309';
+        kalanEl.innerHTML = `Kapora + Tahsilat: <strong>${fmtN(kap + tah)} ₺</strong> &nbsp;|&nbsp; Kalan: <strong style="color:${renk}">${fmtN(kalan)} ₺</strong> <span style="color:var(--muted);font-size:11px">(Hisse: ${fmtN(hisseFiyati)} ₺)</span>`;
+      } else {
+        kalanEl.innerHTML = `Toplam kapora: <strong>${fmtN(kap)} ₺</strong> &nbsp;|&nbsp; <span style="color:var(--muted)">Kurban/fiyat belirlenmedi — kalan hesaplanamıyor</span>`;
+      }
+    };
+    document.getElementById('etliOdemeKapora').oninput = updKalan;
+    document.getElementById('etliOdemeTahsilat').oninput = updKalan;
+    updKalan();
+    openModalEl('modalEtliOdeme');
+  };
+
+  /**
+   * Tahsilat veya kapora işlemi sırasında hata olursa Samet Çakır'a bildirim gönderir.
+   */
+  async function etliOdemeHataBildir(detay) {
+    try {
+      const sb = getSupabase();
+      if (!sb) return;
+      const { data: sametler } = await sb.from('kullanicilar').select('id').ilike('adsoyad', '%samet%').eq('aktif', true).limit(1);
+      const sametUid = sametler?.[0]?.id;
+      if (!sametUid) return;
+      await sb.rpc('bildirim_gonder', {
+        target_uid: sametUid,
+        baslik: 'Kurban Ödeme Hatası',
+        icerik: detay,
+        rota: '/kurban',
+        gonderici: 'sistem'
+      });
+    } catch (_) { /* sessizce geç */ }
+  }
+
+  document.getElementById('formEtliOdeme')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const sb = getSupabase();
+    if (!sb) return;
+    const form = e.target;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    if (form.dataset.submitting === '1') return;
+    const id = document.getElementById('etliOdemeId').value;
+    const kapora = parseFloat(document.getElementById('etliOdemeKapora').value) || 0;
+    const tahsilat = parseFloat(document.getElementById('etliOdemeTahsilat').value) || 0;
+    if (kapora < 0 || tahsilat < 0) { showToast('error', 'Geçersiz', 'Kapora ve tahsilat negatif olamaz.'); return; }
+    form.dataset.submitting = '1';
+    btnSetBusy(submitBtn, true, btnBusyMarkup('Kaydediliyor…'));
+    try {
+      const kayit = etliList.find(x => String(x.id) === String(id));
+      const eskiKapora = Number(kayit?.kapora) || 0;
+      const eskiTahsilat = Number(kayit?.tahsilat) || 0;
+      const tahsilatDelta = tahsilat - eskiTahsilat;
+      const uid = window.auth?.currentUser?.uid;
+
+      // 1. Etli hisse kapora + tahsilat güncelle
+      const { error } = await sb.from('kurban_2026_etli_hisse').update({ kapora, tahsilat }).eq('id', id);
+      if (error) { showToast('error', 'Hata', error.message); return; }
+
+      // 2. Tahsilat arttıysa kurban_2026_etli_tahsilat'a INSERT (DB trigger → bildirim_gonder → FCM)
+      if (tahsilatDelta > 0) {
+        const { error: tErr } = await sb.from('kurban_2026_etli_tahsilat').insert({
+          hisse_id: id,
+          yil: Number(kayit?.yil) || 2026,
+          tutar: tahsilatDelta,
+          created_by_uid: uid || ''
+        });
+        if (tErr) {
+          console.warn('Tahsilat hareketi eklenemedi:', tErr.message);
+          void etliOdemeHataBildir(`Tahsilat hareketi eklenemedi: ${tErr.message}`);
+        }
+      }
+
+      // Kapora bildirimi: DB trigger (trg_etli_kapora_bildirim) UPDATE OF kapora'da otomatik ateşlenir.
+      // Tahsilat bildirimi: DB trigger (trg_etli_tahsilat_bildirim) kurban_2026_etli_tahsilat INSERT'te ateşlenir.
+
+      // 4. Cache güncelle
+      const idx = etliList.findIndex(x => String(x.id) === String(id));
+      if (idx !== -1) etliList[idx] = { ...etliList[idx], kapora, tahsilat };
+
+      // 5. Kesim Takibi atamalar slot'unu güncelle (Kesim Takibi'nde görünsün)
+      if (kayit?.kurban_id) {
+        void syncEtliHisseToKurbanSlot(id, kayit.kurban_id, undefined, undefined, kapora, tahsilat);
+      }
+
+      closeModalEl('modalEtliOdeme');
+      void withTableUiPreserved('tblEtli', 'etliPaketDetay_', () => renderEtliTable());
+      showToast('success', 'Kaydedildi', 'Ödeme bilgisi güncellendi.');
+    } finally {
+      form.dataset.submitting = '';
+      btnSetBusy(submitBtn, false);
+    }
+  });
+  document.getElementById('btnEtliOdemeIptal')?.addEventListener('click', () => closeModalEl('modalEtliOdeme'));
+
+  document.getElementById('btnBagisYazdir')?.addEventListener('click', () => printBagisHisse());
+  document.getElementById('btnEtliYazdir')?.addEventListener('click', () => printEtliHisse());
+
+  function printBagisHisse() {
+    const yilFiltre = document.getElementById('bagisYilFiltre')?.value || '';
+    const durumFiltre = document.getElementById('bagisDurumFiltre')?.value || '';
+    const personelFiltre = document.getElementById('bagisPersonelFiltre')?.value || '';
+    const araFiltre = (document.getElementById('bagisAra')?.value || '').toLowerCase();
+
+    const filtered = bagisList.filter(r => {
+      if (yilFiltre && String(r.yil || '') !== yilFiltre) return false;
+      if (araFiltre && !((r.ad_soyad || '').toLowerCase().includes(araFiltre) || (r.telefon || '').includes(araFiltre))) return false;
+      if (durumFiltre && (r.durum || '') !== durumFiltre) return false;
+      if (personelFiltre && (r.created_by_uid || '') !== personelFiltre) return false;
+      return true;
+    });
+
+    // Grupla: aynı isim+tel+personel+durum+yıl+açıklama → tek satır, adet artar
+    const groupedMap = new Map();
+    filtered.forEach(r => {
+      const key = [r.ad_soyad || '', r.telefon || '', r.created_by_uid || '', r.durum || '', r.yil || '', r.aciklama || ''].join('|');
+      if (!groupedMap.has(key)) groupedMap.set(key, { ...r, adet: 0 });
+      groupedMap.get(key).adet += 1;
+    });
+    const rows = Array.from(groupedMap.values());
+    rows.sort((a, b) => (a.ad_soyad || '').localeCompare(b.ad_soyad || '', 'tr'));
+
+    const personelAdi = personelFiltre ? (personelMap[personelFiltre] || '–') : 'Tüm Personel';
+    const yilBaslik = yilFiltre ? `${yilFiltre} Yılı` : '';
+    const durumEtiket = { kayit_alindi: 'Kayıt Alındı', tekduzene_kayit: 'Tekdüzene', vekalet_alindi: 'Vekalet', kesim_yapildi: 'Kesildi', kesildi: 'Kesildi' };
+
+    let satirlar = '';
+    rows.forEach((r, i) => {
+      const durum = durumEtiket[r.durum] || (r.durum || '–');
+      satirlar += `<tr>
+        <td style="text-align:center">${i + 1}</td>
+        <td>${esc(r.ad_soyad || '–')}</td>
+        <td>${esc(r.telefon || '–')}</td>
+        <td>${esc(getPersonelAd(r))}</td>
+        <td style="text-align:center;font-weight:${r.adet > 1 ? '700' : '400'}">${r.adet || 1}</td>
+        <td>${esc(durum)}</td>
+        <td>${esc(r.aciklama || '')}</td>
+      </tr>`;
+    });
+
+    const html = `<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8">
+<title>Bağış Hisseleri</title>
+<style>
+  body { font-family: Arial, sans-serif; font-size: 12px; color: #111; margin: 20px; }
+  h1 { font-size: 17px; margin: 0 0 2px; }
+  .sub { font-size: 13px; color: #555; margin: 0 0 4px; }
+  .baslik { font-size: 15px; font-weight: 700; margin: 0 0 12px; border-bottom: 2px solid #333; padding-bottom: 6px; }
+  .meta { font-size: 11px; color: #666; margin-bottom: 14px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: #f0f0f0; text-align: left; padding: 5px 7px; font-size: 11px; border: 1px solid #ccc; }
+  td { padding: 4px 7px; border: 1px solid #ddd; vertical-align: top; }
+  tr:nth-child(even) td { background: #fafafa; }
+  @media print { body { margin: 10px; } }
+</style></head><body>
+<h1>Karaağaç Fatih${yilBaslik ? ' — ' + yilBaslik : ''}</h1>
+<div class="sub">Personel: <strong>${esc(personelAdi)}</strong></div>
+<div class="baslik">Bağış Hisseleri</div>
+<div class="meta">Toplam: ${rows.length} kişi / ${filtered.length} hisse &nbsp;|&nbsp; Tarih: ${new Date().toLocaleDateString('tr-TR')}</div>
+<table>
+  <thead><tr><th>#</th><th>Ad Soyad</th><th>Telefon</th><th>Personel</th><th>Adet</th><th>Durum</th><th>Açıklama</th></tr></thead>
+  <tbody>${satirlar}</tbody>
+</table>
+<script>window.onload=()=>window.print();<\/script>
+</body></html>`;
+
+    const w = window.open('', '_blank', 'width=900,height=700');
+    if (!w) { alert('Lütfen açılır pencere engelleyicisini bu sayfa için devre dışı bırakın.'); return; }
+    w.document.write(html);
+    w.document.close();
+  }
+
+  function printEtliHisse() {
+    const yilFiltre = document.getElementById('etliYilFiltre')?.value || '';
+    const grupFiltre = document.getElementById('etliGrupFiltre')?.value || '';
+    const personelFiltre = document.getElementById('etliPersonelFiltre')?.value || '';
+    const araFiltre = (document.getElementById('etliAra')?.value || '').toLowerCase();
+
+    const baseFiltered = etliList.filter(r => {
+      if (yilFiltre && String(r.yil || '') !== yilFiltre) return false;
+      if (grupFiltre && (r.hisse_grubu || '') !== grupFiltre) return false;
+      if (personelFiltre && (r.created_by_uid || '') !== personelFiltre) return false;
+      return true;
+    });
+
+    const rootsToShow = new Set();
+    baseFiltered.forEach(r => {
+      const ad = (r.hisedar_ad_soyad || '').toLowerCase();
+      const tel = (r.telefon || '').replace(/\D/g, '');
+      const araDigits = araFiltre.replace(/\D/g, '');
+      const nameHit = !araFiltre || ad.includes(araFiltre);
+      const telHit = !araFiltre || (r.telefon || '').toLowerCase().includes(araFiltre) || (araDigits && tel.includes(araDigits));
+      if (nameHit || telHit) rootsToShow.add(etliPaketKokId(r));
+    });
+
+    const groupedRows = [];
+    rootsToShow.forEach(kokId => {
+      if (!kokId) return;
+      const members = etliPaketUyeleriForKok(etliList, kokId, yilFiltre, grupFiltre);
+      if (members.length) groupedRows.push(etliPaketOzetSatir(members, kokId));
+    });
+
+    // A–Z ada göre sırala
+    groupedRows.sort((a, b) => (a.hisedar_ad_soyad || '').localeCompare(b.hisedar_ad_soyad || '', 'tr'));
+
+    const personelAdi = personelFiltre ? (personelMap[personelFiltre] || '–') : 'Tüm Personel';
+    const yilBaslik = yilFiltre ? `${yilFiltre} Yılı` : '';
+
+    let satirlar = '';
+    let siraNo = 1;
+    groupedRows.forEach(r => {
+      const isTekil = (r.records || []).length <= 1;
+      // Tekil: kurban_id ilk records'dan al (etliPaketOzetSatir kurban_id döndürmüyor)
+      const tekilKurban = (r.records || [])[0]?.kurban_id;
+      if (isTekil) {
+        satirlar += `<tr>
+          <td style="text-align:center">${siraNo++}</td>
+          <td>${esc(r.hisedar_ad_soyad || '–')}</td>
+          <td>${esc(r.telefon || '–')}</td>
+          <td>${esc(getPersonelAd(r))}</td>
+          <td>${esc(r.hisse_grubu || '–')}</td>
+          <td style="text-align:center">1</td>
+          <td style="text-align:center">${tekilKurban ? '✓' : ''}</td>
+          <td>${esc(r.aciklama || '')}</td>
+        </tr>`;
+      } else {
+        // Pakette kaç hisse kurbana atanmış?
+        const atananSay = (r.records || []).filter(x => x.kurban_id).length;
+        const atananLabel = atananSay > 0 ? `${atananSay}/${r.records.length} atandı` : '';
+        // Personel farklılığı kontrolü
+        const personelIds = [...new Set((r.records || []).map(x => x.created_by_uid || '').filter(Boolean))];
+        const personelFarkli = personelIds.length > 1;
+        const personelLabel = personelFarkli
+          ? `<span style="color:#b45309;font-size:10px;margin-left:8px">⚠ ${personelIds.length} farklı personel</span>`
+          : (personelIds.length === 1 ? `<span style="font-size:10px;margin-left:8px;opacity:.7">${esc(personelMap[personelIds[0]] || personelIds[0])}</span>` : '');
+        // Paket başlık satırı — sol kenarlıklı, koyu arka plan
+        satirlar += `<tr class="paket-baslik">
+          <td colspan="8">
+            <span class="paket-etiket">PAKET</span>
+            <strong>${esc(r.hisedar_ad_soyad || '–')}</strong>
+            <span class="paket-meta">${r.records.length} hisse &nbsp;·&nbsp; ${esc(r.hisse_grubu || '–')}${atananLabel ? ' &nbsp;·&nbsp; Kurban: ' + atananLabel : ''}</span>${personelLabel}
+          </td>
+        </tr>`;
+        (r.records || []).forEach(rec => {
+          const recAd = rec.hisedar_ad_soyad || rec.hissedar_ad_soyad || '–';
+          satirlar += `<tr class="paket-uye">
+            <td style="text-align:center">${siraNo++}</td>
+            <td class="girintili">${esc(recAd)}</td>
+            <td>${esc(rec.telefon || '–')}</td>
+            <td>${esc(getPersonelAd(rec))}</td>
+            <td>${esc(rec.hisse_grubu || '–')}</td>
+            <td style="text-align:center">1</td>
+            <td style="text-align:center">${rec.kurban_id ? '✓' : ''}</td>
+            <td>${esc(rec.aciklama || '')}</td>
+          </tr>`;
+        });
+        // Paket bitiş ayırıcı (boş satır ile görsel ayrım)
+        satirlar += `<tr class="paket-bitis"><td colspan="8"></td></tr>`;
+      }
+    });
+
+    const toplamHisse = groupedRows.reduce((s, r) => s + ((r.records || []).length || 1), 0);
+
+    const html = `<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8">
+<title>Etli Hisseler</title>
+<style>
+  body { font-family: Arial, sans-serif; font-size: 12px; color: #111; margin: 20px; }
+  h1 { font-size: 17px; margin: 0 0 2px; }
+  .sub { font-size: 13px; color: #555; margin: 0 0 4px; }
+  .baslik { font-size: 15px; font-weight: 700; margin: 0 0 12px; border-bottom: 2px solid #333; padding-bottom: 6px; }
+  .meta { font-size: 11px; color: #666; margin-bottom: 14px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: #f0f0f0; text-align: left; padding: 5px 7px; font-size: 11px; border: 1px solid #ccc; }
+  td { padding: 4px 7px; border: 1px solid #ddd; vertical-align: top; }
+  tr:nth-child(even) td { background: #fafafa; }
+  tr.paket-baslik td { background: #1e3a5f; color: #fff; border-color: #1e3a5f; padding: 6px 10px; border-left: 4px solid #f59e0b; }
+  tr.paket-baslik .paket-etiket { display:inline-block; background:#f59e0b; color:#111; font-size:10px; font-weight:700; padding:1px 5px; border-radius:3px; margin-right:7px; letter-spacing:.5px; }
+  tr.paket-baslik .paket-meta { font-weight:400; font-size:11px; margin-left:8px; opacity:.85; }
+  tr.paket-uye td { background: #f0f4ff; border-left: 4px solid #93b4e8; }
+  tr.paket-uye .girintili { padding-left: 18px; }
+  tr.paket-bitis td { height: 6px; background: #e2e8f0; border: none; padding: 0; }
+  @media print { body { margin: 10px; } }
+</style></head><body>
+<h1>Karaağaç Fatih${yilBaslik ? ' — ' + yilBaslik : ''}</h1>
+<div class="sub">Personel: <strong>${esc(personelAdi)}</strong></div>
+<div class="baslik">Etli Hisseler</div>
+<div class="meta">Toplam: ${groupedRows.length} kayıt / ${toplamHisse} hisse &nbsp;|&nbsp; Tarih: ${new Date().toLocaleDateString('tr-TR')}</div>
+<table>
+  <thead><tr><th>#</th><th>Ad Soyad</th><th>Telefon</th><th>Personel</th><th>Grup</th><th>Adet</th><th>Kurban</th><th>Açıklama</th></tr></thead>
+  <tbody>${satirlar}</tbody>
+</table>
+<script>window.onload=()=>window.print();<\/script>
+</body></html>`;
+
+    const w = window.open('', '_blank', 'width=900,height=700');
+    if (!w) { alert('Lütfen açılır pencere engelleyicisini bu sayfa için devre dışı bırakın.'); return; }
+    w.document.write(html);
+    w.document.close();
+  }
 
   function waitAndInit() {
     if (typeof window.supabase !== 'undefined' && window.supabase?.from) {
