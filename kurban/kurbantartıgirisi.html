@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Kurban Tartı Girişi | Karaağaç</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <link rel="icon" type="image/png" href="../img/logo.png" />
+  <link rel="stylesheet" href="../css/app-shell.css" />
+  <style>
+    body { padding-top: var(--appbar-h) !important; overflow-x: hidden; overflow-y: auto; }
+    .wrap { max-width: 900px; margin: 0 auto; padding: 16px; }
+    .card { background: var(--card); border: 1px solid var(--stroke); border-radius: 16px; padding: 20px; margin: 12px 0; box-shadow: var(--shadow); }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .03em; }
+    .form-group select,
+    .form-group input[type="number"] { width: 100%; height: 44px; border: 1px solid var(--stroke); border-radius: 10px; padding: 0 12px; font: inherit; font-size: 15px; background: var(--card); color: var(--ink); box-sizing: border-box; }
+    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 540px) { .form-grid-2 { grid-template-columns: 1fr; } }
+    .form-hint { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.4; }
+    .actions-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--stroke); }
+    .table-wrap { overflow: auto; border: 1px solid var(--stroke); border-radius: 12px; margin-top: 16px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    thead th { position: sticky; top: 0; background: var(--surface); border-bottom: 2px solid var(--stroke); font-weight: 700; text-align: left; font-size: 12px; color: var(--muted); padding: 11px 12px; white-space: nowrap; text-transform: uppercase; letter-spacing: .03em; }
+    tbody td { border-bottom: 1px solid var(--stroke); padding: 11px 12px; font-size: 14px; color: var(--ink); vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: var(--surface); }
+    .num-cell { text-align: right; font-variant-numeric: tabular-nums; }
+    .muted-cell { color: var(--muted); font-size: 12px; }
+    .badge-girildi { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; background: rgba(16,185,129,.15); color: #047857; }
+    .badge-bos { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; background: rgba(100,116,139,.12); color: var(--muted); }
+    /* Modal — app-shell.css .sheet opacity:0 override */
+    .modal { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 13000; backdrop-filter: blur(4px); pointer-events: none; }
+    .modal.show { display: flex !important; pointer-events: auto !important; }
+    .modal.show .sheet { opacity: 1 !important; transform: scale(1) translateY(0) !important; visibility: visible !important; display: block !important; pointer-events: auto !important; }
+    .sheet { max-width: 520px; width: 100%; background: var(--card); border-radius: 16px; padding: 20px; border: 1px solid var(--stroke); box-shadow: 0 20px 40px rgba(0,0,0,.2); max-height: 90vh; overflow-y: auto; }
+    .sheet h3 { margin: 0 0 12px; font-size: 18px; }
+    .url-box { display: flex; gap: 8px; align-items: stretch; margin: 14px 0; }
+    .url-box input { flex: 1; height: 40px; border: 1px solid var(--stroke); border-radius: 10px; padding: 0 12px; font: inherit; font-size: 13px; background: var(--surface); color: var(--ink); }
+    .modal-desc { font-size: 13px; color: var(--muted); line-height: 1.5; margin-bottom: 8px; }
+    .modal-warning { font-size: 12px; color: #b45309; background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.3); border-radius: 8px; padding: 8px 12px; margin-top: 8px; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--stroke); }
+    .selected-info { padding: 10px 14px; background: rgba(37,99,235,.07); border: 1px solid rgba(37,99,235,.2); border-radius: 10px; font-size: 13px; color: var(--ink); line-height: 1.5; margin-bottom: 4px; }
+    .selected-info .si-label { font-weight: 700; color: #1d4ed8; margin-right: 6px; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="../src/supabase.js"></script>
+  <script src="../src/supabase-auth-wrapper.js"></script>
+  <script src="../src/supabase-db-wrapper.js"></script>
+  <script>
+    (function () {
+      function initAuth() {
+        if (typeof window.getSupabaseAuth === 'function') {
+          window.auth = window.getSupabaseAuth();
+          return true;
+        }
+        return false;
+      }
+      function waitAndTriggerInit() {
+        if (typeof window.auth !== 'undefined' && window.auth && typeof window.initAppShellAuth === 'function') {
+          try { window.initAppShellAuth(); } catch (e) { console.error('initAppShellAuth:', e); }
+        } else if (typeof window.initAppShellAuth === 'function') { setTimeout(waitAndTriggerInit, 300); }
+      }
+      function bootstrap() {
+        if (!initAuth()) setTimeout(bootstrap, 200);
+        else setTimeout(waitAndTriggerInit, 200);
+      }
+      bootstrap();
+    })();
+  </script>
+  <script src="../js/ortak.js"></script>
+</head>
+<body>
+  <div class="appbar">
+    <div class="brand" onclick="location.href='../panel.html'">
+      <img src="../img/logo.png" alt="logo"><span>KARAAĞAÇ FATİH</span>
+    </div>
+    <nav class="nav-center"><ul class="nav-list" id="navMain"></ul></nav>
+    <div class="nav-right">
+      <button class="btn hamb" id="hamburger" title="Menü">☰</button>
+      <div class="nav-item">
+        <button class="iconbtn" id="btnProfile" title="Profil">
+          <span class="avatar"></span> <span id="profName" class="muted">Profil</span>
+        </button>
+        <div class="dropdown drop-right" id="profDropdown">
+          <a href="../diger/kullanici-yonetimi.html">👤 Profil</a>
+          <a href="../diger/sistem-ayarlari.html">⚙️ Sistem Ayarları</a>
+          <a href="#" id="btnLogout">🚪 Çıkış Yap</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <aside class="drawer" id="drawer"></aside>
+  <div class="toast-container" id="toastContainer"></div>
+
+  <main class="wrap">
+    <div style="margin-bottom:16px;display:flex;flex-wrap:wrap;align-items:center;gap:10px;justify-content:space-between">
+      <div>
+        <h1 style="margin:0;font-size:22px">⚖️ Kurban Tartı Girişi</h1>
+        <p style="margin:4px 0 0;font-size:13px;color:var(--muted)">Kesilmiş kurbandan her hisseye düşen et ve kemik kg'sını girin.</p>
+      </div>
+      <button type="button" class="btn btn-ghost" id="btnAnonimUrl" title="Paylaşılabilir tek kullanımlık giriş URL'si üret">🔗 Diğer Giriş</button>
+    </div>
+
+    <!-- Giriş Formu -->
+    <div class="card">
+      <form id="formTarti">
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="tartiYil">Kurban Yılı</label>
+            <select id="tartiYil"></select>
+          </div>
+          <div class="form-group">
+            <label for="tartiKurban">Kurban Seç</label>
+            <select id="tartiKurban">
+              <option value="">— Kurban seçin —</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="selectedKurbanInfo" style="display:none" class="selected-info">
+          <span class="si-label">Seçili:</span><span id="selectedKurbanLabel">—</span>
+        </div>
+
+        <div class="form-grid-2" style="margin-top:12px">
+          <div class="form-group">
+            <label for="tartiEtKg">Et Kg / Hisse</label>
+            <input type="number" id="tartiEtKg" min="0" step="0.01" placeholder="0.00" />
+            <div class="form-hint">Boş bırakılırsa 0.0 kg kaydedilir.</div>
+          </div>
+          <div class="form-group">
+            <label for="tartiKemikKg">Kemik Kg / Hisse</label>
+            <input type="number" id="tartiKemikKg" min="0" step="0.01" placeholder="0.00" />
+            <div class="form-hint">Boş bırakılırsa 0.0 kg kaydedilir.</div>
+          </div>
+        </div>
+
+        <div class="actions-row">
+          <button type="button" class="btn btn-ghost" id="btnFormTemizle">Temizle</button>
+          <button type="submit" class="btn btn-primary" id="btnTartiKaydet">💾 Kaydet</button>
+        </div>
+      </form>
+    </div>
+
+  </main>
+
+  <!-- Modal: Anonim Giriş URL -->
+  <div class="modal" id="modalAnonimUrl">
+    <div class="sheet">
+      <h3>🔗 Anonim Giriş URL'si</h3>
+      <p class="modal-desc">Aşağıdaki URL'yi, tartı bilgisi girecek kişiyle paylaşın. Bu bağlantı <strong>bir kez</strong> kullanılabilir; kişi "Tamamla" butonuna bastıktan sonra geçersiz olur.</p>
+      <div class="url-box">
+        <input type="text" id="anonimUrlInput" readonly />
+        <button type="button" class="btn btn-primary" id="btnCopyUrl">Kopyala</button>
+      </div>
+      <div class="modal-warning">⚠️ Bu bağlantıyı yalnızca güvendiğiniz kişilerle paylaşın.</div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('modalAnonimUrl').classList.remove('show')">Kapat</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+(function () {
+  const getSupabase = () => window.supabase;
+
+  function waitForSupabase(ms = 20000) {
+    return new Promise(resolve => {
+      const t0 = Date.now();
+      (function tick() {
+        const sb = window.supabase;
+        if (sb && typeof sb.from === 'function') return resolve(sb);
+        if (Date.now() - t0 >= ms) return resolve(null);
+        setTimeout(tick, 40);
+      })();
+    });
+  }
+
+  const toast = (t, title, msg) => window.showToast ? window.showToast(t, title, msg) : console.log(title, msg);
+
+  function esc(s) {
+    if (s == null || s === '') return '–';
+    const d = document.createElement('div');
+    d.textContent = String(s);
+    return d.innerHTML;
+  }
+  function fmtKg(v) {
+    const n = parseFloat(v);
+    if (isNaN(n)) return '0.00';
+    return n.toFixed(2);
+  }
+
+  let kategorilerList = [];
+  let kurbanList = [];   // loaded per year
+  let tartiMap = {};     // kurban_id → {et_kg, kemik_kg}
+
+  function getAktifYil() {
+    const k = kategorilerList.find(x => x.aktif);
+    return k ? k.yil : 2026;
+  }
+  function getSecilenYil() {
+    const el = document.getElementById('tartiYil');
+    return el && el.value ? parseInt(el.value, 10) : getAktifYil();
+  }
+
+  // ── Kategoriler ──────────────────────────────────────────────────────────────
+  async function loadKategoriler() {
+    const sb = getSupabase();
+    if (!sb) { kategorilerList = [{ yil: 2026, label: '2026 Kurban', aktif: true }]; return buildYilSelect(); }
+    try {
+      const { data, error } = await sb.from('kurban_kategoriler').select('yil,label,aktif').order('yil', { ascending: false });
+      if (error) throw error;
+      kategorilerList = data || [];
+    } catch { kategorilerList = [{ yil: 2026, label: '2026 Kurban', aktif: true }]; }
+    buildYilSelect();
+  }
+  function buildYilSelect() {
+    const sel = document.getElementById('tartiYil');
+    if (!sel) return;
+    sel.innerHTML = '';
+    const list = kategorilerList.length ? kategorilerList : [{ yil: 2026, label: '2026 Kurban', aktif: true }];
+    list.forEach(k => {
+      const o = document.createElement('option');
+      o.value = k.yil;
+      o.textContent = k.label || k.yil + ' Kurban';
+      sel.appendChild(o);
+    });
+    const aktif = list.find(x => x.aktif);
+    if (aktif) sel.value = String(aktif.yil);
+  }
+
+  // ── Kurban Listesi ────────────────────────────────────────────────────────────
+  async function loadKurbanlar(yil) {
+    const sb = getSupabase();
+    if (!sb) return;
+    const sel = document.getElementById('tartiKurban');
+    sel.innerHTML = '<option value="">Yükleniyor…</option>';
+    try {
+      const { data, error } = await sb.from('karaagac_kurban')
+        .select('id, kesim_sirasi, atamalar, hissedar_adedi')
+        .eq('yil', yil)
+        .order('kesim_sirasi', { ascending: true });
+      if (error) throw error;
+      kurbanList = (data || []).map(row => {
+        let atamalar = row.atamalar;
+        if (typeof atamalar === 'string') { try { atamalar = JSON.parse(atamalar); } catch { atamalar = []; } }
+        if (!Array.isArray(atamalar)) atamalar = [];
+        const ilk = atamalar[0];
+        const ilkAd = (ilk && (ilk.ad_soyad || '').trim()) ? ilk.ad_soyad.trim() : '—';
+        return { id: row.id, kesim_sirasi: row.kesim_sirasi, ilk_hissedar: ilkAd, hissedar_adedi: row.hissedar_adedi };
+      });
+      sel.innerHTML = '<option value="">— Kurban seçin —</option>';
+      kurbanList.forEach(k => {
+        const o = document.createElement('option');
+        o.value = k.id;
+        o.textContent = `${k.kesim_sirasi} - ${k.ilk_hissedar}`;
+        sel.appendChild(o);
+      });
+    } catch (e) {
+      sel.innerHTML = '<option value="">Hata: yüklenemedi</option>';
+      toast('error', 'Kurban listesi', e.message || 'Veri alınamadı');
+    }
+  }
+
+  // ── Tartı Map (kurban seçiminde mevcut veri için) ────────────────────────────
+  async function loadTartiMap(yil) {
+    const sb = getSupabase();
+    if (!sb) return;
+    tartiMap = {};
+    try {
+      const { data, error } = await sb.from('kurban_tarti_bilgileri').select('kurban_id,et_kg,kemik_kg').eq('yil', yil);
+      if (error) throw error;
+      (data || []).forEach(r => { tartiMap[String(r.kurban_id)] = r; });
+    } catch { /* tablo henüz yoksa sessizce geç */ }
+  }
+
+  // ── Form: Kurban seçildi → mevcut veriyi yükle ────────────────────────────────
+  document.getElementById('tartiKurban')?.addEventListener('change', function () {
+    const kid = this.value;
+    const infoEl = document.getElementById('selectedKurbanInfo');
+    const labelEl = document.getElementById('selectedKurbanLabel');
+    if (!kid) {
+      if (infoEl) infoEl.style.display = 'none';
+      document.getElementById('tartiEtKg').value = '';
+      document.getElementById('tartiKemikKg').value = '';
+      return;
+    }
+    const kurban = kurbanList.find(k => String(k.id) === String(kid));
+    if (kurban && infoEl && labelEl) {
+      labelEl.textContent = `${kurban.kesim_sirasi}. Sıra — ${kurban.ilk_hissedar} (${kurban.hissedar_adedi} hissedar)`;
+      infoEl.style.display = '';
+    }
+    const mevcut = tartiMap[String(kid)];
+    document.getElementById('tartiEtKg').value = mevcut ? fmtKg(mevcut.et_kg) : '';
+    document.getElementById('tartiKemikKg').value = mevcut ? fmtKg(mevcut.kemik_kg) : '';
+  });
+
+  // ── Kaydet ─────────────────────────────────────────────────────────────────────
+  document.getElementById('formTarti')?.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const sb = getSupabase();
+    if (!sb) return toast('error', 'Kaydet', 'Bağlantı yok');
+    const kid = document.getElementById('tartiKurban').value;
+    if (!kid) return toast('warning', 'Kaydet', 'Lütfen bir kurban seçin.');
+    const yil = getSecilenYil();
+    const etKg = parseFloat(document.getElementById('tartiEtKg').value) || 0;
+    const kemikKg = parseFloat(document.getElementById('tartiKemikKg').value) || 0;
+    const btn = document.getElementById('btnTartiKaydet');
+    btn.disabled = true;
+    btn.textContent = 'Kaydediliyor…';
+    try {
+      let uid = null;
+      const session = await sb.auth.getSession();
+      uid = session?.data?.session?.user?.id || null;
+      const payload = {
+        kurban_id: kid,   // uuid
+        yil,
+        et_kg: etKg,
+        kemik_kg: kemikKg,
+        guncelleme_tarihi: new Date().toISOString(),
+        girildi_by: uid
+      };
+      const { error } = await sb.from('kurban_tarti_bilgileri')
+        .upsert(payload, { onConflict: 'kurban_id' });
+      if (error) throw error;
+      toast('success', 'Tartı kaydedildi', `Et: ${etKg.toFixed(2)} kg — Kemik: ${kemikKg.toFixed(2)} kg`);
+      tartiMap[String(kid)] = { kurban_id: parseInt(kid, 10), et_kg: etKg, kemik_kg: kemikKg };
+      // Otomatik sonraki kurbana geç
+      const sel = document.getElementById('tartiKurban');
+      const curIdx = kurbanList.findIndex(k => String(k.id) === String(kid));
+      const nextKurban = curIdx >= 0 && curIdx < kurbanList.length - 1 ? kurbanList[curIdx + 1] : null;
+      if (nextKurban && sel) {
+        sel.value = String(nextKurban.id);
+        sel.dispatchEvent(new Event('change'));
+      } else {
+        // Son kurbandaysa formu temizle
+        if (sel) sel.value = '';
+        document.getElementById('tartiEtKg').value = '';
+        document.getElementById('tartiKemikKg').value = '';
+        const infoEl = document.getElementById('selectedKurbanInfo');
+        if (infoEl) infoEl.style.display = 'none';
+      }
+    } catch (err) {
+      toast('error', 'Kayıt hatası', err.message || 'Bir hata oluştu');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '💾 Kaydet';
+    }
+  });
+
+  // ── Temizle ───────────────────────────────────────────────────────────────────
+  document.getElementById('btnFormTemizle')?.addEventListener('click', () => {
+    document.getElementById('tartiKurban').value = '';
+    document.getElementById('tartiEtKg').value = '';
+    document.getElementById('tartiKemikKg').value = '';
+    const infoEl = document.getElementById('selectedKurbanInfo');
+    if (infoEl) infoEl.style.display = 'none';
+  });
+
+  // ── Yıl değişimi ──────────────────────────────────────────────────────────────
+  document.getElementById('tartiYil')?.addEventListener('change', async function () {
+    const yil = parseInt(this.value, 10);
+    await Promise.all([loadKurbanlar(yil), loadTartiMap(yil)]);
+    document.getElementById('tartiKurban').value = '';
+    document.getElementById('tartiEtKg').value = '';
+    document.getElementById('tartiKemikKg').value = '';
+    const infoEl = document.getElementById('selectedKurbanInfo');
+    if (infoEl) infoEl.style.display = 'none';
+  });
+
+  // ── Anonim URL Üret ───────────────────────────────────────────────────────────
+  document.getElementById('btnAnonimUrl')?.addEventListener('click', async () => {
+    const sb = getSupabase();
+    if (!sb) return toast('error', 'URL üret', 'Bağlantı yok');
+    const yil = getSecilenYil();
+    const btn = document.getElementById('btnAnonimUrl');
+    btn.disabled = true;
+    btn.textContent = '…';
+    try {
+      // Güncel kurban listesini al
+      let klist = kurbanList;
+      if (!klist.length) {
+        const { data } = await sb.from('karaagac_kurban')
+          .select('id, kesim_sirasi, atamalar, hissedar_adedi')
+          .eq('yil', yil)
+          .order('kesim_sirasi', { ascending: true });
+        klist = (data || []).map(row => {
+          let atamalar = row.atamalar;
+          if (typeof atamalar === 'string') { try { atamalar = JSON.parse(atamalar); } catch { atamalar = []; } }
+          if (!Array.isArray(atamalar)) atamalar = [];
+          const ilk = atamalar[0];
+          const ilkAd = (ilk && (ilk.ad_soyad || '').trim()) ? ilk.ad_soyad.trim() : '—';
+          return { id: row.id, kesim_sirasi: row.kesim_sirasi, ilk_hissedar: ilkAd, hissedar_adedi: row.hissedar_adedi };
+        });
+      }
+      const token = Array.from(crypto.getRandomValues(new Uint8Array(24)))
+        .map(b => b.toString(16).padStart(2, '0')).join('');
+      let uid = null;
+      const session = await sb.auth.getSession();
+      uid = session?.data?.session?.user?.id || null;
+      const { error } = await sb.from('kurban_tarti_tokenler').insert({
+        token,
+        yil,
+        kurban_listesi: klist,
+        olusturan_uid: uid
+      });
+      if (error) throw error;
+      const base = window.location.origin;
+      const url = `${base}/kurban-tarti-giris.html?token=${token}`;
+      document.getElementById('anonimUrlInput').value = url;
+      document.getElementById('modalAnonimUrl').classList.add('show');
+    } catch (err) {
+      toast('error', 'URL üret', err.message || 'Hata oluştu');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '🔗 Diğer Giriş';
+    }
+  });
+
+  // ── Kopyala ───────────────────────────────────────────────────────────────────
+  document.getElementById('btnCopyUrl')?.addEventListener('click', async () => {
+    const val = document.getElementById('anonimUrlInput').value;
+    try {
+      await navigator.clipboard.writeText(val);
+      toast('success', 'Kopyalandı', 'URL panoya kopyalandı.');
+      document.getElementById('btnCopyUrl').textContent = '✓ Kopyalandı';
+      setTimeout(() => { document.getElementById('btnCopyUrl').textContent = 'Kopyala'; }, 2000);
+    } catch {
+      document.getElementById('anonimUrlInput').select();
+    }
+  });
+
+  // ── Modal dışına tıklama ──────────────────────────────────────────────────────
+  document.getElementById('modalAnonimUrl')?.addEventListener('click', function (e) {
+    if (e.target === this) this.classList.remove('show');
+  });
+
+  // ── Boot ──────────────────────────────────────────────────────────────────────
+  async function boot() {
+    await waitForSupabase();
+    await loadKategoriler();
+    const yil = getSecilenYil();
+    await Promise.all([loadKurbanlar(yil), loadTartiMap(yil)]);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => void boot());
+  } else {
+    void boot();
+  }
+})();
+  </script>
+</body>
+</html>

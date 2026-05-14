@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Kurban Tartı Girişi</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <link rel="icon" type="image/png" href="img/logo.png" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    :root {
+      --brand: #2563eb;
+      --brand-dark: #1d4ed8;
+      --success: #059669;
+      --warning: #b45309;
+      --danger: #dc2626;
+      --bg: #f0f2f5;
+      --card: #ffffff;
+      --surface: #f8fafc;
+      --ink: #1e293b;
+      --muted: #64748b;
+      --stroke: #e2e8f0;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f172a; --card: #1e293b; --surface: #263041;
+        --ink: #f1f5f9; --muted: #94a3b8; --stroke: #334155;
+      }
+    }
+    html { background: var(--bg); min-height: 100%; }
+    body { margin: 0; padding: 0 0 env(safe-area-inset-bottom, 16px); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--ink); min-height: 100dvh; }
+    /* Yükleme / hata ekranı: hem açık hem koyu temada okunur */
+    #stateLoading .card, #stateError .card { background: var(--card) !important; }
+    .page { max-width: 520px; margin: 0 auto; padding: 20px 16px; }
+    .header { text-align: center; padding: 24px 16px 20px; }
+    .header .logo { width: 56px; height: 56px; border-radius: 14px; object-fit: contain; margin-bottom: 10px; }
+    .header h1 { margin: 0 0 4px; font-size: 22px; font-weight: 800; color: var(--ink); }
+    .header p { margin: 0; font-size: 14px; color: var(--muted); }
+    .card { background: var(--card); border: 1px solid var(--stroke); border-radius: 16px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.07); }
+    .form-group { margin-bottom: 16px; }
+    .form-group:last-child { margin-bottom: 0; }
+    .form-group label { display: block; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 7px; }
+    .form-group select,
+    .form-group input[type="number"] { width: 100%; height: 48px; border: 1.5px solid var(--stroke); border-radius: 12px; padding: 0 14px; font: inherit; font-size: 16px; background: var(--card); color: var(--ink); -webkit-appearance: none; appearance: none; }
+    .form-group select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 40px; }
+    .form-hint { font-size: 12px; color: var(--muted); margin-top: 5px; line-height: 1.4; }
+    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 48px; padding: 0 20px; border-radius: 12px; font: inherit; font-size: 15px; font-weight: 600; border: none; cursor: pointer; transition: opacity .15s, transform .1s; white-space: nowrap; }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+    .btn-primary { background: var(--brand); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--brand-dark); }
+    .btn-ghost { background: var(--surface); color: var(--ink); border: 1px solid var(--stroke); }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-full { width: 100%; }
+    .selected-info { padding: 10px 14px; background: rgba(37,99,235,.07); border: 1px solid rgba(37,99,235,.2); border-radius: 10px; font-size: 13px; color: var(--ink); line-height: 1.5; margin-bottom: 4px; }
+    .selected-info .si-label { font-weight: 700; color: #1d4ed8; }
+
+    /* States */
+    #stateLoading, #stateError, #stateForm, #stateDone { display: none; }
+    #stateLoading.show, #stateError.show, #stateForm.show, #stateDone.show { display: block; }
+
+    .state-center { text-align: center; padding: 48px 20px; }
+    .state-icon { font-size: 52px; margin-bottom: 12px; }
+    .state-title { font-size: 22px; font-weight: 800; margin: 0 0 10px; color: var(--ink); }
+    .state-desc { font-size: 15px; color: var(--muted); margin: 0; line-height: 1.6; }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--stroke); border-top-color: var(--brand); border-radius: 50%; animation: spin .7s linear infinite; margin: 0 auto 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Kaydedildi listesi */
+    .saved-list { margin-top: 16px; }
+    .saved-list-title { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 10px; }
+    .saved-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--stroke); border-radius: 10px; margin-bottom: 6px; font-size: 14px; }
+    .saved-item .si-sira { min-width: 32px; height: 32px; border-radius: 8px; background: rgba(16,185,129,.15); color: #047857; font-weight: 700; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; }
+    .saved-item .si-info { flex: 1; min-width: 0; }
+    .saved-item .si-ad { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .saved-item .si-kg { font-size: 12px; color: var(--muted); white-space: nowrap; }
+    .saved-item .si-badge { font-size: 11px; font-weight: 700; color: #047857; background: rgba(16,185,129,.12); padding: 3px 8px; border-radius: 6px; white-space: nowrap; }
+
+    /* Tamamla bölümü */
+    .bitir-section { border-top: 1px solid var(--stroke); padding-top: 16px; margin-top: 4px; }
+    .bitir-desc { font-size: 13px; color: var(--muted); margin-bottom: 12px; line-height: 1.5; }
+
+    /* Toast */
+    .toast-layer { position: fixed; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); display: flex; flex-direction: column-reverse; align-items: center; gap: 8px; z-index: 9999; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); }
+    .toast-item { padding: 10px 16px; border-radius: 10px; font-size: 14px; font-weight: 600; color: #fff; animation: toastIn .25s ease-out; pointer-events: auto; }
+    .toast-item.success { background: #059669; }
+    .toast-item.error { background: #dc2626; }
+    .toast-item.warning { background: #b45309; }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body>
+  <div id="toastLayer" class="toast-layer"></div>
+
+  <div class="page">
+    <div class="header">
+      <img src="img/logo.png" alt="Karaağaç" class="logo" />
+      <h1>Kurban Tartı Girişi</h1>
+      <p id="headerSubtitle">Bağlantı doğrulanıyor…</p>
+    </div>
+
+    <!-- Yükleniyor -->
+    <div id="stateLoading" class="show">
+      <div class="card state-center">
+        <div class="spinner"></div>
+        <p class="state-desc">Bağlantı doğrulanıyor…</p>
+      </div>
+    </div>
+
+    <!-- Hata / Geçersiz Token -->
+    <div id="stateError">
+      <div class="card state-center">
+        <div class="state-icon">🔒</div>
+        <h2 class="state-title">Geçersiz Bağlantı</h2>
+        <p class="state-desc" id="errorMsg">Bu bağlantı geçersiz veya daha önce kullanılmış. Lütfen yetkili personelden yeni bir bağlantı talep edin.</p>
+      </div>
+    </div>
+
+    <!-- Form -->
+    <div id="stateForm">
+      <div class="card">
+        <form id="formAnon">
+          <div class="form-group">
+            <label for="anonKurban">Kurban Seç</label>
+            <select id="anonKurban">
+              <option value="">— Kurban seçin —</option>
+            </select>
+          </div>
+
+          <div id="anonSelectedInfo" style="display:none" class="selected-info">
+            <span class="si-label">Seçili: </span><span id="anonSelectedLabel">—</span>
+          </div>
+
+          <div class="form-grid-2" style="margin-top:12px">
+            <div class="form-group">
+              <label for="anonEtKg">Et Kg / Hisse</label>
+              <input type="number" id="anonEtKg" min="0" step="0.01" placeholder="0.00" inputmode="decimal" />
+              <div class="form-hint">Boş = 0.0 kg</div>
+            </div>
+            <div class="form-group">
+              <label for="anonKemikKg">Kemik Kg / Hisse</label>
+              <input type="number" id="anonKemikKg" min="0" step="0.01" placeholder="0.00" inputmode="decimal" />
+              <div class="form-hint">Boş = 0.0 kg</div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-full" id="btnAnonKaydet" style="margin-top:4px">💾 Kaydet</button>
+        </form>
+      </div>
+
+      <!-- Kaydedildi listesi -->
+      <div class="card">
+        <div class="saved-list-title">Bu Oturumda Kaydedilenler</div>
+        <div id="savedList"></div>
+        <div id="savedEmpty" style="font-size:13px;color:var(--muted);padding:8px 0">Henüz kayıt yok.</div>
+
+        <div class="bitir-section">
+          <p class="bitir-desc">Tüm tartı bilgilerini girdiyseniz <strong>Tamamla</strong> butonuna basın. Bu bağlantı artık kullanılamaz hale gelecek.</p>
+          <button type="button" class="btn btn-ghost btn-full" id="btnBitir">✅ Tamamla ve Bitir</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tamamlandı -->
+    <div id="stateDone">
+      <div class="card state-center">
+        <div class="state-icon">✅</div>
+        <h2 class="state-title">Teşekkürler!</h2>
+        <p class="state-desc">Tartı bilgileri kaydedildi. Bu bağlantı artık geçersizdir.</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script>
+(function () {
+  const SUPABASE_URL = 'https://lmwfibippjvqctccxiwb.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxtd2ZpYmlwcGp2cWN0Y2N4aXdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNjcwNTQsImV4cCI6MjA4MTc0MzA1NH0.V71PNZ-XQ4jmAJpM2oQ-ei5GgRaup4JgwtHirdc1SEk';
+
+  let sb;
+  let tokenRow = null;       // token DB row
+  let kurbanListesi = [];    // [{id, kesim_sirasi, ilk_hissedar}]
+  let tartiMap = {};         // kurban_id → tartı row (bu oturumda kaydedilenler)
+  let sessionSaved = [];     // [{kurban, et_kg, kemik_kg}]
+
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+  function showState(id) {
+    ['stateLoading', 'stateError', 'stateForm', 'stateDone'].forEach(s => {
+      document.getElementById(s).classList.toggle('show', s === id);
+    });
+  }
+  function toast(type, msg) {
+    const layer = document.getElementById('toastLayer');
+    const el = document.createElement('div');
+    el.className = `toast-item ${type}`;
+    el.textContent = msg;
+    layer.appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+  }
+  function esc(s) {
+    if (s == null) return '';
+    const d = document.createElement('div');
+    d.textContent = String(s);
+    return d.innerHTML;
+  }
+  function fmtKg(v) { const n = parseFloat(v); return isNaN(n) ? '0.00' : n.toFixed(2); }
+
+  // ── Supabase Init — src/supabase.js ile aynı pattern ────────────────────────
+  function createSbClient() {
+    try {
+      const raw = window.supabase;
+      if (!raw) return null;
+      // Zaten initialize edilmiş client mi? (from() varsa)
+      if (typeof raw.from === 'function') return raw;
+      // UMD kütüphanesi: createClient doğrudan veya .default üzerinden
+      const fn = raw.createClient || raw.default?.createClient;
+      if (typeof fn !== 'function') return null;
+      return fn(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
+    } catch (e) { console.error('Supabase init:', e); return null; }
+  }
+  function waitForLib(ms = 8000) {
+    return new Promise(resolve => {
+      const t0 = Date.now();
+      (function tick() {
+        const raw = window.supabase;
+        if (raw && (typeof raw.from === 'function' || typeof raw.createClient === 'function' || typeof raw.default?.createClient === 'function')) return resolve(true);
+        if (Date.now() - t0 >= ms) return resolve(false);
+        setTimeout(tick, 40);
+      })();
+    });
+  }
+
+  // ── Token Doğrulama ──────────────────────────────────────────────────────────
+  function getTokenFromUrl() {
+    const p = new URLSearchParams(window.location.search);
+    return p.get('token') || '';
+  }
+  async function validateToken(token) {
+    if (!token) return null;
+    const { data, error } = await sb.from('kurban_tarti_tokenler')
+      .select('*')
+      .eq('token', token)
+      .eq('kullanildi', false)
+      .maybeSingle();
+    if (error || !data) return null;
+    return data;
+  }
+
+  // ── Kurban Dropdown ───────────────────────────────────────────────────────────
+  function buildKurbanDropdown() {
+    const sel = document.getElementById('anonKurban');
+    sel.innerHTML = '<option value="">— Kurban seçin —</option>';
+    kurbanListesi.forEach(k => {
+      const o = document.createElement('option');
+      o.value = k.id;
+      o.textContent = `${k.kesim_sirasi} - ${k.ilk_hissedar || '—'}`;
+      sel.appendChild(o);
+    });
+  }
+
+  // ── Kaydedildi Listesi Render ─────────────────────────────────────────────────
+  function renderSavedList() {
+    const container = document.getElementById('savedList');
+    const emptyEl = document.getElementById('savedEmpty');
+    container.innerHTML = '';
+    if (!sessionSaved.length) {
+      if (emptyEl) emptyEl.style.display = '';
+      return;
+    }
+    if (emptyEl) emptyEl.style.display = 'none';
+    sessionSaved.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'saved-item';
+      div.innerHTML = `
+        <span class="si-sira">${esc(item.kurban.kesim_sirasi)}</span>
+        <div class="si-info">
+          <div class="si-ad">${esc(item.kurban.ilk_hissedar || '—')}</div>
+          <div class="si-kg">Et: ${item.et_kg.toFixed(2)} kg · Kemik: ${item.kemik_kg.toFixed(2)} kg</div>
+        </div>
+        <span class="si-badge">Kaydedildi</span>`;
+      container.appendChild(div);
+    });
+  }
+
+  // ── Kurban Seçildi → Mevcut Veriyi Yükle ─────────────────────────────────────
+  document.getElementById('anonKurban')?.addEventListener('change', async function () {
+    const kid = this.value;
+    const infoEl = document.getElementById('anonSelectedInfo');
+    const labelEl = document.getElementById('anonSelectedLabel');
+    if (!kid) {
+      if (infoEl) infoEl.style.display = 'none';
+      document.getElementById('anonEtKg').value = '';
+      document.getElementById('anonKemikKg').value = '';
+      return;
+    }
+    const k = kurbanListesi.find(x => String(x.id) === String(kid));
+    if (k && infoEl && labelEl) {
+      labelEl.textContent = `${k.kesim_sirasi}. Sıra — ${k.ilk_hissedar || '—'}`;
+      infoEl.style.display = '';
+    }
+    // Önce session içindeki cache
+    const cached = tartiMap[String(kid)];
+    if (cached) {
+      document.getElementById('anonEtKg').value = fmtKg(cached.et_kg);
+      document.getElementById('anonKemikKg').value = fmtKg(cached.kemik_kg);
+      return;
+    }
+    // DB'den çek
+    try {
+      const { data } = await sb.from('kurban_tarti_bilgileri')
+        .select('et_kg, kemik_kg')
+        .eq('kurban_id', kid)
+        .maybeSingle();
+      if (data) {
+        document.getElementById('anonEtKg').value = fmtKg(data.et_kg);
+        document.getElementById('anonKemikKg').value = fmtKg(data.kemik_kg);
+      } else {
+        document.getElementById('anonEtKg').value = '';
+        document.getElementById('anonKemikKg').value = '';
+      }
+    } catch { /* sessizce geç */ }
+  });
+
+  // ── Kaydet ────────────────────────────────────────────────────────────────────
+  document.getElementById('formAnon')?.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const kid = document.getElementById('anonKurban').value;
+    if (!kid) return toast('error', 'Lütfen bir kurban seçin.');
+    const etKg = parseFloat(document.getElementById('anonEtKg').value) || 0;
+    const kemikKg = parseFloat(document.getElementById('anonKemikKg').value) || 0;
+    const btn = document.getElementById('btnAnonKaydet');
+    btn.disabled = true;
+    btn.textContent = 'Kaydediliyor…';
+    try {
+      const yil = tokenRow.yil;
+      const { error } = await sb.from('kurban_tarti_bilgileri').upsert({
+        kurban_id: kid,   // uuid string
+        yil,
+        et_kg: etKg,
+        kemik_kg: kemikKg,
+        guncelleme_tarihi: new Date().toISOString()
+      }, { onConflict: 'kurban_id' });
+      if (error) throw error;
+      tartiMap[String(kid)] = { et_kg: etKg, kemik_kg: kemikKg };
+      const k = kurbanListesi.find(x => String(x.id) === String(kid));
+      // Güncelle varsa, ekle yoksa
+      const idx = sessionSaved.findIndex(s => String(s.kurban.id) === String(kid));
+      if (idx >= 0) sessionSaved[idx] = { kurban: k, et_kg: etKg, kemik_kg: kemikKg };
+      else sessionSaved.push({ kurban: k, et_kg: etKg, kemik_kg: kemikKg });
+      renderSavedList();
+      toast('success', `Kaydedildi — Et: ${etKg.toFixed(2)} kg, Kemik: ${kemikKg.toFixed(2)} kg`);
+      // Formu sıfırla
+      document.getElementById('anonKurban').value = '';
+      document.getElementById('anonEtKg').value = '';
+      document.getElementById('anonKemikKg').value = '';
+      const infoEl = document.getElementById('anonSelectedInfo');
+      if (infoEl) infoEl.style.display = 'none';
+    } catch (err) {
+      toast('error', err.message || 'Kayıt hatası');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '💾 Kaydet';
+    }
+  });
+
+  // ── Tamamla ───────────────────────────────────────────────────────────────────
+  document.getElementById('btnBitir')?.addEventListener('click', async () => {
+    if (!tokenRow) return;
+    const btn = document.getElementById('btnBitir');
+    btn.disabled = true;
+    btn.textContent = 'Tamamlanıyor…';
+    try {
+      const { error } = await sb.from('kurban_tarti_tokenler')
+        .update({ kullanildi: true, kullanilma_tarihi: new Date().toISOString() })
+        .eq('token', tokenRow.token);
+      if (error) throw error;
+      showState('stateDone');
+    } catch (err) {
+      toast('error', err.message || 'Hata oluştu');
+      btn.disabled = false;
+      btn.textContent = '✅ Tamamla ve Bitir';
+    }
+  });
+
+  // ── Boot ──────────────────────────────────────────────────────────────────────
+  async function boot() {
+    const token = getTokenFromUrl();
+    if (!token) {
+      document.getElementById('errorMsg').textContent = 'Geçerli bir bağlantı bulunamadı.';
+      showState('stateError');
+      return;
+    }
+
+    await waitForLib(8000);
+    sb = createSbClient();
+    if (!sb) {
+      document.getElementById('errorMsg').textContent = 'Bağlantı hatası: Supabase istemcisi oluşturulamadı.';
+      showState('stateError');
+      return;
+    }
+
+    tokenRow = await validateToken(token);
+    if (!tokenRow) {
+      showState('stateError');
+      return;
+    }
+
+    // Kurban listesini token'dan al
+    let rawList = tokenRow.kurban_listesi;
+    if (typeof rawList === 'string') { try { rawList = JSON.parse(rawList); } catch { rawList = []; } }
+    kurbanListesi = Array.isArray(rawList) ? rawList : [];
+    buildKurbanDropdown();
+
+    const subtitle = document.getElementById('headerSubtitle');
+    if (subtitle) subtitle.textContent = `${tokenRow.yil} Kurban Yılı`;
+
+    showState('stateForm');
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => void boot());
+  } else {
+    void boot();
+  }
+})();
+  </script>
+</body>
+</html>

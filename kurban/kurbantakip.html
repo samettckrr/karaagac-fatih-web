@@ -20,8 +20,9 @@
     .kurban-year-field { display: inline-flex; align-items: center; gap: 10px; }
     .kurban-year-field label { margin: 0; font-size: 12px; font-weight: 800; text-transform: uppercase; color: var(--muted); }
     .kurban-toolbar-btns { display: flex; flex-wrap: wrap; gap: 10px; }
-    .tabs { display: flex; gap: 8px; border-bottom: 2px solid var(--border); margin: 16px 0; overflow-x: auto; }
-    .tab { padding: 12px 20px; border: none; background: transparent; color: var(--muted); cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; font-weight: 500; }
+    .tabs { display: flex; gap: 8px; border-bottom: 2px solid var(--border); margin: 16px 0; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab { padding: 12px 20px; border: none; background: transparent; color: var(--muted); cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; font-weight: 500; flex-shrink: 0; }
     .tab:hover { color: var(--ink); background: var(--surface); }
     .tab.active { color: var(--brand); border-bottom-color: var(--brand); background: var(--card); }
     .tab-content { display: none; }
@@ -489,6 +490,8 @@
               <col class="col-yil" />
               <col class="col-kupe" />
               <col class="col-kg" />
+              <col class="col-kg" />
+              <col class="col-kg" />
               <col class="col-grup" />
               <col class="col-hatir" />
               <col class="col-adet" />
@@ -505,6 +508,8 @@
                 <th>Yıl</th>
                 <th>Küpe no</th>
                 <th>Canlı kg</th>
+                <th title="Tartı: bir hissedara düşen et kg">Et kg/hisse</th>
+                <th title="Tartı: bir hissedara düşen kemik kg">Kemik kg/hisse</th>
                 <th>Hisse grup</th>
                 <th>Kurban adı <span style="font-weight:400;font-size:11px;color:var(--muted)">(1. sıra)</span></th>
                 <th>Hissedar adedi</th>
@@ -604,6 +609,8 @@
   const BAGIS_SELECT = 'id, created_at, ad_soyad, telefon, created_by_uid, durum, aciklama, yil';
   const ETLI_SELECT = 'id, created_at, hisedar_ad_soyad, telefon, created_by_uid, hisse_grubu, aciklama, yil, kurban_id, ana_hisse_id, hisse_adedi';
   const KURBAN_SELECT = 'id, yil, kesim_sirasi, kupe_no, canli_kg, hisse_grubu, hissedar_adedi, hisse_fiyati, kapora, tahsilat, atamalar';
+
+  let tartiTakipMap = {};  // kurban_id → {et_kg, kemik_kg}
 
   let kategorilerList = [];
   let bagisList = [];
@@ -1151,6 +1158,9 @@
     kurbanEnsureSlots(k);
     const paketSlotMeta = kurbanHissedarPaketSlotMeta(k);
     const defFiyat = k.hisse_fiyati != null && k.hisse_fiyati !== '' && !Number.isNaN(Number(k.hisse_fiyati)) ? Number(k.hisse_fiyati) : null;
+    const tarti = tartiTakipMap[String(k.id)] || null;
+    const etKgStr = tarti && parseFloat(tarti.et_kg) > 0 ? parseFloat(tarti.et_kg).toFixed(2) + ' kg' : '<span style="color:var(--muted)">—</span>';
+    const kemikKgStr = tarti && parseFloat(tarti.kemik_kg) > 0 ? parseFloat(tarti.kemik_kg).toFixed(2) + ' kg' : '<span style="color:var(--muted)">—</span>';
     return k.atamalar.map(a => {
       const dolu = (a.ad_soyad || '').trim();
       const kal = slotKalan(a, defFiyat);
@@ -1178,6 +1188,8 @@
         <td class="cell-num">${dolu ? fmtTry(a.kapora) + ' ₺' : '–'}</td>
         <td class="cell-num">${dolu ? fmtTry(a.tahsilat) + ' ₺' : '–'}</td>
         <td class="${kalClass}">${dolu && kal != null ? fmtTry(kal) + ' ₺' : '–'}</td>
+        <td class="cell-num" style="font-variant-numeric:tabular-nums">${etKgStr}</td>
+        <td class="cell-num" style="font-variant-numeric:tabular-nums">${kemikKgStr}</td>
         <td class="cell-aciklama">${dolu ? esc(a.aciklama || '—') : '—'}</td>
       </tr>`;
     }).join('');
@@ -1219,6 +1231,9 @@
       const kidStr = String(k.id);
       const kidAttr = kidStr.replace(/"/g, '');
       const expanded = kurbanExpandedIds.has(kidStr);
+      const tarti = tartiTakipMap[kidStr] || null;
+      const etKgStr = tarti && parseFloat(tarti.et_kg) > 0 ? parseFloat(tarti.et_kg).toFixed(2) + ' kg' : '<span style="color:var(--muted);font-size:12px">—</span>';
+      const kemikKgStr = tarti && parseFloat(tarti.kemik_kg) > 0 ? parseFloat(tarti.kemik_kg).toFixed(2) + ' kg' : '<span style="color:var(--muted);font-size:12px">—</span>';
       const tr = document.createElement('tr');
       tr.className = 'kurban-row' + (expanded ? ' expanded' : '');
       tr.dataset.id = k.id;
@@ -1233,6 +1248,8 @@
         <td class="td-kesim">${esc(yilGoster)}</td>
         <td>${esc(k.kupe_no || '')}</td>
         <td style="text-align:right">${k.canli_kg != null && k.canli_kg !== '' ? fmtTry(k.canli_kg) : '–'}</td>
+        <td class="td-para-center">${etKgStr}</td>
+        <td class="td-para-center">${kemikKgStr}</td>
         <td>${grupHtml}</td>
         <td>${hatirHtml}</td>
         <td class="td-adet">${adet}</td>
@@ -1245,7 +1262,13 @@
       const trEx = document.createElement('tr');
       trEx.className = 'kurban-expand';
       trEx.style.display = expanded ? '' : 'none';
-      trEx.innerHTML = `<td colspan="13"><div class="hisse-panel">
+      const tartiFooter = (() => {
+        if (!tarti) return '';
+        const et = parseFloat(tarti.et_kg) || 0;
+        const kemik = parseFloat(tarti.kemik_kg) || 0;
+        return ` · Et/hisse <strong>${et.toFixed(2)} kg</strong> · Kemik/hisse <strong>${kemik.toFixed(2)} kg</strong>`;
+      })();
+      trEx.innerHTML = `<td colspan="15"><div class="hisse-panel">
         <div class="hisse-panel-head">
           <strong>Hissedarlar</strong>
           <span class="hisse-panel-badge">${dolu} / ${adet} dolu</span>
@@ -1264,6 +1287,8 @@
                 <th>Kapora</th>
                 <th>Tahsilat</th>
                 <th>Kalan</th>
+                <th title="Tartı: bir hissedara düşen et kg">Et kg/hisse</th>
+                <th title="Tartı: bir hissedara düşen kemik kg">Kemik kg/hisse</th>
                 <th>Açıklama</th>
               </tr>
             </thead>
@@ -1272,12 +1297,22 @@
         </div>
         <div class="hisse-panel-foot">
           ${agg.doluSay > 0
-            ? `Özet: Kapora <strong>${fmtTry(agg.sumKapora)} ₺</strong> · Tahsilat <strong>${fmtTry(agg.sumTahsilat)} ₺</strong> · Kalan <strong>${agg.sumKalan != null ? fmtTry(agg.sumKalan) + ' ₺' : '–'}</strong>.`
-            : 'Atanmış hissedar yok.'}
+            ? `Özet: Kapora <strong>${fmtTry(agg.sumKapora)} ₺</strong> · Tahsilat <strong>${fmtTry(agg.sumTahsilat)} ₺</strong> · Kalan <strong>${agg.sumKalan != null ? fmtTry(agg.sumKalan) + ' ₺' : '–'}</strong>${tartiFooter}.`
+            : `Atanmış hissedar yok.${tartiFooter}`}
         </div>
       </div></td>`;
       tbody.appendChild(trEx);
     });
+  }
+
+  async function loadTartiMap(yil) {
+    const sb = getSupabase();
+    tartiTakipMap = {};
+    if (!sb) return;
+    try {
+      const { data } = await sb.from('kurban_tarti_bilgileri').select('kurban_id,et_kg,kemik_kg').eq('yil', yil);
+      (data || []).forEach(r => { tartiTakipMap[String(r.kurban_id)] = r; });
+    } catch { /* tablo yoksa sessizce geç */ }
   }
 
   async function loadKesimTakip() {
@@ -1286,9 +1321,10 @@
     if (!tbody) return;
     await loadPersonelMap();
     await refreshEtliLookupForKurban();
-    tbody.innerHTML = '<tr><td colspan="13" style="padding:24px;text-align:center;color:var(--muted)">Yükleniyor…</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="15" style="padding:24px;text-align:center;color:var(--muted)">Yükleniyor…</td></tr>';
     if (emptyEl) emptyEl.style.display = 'none';
-    const fetched = await kurbanFetchListe();
+    const yil = getKurbanYonetimYil();
+    const [fetched] = await Promise.all([kurbanFetchListe(), loadTartiMap(yil)]);
     if (fetched == null) {
       tbody.innerHTML = '';
       if (emptyEl) {

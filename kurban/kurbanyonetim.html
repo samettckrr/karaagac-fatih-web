@@ -105,8 +105,9 @@
       .kurban-year-field { width: 100%; }
       .kurban-year-field select.filter-year { width: 100%; max-width: none; }
     }
-    .tabs { display: flex; gap: 8px; border-bottom: 2px solid var(--border); margin: 16px 0; overflow-x: auto; }
-    .tab { padding: 12px 20px; border: none; background: transparent; color: var(--muted); cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; font-weight: 500; transition: all 0.2s; }
+    .tabs { display: flex; gap: 8px; border-bottom: 2px solid var(--border); margin: 16px 0; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab { padding: 12px 20px; border: none; background: transparent; color: var(--muted); cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; font-weight: 500; transition: all 0.2s; flex-shrink: 0; }
     .tab:hover { color: var(--ink); background: var(--surface); }
     .tab.active { color: var(--brand); border-bottom-color: var(--brand); background: var(--card); }
     .tab-content { display: none; }
@@ -642,6 +643,7 @@
       <button class="tab" data-tab="onkayit">📝 Ön Kayıt</button>
       <button class="tab" data-tab="hedefler">🎯 Hedefler</button>
       <button class="tab" data-tab="analiz">💳 Tahsilat Takibi</button>
+      <button class="tab" data-tab="tarti">⚖️ Tartı Takip</button>
       <button class="tab" data-tab="ayarlar">⚙️ Ayarlar</button>
     </div>
 
@@ -960,6 +962,38 @@
           </table>
         </div>
         <div id="tahsilatTakipEmpty" style="display:none;padding:32px;text-align:center;color:var(--muted)">Personel verisi yok.</div>
+      </div>
+    </div>
+
+    <!-- Tab: Tartı Takip -->
+    <div class="tab-content" id="tab-tarti">
+      <div class="card">
+        <div class="toolbar" style="margin-bottom:12px;gap:10px;flex-wrap:wrap;align-items:center">
+          <label for="tartiTakipYilFiltre" class="muted" style="font-size:13px;font-weight:600;margin:0">Yıl</label>
+          <select id="tartiTakipYilFiltre" class="filter-year" style="min-width:150px" aria-label="Tartı takip yılı"></select>
+          <button type="button" class="btn btn-ghost" id="btnTartiTakipYenile">🔄 Yenile</button>
+          <a href="kurbantartıgirisi.html" class="btn btn-primary" style="text-decoration:none" target="_blank">⚖️ Tartı Giriş Sayfası</a>
+        </div>
+        <div class="table-wrap">
+          <table id="tblTartiTakip">
+            <thead>
+              <tr>
+                <th>Sıra</th>
+                <th>1. Hissedar</th>
+                <th>Hisse Sayısı</th>
+                <th>Et Kg / Hisse</th>
+                <th>Kemik Kg / Hisse</th>
+                <th>Toplam Et (tahmini)</th>
+                <th>Toplam Kemik (tahmini)</th>
+                <th>Son Güncelleme</th>
+                <th>Girildi</th>
+                <th style="width:100px">İşlemler</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyTartiTakip"></tbody>
+          </table>
+        </div>
+        <div id="tartiTakipEmpty" style="display:none;padding:32px;text-align:center;color:var(--muted)">Bu yıl için tartı kaydı yok.</div>
       </div>
     </div>
 
@@ -1425,6 +1459,29 @@
     </div>
   </div>
 
+  <!-- Modal: Tartı Düzenle -->
+  <div class="modal" id="modalTartiDuzenle">
+    <div class="sheet">
+      <h3 id="tartiDuzenleBaslik">Tartı Düzenle</h3>
+      <form id="formTartiDuzenle" class="form-grid">
+        <input type="hidden" id="tartiDuzenleKurbanId" />
+        <input type="hidden" id="tartiDuzenleYil" />
+        <div class="form-group">
+          <label>Et Kg / Hisse</label>
+          <input type="number" id="tartiDuzenleEt" min="0" step="0.01" placeholder="0.00" />
+        </div>
+        <div class="form-group">
+          <label>Kemik Kg / Hisse</label>
+          <input type="number" id="tartiDuzenleKemik" min="0" step="0.01" placeholder="0.00" />
+        </div>
+        <div class="actions">
+          <button type="button" class="btn btn-ghost" onclick="document.getElementById('modalTartiDuzenle').classList.remove('show');document.body.classList.remove('modal-open')">İptal</button>
+          <button type="submit" class="btn btn-primary">Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
 (function () {
   const getSupabase = () => window.supabase;
@@ -1481,6 +1538,7 @@
       else if (btn.dataset.tab === 'onkayit') loadOnkayit();
       else if (btn.dataset.tab === 'hedefler') loadHedefler();
       else if (btn.dataset.tab === 'analiz') void loadTahsilatTakip();
+      else if (btn.dataset.tab === 'tarti') void loadTartiTakip();
       else if (btn.dataset.tab === 'ayarlar') loadKategoriler();
       else if (btn.dataset.tab === 'ozet') loadOzet();
     });
@@ -1512,10 +1570,10 @@
   function populateKategoriDropdowns() {
     const list = kategorilerList.length ? kategorilerList : [{ yil: 2026, label: '2026 Kurban', aktif: true }];
     const opt = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; return o; };
-    const selIds = ['bagisYilFiltre', 'etliYilFiltre', 'onkayitYilFiltre', 'hedefYil', 'bagisKategori', 'etliKategori', 'hedefKategori', 'kurbanYil', 'ozetYilFiltre', 'kurbanYilFiltre', 'tahsilatTakipYilFiltre'];
+    const selIds = ['bagisYilFiltre', 'etliYilFiltre', 'onkayitYilFiltre', 'hedefYil', 'bagisKategori', 'etliKategori', 'hedefKategori', 'kurbanYil', 'ozetYilFiltre', 'kurbanYilFiltre', 'tahsilatTakipYilFiltre', 'tartiTakipYilFiltre'];
     const withTumu = ['bagisYilFiltre', 'etliYilFiltre', 'onkayitYilFiltre', 'tahsilatTakipYilFiltre'];
     const kurbanYilOnly = ['kurbanYil'];
-    const tekYilAktifVarsayilan = ['hedefYil', 'ozetYilFiltre', 'kurbanYilFiltre'];
+    const tekYilAktifVarsayilan = ['hedefYil', 'ozetYilFiltre', 'kurbanYilFiltre', 'tartiTakipYilFiltre'];
     const aktifYil = list.find(x => x.aktif)?.yil || 2026;
     selIds.forEach(sid => {
       const el = document.getElementById(sid);
@@ -2174,6 +2232,147 @@
     }
   }
 
+  // ——— Tartı Takip ———
+  let tartiPersonelMap = {};
+  async function loadTartiTakip() {
+    const sb = getSupabase();
+    const tbody = document.getElementById('tbodyTartiTakip');
+    const emptyEl = document.getElementById('tartiTakipEmpty');
+    if (!tbody) return;
+    const yil = (() => {
+      const el = document.getElementById('tartiTakipYilFiltre');
+      return el && el.value ? parseInt(el.value, 10) : getAktifYil();
+    })();
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--muted)">Yükleniyor…</td></tr>`;
+    if (emptyEl) emptyEl.style.display = 'none';
+    if (!sb) { tbody.innerHTML = '<tr><td colspan="10">Supabase hazır değil.</td></tr>'; return; }
+    try {
+      const [{ data: kurbans, error: ke }, { data: tartis, error: te }] = await Promise.all([
+        sb.from('karaagac_kurban').select('id,kesim_sirasi,atamalar,hissedar_adedi').eq('yil', yil).order('kesim_sirasi', { ascending: true }),
+        sb.from('kurban_tarti_bilgileri').select('*').eq('yil', yil)
+      ]);
+      if (ke || te) throw ke || te;
+      // Kullanıcı adları
+      if (!Object.keys(tartiPersonelMap).length) {
+        const { data: kulls } = await sb.from('kullanicilar').select('id,adsoyad');
+        (kulls || []).forEach(k => { tartiPersonelMap[k.id] = k.adsoyad; });
+      }
+      const tartiById = {};
+      (tartis || []).forEach(t => { tartiById[String(t.kurban_id)] = t; });
+      const list = (kurbans || []).map(row => {
+        let atamalar = row.atamalar;
+        if (typeof atamalar === 'string') { try { atamalar = JSON.parse(atamalar); } catch { atamalar = []; } }
+        if (!Array.isArray(atamalar)) atamalar = [];
+        const ilk = atamalar[0];
+        const ilkAd = (ilk && (ilk.ad_soyad || '').trim()) ? ilk.ad_soyad.trim() : '—';
+        return { id: row.id, kesim_sirasi: row.kesim_sirasi, ilk_hissedar: ilkAd, hissedar_adedi: row.hissedar_adedi, tarti: tartiById[String(row.id)] || null };
+      });
+      tbody.innerHTML = '';
+      if (!list.length) { if (emptyEl) emptyEl.style.display = 'block'; return; }
+      list.forEach(k => {
+        const t = k.tarti;
+        const etKg = t ? parseFloat(t.et_kg) : null;
+        const kemikKg = t ? parseFloat(t.kemik_kg) : null;
+        const adet = parseInt(k.hissedar_adedi, 10) || 1;
+        const toplamEt = etKg != null ? (etKg * adet).toFixed(2) : null;
+        const toplamKemik = kemikKg != null ? (kemikKg * adet).toFixed(2) : null;
+        const personelAd = t ? (tartiPersonelMap[t.girildi_by] || t.girildi_by || '–') : '–';
+        const fmtDate = v => { if (!v) return '–'; try { const d = new Date(v); return isNaN(d) ? '–' : d.toLocaleDateString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }); } catch { return '–'; } };
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td style="text-align:center;font-weight:700">${esc(k.kesim_sirasi)}</td>
+          <td style="font-weight:600">${esc(k.ilk_hissedar)}</td>
+          <td style="text-align:center">${adet}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums">${etKg != null ? etKg.toFixed(2) + ' kg' : '<span style="color:var(--muted)">—</span>'}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums">${kemikKg != null ? kemikKg.toFixed(2) + ' kg' : '<span style="color:var(--muted)">—</span>'}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums">${toplamEt != null ? toplamEt + ' kg' : '—'}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums">${toplamKemik != null ? toplamKemik + ' kg' : '—'}</td>
+          <td style="font-size:12px;color:var(--muted)">${t ? esc(fmtDate(t.guncelleme_tarihi)) : '—'}</td>
+          <td style="font-size:12px;color:var(--muted)">${t ? esc(personelAd) : '—'}</td>
+          <td style="text-align:center;white-space:nowrap">
+            <button type="button" class="btn btn-ghost btn-xs" style="font-size:12px;padding:3px 8px" data-tarti-duzenle="${esc(k.id)}" data-et="${etKg != null ? etKg : ''}" data-kemik="${kemikKg != null ? kemikKg : ''}" data-sira="${esc(k.kesim_sirasi)}" data-hissedar="${esc(k.ilk_hissedar)}" data-yil="${yil}">✏️ Düzenle</button>
+            ${t ? `<button type="button" class="btn btn-danger btn-xs" style="font-size:12px;padding:3px 8px;margin-top:4px" data-tarti-sil="${esc(String(t.id))}" data-sira="${esc(k.kesim_sirasi)}">🗑 Sil</button>` : ''}
+          </td>`;
+        tbody.appendChild(tr);
+      });
+    } catch (err) {
+      tbody.innerHTML = `<tr><td colspan="10" style="color:var(--danger)">Hata: ${esc(err.message || String(err))}</td></tr>`;
+    }
+  }
+
+  // ── Tartı Takip: edit/delete event delegation ──────────────────────────────
+  document.getElementById('tbodyTartiTakip')?.addEventListener('click', async (e) => {
+    const sb = getSupabase();
+    // Düzenle
+    const duzenleBtn = e.target.closest('[data-tarti-duzenle]');
+    if (duzenleBtn) {
+      const kurbanId = duzenleBtn.dataset.tartiDuzenle;
+      const sira = duzenleBtn.dataset.sira;
+      const hissedar = duzenleBtn.dataset.hissedar;
+      const et = duzenleBtn.dataset.et;
+      const kemik = duzenleBtn.dataset.kemik;
+      const yil = parseInt(duzenleBtn.dataset.yil, 10);
+      document.getElementById('tartiDuzenleKurbanId').value = kurbanId;
+      document.getElementById('tartiDuzenleYil').value = yil;
+      document.getElementById('tartiDuzenleEt').value = et !== '' ? parseFloat(et).toFixed(2) : '';
+      document.getElementById('tartiDuzenleKemik').value = kemik !== '' ? parseFloat(kemik).toFixed(2) : '';
+      document.getElementById('tartiDuzenleBaslik').textContent = `${sira}. Kurban — ${hissedar}`;
+      document.getElementById('modalTartiDuzenle').classList.add('show');
+      document.body.classList.add('modal-open');
+      return;
+    }
+    // Sil
+    const silBtn = e.target.closest('[data-tarti-sil]');
+    if (silBtn) {
+      const tartiId = silBtn.dataset.tartiSil;
+      const sira = silBtn.dataset.sira;
+      if (!confirm(`${sira}. kurbanın tartı kaydı silinecek. Emin misiniz?`)) return;
+      silBtn.disabled = true;
+      try {
+        const { error } = await sb.from('kurban_tarti_bilgileri').delete().eq('id', tartiId);
+        if (error) throw error;
+        showToast('success', 'Silindi', 'Tartı kaydı silindi.');
+        void loadTartiTakip();
+      } catch (err) {
+        showToast('error', 'Hata', err.message || 'Silinemedi.');
+        silBtn.disabled = false;
+      }
+    }
+  });
+
+  // Tartı düzenle modal kaydet
+  document.getElementById('formTartiDuzenle')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const sb = getSupabase();
+    const kurbanId = document.getElementById('tartiDuzenleKurbanId').value;
+    const yil = parseInt(document.getElementById('tartiDuzenleYil').value, 10);
+    const etKg = parseFloat(document.getElementById('tartiDuzenleEt').value) || 0;
+    const kemikKg = parseFloat(document.getElementById('tartiDuzenleKemik').value) || 0;
+    const btn = e.target.querySelector('[type=submit]');
+    btn.disabled = true;
+    try {
+      const { error } = await sb.from('kurban_tarti_bilgileri').upsert({
+        kurban_id: kurbanId,
+        yil,
+        et_kg: etKg,
+        kemik_kg: kemikKg,
+        guncelleme_tarihi: new Date().toISOString()
+      }, { onConflict: 'kurban_id' });
+      if (error) throw error;
+      document.getElementById('modalTartiDuzenle').classList.remove('show');
+      document.body.classList.remove('modal-open');
+      showToast('success', 'Kaydedildi', 'Tartı bilgisi güncellendi.');
+      void loadTartiTakip();
+    } catch (err) {
+      showToast('error', 'Hata', err.message || 'Kaydedilemedi.');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById('btnTartiTakipYenile')?.addEventListener('click', () => void loadTartiTakip());
+  document.getElementById('tartiTakipYilFiltre')?.addEventListener('change', () => void loadTartiTakip());
+
   // ——— Personel Tahsilat Analiz Tablosu ———
   async function loadTahsilatTakip() {
     const sb = getSupabase();
@@ -2566,6 +2765,24 @@
   window.refreshActiveTabData = refreshActiveTabData;
 
   // ——— Kurban yönetim (Supabase) ———
+  /** Etli kayıtları silinince ilgili kurban slotlarının etli_kayit_id bağını temizler. */
+  function patchKurbanCacheOnEtliSil(etliIds) {
+    const idSet = new Set(etliIds.map(String));
+    kurbanListeCache.forEach(k => {
+      if (!Array.isArray(k.atamalar)) return;
+      k.atamalar.forEach(a => {
+        if (a.etli_kayit_id && idSet.has(String(a.etli_kayit_id))) {
+          a.etli_kayit_id = null;
+        }
+      });
+    });
+  }
+  /** Kurban tablosunu cache'ten yeniler; Kesim Takibi sekmesi aktifse render yapar. */
+  function refreshKurbanTableFromCache() {
+    if (getActiveTab() !== 'kurban') return;
+    renderKurbanTableFromCacheOnly();
+    updateKesimAtanmamisOzet();
+  }
   let kurbanListeCache = [];
   let etliLookupById = {};
   let bekleyenModalFullList = [];
@@ -2690,7 +2907,9 @@
       created_by_uid: row.created_by_uid != null ? String(row.created_by_uid) : null,
       hisse_grup_kodu: row.hisse_grubu ? String(row.hisse_grubu) : null,
       aciklama: aciklamaRest,
-      ana_hisse_id: row.ana_hisse_id != null ? String(row.ana_hisse_id) : null
+      ana_hisse_id: row.ana_hisse_id != null ? String(row.ana_hisse_id) : null,
+      kapora: Number(row.kapora) || 0,
+      tahsilat: Number(row.tahsilat) || 0
     };
   }
   function bekleyenPaketRootOf(b, byId) {
@@ -2836,7 +3055,7 @@
     if (!sb) return [];
     const yil = getKurbanYonetimYil();
     const { data, error } = await sb.from('kurban_2026_etli_hisse')
-      .select('id, created_at, yil, hisedar_ad_soyad, telefon, hisse_grubu, aciklama, kurban_id, created_by_uid, ana_hisse_id')
+      .select('id, created_at, yil, hisedar_ad_soyad, telefon, hisse_grubu, aciklama, kurban_id, created_by_uid, ana_hisse_id, kapora, tahsilat')
       .eq('yil', yil)
       .is('kurban_id', null)
       .order('created_at', { ascending: false });
@@ -3192,8 +3411,8 @@
       showToast('error', 'Pop-up engellendi', 'Yazdırmak için tarayıcının pop-up\'a izin vermesi gerekir.');
       return;
     }
-    w.document.write('<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><title>Kesim sıra listesi</title><style>' + css + '</style></head><body>');
-    w.document.write('<h1>Kesim günü sıra listesi</h1><p class="meta">Karaağaç Fatih · ' + new Date().toLocaleString('tr-TR') + '</p>');
+    w.document.write('<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><title>Kesim Sıra Listesi</title><style>' + css + '</style></head><body>');
+    w.document.write('<h1>Karaağaç Fatih Kesim Listesi</h1><p class="meta">Karaağaç Fatih · ' + new Date().toLocaleString('tr-TR') + '</p>');
     w.document.write(bodyHtml);
     w.document.write('</body></html>');
     w.document.close();
@@ -3322,7 +3541,8 @@
             patchEtliListKurbanIds(memberIds, kurbanId);
             const sbAt = getSupabase();
             if (sbAt) await refreshEtliAfterMutation(sbAt);
-            await loadKurbanYonetim();
+            renderKurbanTableFromCacheOnly();
+            updateKesimAtanmamisOzet();
             showToast('success', 'Atandı', paketAdet > 1 ? `${paketAdet} hisse kurban sırasına eklendi.` : 'Hissedar kurban sırasına eklendi.');
           } finally {
             btnSetBusy(btnAta, false);
@@ -3368,8 +3588,8 @@
     a.telefon = bek.telefon || null;
     a.referans = bek.referans || null;
     a.aciklama = bek.aciklama || '';
-    a.kapora = 0;
-    a.tahsilat = 0;
+    a.kapora = Number(bek.kapora) || 0;
+    a.tahsilat = Number(bek.tahsilat) || 0;
     a.etli_kayit_id = String(bek.id);
     const up = await kurbanUpdateAtamalarVeAdet(kurbanId, k);
     if (!up.ok) {
@@ -3647,7 +3867,8 @@
       patchEtliListKurbanIds(paketIds, kid);
       const sbMut = getSupabase();
       if (sbMut) await refreshEtliAfterMutation(sbMut);
-      await loadKurbanYonetim();
+      renderKurbanTableFromCacheOnly();
+      updateKesimAtanmamisOzet();
       await loadBekleyenModalTable();
       showToast('success', 'Atandı', n > 1 ? `${n} hisse kurbana bağlandı.` : 'Hissedar kurbana bağlandı.');
     } finally {
@@ -3703,7 +3924,8 @@
     Object.assign(a, emptySlot(slot));
     const up = await kurbanUpdateAtamalarVeAdet(kurbanId, k);
     if (!up.ok) return;
-    await loadKurbanYonetim();
+    renderKurbanTableFromCacheOnly();
+    updateKesimAtanmamisOzet();
     await refreshEtliAfterMutation(sb);
     showToast('success', 'Boşaltıldı', 'Hissedar atanmamış etli hisse olarak kaldı.');
   }
@@ -3771,8 +3993,19 @@
     try {
       const up = await kurbanUpdateAtamalarVeAdet(kurbanId, k);
       if (!up.ok) return;
+      // Etli hisse kaydındaki açıklamayı da güncelle
+      if (a.etli_kayit_id) {
+        const sbSync = getSupabase();
+        if (sbSync) {
+          await sbSync.from('kurban_2026_etli_hisse')
+            .update({ aciklama: a.aciklama || null })
+            .eq('id', a.etli_kayit_id);
+          const eix = etliList.findIndex(x => String(x.id) === String(a.etli_kayit_id));
+          if (eix !== -1) etliList[eix] = { ...etliList[eix], aciklama: a.aciklama || null };
+        }
+      }
       closeModalEl('modalSlotHissedar');
-      await loadKurbanYonetim();
+      renderKurbanTableFromCacheOnly();
       showToast('success', 'Kaydedildi', 'Hissedar satırı güncellendi.');
     } finally {
       btnSetBusy(btnKaydet, false);
@@ -3850,8 +4083,10 @@
       return;
     }
     kurbanExpandedIds.delete(String(id));
+    kurbanListeCache = kurbanListeCache.filter(x => String(x.id) !== String(id));
     showToast('success', 'Silindi', 'Kurban kaydı kaldırıldı.');
-    await loadKurbanYonetim();
+    renderKurbanTableFromCacheOnly();
+    updateKesimAtanmamisOzet();
   };
   document.getElementById('btnYeniKurban')?.addEventListener('click', () => void window.openKurbanModal());
   document.getElementById('btnKurbanDetayHepsi')?.addEventListener('click', () => {
@@ -3979,7 +4214,12 @@
       }
       closeKurbanModal();
       showToast('success', 'Kaydedildi', id ? 'Kurban güncellendi.' : 'Kurban eklendi.');
-      await loadKurbanYonetim();
+      if (id) {
+        renderKurbanTableFromCacheOnly();
+        updateKesimAtanmamisOzet();
+      } else {
+        await loadKurbanYonetim();
+      }
     } finally {
       form.dataset.submitting = '';
       btnSetBusy(submitBtn, false);
@@ -4490,7 +4730,7 @@
       closeEtliIkiTekilPaketleModal();
       await refreshEtliAfterMutation(sb);
       loadOzet();
-      if (getActiveTab() === 'kurban') void loadKurbanYonetim();
+      refreshKurbanTableFromCache();
     } catch (err) {
       showToast('error', 'Hata', err.message || 'Paketlenemedi.');
     }
@@ -4656,7 +4896,7 @@
       await loadPersonelMap();
       await refreshEtliAfterMutation(sb);
       loadOzet();
-      if (getActiveTab() === 'kurban') void loadKurbanYonetim();
+      refreshKurbanTableFromCache();
     } catch (err) {
       showToast('error', 'Hata', err.message || 'Kayıt yapılamadı.');
     } finally {
@@ -4683,7 +4923,8 @@
       showToast('success', 'Başarılı', 'Kayıt silindi.');
       await refreshEtliAfterMutation(sb);
       loadOzet();
-      if (getActiveTab() === 'kurban') void loadKurbanYonetim();
+      patchKurbanCacheOnEtliSil([id]);
+      refreshKurbanTableFromCache();
     } catch (err) {
       showToast('error', 'Hata', err.message || 'Silinemedi.');
     }
@@ -4708,7 +4949,8 @@
       showToast('success', 'Başarılı', `${ids.length} kayıt silindi.`);
       await refreshEtliAfterMutation(sb);
       loadOzet();
-      if (getActiveTab() === 'kurban') void loadKurbanYonetim();
+      patchKurbanCacheOnEtliSil(ids);
+      refreshKurbanTableFromCache();
     } catch (err) {
       showToast('error', 'Hata', err.message || 'Silinemedi.');
     }
@@ -4748,7 +4990,7 @@
       showToast('success', 'Başarılı', 'Tekil kayıt pakete bağlandı.');
       await refreshEtliAfterMutation(sb);
       loadOzet();
-      if (getActiveTab() === 'kurban') void loadKurbanYonetim();
+      refreshKurbanTableFromCache();
     } catch (err) {
       showToast('error', 'Hata', err.message || 'Bağlanamadı.');
     }
