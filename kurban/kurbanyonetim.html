@@ -816,6 +816,7 @@
             <div class="kurban-btn-group kurban-btn-group--secondary">
               <button type="button" class="btn btn-ghost" id="btnAtanmamisHissedarlar" title="Henüz kurban atanmamış hissedarlar">👤 Atanmamış</button>
               <button type="button" class="btn btn-ghost" id="btnKesimListesiYazdir" title="Sıraya göre liste; PDF için yazdırmada Hedef: PDF kaydet">📄 Kesim listesi</button>
+              <button type="button" class="btn btn-ghost" id="btnKesimListesi2Yazdir" title="Küçük tablolar, 2 sütun yan yana">📄 Kesim Listesi-2</button>
               <button type="button" class="btn btn-ghost" id="btnKurbanYenile" title="Aktif sekmenin verisini yenile">🔄 Yenile</button>
               <button type="button" class="btn btn-ghost" id="btnKurbanDetayHepsi" title="Tüm kurban satırlarında hissedar tablosunu göster">📋 Tüm detaylar</button>
               <button type="button" class="btn btn-ghost" id="btnKurbanDetayKapat" title="Açık tüm hissedar detaylarını kapat">▲ Detayları kapat</button>
@@ -3380,15 +3381,31 @@
       showToast('warning', 'Liste boş', 'Yazdırılacak kurban kaydı yok.');
       return;
     }
-    const css = 'body{font-family:system-ui,-apple-system,sans-serif;padding:24px;color:#111}h1{font-size:20px;margin:0 0 8px}.meta{color:#555;font-size:13px;margin-bottom:20px}.kblock{page-break-inside:avoid;margin-bottom:22px;border:1px solid #ddd;border-radius:8px;padding:14px}h2{font-size:14px;margin:0 0 10px;color:#222}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #ccc;padding:5px 7px}th{background:#f3f4f6;font-weight:600}.num{text-align:right;font-variant-numeric:tabular-nums}.c{text-align:center}@media print{body{padding:10mm}}';
+    const css = [
+      'body{font-family:system-ui,-apple-system,sans-serif;padding:24px;color:#111}',
+      'h1{font-size:20px;margin:0 0 8px}',
+      '.meta{color:#555;font-size:13px;margin-bottom:20px}',
+      '.kblock{break-inside:avoid;page-break-inside:avoid;margin-bottom:22px;border:1px solid #ddd;border-radius:8px;padding:14px;overflow:hidden}',
+      'h2{font-size:14px;margin:0 0 10px;color:#222;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      'table{width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed;max-width:100%}',
+      /* % widths: Sıra=4 Hissedar=auto Telefon=11 Personel=12 Fiyat=9 Kapora=9 Tahsilat=9 Kalan=9 Açıklama=10 → fixed=73% auto=27% */
+      'col.c-sira{width:4%}col.c-tel{width:11%}col.c-pers{width:12%}col.c-fiyat{width:9%}col.c-para{width:9%}col.c-acik{width:10%}',
+      'th,td{border:1px solid #ccc;padding:6px 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      'th{background:#1b5e20;color:#fff;font-weight:600}',
+      '.c{text-align:center}',
+      '@media print{body{padding:10mm}}'
+    ].join('');
+    const sep = '&nbsp;&nbsp;&middot;&nbsp;&nbsp;';
     let bodyHtml = '';
     list.forEach(k => {
       kurbanEnsureSlots(k);
       const meta = HISSE_GRUP_META[k.hisse_grup_kodu] || {};
       const defF = k.hisse_fiyati != null && k.hisse_fiyati !== '' && !Number.isNaN(Number(k.hisse_fiyati)) ? Number(k.hisse_fiyati) : null;
       bodyHtml += '<section class="kblock">';
-      bodyHtml += '<h2>Sıra ' + esc(k.kesim_sirasi) + ' · Küpe: ' + esc(k.kupe_no || '—') + ' · Canlı kg: ' + (k.canli_kg != null && k.canli_kg !== '' ? fmtTry(k.canli_kg) : '—') + ' · ' + esc(meta.ad || k.hisse_grup_kodu || '—') + '</h2>';
-      bodyHtml += '<table><thead><tr><th class="c">Sıra</th><th>Hissedar</th><th>Telefon</th><th>Personel</th><th class="c">Hisse fiyat</th><th class="c">Kapora</th><th class="c">Tahsilat</th><th class="c">Kalan</th><th>Açıklama</th></tr></thead><tbody>';
+      const grupLabel = k.hisse_grup_kodu ? (meta.ad ? k.hisse_grup_kodu + ' ' + meta.ad : k.hisse_grup_kodu) : (meta.ad || '—');
+      bodyHtml += '<h2>Sıra ' + esc(k.kesim_sirasi) + sep + 'Küpe: ' + esc(k.kupe_no || '—') + sep + 'Canlı kg: ' + (k.canli_kg != null && k.canli_kg !== '' ? fmtTry(k.canli_kg) : '—') + sep + esc(grupLabel) + '</h2>';
+      bodyHtml += '<table><colgroup><col class="c-sira"><col><col class="c-tel"><col class="c-pers"><col class="c-fiyat"><col class="c-para"><col class="c-para"><col class="c-para"><col class="c-acik"></colgroup>';
+      bodyHtml += '<thead><tr><th class="c">Sıra</th><th>Hissedar</th><th>Telefon</th><th>Personel</th><th class="c">Hisse fiyat</th><th class="c">Kapora</th><th class="c">Tahsilat</th><th class="c">Kalan</th><th>Açıklama</th></tr></thead><tbody>';
       k.atamalar.forEach(a => {
         const dolu = (a.ad_soyad || '').trim();
         const kal = slotKalan(a, defF);
@@ -3413,6 +3430,92 @@
     }
     w.document.write('<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><title>Kesim Sıra Listesi</title><style>' + css + '</style></head><body>');
     w.document.write('<h1>Karaağaç Fatih Kesim Listesi</h1><p class="meta">Karaağaç Fatih · ' + new Date().toLocaleString('tr-TR') + '</p>');
+    w.document.write(bodyHtml);
+    w.document.write('</body></html>');
+    w.document.close();
+    w.focus();
+    setTimeout(function () { try { w.print(); } catch (err) {} }, 350);
+  }
+  async function kesimListesi2Yazdir() {
+    await loadPersonelMap();
+    await refreshEtliLookupForKurban();
+    const fetched = await kurbanFetchListe();
+    if (fetched == null) return;
+    const list = fetched.slice().sort((a, b) => {
+      const ya = Number(a.yil) || 0;
+      const yb = Number(b.yil) || 0;
+      if (yb !== ya) return yb - ya;
+      return (Number(a.kesim_sirasi) || 0) - (Number(b.kesim_sirasi) || 0);
+    });
+    if (!list.length) {
+      showToast('warning', 'Liste boş', 'Yazdırılacak kurban kaydı yok.');
+      return;
+    }
+    const css = [
+      'body{font-family:system-ui,-apple-system,sans-serif;padding:12px;color:#111}',
+      'h1{font-size:15px;margin:0 0 4px}',
+      '.meta{color:#555;font-size:11px;margin-bottom:10px}',
+      /* Her satır: break-inside:avoid ile sayfa ortasında bölünmez */
+      '.row-p,.row-l{display:flex;gap:6px;break-inside:avoid;page-break-inside:avoid;margin-bottom:6px}',
+      '.row-p .kblock,.row-l .kblock{flex:1;min-width:0;overflow:hidden}',
+      /* Ekran önizlemesi: portrait layout göster */
+      '.wrap-l{display:none}',
+      '@media screen{.wrap-p .row-p{flex-wrap:nowrap}}',
+      '.kblock{border:1px solid #ccc;border-radius:5px;padding:6px;box-sizing:border-box}',
+      'h2{font-size:10px;margin:0 0 5px;color:#222;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      'table{width:100%;border-collapse:collapse;font-size:9px;table-layout:fixed;max-width:100%}',
+      /* % genişlikler: Sıra=5 Hissedar=auto Personel=22 Fiyat=22 → fixed=49% auto=51% */
+      'col.c-sira{width:5%}col.c-pers{width:22%}col.c-fiyat{width:22%}',
+      'th,td{border:1px solid #ccc;padding:4px 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      'th{background:#1b5e20;color:#fff;font-weight:600}',
+      '.c{text-align:center}',
+      /* Print portrait: 3 sütun (wrap-p görünür, wrap-l gizli) */
+      '@media print{body{padding:6mm}.wrap-l{display:none!important}.wrap-p{display:block}}',
+      /* Print landscape: 2 sütun (wrap-l görünür, wrap-p gizli) */
+      '@media print and (orientation:landscape){.wrap-p{display:none!important}.wrap-l{display:block!important}}'
+    ].join('');
+    const sep2 = '&nbsp;&nbsp;&middot;&nbsp;&nbsp;';
+    /* Her kurban için HTML bloğu üret */
+    const blocks = list.map(k => {
+      kurbanEnsureSlots(k);
+      const meta = HISSE_GRUP_META[k.hisse_grup_kodu] || {};
+      const defF = k.hisse_fiyati != null && k.hisse_fiyati !== '' && !Number.isNaN(Number(k.hisse_fiyati)) ? Number(k.hisse_fiyati) : null;
+      const grupLabel2 = k.hisse_grup_kodu ? (meta.ad ? k.hisse_grup_kodu + ' ' + meta.ad : k.hisse_grup_kodu) : (meta.ad || '—');
+      let b = '<section class="kblock">';
+      b += '<h2>Sıra ' + esc(k.kesim_sirasi) + sep2 + 'Küpe: ' + esc(k.kupe_no || '—') + sep2 + 'Canlı kg: ' + (k.canli_kg != null && k.canli_kg !== '' ? fmtTry(k.canli_kg) : '—') + sep2 + esc(grupLabel2) + '</h2>';
+      b += '<table><colgroup><col class="c-sira"><col><col class="c-pers"><col class="c-fiyat"></colgroup>';
+      b += '<thead><tr><th class="c">Sıra</th><th>Hissedar</th><th>Personel</th><th class="c">Hisse fiyat</th></tr></thead><tbody>';
+      k.atamalar.forEach(a => {
+        const dolu = (a.ad_soyad || '').trim();
+        b += '<tr>';
+        b += '<td class="c">' + a.slot + '</td>';
+        b += '<td>' + (dolu ? esc(a.ad_soyad) : '—') + '</td>';
+        b += '<td>' + (dolu ? esc(slotPersonelAd(a)) : '—') + '</td>';
+        b += '<td class="c">' + (dolu && defF != null ? fmtTry(defF) : '—') + '</td>';
+        b += '</tr>';
+      });
+      b += '</tbody></table></section>';
+      return b;
+    });
+    /* Portrait: 3'lü satırlar */
+    let bodyHtml = '<div class="wrap-p">';
+    for (let i = 0; i < blocks.length; i += 3) {
+      bodyHtml += '<div class="row-p">' + blocks.slice(i, i + 3).join('') + '</div>';
+    }
+    bodyHtml += '</div>';
+    /* Landscape: 2'li satırlar (ayrı HTML seti — CSS ile gösterilir) */
+    bodyHtml += '<div class="wrap-l">';
+    for (let i = 0; i < blocks.length; i += 2) {
+      bodyHtml += '<div class="row-l">' + blocks.slice(i, i + 2).join('') + '</div>';
+    }
+    bodyHtml += '</div>';
+    const w = window.open('', '_blank');
+    if (!w) {
+      showToast('error', 'Pop-up engellendi', 'Yazdırmak için tarayıcının pop-up\'a izin vermesi gerekir.');
+      return;
+    }
+    w.document.write('<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><title>Kesim Listesi-2</title><style>' + css + '</style></head><body>');
+    w.document.write('<h1>Karaağaç Fatih Kesim Listesi-2</h1><p class="meta">Karaağaç Fatih · ' + new Date().toLocaleString('tr-TR') + '</p>');
     w.document.write(bodyHtml);
     w.document.write('</body></html>');
     w.document.close();
@@ -4098,6 +4201,7 @@
     renderKurbanTableFromCacheOnly();
   });
   document.getElementById('btnKesimListesiYazdir')?.addEventListener('click', () => void kesimListesiYazdir());
+  document.getElementById('btnKesimListesi2Yazdir')?.addEventListener('click', () => void kesimListesi2Yazdir());
   document.getElementById('btnKurbanIptal')?.addEventListener('click', () => closeKurbanModal());
   document.getElementById('formKurban')?.addEventListener('submit', async (e) => {
     e.preventDefault();
