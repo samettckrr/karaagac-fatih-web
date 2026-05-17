@@ -2,9 +2,11 @@
 
 ## Proje Genel Bakış
 
-Karaağaç Fatih Derneği için geliştirilmiş web tabanlı yönetim uygulaması. Talebe (öğrenci) kayıt, muhasebe, personel, nehari, kermes, kurban gibi modülleri kapsar.
+Karaağaç Fatih için geliştirilmiş web tabanlı yönetim uygulaması. Talebe (öğrenci) kayıt, muhasebe, personel, nehari, kermes, kurban gibi modülleri kapsar.
 
 Netlify üzerinde host edilir. iOS uygulaması için Capacitor entegrasyonu mevcuttur.
+
+!Dikkat yazdır-pdf lerde başlık "Karaağaç Fatih" kullan.
 
 ## Teknoloji Yığını
 

@@ -640,6 +640,7 @@
       <button class="tab" data-tab="bagis">🐑 Bağış Hisse</button>
       <button class="tab" data-tab="etli">🐄 Etli Hisse</button>
       <button class="tab" data-tab="kurban">🔪 Kesim Takibi</button>
+      <button class="tab" data-tab="karTakip">💰 Etli Hisse Kâr Takibi</button>
       <button class="tab" data-tab="onkayit">📝 Ön Kayıt</button>
       <button class="tab" data-tab="hedefler">🎯 Hedefler</button>
       <button class="tab" data-tab="analiz">💳 Tahsilat Takibi</button>
@@ -848,12 +849,12 @@
             </colgroup>
             <thead>
               <tr>
-                <th class="col-exp" style="width:118px" title="Satır içi hissedar tablosunu aç / kapat">Detay</th>
+                <th class="col-exp" style="width:110px" title="Satır içi hissedar tablosunu aç / kapat">Detay</th>
                 <th title="Kesim sırası">Sıra</th>
                 <th title="Kurban yılı (kurban_kategoriler)">Yıl</th>
-                <th>Küpe no</th>
-                <th>Canlı kg</th>
-                <th>Hisse grup</th>
+                <th><strong>Küpe no</strong></th>
+                <th><strong>Canlı kg</strong></th>
+                <th><strong>Hisse grup</strong></th>
                 <th>Kurban adı<br><span style="font-weight:400;font-size:11px;color:var(--muted)">(1. sıradaki hissedar)</span></th>
                 <th>Hissedar adedi</th>
                 <th>Dolu / boş</th>
@@ -868,6 +869,115 @@
           </table>
         </div>
         <div id="kurbanEmpty" style="display:none;padding:32px;text-align:center;color:var(--muted)">Henüz kurban kaydı yok. «Yeni Kurban» ile ekleyin.</div>
+      </div>
+    </div>
+
+    <!-- Tab: Etli Hisse Kâr Takibi -->
+    <div class="tab-content" id="tab-karTakip">
+      <div class="card">
+        <div class="toolbar" style="gap:10px;flex-wrap:wrap;align-items:center">
+          <select id="karTakipYilFiltre" class="filter-year" style="height:38px"></select>
+          <button type="button" class="btn btn-ghost" onclick="yazdirKarTakip()" title="Tabloyu yazdır">🖨️ Yazdır</button>
+          <button type="button" class="btn btn-ghost" onclick="void loadKarTakip()" title="Yenile">🔄 Yenile</button>
+          <p class="kurban-toolbar-hint" style="margin:0;font-size:12px;color:var(--muted)">Satıra sağ tık veya basılı tutarak finans bilgisi girin.</p>
+        </div>
+
+        <!-- Genel Özet -->
+        <div style="margin-bottom:16px">
+          <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Genel Özet</div>
+          <div class="stats-grid" id="karTakipOzetGrid">
+            <div class="stat-card">
+              <div class="stat-label">Toplam Kurban Alış</div>
+              <div class="stat-value" id="ktToplamAlis">–</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Toplam Satış Geliri</div>
+              <div class="stat-value" id="ktToplamSatis">–</div>
+            </div>
+            <div class="stat-card" style="border-color:var(--accent);background:rgba(5,150,105,.06)">
+              <div class="stat-label">Toplam Kâr / Zarar</div>
+              <div class="stat-value" id="ktToplamKar">–</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fiyat & İskonto Özeti -->
+        <div style="margin-bottom:16px">
+          <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Fiyat Ortalamaları &amp; İskonto</div>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-label">Ort. Alış / kg</div>
+              <div class="stat-value" id="ktOrtAlis">–</div>
+              <div class="stat-label" style="margin-top:4px;font-size:11px">(ağırlıklı ortalama)</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Ort. Satış / kg</div>
+              <div class="stat-value" id="ktOrtSatis">–</div>
+              <div class="stat-label" style="margin-top:4px;font-size:11px">(ağırlıklı ortalama)</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Toplam İskonto</div>
+              <div class="stat-value" id="ktToplamIskonto">–</div>
+              <div class="stat-label" style="margin-top:4px;font-size:11px" id="ktIskontoAciklama">(+ indirim / − ek ücret)</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Kesim Ücreti Takibi -->
+        <div style="margin-bottom:16px">
+          <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Kesim Ücreti Takibi <span style="font-weight:400;font-size:11px;text-transform:none">(2026 standard: 21.000 ₺/kurban)</span></div>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-label">Toplam Kesim Ücreti</div>
+              <div class="stat-value" id="ktKesimToplam">–</div>
+              <div class="stat-label" style="margin-top:4px;font-size:11px" id="ktKesimToplamAciklama">21.000 ₺ × kurban sayısı</div>
+            </div>
+            <div class="stat-card" style="border-color:rgba(8,145,178,.35);background:rgba(8,145,178,.05)">
+              <div class="stat-label">Hissedarlardan Alınan</div>
+              <div class="stat-value" id="ktKesimHissedar">–</div>
+              <div class="stat-label" style="margin-top:4px;font-size:11px">Satış fiyatına dahil edilen kesim</div>
+            </div>
+            <div class="stat-card" style="border-color:rgba(220,38,38,.35);background:rgba(220,38,38,.04)">
+              <div class="stat-label">Kasadan Ödenen</div>
+              <div class="stat-value" id="ktKesimKasa" style="color:#dc2626">–</div>
+              <div class="stat-label" style="margin-top:4px;font-size:11px">Kârdan düşülen (eksik kesim farkı)</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Kurban Bazlı Tablo -->
+        <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Kurban Bazlı Finans</div>
+        <div class="table-wrap">
+          <table id="tblKarTakip" style="min-width:980px;font-size:13px">
+            <thead>
+              <!-- Grup başlıkları -->
+              <tr style="border-bottom:none">
+                <th colspan="3" style="background:var(--card);border-bottom:none;padding:6px 8px 2px"></th>
+                <th colspan="5" style="text-align:center;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#0e7490;background:rgba(8,145,178,.07);border-bottom:none;padding:6px 8px 2px;border-left:2px solid rgba(8,145,178,.25)">Finans Girdileri</th>
+                <th colspan="4" style="text-align:center;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#6d28d9;background:rgba(109,40,217,.06);border-bottom:none;padding:6px 8px 2px;border-left:2px solid rgba(109,40,217,.25)">Hesaplama</th>
+                <th colspan="1" style="text-align:center;font-size:11px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;color:#fff;background:linear-gradient(135deg,#059669,#047857);border-bottom:none;padding:6px 8px 2px;border-left:3px solid #059669">Kâr / Zarar</th>
+              </tr>
+              <!-- Sütun başlıkları -->
+              <tr>
+                <th style="width:40px;text-align:center">Sıra</th>
+                <th style="width:76px"><strong>Küpe No</strong></th>
+                <th style="width:130px;color:var(--muted)">1. Hissedar</th>
+                <th style="width:64px;text-align:right;border-left:2px solid rgba(8,145,178,.25);background:rgba(8,145,178,.04)"><strong>Canlı kg</strong></th>
+                <th style="width:80px;text-align:right;background:rgba(8,145,178,.04)">Alış/kg ₺</th>
+                <th style="width:80px;text-align:right;background:rgba(8,145,178,.04)">Satış/kg ₺</th>
+                <th style="width:88px;text-align:right;background:rgba(8,145,178,.04)">Kesim ₺</th>
+                <th style="width:78px;text-align:right;background:rgba(8,145,178,.04)">İskonto ₺</th>
+                <th style="width:96px;text-align:right;border-left:2px solid rgba(109,40,217,.25)">Kurban Alış</th>
+                <th style="width:96px;text-align:right">Kurban Satış</th>
+                <th style="width:100px;text-align:right" title="Hisse fiyatı × hissedar adedi. Kurban Satış ile farklıysa kırmızı gösterilir.">Hisse Kontrol</th>
+                <th style="width:96px;text-align:right" title="Kurban Satış ÷ Hissedar adedi = hisse başına düşen fiyat">Hisse Fiyatı</th>
+                <th style="width:108px;text-align:right;border-left:3px solid #059669;background:rgba(5,150,105,.08);color:#047857;font-weight:800">Kâr / Zarar</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyKarTakip"></tbody>
+          </table>
+        </div>
+        <div id="karTakipEmpty" style="display:none;padding:32px;text-align:center;color:var(--muted)">Henüz kurban kaydı yok veya finans bilgisi girilmemiş.</div>
       </div>
     </div>
 
@@ -1031,6 +1141,82 @@
     <div class="dcm-item" data-durum="vekalet_alindi"><span class="dcm-dot" style="background:#7c3aed"></span>Vekalet</div>
     <div class="dcm-item" data-durum="kesim_yapildi"><span class="dcm-dot" style="background:#ea580c"></span>Kesildi (Yapıldı)</div>
     <div class="dcm-item" data-durum="kesildi"><span class="dcm-dot" style="background:#b45309"></span>Kesildi</div>
+  </div>
+
+  <!-- Kurban satır sağ tık menüsü -->
+  <div id="kurbanRowCtxMenu" style="display:none;position:fixed;z-index:20000;background:var(--card);border:1px solid var(--stroke);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.2);padding:6px;min-width:200px;">
+    <div style="font-size:11px;font-weight:700;color:var(--muted);padding:4px 10px 8px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--stroke);margin-bottom:4px;">Kurban İşlemleri</div>
+    <div id="kurbanCtxMuhasebeBtn" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--ink);transition:background .1s;">
+      <span>📊</span> Muhasebe Raporu
+    </div>
+  </div>
+
+  <!-- Modal: Kurban Muhasebe Raporu -->
+  <div class="modal" id="modalKurbanMuhasebe">
+    <div class="sheet sheet-wide" style="max-width:580px">
+      <h3 id="modalKurbanMuhasebeTitle">📊 Muhasebe Raporu</h3>
+      <div id="kurbanMuhasebeIcerik">
+        <!-- Üst: Girişler -->
+        <div style="background:var(--surface);border:1px solid var(--stroke);border-radius:12px;padding:14px 16px;margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Kurban Bilgileri</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+            <div>
+              <div style="font-size:12px;color:var(--muted);margin-bottom:3px">Küpe No</div>
+              <div id="muhKupeNo" style="font-size:15px;font-weight:700;color:var(--ink)">–</div>
+            </div>
+            <div>
+              <div style="font-size:12px;color:var(--muted);margin-bottom:3px">Canlı Ağırlık</div>
+              <div id="muhCanliKg" style="font-size:15px;font-weight:700;color:var(--ink)">– kg</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+            <div class="form-group" style="margin:0">
+              <label>Alış Fiyatı (₺/kg)</label>
+              <input type="number" id="muhAlisFiyat" min="0" step="0.01" placeholder="0.00" style="width:100%" oninput="hesaplaKurbanMuhasebe()" />
+            </div>
+            <div class="form-group" style="margin:0">
+              <label>Satış Fiyatı (₺/kg)</label>
+              <input type="number" id="muhSatisFiyat" min="0" step="0.01" placeholder="0.00" style="width:100%" oninput="hesaplaKurbanMuhasebe()" />
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="form-group" style="margin:0">
+              <label>Kesim Ücreti (₺)</label>
+              <input type="number" id="muhKesimUcret" min="0" step="1" placeholder="0.00" style="width:100%" oninput="hesaplaKurbanMuhasebe()" />
+            </div>
+            <div class="form-group" style="margin:0">
+              <label style="display:flex;align-items:center;gap:6px">
+                Satış İskontosu (₺)
+                <span style="font-size:10px;font-weight:400;color:var(--muted)">(+ indirim / − ek ücret)</span>
+              </label>
+              <input type="number" id="muhIskonto" step="0.01" placeholder="0.00" style="width:100%" oninput="hesaplaKurbanMuhasebe()" />
+            </div>
+          </div>
+        </div>
+        <!-- Alt: Hesaplama Sonuçları -->
+        <div id="muhasebeHesapSonuc" style="background:var(--surface);border:1px solid var(--stroke);border-radius:12px;padding:14px 16px">
+          <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Hesaplama</div>
+          <div style="display:grid;gap:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-radius:8px;background:rgba(220,38,38,0.07)">
+              <span style="font-size:13px;color:var(--muted)">Kurban Alış Fiyatı <span style="font-size:11px">(canlı kg × alış/kg)</span></span>
+              <strong id="muhTotalAlis" style="font-size:14px;color:#b91c1c">–</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-radius:8px;background:rgba(16,185,129,0.07)">
+              <span style="font-size:13px;color:var(--muted)">Kurban Satış Fiyatı <span style="font-size:11px">(canlı kg × satış/kg + kesim − iskonto)</span></span>
+              <strong id="muhTotalSatis" style="font-size:14px;color:#047857">–</strong>
+            </div>
+            <div id="muhKarZararRow" style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:10px;border:2px solid var(--stroke)">
+              <span style="font-size:14px;font-weight:700;color:var(--ink)">Kâr / Zarar</span>
+              <strong id="muhKarZarar" style="font-size:16px;font-weight:800">–</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn btn-ghost" onclick="window.closeModalEl('modalKurbanMuhasebe')">Kapat</button>
+        <button type="button" class="btn btn-primary" id="btnMuhasebeKaydet" onclick="window.saveKurbanMuhasebe()">💾 Kaydet</button>
+      </div>
+    </div>
   </div>
 
   <!-- Modal: Kurban Yılı -->
@@ -1540,6 +1726,7 @@
       else if (btn.dataset.tab === 'hedefler') loadHedefler();
       else if (btn.dataset.tab === 'analiz') void loadTahsilatTakip();
       else if (btn.dataset.tab === 'tarti') void loadTartiTakip();
+      else if (btn.dataset.tab === 'karTakip') void loadKarTakip();
       else if (btn.dataset.tab === 'ayarlar') loadKategoriler();
       else if (btn.dataset.tab === 'ozet') loadOzet();
     });
@@ -1571,10 +1758,10 @@
   function populateKategoriDropdowns() {
     const list = kategorilerList.length ? kategorilerList : [{ yil: 2026, label: '2026 Kurban', aktif: true }];
     const opt = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; return o; };
-    const selIds = ['bagisYilFiltre', 'etliYilFiltre', 'onkayitYilFiltre', 'hedefYil', 'bagisKategori', 'etliKategori', 'hedefKategori', 'kurbanYil', 'ozetYilFiltre', 'kurbanYilFiltre', 'tahsilatTakipYilFiltre', 'tartiTakipYilFiltre'];
+    const selIds = ['bagisYilFiltre', 'etliYilFiltre', 'onkayitYilFiltre', 'hedefYil', 'bagisKategori', 'etliKategori', 'hedefKategori', 'kurbanYil', 'ozetYilFiltre', 'kurbanYilFiltre', 'tahsilatTakipYilFiltre', 'tartiTakipYilFiltre', 'karTakipYilFiltre'];
     const withTumu = ['bagisYilFiltre', 'etliYilFiltre', 'onkayitYilFiltre', 'tahsilatTakipYilFiltre'];
     const kurbanYilOnly = ['kurbanYil'];
-    const tekYilAktifVarsayilan = ['hedefYil', 'ozetYilFiltre', 'kurbanYilFiltre', 'tartiTakipYilFiltre'];
+    const tekYilAktifVarsayilan = ['hedefYil', 'ozetYilFiltre', 'kurbanYilFiltre', 'tartiTakipYilFiltre', 'karTakipYilFiltre'];
     const aktifYil = list.find(x => x.aktif)?.yil || 2026;
     selIds.forEach(sid => {
       const el = document.getElementById(sid);
@@ -2380,7 +2567,7 @@
     const tbody = document.getElementById('tbodyPersonelAnaliz');
     if (!tbody) return;
     const yilFiltre = document.getElementById('tahsilatTakipYilFiltre')?.value || '';
-    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:20px">Yükleniyor…</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:20px">Yükleniyor…</td></tr>';
     if (!sb) { tbody.innerHTML = '<tr><td colspan="11">Supabase hazır değil.</td></tr>'; return; }
     try {
       const yilInt = yilFiltre ? parseInt(yilFiltre, 10) : null;
@@ -3139,14 +3326,18 @@
       sumKapora += Number(a.kapora) || 0;
       sumTahsilat += Number(a.tahsilat) || 0;
     }
-    const sumFiyat = defF != null ? defF * doluSay : null;
+    const totalAdet = Number(k.hissedar_adedi) || 0;
+    const sumFiyat = defF != null ? defF * totalAdet : null;
     const sumKalan = sumFiyat != null ? sumFiyat - sumKapora - sumTahsilat : null;
     return { sumFiyat, sumKapora, sumTahsilat, sumKalan, doluSay, birimFiyat: defF };
   }
   function kurbanDoluBadge(dolu, toplam) {
-    if (dolu === 0) return `<span class="badge-chip bos">Boş (${toplam})</span>`;
-    if (dolu >= toplam) return `<span class="badge-chip aktif">Dolu (${dolu}/${toplam})</span>`;
-    return `<span class="badge-chip kismi">${dolu} / ${toplam}</span>`;
+    if (dolu >= toplam && toplam > 0) return `<span class="badge-chip aktif">Dolu (${dolu}/${toplam})</span>`;
+    if (dolu === 0) return `<span class="badge-chip" style="background:rgba(220,38,38,0.15);color:#b91c1c">Boş (0/${toplam})</span>`;
+    // Kısmi: %50'den fazlaysa turuncu, az veya eşitse kırmızı
+    const pct = dolu / toplam;
+    if (pct > 0.5) return `<span class="badge-chip" style="background:rgba(245,158,11,0.2);color:#b45309">${dolu} / ${toplam}</span>`;
+    return `<span class="badge-chip" style="background:rgba(220,38,38,0.15);color:#b91c1c">${dolu} / ${toplam}</span>`;
   }
   /** Aynı anda birden fazla kurban satırında hissedar detayı açık olabilir (string id). */
   let kurbanExpandedIds = new Set();
@@ -3212,7 +3403,7 @@
     list.forEach(k => {
       kurbanEnsureSlots(k);
       const meta = HISSE_GRUP_META[k.hisse_grup_kodu] || { no: '?', ad: k.hisse_grup_kodu || '–', aralik: '–' };
-      const grupHtml = `<div class="grup-cell"><strong>${esc(meta.no)}</strong> / ${esc(meta.ad)}<br><span style="font-size:12px;color:var(--muted)">${esc(meta.aralik)}</span></div>`;
+      const grupHtml = `<div class="grup-cell"><strong>${esc(meta.no)} / ${esc(meta.ad)}</strong><br><span style="font-size:12px;color:var(--muted)">${esc(meta.aralik)}</span></div>`;
       const hatir = kurbanHatirlayiciAd(k);
       const hatirHtml = hatir
         ? `<div class="hatirlayici-cell"><strong>${esc(hatir)}</strong><br><span style="font-size:11px;color:var(--muted)">1. sıra</span></div>`
@@ -3228,7 +3419,9 @@
       const anaFiyatStr = k.hisse_fiyati != null && k.hisse_fiyati !== '' ? fmtTry(k.hisse_fiyati) + ' ₺' : '–';
       const anaKapStr = agg.doluSay > 0 ? fmtTry(agg.sumKapora) + ' ₺' : '–';
       const anaTahStr = agg.doluSay > 0 ? fmtTry(agg.sumTahsilat) + ' ₺' : '–';
-      const anaKalStr = agg.doluSay > 0 && agg.sumKalan != null ? fmtTry(agg.sumKalan) + ' ₺' : '–';
+      const anaKalRaw = agg.doluSay > 0 && agg.sumKalan != null ? agg.sumKalan : null;
+      const anaKalStr = anaKalRaw != null ? fmtTry(anaKalRaw) + ' ₺' : '–';
+      const anaKalColor = anaKalRaw != null && anaKalRaw > 0 ? 'color:#dc2626;font-weight:700' : anaKalRaw != null && anaKalRaw <= 0 ? 'color:#047857;font-weight:700' : '';
       const kidStr = String(k.id);
       const kidAttr = kidStr.replace(/"/g, '');
       const expanded = kurbanExpandedIds.has(kidStr);
@@ -3244,8 +3437,8 @@
         </td>
         <td class="td-kesim">${esc(k.kesim_sirasi)}</td>
         <td class="td-kesim" title="Kurban yılı">${esc(yilGoster)}</td>
-        <td>${esc(k.kupe_no || '')}</td>
-        <td style="text-align:right">${k.canli_kg != null && k.canli_kg !== '' ? fmtTry(k.canli_kg) : '–'}</td>
+        <td><strong>${esc(k.kupe_no || '')}</strong></td>
+        <td style="text-align:right"><strong>${k.canli_kg != null && k.canli_kg !== '' ? fmtTry(k.canli_kg) : '–'}</strong></td>
         <td>${grupHtml}</td>
         <td>${hatirHtml}</td>
         <td class="td-adet">${adet}</td>
@@ -3253,7 +3446,7 @@
         <td class="td-para-center" title="Hisse fiyat (kurban)">${anaFiyatStr}</td>
         <td class="td-para-center" title="Alt satırlar toplamı">${anaKapStr}</td>
         <td class="td-para-center" title="Alt satırlar toplamı">${anaTahStr}</td>
-        <td class="td-para-center" title="Alt satırlar toplamı">${anaKalStr}</td>
+        <td class="td-para-center" title="Alt satırlar toplamı" style="${anaKalColor}">${anaKalStr}</td>
         <td class="td-act">
           <button type="button" class="btn btn-ghost" style="padding:4px 10px;font-size:12px" data-act="edit" data-id="${kidAttr}">Düzenle</button>
           <button type="button" class="btn btn-danger" style="padding:4px 10px;font-size:12px" data-act="del" data-id="${kidAttr}">Sil</button>
@@ -3264,6 +3457,22 @@
       tr.querySelectorAll('[data-act="del"]').forEach(btn => {
         btn.addEventListener('click', (e) => { e.stopPropagation(); window.silKurban(k.id); });
       });
+      // Sağ tık / uzun basma → Muhasebe Raporu
+      tr.addEventListener('contextmenu', e => {
+        if (e.target.closest('button')) return;
+        e.preventDefault();
+        showKurbanRowCtxMenu(k.id, e.clientX, e.clientY);
+      });
+      tr.addEventListener('touchstart', e => {
+        if (e.target.closest('button')) return;
+        _kurbanCtxLpTimer = setTimeout(() => {
+          const t = e.touches[0];
+          showKurbanRowCtxMenu(k.id, t.clientX, t.clientY);
+          if (navigator.vibrate) navigator.vibrate(30);
+        }, 550);
+      }, { passive: true });
+      tr.addEventListener('touchend', () => clearTimeout(_kurbanCtxLpTimer));
+      tr.addEventListener('touchmove', () => clearTimeout(_kurbanCtxLpTimer));
       tbody.appendChild(tr);
       const trEx = document.createElement('tr');
       trEx.className = 'kurban-expand';
@@ -5337,6 +5546,9 @@
   window.closeEtliIkiTekilPaketleModal = closeEtliIkiTekilPaketleModal;
   window.closeHedefModal = closeHedefModal;
   window.closeKurbanModal = closeKurbanModal;
+  window.closeModalEl = closeModalEl;
+  window.loadKarTakip = async function() { return loadKarTakip(); };
+  window.yazdirKarTakip = function() { return yazdirKarTakip(); };
 
   // Modal dışına tıklayınca kapat
   document.querySelectorAll('.modal').forEach(m => {
@@ -5703,6 +5915,812 @@
     w.document.close();
   }
 
+  // ——— Kurban satır sağ tık / uzun basma → Muhasebe Raporu ———
+  let _kurbanCtxId = null;
+  let _kurbanCtxLpTimer = null;
+
+  function showKurbanRowCtxMenu(kurbanId, x, y) {
+    _kurbanCtxId = kurbanId;
+    const menu = document.getElementById('kurbanRowCtxMenu');
+    if (!menu) return;
+    menu.style.display = 'block';
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const mw = menu.offsetWidth || 200, mh = menu.offsetHeight || 80;
+    let left = Math.min(x + 4, vw - mw - 8);
+    let top = Math.min(y + 4, vh - mh - 8);
+    menu.style.left = left + 'px';
+    menu.style.top = top + 'px';
+  }
+
+  function hideKurbanRowCtxMenu() {
+    const menu = document.getElementById('kurbanRowCtxMenu');
+    if (menu) menu.style.display = 'none';
+    _kurbanCtxId = null;
+  }
+
+  function initKurbanRowCtxMenu() {
+    document.getElementById('kurbanCtxMuhasebeBtn')?.addEventListener('click', () => {
+      const id = _kurbanCtxId;
+      hideKurbanRowCtxMenu();
+      if (!id) return;
+      openKurbanMuhasebeModal(id);
+    });
+    document.getElementById('kurbanCtxMuhasebeBtn')?.addEventListener('mouseover', function() {
+      this.style.background = 'var(--surface)';
+    });
+    document.getElementById('kurbanCtxMuhasebeBtn')?.addEventListener('mouseout', function() {
+      this.style.background = '';
+    });
+    document.addEventListener('click', e => {
+      if (!e.target.closest('#kurbanRowCtxMenu')) hideKurbanRowCtxMenu();
+    }, true);
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') hideKurbanRowCtxMenu(); });
+  }
+
+  let _muhKurbanId = null;
+  function openKurbanMuhasebeModal(kurbanId) {
+    // Hem kurbanListeCache hem karTakipData'ya bak (hangisi güncel finans bilgisi içeriyorsa)
+    let k = kurbanListeCache.find(x => String(x.id) === String(kurbanId));
+    const kt = karTakipData.find(x => String(x.id) === String(kurbanId));
+    // Finans alanları karTakipData'da daha güncel olabilir (loadKarTakip sonrası)
+    if (kt) {
+      if (!k) k = kt;
+      else {
+        // finans alanlarını karTakipData'dan üst yaz; undefined değil ise güncelle (0 dahil)
+        if ('alis_kg'       in kt) k = { ...k, alis_kg:       kt.alis_kg };
+        if ('satis_kg'      in kt) k = { ...k, satis_kg:      kt.satis_kg };
+        if ('kesim_ucret'   in kt) k = { ...k, kesim_ucret:   kt.kesim_ucret };
+        if ('satis_iskonto' in kt) k = { ...k, satis_iskonto: kt.satis_iskonto };
+      }
+    }
+    if (!k) return;
+    _muhKurbanId = kurbanId;
+    const kupe = k.kupe_no || '–';
+    const kg = k.canli_kg != null && k.canli_kg !== '' ? Number(k.canli_kg) : null;
+    document.getElementById('modalKurbanMuhasebeTitle').textContent = '📊 Muhasebe Raporu — ' + (kupe !== '–' ? kupe : 'Kurban');
+    document.getElementById('muhKupeNo').textContent = kupe;
+    document.getElementById('muhCanliKg').textContent = kg != null ? kg + ' kg' : '– kg';
+    document.getElementById('muhCanliKg').dataset.kg = kg != null ? kg : '';
+    document.getElementById('muhCanliKg').dataset.kurbanId = kurbanId;
+    const yil = Number(k.yil) || getAktifYil();
+    // Kaydedilmiş değerleri yükle
+    document.getElementById('muhAlisFiyat').value = k.alis_kg != null ? k.alis_kg : '';
+    document.getElementById('muhSatisFiyat').value = k.satis_kg != null ? k.satis_kg : '';
+    // Kesim ücreti: kaydedilmişse onu göster (0 dahil); yoksa 2026 için 21000 varsayılan
+    const kaydedilmisKesim = k.kesim_ucret;
+    document.getElementById('muhKesimUcret').value = kaydedilmisKesim != null ? kaydedilmisKesim : (yil === 2026 ? '21000' : '');
+    document.getElementById('muhIskonto').value = k.satis_iskonto != null ? k.satis_iskonto : '';
+    hesaplaKurbanMuhasebe();
+    openModalEl('modalKurbanMuhasebe');
+  }
+
+  window.hesaplaKurbanMuhasebe = function() {
+    const kgStr = document.getElementById('muhCanliKg').dataset.kg;
+    const kg = kgStr !== '' && kgStr != null ? Number(kgStr) : null;
+    const alisFiyat = parseFloat(document.getElementById('muhAlisFiyat').value) || 0;
+    const satisFiyat = parseFloat(document.getElementById('muhSatisFiyat').value) || 0;
+    const kesimUcret = parseFloat(document.getElementById('muhKesimUcret').value) || 0;
+    const iskonto = parseFloat(document.getElementById('muhIskonto').value) || 0;
+
+    const alisEl = document.getElementById('muhTotalAlis');
+    const satisEl = document.getElementById('muhTotalSatis');
+    const karEl = document.getElementById('muhKarZarar');
+    const karRowEl = document.getElementById('muhKarZararRow');
+
+    if (kg == null || alisFiyat === 0) {
+      alisEl.textContent = '–';
+      satisEl.textContent = '–';
+      karEl.textContent = '–';
+      karRowEl.style.borderColor = 'var(--stroke)';
+      karRowEl.style.background = '';
+      const _fn = document.getElementById('muhKesimFarkNot');
+      if (_fn) _fn.style.display = 'none';
+      return;
+    }
+
+    const totalAlis = kg * alisFiyat;
+    // Satış: canlı kg × satış fiyatı + kesim ücreti − iskonto
+    const totalSatis = kg * satisFiyat + kesimUcret - iskonto;
+    // Kesim farkı düzeltmesi: 21.000'den az ödenen kesim kârdan düşülür
+    const STANDART_KESIM_MUH = 21000;
+    const kesimFarki = Math.max(0, STANDART_KESIM_MUH - kesimUcret);
+    const karZarar = totalSatis - totalAlis - kesimFarki;
+
+    alisEl.textContent = fmtTry2(totalAlis) + ' ₺';
+    satisEl.textContent = fmtTry2(totalSatis) + ' ₺';
+
+    // Kesim farkı notunu göster/gizle
+    let farkNotEl = document.getElementById('muhKesimFarkNot');
+    if (!farkNotEl) {
+      farkNotEl = document.createElement('div');
+      farkNotEl.id = 'muhKesimFarkNot';
+      farkNotEl.style.cssText = 'font-size:12px;color:#b45309;margin-top:4px;padding:6px 10px;border-radius:8px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);';
+      karRowEl.parentNode.insertBefore(farkNotEl, karRowEl);
+    }
+    if (kesimFarki > 0) {
+      farkNotEl.style.display = 'block';
+      farkNotEl.textContent = `Kesim düzeltmesi: Standart 21.000 ₺ − ${fmtTry2(kesimUcret)} ₺ = −${fmtTry2(kesimFarki)} ₺ kârdan düşüldü.`;
+    } else {
+      farkNotEl.style.display = 'none';
+    }
+
+    if (karZarar > 0) {
+      karEl.textContent = '+' + fmtTry2(karZarar) + ' ₺ KÂR';
+      karEl.style.color = '#059669';
+      karRowEl.style.borderColor = 'rgba(16,185,129,0.4)';
+      karRowEl.style.background = 'rgba(16,185,129,0.07)';
+    } else if (karZarar < 0) {
+      karEl.textContent = fmtTry2(karZarar) + ' ₺ ZARAR';
+      karEl.style.color = '#dc2626';
+      karRowEl.style.borderColor = 'rgba(220,38,38,0.4)';
+      karRowEl.style.background = 'rgba(220,38,38,0.07)';
+    } else {
+      karEl.textContent = '0 ₺ (Baş Başa)';
+      karEl.style.color = 'var(--muted)';
+      karRowEl.style.borderColor = 'var(--stroke)';
+      karRowEl.style.background = '';
+    }
+  };
+
+  // ——— Etli Hisse Kâr Takibi ———
+  let karTakipData = [];
+
+  async function loadKarTakip() {
+    const yil = (() => {
+      const el = document.getElementById('karTakipYilFiltre');
+      if (el && el.value) return Number(el.value);
+      return getAktifYil();
+    })();
+    const tbody = document.getElementById('tbodyKarTakip');
+    const emptyEl = document.getElementById('karTakipEmpty');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;color:var(--muted);padding:20px">Yükleniyor…</td></tr>';
+
+    const sb = getSupabase();
+    if (!sb) return;
+
+    try {
+      const { data: kurbanlar, error: ke } = await sb.from('karaagac_kurban')
+        .select('id, yil, kesim_sirasi, kupe_no, canli_kg, hissedar_adedi, hisse_fiyati, kapora, tahsilat, atamalar, alis_kg, satis_kg, kesim_ucret, satis_iskonto')
+        .eq('yil', yil)
+        .order('kesim_sirasi', { ascending: true });
+      if (ke) throw ke;
+
+      const list = (kurbanlar || []).map(k => {
+        kurbanEnsureSlots(k);
+        const hisseTahsilat = (k.atamalar || []).reduce((s, a) => {
+          if (!(a.ad_soyad || '').trim()) return s;
+          return s + (Number(a.tahsilat) || 0);
+        }, 0);
+        const hisseKapora = (k.atamalar || []).reduce((s, a) => {
+          if (!(a.ad_soyad || '').trim()) return s;
+          return s + (Number(a.kapora) || 0);
+        }, 0);
+        const toplamHisseTahsilat = hisseKapora + hisseTahsilat;
+        return {
+          ...k,
+          hisse_tahsilat: toplamHisseTahsilat,
+          alis_kg:       k.alis_kg       != null ? Number(k.alis_kg)       : null,
+          satis_kg:      k.satis_kg      != null ? Number(k.satis_kg)      : null,
+          kesim_ucret:   k.kesim_ucret   != null ? Number(k.kesim_ucret)   : null, // null = kullanıcı henüz girmedi
+          satis_iskonto: k.satis_iskonto != null ? Number(k.satis_iskonto) : null,
+        };
+      });
+
+      karTakipData = list;
+      renderKarTakipTable(list);
+    } catch (e) {
+      tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;color:#dc2626;padding:20px">Hata: ${esc(e.message)}</td></tr>`;
+    }
+  }
+
+  function renderKarTakipTable(list) {
+    const tbody = document.getElementById('tbodyKarTakip');
+    const emptyEl = document.getElementById('karTakipEmpty');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+
+    if (!list.length) {
+      if (emptyEl) emptyEl.style.display = 'block';
+      return;
+    }
+    if (emptyEl) emptyEl.style.display = 'none';
+
+    let totalAlis = 0, totalSatis = 0, totalKar = 0;
+    let totalKg = 0, totalAlisKg = 0, totalSatisKg = 0; // ağırlıklı ort. için
+    let totalIskonto = 0;
+    let kesimToplam = 0, kesimHissedar = 0, kesimKasa = 0;
+    let kesimVeriSayisi = 0; // kesim ücreti girilmiş kurban sayısı
+    let hasAny = false;
+
+    const STANDART_KESIM = 21000;
+
+    list.forEach(k => {
+      const kg = k.canli_kg != null && k.canli_kg !== '' ? Number(k.canli_kg) : null;
+      const alisFiyat = k.alis_kg;
+      const satisFiyat = k.satis_kg;
+      // rawKesim: null = henüz girilmedi, 0 = sıfır, 21000 = tam ücret
+      const rawKesim = k.kesim_ucret; // null korunuyor (loadKarTakip artık default uygulamıyor)
+      const effectiveKesim = rawKesim != null ? rawKesim : STANDART_KESIM; // hesapta kullan
+      const iskonto = k.satis_iskonto != null ? Number(k.satis_iskonto) : 0;
+
+      const kurbanAlis = kg != null && alisFiyat != null ? kg * alisFiyat : null;
+      // Satış: canlı kg × satış/kg + effectiveKesim − iskonto
+      const kurbanSatis = kg != null && satisFiyat != null ? kg * satisFiyat + effectiveKesim - iskonto : null;
+
+      // Kesim farkı kâr düzeltmesi: eğer kullanıcı 21.000'den az girdiyse fark kârdan düşülür
+      // null (girilmemiş) → düzeltme yok; 0 → 21.000 düş; 20.000 → 1.000 düş
+      const kesimFarki = rawKesim != null ? Math.max(0, STANDART_KESIM - rawKesim) : 0;
+      const karZarar = kurbanAlis != null && kurbanSatis != null ? kurbanSatis - kurbanAlis - kesimFarki : null;
+
+      if (kurbanAlis != null) { totalAlis += kurbanAlis; hasAny = true; }
+      if (kurbanSatis != null) totalSatis += kurbanSatis;
+      if (karZarar != null) totalKar += karZarar;
+
+      // Ağırlıklı ortalama & kesim takibi
+      if (kg != null) {
+        if (alisFiyat != null)  { totalAlisKg  += kg * alisFiyat;  totalKg += kg; }
+        if (satisFiyat != null) { totalSatisKg += kg * satisFiyat; }
+      }
+      totalIskonto += iskonto; // pozitif = indirim, negatif = ek ücret
+      // Kesim: her kurban için standart 21.000 ₺
+      kesimToplam  += STANDART_KESIM;
+      kesimHissedar += effectiveKesim;  // hissedarlardan alınan (satışa dahil)
+      kesimKasa    += kesimFarki;        // kasadan ödenen (kardan düşülen)
+
+      // Kâr hücresi: varsa kesim farkı notu ekle
+      let karStr;
+      if (karZarar != null) {
+        const renk = karZarar >= 0 ? '#059669' : '#dc2626';
+        const farkNot = kesimFarki > 0
+          ? `<span style="font-size:10px;color:#b45309;display:block;margin-top:1px">−${fmtTry2(kesimFarki)} kesim</span>`
+          : '';
+        karStr = `<span style="color:${renk};font-weight:800;font-size:14px">${karZarar >= 0 ? '+' : ''}${fmtTry2(karZarar)} ₺</span>${farkNot}`;
+      } else {
+        karStr = '<span style="color:var(--muted)">–</span>';
+      }
+
+      // Hisse Kontrol: hisse_fiyati × hissedar_adedi (Kesim Takibi verisinden)
+      const hisseFiyati = k.hisse_fiyati != null ? Number(k.hisse_fiyati) : null;
+      const hissAdet   = Number(k.hissedar_adedi) || 0;
+      const hisseTopFiyat = hisseFiyati != null && hissAdet > 0 ? hisseFiyati * hissAdet : null;
+      // Karşılaştırma: kurbanSatis ile hisseTopFiyat — küçük kuruş farklarını tolere et (±1 TL)
+      let hisseKontrolHtml = '<span style="color:var(--muted)">–</span>';
+      if (hisseTopFiyat != null && kurbanSatis != null) {
+        const fark = Math.abs(kurbanSatis - hisseTopFiyat);
+        if (fark <= 1) {
+          // Eşit — boş bırak (uyum var)
+          hisseKontrolHtml = '<span style="color:#059669;font-size:16px" title="Uyuşuyor">✓</span>';
+        } else {
+          const farkStr = kurbanSatis > hisseTopFiyat
+            ? `<span style="font-size:10px;display:block;margin-top:1px">+${fmtTry2(kurbanSatis - hisseTopFiyat)} fazla</span>`
+            : `<span style="font-size:10px;display:block;margin-top:1px">${fmtTry2(kurbanSatis - hisseTopFiyat)} eksik</span>`;
+          hisseKontrolHtml = `<span style="color:#dc2626;font-weight:700">${fmtTry2(hisseTopFiyat)} ₺</span>${farkStr}`;
+        }
+      } else if (hisseTopFiyat != null) {
+        hisseKontrolHtml = `<span style="color:var(--muted)">${fmtTry2(hisseTopFiyat)} ₺</span>`;
+      }
+
+      // Hisse Fiyatı: kurbanSatis ÷ hissedar_adedi
+      let hisseFiyatiHesapHtml;
+      if (kurbanSatis != null && hissAdet > 0) {
+        const hesapFiyat = kurbanSatis / hissAdet;
+        // Mevcut hisse fiyatıyla karşılaştır (kesim takibindeki)
+        const mevcut = hisseFiyati;
+        const farkVar = mevcut != null && Math.abs(hesapFiyat - mevcut) > 1;
+        hisseFiyatiHesapHtml = farkVar
+          ? `<span style="color:#dc2626;font-weight:700">${fmtTry2(hesapFiyat)} ₺</span><span style="font-size:10px;color:#b45309;display:block;margin-top:1px" title="Kesim takibindeki fiyat: ${fmtTry2(mevcut)} ₺">≠ ${fmtTry2(mevcut)} ₺</span>`
+          : `<span style="font-weight:600">${fmtTry2(hesapFiyat)} ₺</span>`;
+      } else {
+        hisseFiyatiHesapHtml = '<span style="color:var(--muted)">–</span>';
+      }
+
+      const BG_INPUT = 'background:rgba(8,145,178,.04)';
+      const BORDER_INPUT = 'border-left:2px solid rgba(8,145,178,.25)';
+      const BORDER_CALC  = 'border-left:2px solid rgba(109,40,217,.25)';
+
+      // 1. Hissedar adı
+      const ilkHissedar = (k.atamalar || []).find(a => (a.ad_soyad || '').trim());
+      const ilkAd = ilkHissedar ? esc(ilkHissedar.ad_soyad.trim()) : '<span style="color:var(--muted)">–</span>';
+
+      const tr = document.createElement('tr');
+      tr.style.cursor = 'context-menu';
+      tr.title = 'Sağ tık veya basılı tut → Finans bilgisi gir';
+      tr.dataset.kurbanId = k.id;
+      tr.innerHTML = `
+        <td style="text-align:center;font-variant-numeric:tabular-nums;font-weight:600">${esc(k.kesim_sirasi)}</td>
+        <td><strong>${esc(k.kupe_no || '–')}</strong></td>
+        <td style="font-size:12px;color:var(--muted);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ilkAd}</td>
+        <td style="text-align:right;font-variant-numeric:tabular-nums;${BG_INPUT};${BORDER_INPUT}"><strong>${kg != null ? kg : '<span style="color:var(--muted)">–</span>'}</strong></td>
+        <td style="text-align:right;font-variant-numeric:tabular-nums;${BG_INPUT};color:${alisFiyat != null ? 'var(--ink)' : 'var(--muted)'}">${alisFiyat != null ? fmtTry2(alisFiyat) + ' ₺' : '–'}</td>
+        <td style="text-align:right;font-variant-numeric:tabular-nums;${BG_INPUT};color:${satisFiyat != null ? 'var(--ink)' : 'var(--muted)'}">${satisFiyat != null ? fmtTry2(satisFiyat) + ' ₺' : '–'}</td>
+        <td style="text-align:right;font-variant-numeric:tabular-nums;${BG_INPUT};color:${rawKesim != null ? 'var(--ink)' : 'var(--muted)'}">${rawKesim != null ? fmtTry2(rawKesim) + ' ₺' : '<span title="Varsayılan: 21.000 ₺">–</span>'}</td>
+        <td style="text-align:right;font-variant-numeric:tabular-nums;${BG_INPUT};color:${iskonto ? '#b45309' : 'var(--muted)'}">${iskonto ? fmtTry2(iskonto) + ' ₺' : '–'}</td>
+        <td style="text-align:right;font-variant-numeric:tabular-nums;color:#b91c1c;font-weight:600;${BORDER_CALC}">${kurbanAlis != null ? fmtTry2(kurbanAlis) + ' ₺' : '<span style="color:var(--muted)">–</span>'}</td>
+        <td style="text-align:right;font-variant-numeric:tabular-nums;color:#047857;font-weight:600">${kurbanSatis != null ? fmtTry2(kurbanSatis) + ' ₺' : '<span style="color:var(--muted)">–</span>'}</td>
+        <td style="text-align:right;font-variant-numeric:tabular-nums;line-height:1.3">${hisseKontrolHtml}</td>
+        <td style="text-align:right;font-variant-numeric:tabular-nums">${hisseFiyatiHesapHtml}</td>
+        <td style="text-align:right;line-height:1.3;background:rgba(5,150,105,.06);border-left:3px solid #059669">${karStr}</td>
+      `;
+      // Sağ tık / uzun basma → Muhasebe Raporu
+      tr.addEventListener('contextmenu', e => {
+        e.preventDefault();
+        showKurbanRowCtxMenu(k.id, e.clientX, e.clientY);
+      });
+      tr.addEventListener('touchstart', e => {
+        _kurbanCtxLpTimer = setTimeout(() => {
+          const t = e.touches[0];
+          showKurbanRowCtxMenu(k.id, t.clientX, t.clientY);
+          if (navigator.vibrate) navigator.vibrate(30);
+        }, 550);
+      }, { passive: true });
+      tr.addEventListener('touchend', () => clearTimeout(_kurbanCtxLpTimer));
+      tr.addEventListener('touchmove', () => clearTimeout(_kurbanCtxLpTimer));
+      tbody.appendChild(tr);
+    });
+
+    // Özet kartları — Ana
+    document.getElementById('ktToplamAlis').textContent = hasAny ? fmtTry2(totalAlis) + ' ₺' : '–';
+    document.getElementById('ktToplamSatis').textContent = totalSatis > 0 ? fmtTry2(totalSatis) + ' ₺' : '–';
+    const karEl = document.getElementById('ktToplamKar');
+    if (hasAny) {
+      karEl.textContent = (totalKar >= 0 ? '+' : '') + fmtTry2(totalKar) + ' ₺';
+      karEl.style.color = totalKar >= 0 ? '#059669' : '#dc2626';
+    } else {
+      karEl.textContent = '–';
+      karEl.style.color = '';
+    }
+
+    // Fiyat ortalamaları
+    const ortAlis  = totalKg > 0 ? totalAlisKg  / totalKg : null;
+    const ortSatis = totalKg > 0 ? totalSatisKg / totalKg : null;
+    document.getElementById('ktOrtAlis').textContent  = ortAlis  != null ? fmtTry2(ortAlis)  + ' ₺/kg' : '–';
+    document.getElementById('ktOrtSatis').textContent = ortSatis != null ? fmtTry2(ortSatis) + ' ₺/kg' : '–';
+
+    const iskontoEl = document.getElementById('ktToplamIskonto');
+    if (totalIskonto !== 0) {
+      iskontoEl.textContent = (totalIskonto > 0 ? '' : '+') + fmtTry2(totalIskonto) + ' ₺';
+      iskontoEl.style.color = totalIskonto > 0 ? '#b45309' : '#059669';
+    } else {
+      iskontoEl.textContent = '–';
+      iskontoEl.style.color = '';
+    }
+    const aciklamaEl = document.getElementById('ktIskontoAciklama');
+    if (aciklamaEl) aciklamaEl.textContent = totalIskonto > 0 ? '(indirim uygulandı)' : totalIskonto < 0 ? '(ek ücret uygulandı)' : '(+ indirim / − ek ücret)';
+
+    // Kesim ücreti takibi
+    const kesimToplamEl = document.getElementById('ktKesimToplam');
+    kesimToplamEl.textContent = fmtTry2(kesimToplam) + ' ₺';
+    const acEl = document.getElementById('ktKesimToplamAciklama');
+    if (acEl) acEl.textContent = `21.000 ₺ × ${list.length} kurban`;
+
+    document.getElementById('ktKesimHissedar').textContent = fmtTry2(kesimHissedar) + ' ₺';
+    const kasaEl = document.getElementById('ktKesimKasa');
+    kasaEl.textContent = kesimKasa > 0 ? fmtTry2(kesimKasa) + ' ₺' : '–';
+    kasaEl.style.color = kesimKasa > 0 ? '#dc2626' : 'var(--ink)';
+  }
+
+  window.saveKarTakipField = async function(input) {
+    const kurbanId = input.dataset.kurbanId;
+    const field = input.dataset.field;
+    const val = input.value !== '' ? parseFloat(input.value) : null;
+    const sb = getSupabase();
+    if (!sb) return;
+    try {
+      const { error } = await sb.from('karaagac_kurban').update({ [field]: val }).eq('id', kurbanId);
+      if (error) throw error;
+      const idx = kurbanListeCache.findIndex(x => String(x.id) === String(kurbanId));
+      if (idx !== -1) kurbanListeCache[idx][field] = val;
+      void loadKarTakip();
+    } catch (e) {
+      showToast('error', 'Kayıt', e.message || 'Kaydedilemedi.');
+    }
+  };
+
+  window.openKarTakipKurbanMuhasebe = function(kurbanId) {
+    openKurbanMuhasebeModal(kurbanId);
+  };
+
+  window.saveKurbanMuhasebe = async function() {
+    const kurbanId = _muhKurbanId;
+    if (!kurbanId) return;
+    const sb = getSupabase();
+    if (!sb) return;
+    const btn = document.getElementById('btnMuhasebeKaydet');
+    if (btn) { btn.disabled = true; btn.textContent = 'Kaydediliyor…'; }
+    try {
+      const alisFiyat = document.getElementById('muhAlisFiyat').value;
+      const satisFiyat = document.getElementById('muhSatisFiyat').value;
+      const kesimUcret = document.getElementById('muhKesimUcret').value;
+      const iskonto = document.getElementById('muhIskonto').value;
+      const payload = {
+        alis_kg:       alisFiyat  !== '' ? parseFloat(alisFiyat)  : null,
+        satis_kg:      satisFiyat !== '' ? parseFloat(satisFiyat) : null,
+        kesim_ucret:   kesimUcret !== '' ? parseFloat(kesimUcret) : null,
+        satis_iskonto: iskonto    !== '' ? parseFloat(iskonto)    : null,
+      };
+      const { error } = await sb.from('karaagac_kurban').update(payload).eq('id', kurbanId);
+      if (error) throw error;
+      // Her iki cache'i de güncelle
+      const idx = kurbanListeCache.findIndex(x => String(x.id) === String(kurbanId));
+      if (idx !== -1) Object.assign(kurbanListeCache[idx], payload);
+      const ktIdx = karTakipData.findIndex(x => String(x.id) === String(kurbanId));
+      if (ktIdx !== -1) Object.assign(karTakipData[ktIdx], payload);
+      showToast('success', 'Kaydedildi', 'Finans bilgileri güncellendi.');
+      closeModalEl('modalKurbanMuhasebe');
+      // Kar takip sekmesi açıksa sadece ilgili satırı yenile
+      if (getActiveTab() === 'karTakip') refreshKarTakipRow(String(kurbanId));
+      else if (getActiveTab() === 'kurban') renderKurbanTableFromCacheOnly();
+    } catch (e) {
+      showToast('error', 'Hata', e.message || 'Kaydedilemedi.');
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = '💾 Kaydet'; }
+    }
+  };
+
+  function refreshKarTakipRow(kurbanId) {
+    const tr = document.querySelector(`#tbodyKarTakip tr[data-kurban-id="${kurbanId}"]`);
+    if (!tr) { void loadKarTakip(); return; }
+    const k = karTakipData.find(x => String(x.id) === String(kurbanId));
+    if (!k) { void loadKarTakip(); return; }
+
+    const STANDART_KESIM = 21000;
+    const kg = k.canli_kg != null && k.canli_kg !== '' ? Number(k.canli_kg) : null;
+    const alisFiyat = k.alis_kg;
+    const satisFiyat = k.satis_kg;
+    const rawKesim = k.kesim_ucret;
+    const effectiveKesim = rawKesim != null ? rawKesim : STANDART_KESIM;
+    const iskonto = k.satis_iskonto != null ? Number(k.satis_iskonto) : 0;
+    const kurbanAlis = kg != null && alisFiyat != null ? kg * alisFiyat : null;
+    const kurbanSatis = kg != null && satisFiyat != null ? kg * satisFiyat + effectiveKesim - iskonto : null;
+    const kesimFarki = rawKesim != null ? Math.max(0, STANDART_KESIM - rawKesim) : 0;
+    const karZarar = kurbanAlis != null && kurbanSatis != null ? kurbanSatis - kurbanAlis - kesimFarki : null;
+
+    let karStr;
+    if (karZarar != null) {
+      const renk = karZarar >= 0 ? '#059669' : '#dc2626';
+      const farkNot = kesimFarki > 0
+        ? `<span style="font-size:10px;color:#b45309;display:block;margin-top:1px">−${fmtTry2(kesimFarki)} kesim</span>`
+        : '';
+      karStr = `<span style="color:${renk};font-weight:800;font-size:14px">${karZarar >= 0 ? '+' : ''}${fmtTry2(karZarar)} ₺</span>${farkNot}`;
+    } else {
+      karStr = '<span style="color:var(--muted)">–</span>';
+    }
+
+    const hisseFiyati = k.hisse_fiyati != null ? Number(k.hisse_fiyati) : null;
+    const hissAdet = Number(k.hissedar_adedi) || 0;
+    const hisseTopFiyat = hisseFiyati != null && hissAdet > 0 ? hisseFiyati * hissAdet : null;
+    let hisseKontrolHtml = '<span style="color:var(--muted)">–</span>';
+    if (hisseTopFiyat != null && kurbanSatis != null) {
+      const fark = Math.abs(kurbanSatis - hisseTopFiyat);
+      if (fark <= 1) {
+        hisseKontrolHtml = '<span style="color:#059669;font-size:16px" title="Uyuşuyor">✓</span>';
+      } else {
+        const farkStr = kurbanSatis > hisseTopFiyat
+          ? `<span style="font-size:10px;display:block;margin-top:1px">+${fmtTry2(kurbanSatis - hisseTopFiyat)} fazla</span>`
+          : `<span style="font-size:10px;display:block;margin-top:1px">${fmtTry2(kurbanSatis - hisseTopFiyat)} eksik</span>`;
+        hisseKontrolHtml = `<span style="color:#dc2626;font-weight:700">${fmtTry2(hisseTopFiyat)} ₺</span>${farkStr}`;
+      }
+    } else if (hisseTopFiyat != null) {
+      hisseKontrolHtml = `<span style="color:var(--muted)">${fmtTry2(hisseTopFiyat)} ₺</span>`;
+    }
+
+    const BG_INPUT = 'background:rgba(8,145,178,.04)';
+    const BORDER_INPUT = 'border-left:2px solid rgba(8,145,178,.25)';
+    const BORDER_CALC = 'border-left:2px solid rgba(109,40,217,.25)';
+
+    const cells = tr.querySelectorAll('td');
+    if (cells.length < 13) { void loadKarTakip(); return; }
+    // td[3]: Canlı kg (td[2] = 1.hissedar, statik, güncellenmiyor)
+    cells[3].innerHTML = `<strong>${kg != null ? kg : '<span style="color:var(--muted)">–</span>'}</strong>`;
+    // td[4]: Alış/kg
+    cells[4].style.color = alisFiyat != null ? 'var(--ink)' : 'var(--muted)';
+    cells[4].textContent = alisFiyat != null ? fmtTry2(alisFiyat) + ' ₺' : '–';
+    // td[5]: Satış/kg
+    cells[5].style.color = satisFiyat != null ? 'var(--ink)' : 'var(--muted)';
+    cells[5].textContent = satisFiyat != null ? fmtTry2(satisFiyat) + ' ₺' : '–';
+    // td[6]: Kesim
+    cells[6].style.color = rawKesim != null ? 'var(--ink)' : 'var(--muted)';
+    cells[6].innerHTML = rawKesim != null ? fmtTry2(rawKesim) + ' ₺' : '<span title="Varsayılan: 21.000 ₺">–</span>';
+    // td[7]: İskonto
+    cells[7].style.color = iskonto ? '#b45309' : 'var(--muted)';
+    cells[7].textContent = iskonto ? fmtTry2(iskonto) + ' ₺' : '–';
+    // td[8]: Kurban Alış
+    cells[8].innerHTML = kurbanAlis != null ? fmtTry2(kurbanAlis) + ' ₺' : '<span style="color:var(--muted)">–</span>';
+    // td[9]: Kurban Satış
+    cells[9].innerHTML = kurbanSatis != null ? fmtTry2(kurbanSatis) + ' ₺' : '<span style="color:var(--muted)">–</span>';
+    // td[10]: Hisse Kontrol
+    cells[10].innerHTML = hisseKontrolHtml;
+    // td[11]: Hisse Fiyatı (hesap)
+    const hissAdetR = Number(k.hissedar_adedi) || 0;
+    const hFiyatiR  = k.hisse_fiyati != null ? Number(k.hisse_fiyati) : null;
+    if (kurbanSatis != null && hissAdetR > 0) {
+      const hf = kurbanSatis / hissAdetR;
+      const farkVarR = hFiyatiR != null && Math.abs(hf - hFiyatiR) > 1;
+      cells[11].innerHTML = farkVarR
+        ? `<span style="color:#dc2626;font-weight:700">${fmtTry2(hf)} ₺</span><span style="font-size:10px;color:#b45309;display:block;margin-top:1px">≠ ${fmtTry2(hFiyatiR)} ₺</span>`
+        : `<span style="font-weight:600">${fmtTry2(hf)} ₺</span>`;
+    } else {
+      cells[11].innerHTML = '<span style="color:var(--muted)">–</span>';
+    }
+    // td[12]: Kâr / Zarar
+    cells[12].innerHTML = karStr;
+
+    // Özet kartlarını da güncelle (tam hesap için tüm listeyi tara)
+    let tAlis = 0, tSatis = 0, tKar = 0, hasAny = false;
+    let tKg = 0, tAlisKg = 0, tSatisKg = 0, tIskonto = 0;
+    let tKesimToplam = 0, tKesimHissedar = 0, tKesimKasa = 0;
+    karTakipData.forEach(x => {
+      const xkg = x.canli_kg != null ? Number(x.canli_kg) : null;
+      const xAlis = x.alis_kg; const xSatis = x.satis_kg;
+      const xRawK = x.kesim_ucret;
+      const xEffK = xRawK != null ? xRawK : STANDART_KESIM;
+      const xIsk = x.satis_iskonto != null ? Number(x.satis_iskonto) : 0;
+      const xKA = xkg != null && xAlis != null ? xkg * xAlis : null;
+      const xKS = xkg != null && xSatis != null ? xkg * xSatis + xEffK - xIsk : null;
+      const xKF = xRawK != null ? Math.max(0, STANDART_KESIM - xRawK) : 0;
+      const xKZ = xKA != null && xKS != null ? xKS - xKA - xKF : null;
+      if (xKA != null) { tAlis += xKA; hasAny = true; }
+      if (xKS != null) tSatis += xKS;
+      if (xKZ != null) tKar += xKZ;
+      if (xkg != null) {
+        if (xAlis != null) { tAlisKg += xkg * xAlis; tKg += xkg; }
+        if (xSatis != null) tSatisKg += xkg * xSatis;
+      }
+      tIskonto += xIsk;
+      tKesimToplam += STANDART_KESIM;
+      tKesimHissedar += xEffK;
+      tKesimKasa += xKF;
+    });
+    document.getElementById('ktToplamAlis').textContent = hasAny ? fmtTry2(tAlis) + ' ₺' : '–';
+    document.getElementById('ktToplamSatis').textContent = tSatis > 0 ? fmtTry2(tSatis) + ' ₺' : '–';
+    const karEl = document.getElementById('ktToplamKar');
+    if (hasAny) {
+      karEl.textContent = (tKar >= 0 ? '+' : '') + fmtTry2(tKar) + ' ₺';
+      karEl.style.color = tKar >= 0 ? '#059669' : '#dc2626';
+    } else {
+      karEl.textContent = '–'; karEl.style.color = '';
+    }
+    const tOrtAlis  = tKg > 0 ? tAlisKg  / tKg : null;
+    const tOrtSatis = tKg > 0 ? tSatisKg / tKg : null;
+    document.getElementById('ktOrtAlis').textContent  = tOrtAlis  != null ? fmtTry2(tOrtAlis)  + ' ₺/kg' : '–';
+    document.getElementById('ktOrtSatis').textContent = tOrtSatis != null ? fmtTry2(tOrtSatis) + ' ₺/kg' : '–';
+    const isEl = document.getElementById('ktToplamIskonto');
+    isEl.textContent = tIskonto !== 0 ? fmtTry2(tIskonto) + ' ₺' : '–';
+    isEl.style.color = tIskonto > 0 ? '#b45309' : tIskonto < 0 ? '#059669' : '';
+    document.getElementById('ktKesimToplam').textContent   = fmtTry2(tKesimToplam) + ' ₺';
+    document.getElementById('ktKesimHissedar').textContent = fmtTry2(tKesimHissedar) + ' ₺';
+    const kkEl = document.getElementById('ktKesimKasa');
+    kkEl.textContent = tKesimKasa > 0 ? fmtTry2(tKesimKasa) + ' ₺' : '–';
+    kkEl.style.color = tKesimKasa > 0 ? '#dc2626' : 'var(--ink)';
+  }
+
+  function yazdirKarTakip() {
+    const yilEl = document.getElementById('karTakipYilFiltre');
+    const yil = yilEl ? yilEl.value || getAktifYil() : getAktifYil();
+    const list = karTakipData;
+    if (!list.length) { showToast('error', 'Veri yok', 'Yazdırılacak kayıt bulunamadı.'); return; }
+    let totalAlis = 0, totalSatis = 0, totalKar = 0, hasAny = false;
+    let pKg = 0, pAlisKg = 0, pSatisKg = 0, pIskonto = 0;
+    let pKesimToplam = 0, pKesimHissedar = 0, pKesimKasa = 0;
+    let satirlar = '';
+    list.forEach((k, i) => {
+      const kg = k.canli_kg != null ? Number(k.canli_kg) : null;
+      const alis = k.alis_kg; const satis = k.satis_kg;
+      const rawKesimP = k.kesim_ucret;
+      const effKesim = rawKesimP != null ? rawKesimP : 21000;
+      const iskonto = k.satis_iskonto != null ? Number(k.satis_iskonto) : 0;
+      const kAlis = kg != null && alis != null ? kg * alis : null;
+      const kSatis = kg != null && satis != null ? kg * satis + effKesim - iskonto : null;
+      const kFarki = rawKesimP != null ? Math.max(0, 21000 - rawKesimP) : 0;
+      const kar = kAlis != null && kSatis != null ? kSatis - kAlis - kFarki : null;
+      if (kAlis != null) { totalAlis += kAlis; hasAny = true; }
+      if (kSatis != null) totalSatis += kSatis;
+      if (kar != null) totalKar += kar;
+      if (kg != null) {
+        if (alis != null) { pAlisKg += kg * alis; pKg += kg; }
+        if (satis != null) pSatisKg += kg * satis;
+      }
+      pIskonto += iskonto;
+      pKesimToplam += 21000;
+      pKesimHissedar += effKesim;
+      pKesimKasa += kFarki;
+      const fmt = v => v != null ? Number(v).toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : '–';
+      const karBg = kar == null ? '' : kar >= 0 ? 'background:#dcfce7' : 'background:#fee2e2';
+      const karColor = kar == null ? 'color:#999' : kar >= 0 ? 'color:#15803d' : 'color:#dc2626';
+      const hFiyat = k.hisse_fiyati != null ? Number(k.hisse_fiyati) : null;
+      const hAdet = Number(k.hissedar_adedi) || 0;
+      const hTop = hFiyat != null && hAdet > 0 ? hFiyat * hAdet : null;
+      let hisseKontrolPrint = '–';
+      if (hTop != null && kSatis != null) {
+        const fark = Math.abs(kSatis - hTop);
+        if (fark <= 1) hisseKontrolPrint = '<span style="color:#15803d;font-weight:700">✓</span>';
+        else hisseKontrolPrint = `<span style="color:#dc2626;font-weight:700">${fmt(hTop)} ₺<br><small>${kSatis > hTop ? '+' : ''}${fmt(kSatis - hTop)}</small></span>`;
+      } else if (hTop != null) { hisseKontrolPrint = fmt(hTop) + ' ₺'; }
+      const farkNotPrint = kFarki > 0 ? `<br><small style="color:#b45309">−${fmt(kFarki)} kesim</small>` : '';
+      // 1. hissedar adı
+      const pIlkH = (k.atamalar || []).find(a => (a.ad_soyad || '').trim());
+      const pIlkAd = pIlkH ? pIlkH.ad_soyad.trim() : '–';
+      satirlar += `<tr>
+        <td class="tc">${k.kesim_sirasi || i + 1}</td>
+        <td class="tc" style="font-weight:700">${k.kupe_no || '–'}</td>
+        <td style="font-size:10px;color:#444">${pIlkAd}</td>
+        <td class="tr fi">${kg != null ? kg + ' kg' : '–'}</td>
+        <td class="tr fi">${alis != null ? fmt(alis) + ' ₺' : '<span style="color:#999">–</span>'}</td>
+        <td class="tr fi">${satis != null ? fmt(satis) + ' ₺' : '<span style="color:#999">–</span>'}</td>
+        <td class="tr fi">${rawKesimP != null ? fmt(rawKesimP) + ' ₺' : '<span style="color:#999">–</span>'}</td>
+        <td class="tr fi">${iskonto ? '<span style="color:#b45309">' + fmt(iskonto) + ' ₺</span>' : '–'}</td>
+        <td class="tr" style="color:#b91c1c;font-weight:600">${kAlis != null ? fmt(kAlis) + ' ₺' : '–'}</td>
+        <td class="tr" style="color:#15803d;font-weight:600">${kSatis != null ? fmt(kSatis) + ' ₺' : '–'}</td>
+        <td class="tc">${hisseKontrolPrint}</td>
+        <td class="tr">${(() => { const ha = Number(k.hissedar_adedi)||0; if (kSatis != null && ha > 0) { const hf = kSatis/ha; const mv = k.hisse_fiyati!=null?Number(k.hisse_fiyati):null; return mv!=null&&Math.abs(hf-mv)>1?`<span style="color:#dc2626;font-weight:700">${fmt(hf)} ₺</span><br><small>≠${fmt(mv)} ₺</small>`:fmt(hf)+' ₺'; } return '–'; })()}</td>
+        <td class="tr" style="font-weight:800;font-size:12px;${karBg};${karColor};border-left:3px solid ${kar != null && kar >= 0 ? '#16a34a' : '#dc2626'}">${kar != null ? (kar >= 0 ? '+' : '') + fmt(kar) + ' ₺' : '–'}${farkNotPrint}</td>
+      </tr>`;
+    });
+    const fmt2 = v => Number(v).toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    const pOrtAlis  = pKg > 0 ? pAlisKg  / pKg : null;
+    const pOrtSatis = pKg > 0 ? pSatisKg / pKg : null;
+    const html = `<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8">
+<title>Kâr Takibi ${yil}</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11px; color: #1a1a1a; margin: 0; padding: 20px; background: #fff; }
+  .baslik-blok { display: flex; align-items: flex-end; justify-content: space-between; border-bottom: 3px solid #059669; padding-bottom: 10px; margin-bottom: 16px; }
+  .baslik-blok h1 { font-size: 17px; font-weight: 900; margin: 0; color: #111; }
+  .baslik-blok .meta { font-size: 10px; color: #666; text-align: right; line-height: 1.6; }
+  .bolum-baslik { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: #6b7280; margin: 0 0 8px; padding-bottom: 4px; border-bottom: 1px solid #e5e7eb; }
+  .ozet { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .ozet-kart { border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px 14px; min-width: 120px; flex: 1; }
+  .ozet-kart .lbl { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #6b7280; margin-bottom: 4px; }
+  .ozet-kart .val { font-size: 15px; font-weight: 900; }
+  .ozet-kart .sub { font-size: 9px; color: #9ca3af; margin-top: 3px; }
+  .ozet-kart.kar { border-color: #059669; background: #f0fdf4; }
+  .ozet-kart.kasa { border-color: #dc2626; background: #fef2f2; }
+  .ozet-kart.hissedar { border-color: #0891b2; background: #f0f9ff; }
+  .page-break { page-break-after: always; }
+  .tbl-wrap { overflow: visible; }
+  table { width: 100%; border-collapse: collapse; font-size: 10px; }
+  thead tr.grp-row th { padding: 4px 5px; font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; border: 1px solid #d1d5db; }
+  thead tr.col-row th { padding: 5px 5px; border: 1px solid #d1d5db; white-space: nowrap; font-size: 10px; background: #f9fafb; }
+  td { padding: 4px 5px; border: 1px solid #e5e7eb; vertical-align: middle; }
+  tr:nth-child(even) td { background: #f8fafc; }
+  tr:hover td { background: #f1f5f9; }
+  .tc { text-align: center; }
+  .tr { text-align: right; font-variant-numeric: tabular-nums; }
+  .fi { background: #f0f9ff; }
+  .th-finans { background: #bae6fd; color: #0e7490; }
+  .th-hesap { background: #e9d5ff; color: #6d28d9; }
+  .th-kar { background: #059669; color: #fff; border-left: 3px solid #047857 !important; font-size: 11px; }
+  tfoot td { font-weight: 800; border-top: 2px solid #374151; background: #f1f5f9; font-size: 11px; }
+  @media print {
+    body { padding: 10px; }
+    .ozet-kart { page-break-inside: avoid; }
+    .page-break { page-break-after: always; margin-bottom: 0; }
+  }
+</style></head><body>
+<div class="baslik-blok">
+  <div>
+    <h1>Karaağaç Fatih</h1>
+    <div style="font-size:13px;color:#059669;font-weight:700;margin-top:2px">Etli Hisse Kâr Takibi — ${yil}</div>
+  </div>
+  <div class="meta">
+    Oluşturulma: ${new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' })}<br>
+    Toplam Kurban: ${list.length} adet
+  </div>
+</div>
+
+<!-- BÖLÜM 1: Genel Özet -->
+<p class="bolum-baslik">Genel Özet</p>
+<div class="ozet">
+  <div class="ozet-kart">
+    <div class="lbl">Toplam Kurban Alış</div>
+    <div class="val" style="color:#b91c1c">${hasAny ? fmt2(totalAlis) + ' ₺' : '–'}</div>
+  </div>
+  <div class="ozet-kart">
+    <div class="lbl">Toplam Satış Geliri</div>
+    <div class="val" style="color:#15803d">${totalSatis > 0 ? fmt2(totalSatis) + ' ₺' : '–'}</div>
+  </div>
+  <div class="ozet-kart kar">
+    <div class="lbl">Toplam Kâr / Zarar</div>
+    <div class="val" style="color:${totalKar >= 0 ? '#15803d' : '#dc2626'}">${hasAny ? (totalKar >= 0 ? '+' : '') + fmt2(totalKar) + ' ₺' : '–'}</div>
+  </div>
+</div>
+
+<p class="bolum-baslik">Fiyat Ortalamaları &amp; İskonto</p>
+<div class="ozet">
+  <div class="ozet-kart">
+    <div class="lbl">Ort. Alış / kg</div>
+    <div class="val">${pOrtAlis != null ? fmt2(pOrtAlis) + ' ₺' : '–'}</div>
+    <div class="sub">ağırlıklı ortalama</div>
+  </div>
+  <div class="ozet-kart">
+    <div class="lbl">Ort. Satış / kg</div>
+    <div class="val">${pOrtSatis != null ? fmt2(pOrtSatis) + ' ₺' : '–'}</div>
+    <div class="sub">ağırlıklı ortalama</div>
+  </div>
+  <div class="ozet-kart">
+    <div class="lbl">Toplam İskonto</div>
+    <div class="val" style="color:${pIskonto > 0 ? '#b45309' : pIskonto < 0 ? '#059669' : '#111'}">${pIskonto !== 0 ? fmt2(pIskonto) + ' ₺' : '–'}</div>
+    <div class="sub">${pIskonto > 0 ? 'indirim uygulandı' : pIskonto < 0 ? 'ek ücret uygulandı' : '(+ indirim / − ek ücret)'}</div>
+  </div>
+</div>
+
+<p class="bolum-baslik">Kesim Ücreti Takibi &nbsp;<span style="font-weight:400;font-size:10px;text-transform:none">(${yil} standart: 21.000 ₺/kurban)</span></p>
+<div class="ozet">
+  <div class="ozet-kart">
+    <div class="lbl">Toplam Kesim Ücreti</div>
+    <div class="val">${fmt2(pKesimToplam)} ₺</div>
+    <div class="sub">21.000 ₺ × ${list.length} kurban</div>
+  </div>
+  <div class="ozet-kart hissedar">
+    <div class="lbl">Hissedarlardan Alınan</div>
+    <div class="val" style="color:#0e7490">${fmt2(pKesimHissedar)} ₺</div>
+    <div class="sub">satış fiyatına dahil edilen</div>
+  </div>
+  <div class="ozet-kart${pKesimKasa > 0 ? ' kasa' : ''}">
+    <div class="lbl">Kasadan Ödenen</div>
+    <div class="val" style="color:${pKesimKasa > 0 ? '#dc2626' : '#6b7280'}">${pKesimKasa > 0 ? fmt2(pKesimKasa) + ' ₺' : '–'}</div>
+    <div class="sub">${pKesimKasa > 0 ? 'kârdan düşüldü' : 'eksik kesim yok'}</div>
+  </div>
+</div>
+
+<div class="page-break" style="margin-bottom:20px"></div>
+
+<!-- BÖLÜM 2: Kurban Bazlı Tablo -->
+<div class="baslik-blok" style="margin-top:0">
+  <div>
+    <h1>Karaağaç Fatih</h1>
+    <div style="font-size:13px;color:#059669;font-weight:700;margin-top:2px">Kurban Bazlı Finans — ${yil}</div>
+  </div>
+  <div class="meta">Oluşturulma: ${new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+</div>
+<div class="tbl-wrap">
+<table>
+<thead>
+  <tr class="grp-row">
+    <th colspan="3" style="background:#f9fafb"></th>
+    <th colspan="5" class="th-finans" style="text-align:center">Finans Girdileri</th>
+    <th colspan="4" class="th-hesap" style="text-align:center">Hesaplama</th>
+    <th class="th-kar" style="text-align:center">Kâr / Zarar</th>
+  </tr>
+  <tr class="col-row">
+    <th class="tc" style="width:24px">#</th>
+    <th style="width:46px">Küpe No</th>
+    <th style="width:100px">1. Hissedar</th>
+    <th class="tr th-finans" style="width:40px">Canlı kg</th>
+    <th class="tr th-finans" style="width:52px">Alış/kg</th>
+    <th class="tr th-finans" style="width:52px">Satış/kg</th>
+    <th class="tr th-finans" style="width:58px">Kesim</th>
+    <th class="tr th-finans" style="width:48px">İskonto</th>
+    <th class="tr" style="width:66px">Kurban Alış</th>
+    <th class="tr" style="width:66px">Kurban Satış</th>
+    <th class="tc" style="width:62px">Hisse Kontrol</th>
+    <th class="tr" style="width:60px">Hisse Fiyatı</th>
+    <th class="tr th-kar" style="width:76px">Kâr / Zarar</th>
+  </tr>
+</thead>
+<tbody>${satirlar}</tbody>
+<tfoot>
+  <tr>
+    <td colspan="8" class="tr" style="padding-right:10px;font-size:10px;letter-spacing:.04em">TOPLAM</td>
+    <td class="tr" style="color:#b91c1c">${hasAny ? fmt2(totalAlis) + ' ₺' : '–'}</td>
+    <td class="tr" style="color:#15803d">${totalSatis > 0 ? fmt2(totalSatis) + ' ₺' : '–'}</td>
+    <td></td>
+    <td></td>
+    <td class="tr" style="color:${totalKar >= 0 ? '#15803d' : '#dc2626'};border-left:3px solid ${totalKar >= 0 ? '#16a34a' : '#dc2626'}">${hasAny ? (totalKar >= 0 ? '+' : '') + fmt2(totalKar) + ' ₺' : '–'}</td>
+  </tr>
+</tfoot>
+</table>
+</div>
+<script>window.onload = () => { setTimeout(() => window.print(), 300); };<\/script>
+</body></html>`;
+    const w = window.open('', '_blank', 'width=1100,height=750');
+    if (!w) { showToast('error', 'Engellendi', 'Açılır pencere engelleyicisini kapatın.'); return; }
+    w.document.write(html);
+    w.document.close();
+  }
+
   function waitAndInit() {
     if (typeof window.supabase !== 'undefined' && window.supabase?.from) {
       loadKategoriler().then(() => {
@@ -5721,10 +6739,13 @@
   }
   document.addEventListener('DOMContentLoaded', () => {
     initColResizer('tblBagis');
+    initColResizer('tblKurban');
     initTableSort('tblBagis', 1);
     initTableSort('tblEtli', 1);
     initTableSort('tblPersonelAnaliz', 0);
     initDurumCtxMenu();
+    initKurbanRowCtxMenu();
+    document.getElementById('karTakipYilFiltre')?.addEventListener('change', () => void loadKarTakip());
     waitAndInit();
   });
 })();
