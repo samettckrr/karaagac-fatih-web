@@ -925,22 +925,22 @@
 
         <!-- Kesim Ücreti Takibi -->
         <div style="margin-bottom:16px">
-          <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Kesim Ücreti Takibi <span style="font-weight:400;font-size:11px;text-transform:none">(2026 standard: 21.000 ₺/kurban)</span></div>
+          <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Kesim Ücreti Takibi <span style="font-weight:400;font-size:11px;text-transform:none">(Kasap gideri: 6.000 ₺/kurban)</span></div>
           <div class="stats-grid">
-            <div class="stat-card">
-              <div class="stat-label">Toplam Kesim Ücreti</div>
-              <div class="stat-value" id="ktKesimToplam">–</div>
-              <div class="stat-label" style="margin-top:4px;font-size:11px" id="ktKesimToplamAciklama">21.000 ₺ × kurban sayısı</div>
-            </div>
             <div class="stat-card" style="border-color:rgba(8,145,178,.35);background:rgba(8,145,178,.05)">
-              <div class="stat-label">Hissedarlardan Alınan</div>
-              <div class="stat-value" id="ktKesimHissedar">–</div>
-              <div class="stat-label" style="margin-top:4px;font-size:11px">Satış fiyatına dahil edilen kesim</div>
+              <div class="stat-label">Hissedardan Alınan Kesim</div>
+              <div class="stat-value" id="ktKesimToplam">–</div>
+              <div class="stat-label" style="margin-top:4px;font-size:11px" id="ktKesimToplamAciklama">Satış fiyatına dahil edilen</div>
             </div>
             <div class="stat-card" style="border-color:rgba(220,38,38,.35);background:rgba(220,38,38,.04)">
-              <div class="stat-label">Kasadan Ödenen</div>
-              <div class="stat-value" id="ktKesimKasa" style="color:#dc2626">–</div>
-              <div class="stat-label" style="margin-top:4px;font-size:11px">Kârdan düşülen (eksik kesim farkı)</div>
+              <div class="stat-label">Kasaba Ödenen (Sabit)</div>
+              <div class="stat-value" id="ktKesimHissedar">–</div>
+              <div class="stat-label" style="margin-top:4px;font-size:11px" id="ktKesimHissedarAciklama">6.000 ₺ × kurban sayısı</div>
+            </div>
+            <div class="stat-card" style="border-color:rgba(5,150,105,.35);background:rgba(5,150,105,.05)">
+              <div class="stat-label">Net Kesim Kârı</div>
+              <div class="stat-value" id="ktKesimKasa">–</div>
+              <div class="stat-label" style="margin-top:4px;font-size:11px">Hissedardan alınan − kasap gideri</div>
             </div>
           </div>
         </div>
@@ -6023,30 +6023,25 @@
     }
 
     const totalAlis = kg * alisFiyat;
-    // Satış: canlı kg × satış fiyatı + kesim ücreti − iskonto
+    // Satış: canlı kg × satış fiyatı + hissedardan alınan kesim ücreti − iskonto
     const totalSatis = kg * satisFiyat + kesimUcret - iskonto;
-    // Kesim farkı düzeltmesi: 21.000'den az ödenen kesim kârdan düşülür
-    const STANDART_KESIM_MUH = 21000;
-    const kesimFarki = Math.max(0, STANDART_KESIM_MUH - kesimUcret);
-    const karZarar = totalSatis - totalAlis - kesimFarki;
+    // Kâr: Satış − Alış − kasap gideri (sabit 6.000 ₺)
+    const KASAP_GIDER_MUH = 6000;
+    const karZarar = totalSatis - totalAlis - KASAP_GIDER_MUH;
 
     alisEl.textContent = fmtTry2(totalAlis) + ' ₺';
     satisEl.textContent = fmtTry2(totalSatis) + ' ₺';
 
-    // Kesim farkı notunu göster/gizle
+    // Kasap gider notunu göster/gizle
     let farkNotEl = document.getElementById('muhKesimFarkNot');
     if (!farkNotEl) {
       farkNotEl = document.createElement('div');
       farkNotEl.id = 'muhKesimFarkNot';
-      farkNotEl.style.cssText = 'font-size:12px;color:#b45309;margin-top:4px;padding:6px 10px;border-radius:8px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);';
+      farkNotEl.style.cssText = 'font-size:12px;color:#6b7280;margin-top:4px;padding:6px 10px;border-radius:8px;background:rgba(107,114,128,.08);border:1px solid rgba(107,114,128,.2);';
       karRowEl.parentNode.insertBefore(farkNotEl, karRowEl);
     }
-    if (kesimFarki > 0) {
-      farkNotEl.style.display = 'block';
-      farkNotEl.textContent = `Kesim düzeltmesi: Standart 21.000 ₺ − ${fmtTry2(kesimUcret)} ₺ = −${fmtTry2(kesimFarki)} ₺ kârdan düşüldü.`;
-    } else {
-      farkNotEl.style.display = 'none';
-    }
+    farkNotEl.style.display = 'block';
+    farkNotEl.textContent = `Kasap gideri: ${fmtTry2(KASAP_GIDER_MUH)} ₺ kârdan düşüldü.`;
 
     if (karZarar > 0) {
       karEl.textContent = '+' + fmtTry2(karZarar) + ' ₺ KÂR';
@@ -6135,28 +6130,25 @@
     let totalKg = 0, totalAlisKg = 0, totalSatisKg = 0; // ağırlıklı ort. için
     let totalIskonto = 0;
     let kesimToplam = 0, kesimHissedar = 0, kesimKasa = 0;
-    let kesimVeriSayisi = 0; // kesim ücreti girilmiş kurban sayısı
     let hasAny = false;
 
-    const STANDART_KESIM = 21000;
+    const KASAP_GIDER = 6000; // kasaba ödenen sabit kesim ücreti
 
     list.forEach(k => {
       const kg = k.canli_kg != null && k.canli_kg !== '' ? Number(k.canli_kg) : null;
       const alisFiyat = k.alis_kg;
       const satisFiyat = k.satis_kg;
-      // rawKesim: null = henüz girilmedi, 0 = sıfır, 21000 = tam ücret
-      const rawKesim = k.kesim_ucret; // null korunuyor (loadKarTakip artık default uygulamıyor)
-      const effectiveKesim = rawKesim != null ? rawKesim : STANDART_KESIM; // hesapta kullan
+      // rawKesim: hissedardan alınan kesim ücreti (null = henüz girilmedi)
+      const rawKesim = k.kesim_ucret;
+      const effectiveKesim = rawKesim != null ? rawKesim : 21000; // hesapta varsayılan 21.000
       const iskonto = k.satis_iskonto != null ? Number(k.satis_iskonto) : 0;
 
       const kurbanAlis = kg != null && alisFiyat != null ? kg * alisFiyat : null;
-      // Satış: canlı kg × satış/kg + effectiveKesim − iskonto
+      // Satış: canlı kg × satış/kg + hissedardan alınan kesim ücreti − iskonto
       const kurbanSatis = kg != null && satisFiyat != null ? kg * satisFiyat + effectiveKesim - iskonto : null;
 
-      // Kesim farkı kâr düzeltmesi: eğer kullanıcı 21.000'den az girdiyse fark kârdan düşülür
-      // null (girilmemiş) → düzeltme yok; 0 → 21.000 düş; 20.000 → 1.000 düş
-      const kesimFarki = rawKesim != null ? Math.max(0, STANDART_KESIM - rawKesim) : 0;
-      const karZarar = kurbanAlis != null && kurbanSatis != null ? kurbanSatis - kurbanAlis - kesimFarki : null;
+      // Kâr: Satış − Alış − kasap gideri (sabit 6.000)
+      const karZarar = kurbanAlis != null && kurbanSatis != null ? kurbanSatis - kurbanAlis - KASAP_GIDER : null;
 
       if (kurbanAlis != null) { totalAlis += kurbanAlis; hasAny = true; }
       if (kurbanSatis != null) totalSatis += kurbanSatis;
@@ -6168,19 +6160,16 @@
         if (satisFiyat != null) { totalSatisKg += kg * satisFiyat; }
       }
       totalIskonto += iskonto; // pozitif = indirim, negatif = ek ücret
-      // Kesim: her kurban için standart 21.000 ₺
-      kesimToplam  += STANDART_KESIM;
-      kesimHissedar += effectiveKesim;  // hissedarlardan alınan (satışa dahil)
-      kesimKasa    += kesimFarki;        // kasadan ödenen (kardan düşülen)
+      // Kesim takibi
+      kesimToplam   += effectiveKesim;               // hissedardan alınan
+      kesimHissedar += KASAP_GIDER;                  // kasaba ödenen (sabit)
+      kesimKasa     += effectiveKesim - KASAP_GIDER; // net kesim kârı
 
-      // Kâr hücresi: varsa kesim farkı notu ekle
+      // Kâr hücresi
       let karStr;
       if (karZarar != null) {
         const renk = karZarar >= 0 ? '#059669' : '#dc2626';
-        const farkNot = kesimFarki > 0
-          ? `<span style="font-size:10px;color:#b45309;display:block;margin-top:1px">−${fmtTry2(kesimFarki)} kesim</span>`
-          : '';
-        karStr = `<span style="color:${renk};font-weight:800;font-size:14px">${karZarar >= 0 ? '+' : ''}${fmtTry2(karZarar)} ₺</span>${farkNot}`;
+        karStr = `<span style="color:${renk};font-weight:800;font-size:14px">${karZarar >= 0 ? '+' : ''}${fmtTry2(karZarar)} ₺</span>`;
       } else {
         karStr = '<span style="color:var(--muted)">–</span>';
       }
@@ -6295,14 +6284,17 @@
 
     // Kesim ücreti takibi
     const kesimToplamEl = document.getElementById('ktKesimToplam');
-    kesimToplamEl.textContent = fmtTry2(kesimToplam) + ' ₺';
+    kesimToplamEl.textContent = kesimToplam > 0 ? fmtTry2(kesimToplam) + ' ₺' : '–';
     const acEl = document.getElementById('ktKesimToplamAciklama');
-    if (acEl) acEl.textContent = `21.000 ₺ × ${list.length} kurban`;
+    if (acEl) acEl.textContent = `Satış fiyatına dahil edilen`;
 
+    const hissedarAcEl = document.getElementById('ktKesimHissedarAciklama');
+    if (hissedarAcEl) hissedarAcEl.textContent = `6.000 ₺ × ${list.length} kurban`;
     document.getElementById('ktKesimHissedar').textContent = fmtTry2(kesimHissedar) + ' ₺';
+
     const kasaEl = document.getElementById('ktKesimKasa');
-    kasaEl.textContent = kesimKasa > 0 ? fmtTry2(kesimKasa) + ' ₺' : '–';
-    kasaEl.style.color = kesimKasa > 0 ? '#dc2626' : 'var(--ink)';
+    kasaEl.textContent = fmtTry2(kesimKasa) + ' ₺';
+    kasaEl.style.color = kesimKasa >= 0 ? '#059669' : '#dc2626';
   }
 
   window.saveKarTakipField = async function(input) {
@@ -6369,25 +6361,21 @@
     const k = karTakipData.find(x => String(x.id) === String(kurbanId));
     if (!k) { void loadKarTakip(); return; }
 
-    const STANDART_KESIM = 21000;
+    const KASAP_GIDER = 6000;
     const kg = k.canli_kg != null && k.canli_kg !== '' ? Number(k.canli_kg) : null;
     const alisFiyat = k.alis_kg;
     const satisFiyat = k.satis_kg;
     const rawKesim = k.kesim_ucret;
-    const effectiveKesim = rawKesim != null ? rawKesim : STANDART_KESIM;
+    const effectiveKesim = rawKesim != null ? rawKesim : 21000;
     const iskonto = k.satis_iskonto != null ? Number(k.satis_iskonto) : 0;
     const kurbanAlis = kg != null && alisFiyat != null ? kg * alisFiyat : null;
     const kurbanSatis = kg != null && satisFiyat != null ? kg * satisFiyat + effectiveKesim - iskonto : null;
-    const kesimFarki = rawKesim != null ? Math.max(0, STANDART_KESIM - rawKesim) : 0;
-    const karZarar = kurbanAlis != null && kurbanSatis != null ? kurbanSatis - kurbanAlis - kesimFarki : null;
+    const karZarar = kurbanAlis != null && kurbanSatis != null ? kurbanSatis - kurbanAlis - KASAP_GIDER : null;
 
     let karStr;
     if (karZarar != null) {
       const renk = karZarar >= 0 ? '#059669' : '#dc2626';
-      const farkNot = kesimFarki > 0
-        ? `<span style="font-size:10px;color:#b45309;display:block;margin-top:1px">−${fmtTry2(kesimFarki)} kesim</span>`
-        : '';
-      karStr = `<span style="color:${renk};font-weight:800;font-size:14px">${karZarar >= 0 ? '+' : ''}${fmtTry2(karZarar)} ₺</span>${farkNot}`;
+      karStr = `<span style="color:${renk};font-weight:800;font-size:14px">${karZarar >= 0 ? '+' : ''}${fmtTry2(karZarar)} ₺</span>`;
     } else {
       karStr = '<span style="color:var(--muted)">–</span>';
     }
@@ -6459,12 +6447,11 @@
       const xkg = x.canli_kg != null ? Number(x.canli_kg) : null;
       const xAlis = x.alis_kg; const xSatis = x.satis_kg;
       const xRawK = x.kesim_ucret;
-      const xEffK = xRawK != null ? xRawK : STANDART_KESIM;
+      const xEffK = xRawK != null ? xRawK : 21000;
       const xIsk = x.satis_iskonto != null ? Number(x.satis_iskonto) : 0;
       const xKA = xkg != null && xAlis != null ? xkg * xAlis : null;
       const xKS = xkg != null && xSatis != null ? xkg * xSatis + xEffK - xIsk : null;
-      const xKF = xRawK != null ? Math.max(0, STANDART_KESIM - xRawK) : 0;
-      const xKZ = xKA != null && xKS != null ? xKS - xKA - xKF : null;
+      const xKZ = xKA != null && xKS != null ? xKS - xKA - KASAP_GIDER : null;
       if (xKA != null) { tAlis += xKA; hasAny = true; }
       if (xKS != null) tSatis += xKS;
       if (xKZ != null) tKar += xKZ;
@@ -6473,9 +6460,9 @@
         if (xSatis != null) tSatisKg += xkg * xSatis;
       }
       tIskonto += xIsk;
-      tKesimToplam += STANDART_KESIM;
-      tKesimHissedar += xEffK;
-      tKesimKasa += xKF;
+      tKesimToplam  += xEffK;
+      tKesimHissedar += KASAP_GIDER;
+      tKesimKasa    += xEffK - KASAP_GIDER;
     });
     document.getElementById('ktToplamAlis').textContent = hasAny ? fmtTry2(tAlis) + ' ₺' : '–';
     document.getElementById('ktToplamSatis').textContent = tSatis > 0 ? fmtTry2(tSatis) + ' ₺' : '–';
@@ -6496,8 +6483,8 @@
     document.getElementById('ktKesimToplam').textContent   = fmtTry2(tKesimToplam) + ' ₺';
     document.getElementById('ktKesimHissedar').textContent = fmtTry2(tKesimHissedar) + ' ₺';
     const kkEl = document.getElementById('ktKesimKasa');
-    kkEl.textContent = tKesimKasa > 0 ? fmtTry2(tKesimKasa) + ' ₺' : '–';
-    kkEl.style.color = tKesimKasa > 0 ? '#dc2626' : 'var(--ink)';
+    kkEl.textContent = fmtTry2(tKesimKasa) + ' ₺';
+    kkEl.style.color = tKesimKasa >= 0 ? '#059669' : '#dc2626';
   }
 
   function yazdirKarTakip() {
@@ -6509,6 +6496,7 @@
     let pKg = 0, pAlisKg = 0, pSatisKg = 0, pIskonto = 0;
     let pKesimToplam = 0, pKesimHissedar = 0, pKesimKasa = 0;
     let satirlar = '';
+    const P_KASAP_GIDER = 6000;
     list.forEach((k, i) => {
       const kg = k.canli_kg != null ? Number(k.canli_kg) : null;
       const alis = k.alis_kg; const satis = k.satis_kg;
@@ -6517,8 +6505,7 @@
       const iskonto = k.satis_iskonto != null ? Number(k.satis_iskonto) : 0;
       const kAlis = kg != null && alis != null ? kg * alis : null;
       const kSatis = kg != null && satis != null ? kg * satis + effKesim - iskonto : null;
-      const kFarki = rawKesimP != null ? Math.max(0, 21000 - rawKesimP) : 0;
-      const kar = kAlis != null && kSatis != null ? kSatis - kAlis - kFarki : null;
+      const kar = kAlis != null && kSatis != null ? kSatis - kAlis - P_KASAP_GIDER : null;
       if (kAlis != null) { totalAlis += kAlis; hasAny = true; }
       if (kSatis != null) totalSatis += kSatis;
       if (kar != null) totalKar += kar;
@@ -6527,9 +6514,9 @@
         if (satis != null) pSatisKg += kg * satis;
       }
       pIskonto += iskonto;
-      pKesimToplam += 21000;
-      pKesimHissedar += effKesim;
-      pKesimKasa += kFarki;
+      pKesimToplam  += effKesim;
+      pKesimHissedar += P_KASAP_GIDER;
+      pKesimKasa    += effKesim - P_KASAP_GIDER;
       const fmt = v => v != null ? Number(v).toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : '–';
       const karBg = kar == null ? '' : kar >= 0 ? 'background:#dcfce7' : 'background:#fee2e2';
       const karColor = kar == null ? 'color:#999' : kar >= 0 ? 'color:#15803d' : 'color:#dc2626';
@@ -6542,7 +6529,7 @@
         if (fark <= 1) hisseKontrolPrint = '<span style="color:#15803d;font-weight:700">✓</span>';
         else hisseKontrolPrint = `<span style="color:#dc2626;font-weight:700">${fmt(hTop)} ₺<br><small>${kSatis > hTop ? '+' : ''}${fmt(kSatis - hTop)}</small></span>`;
       } else if (hTop != null) { hisseKontrolPrint = fmt(hTop) + ' ₺'; }
-      const farkNotPrint = kFarki > 0 ? `<br><small style="color:#b45309">−${fmt(kFarki)} kesim</small>` : '';
+      const farkNotPrint = '';
       // 1. hissedar adı
       const pIlkH = (k.atamalar || []).find(a => (a.ad_soyad || '').trim());
       const pIlkAd = pIlkH ? pIlkH.ad_soyad.trim() : '–';
@@ -6650,22 +6637,22 @@
   </div>
 </div>
 
-<p class="bolum-baslik">Kesim Ücreti Takibi &nbsp;<span style="font-weight:400;font-size:10px;text-transform:none">(${yil} standart: 21.000 ₺/kurban)</span></p>
+<p class="bolum-baslik">Kesim Ücreti Takibi &nbsp;<span style="font-weight:400;font-size:10px;text-transform:none">(Kasap gideri: 6.000 ₺/kurban)</span></p>
 <div class="ozet">
-  <div class="ozet-kart">
-    <div class="lbl">Toplam Kesim Ücreti</div>
-    <div class="val">${fmt2(pKesimToplam)} ₺</div>
-    <div class="sub">21.000 ₺ × ${list.length} kurban</div>
-  </div>
   <div class="ozet-kart hissedar">
-    <div class="lbl">Hissedarlardan Alınan</div>
-    <div class="val" style="color:#0e7490">${fmt2(pKesimHissedar)} ₺</div>
+    <div class="lbl">Hissedardan Alınan Kesim</div>
+    <div class="val" style="color:#0e7490">${fmt2(pKesimToplam)} ₺</div>
     <div class="sub">satış fiyatına dahil edilen</div>
   </div>
-  <div class="ozet-kart${pKesimKasa > 0 ? ' kasa' : ''}">
-    <div class="lbl">Kasadan Ödenen</div>
-    <div class="val" style="color:${pKesimKasa > 0 ? '#dc2626' : '#6b7280'}">${pKesimKasa > 0 ? fmt2(pKesimKasa) + ' ₺' : '–'}</div>
-    <div class="sub">${pKesimKasa > 0 ? 'kârdan düşüldü' : 'eksik kesim yok'}</div>
+  <div class="ozet-kart kasa">
+    <div class="lbl">Kasaba Ödenen (Sabit)</div>
+    <div class="val" style="color:#dc2626">${fmt2(pKesimHissedar)} ₺</div>
+    <div class="sub">6.000 ₺ × ${list.length} kurban</div>
+  </div>
+  <div class="ozet-kart${pKesimKasa >= 0 ? ' kar' : ' kasa'}">
+    <div class="lbl">Net Kesim Kârı</div>
+    <div class="val" style="color:${pKesimKasa >= 0 ? '#15803d' : '#dc2626'}">${(pKesimKasa >= 0 ? '+' : '') + fmt2(pKesimKasa)} ₺</div>
+    <div class="sub">Hissedardan alınan − kasap gideri</div>
   </div>
 </div>
 
