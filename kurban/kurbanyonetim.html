@@ -2977,10 +2977,10 @@
   let bekleyenListeSort = { key: 'created_at', dir: -1 };
   let bekleyenListeSortBound = false;
   const HISSE_GRUP_META = {
-    '1.Grup': { no: '1', ad: 'Ekonomik', aralik: '30.000₺ - 35.000₺ aralığında' },
-    '2.Grup': { no: '2', ad: 'Verimli', aralik: '35.000₺ - 40.000₺ aralığında' },
-    '3.Grup': { no: '3', ad: 'Aile Paketi', aralik: '40.000₺ - 45.000₺ aralığında' },
-    '4.Grup': { no: '4', ad: 'Geniş Aile Paketi', aralik: '45.000₺ ve üzeri' }
+    '1.Grup': { no: '1', ad: 'Ekonomik', aralik: '30.000₺ - 35.000₺ aralığında', aralik_kg: '400-470kg' },
+    '2.Grup': { no: '2', ad: 'Verimli', aralik: '35.000₺ - 40.000₺ aralığında', aralik_kg: '470-550kg' },
+    '3.Grup': { no: '3', ad: 'Aile Paketi', aralik: '40.000₺ - 45.000₺ aralığında', aralik_kg: '550-620kg' },
+    '4.Grup': { no: '4', ad: 'Geniş Aile Paketi', aralik: '45.000₺ ve üzeri', aralik_kg: '620-700kg' }
   };
   function hisseGrupNoAdEtiket(kodu) {
     const m = HISSE_GRUP_META[kodu];
@@ -3671,7 +3671,8 @@
       '.wrap-l{display:none}',
       '@media screen{.wrap-p .row-p{flex-wrap:nowrap}}',
       '.kblock{border:1px solid #ccc;border-radius:5px;padding:6px;box-sizing:border-box}',
-      'h2{font-size:10px;margin:0 0 5px;color:#222;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '.kblock.atanmis{border:2px solid #e6b800;background:#fffde7}',
+      'h2{font-size:9px;margin:0 0 5px;color:#222;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-0.01em}',
       'table{width:100%;border-collapse:collapse;font-size:9px;table-layout:fixed;max-width:100%}',
       /* % genişlikler: Sıra=5 Hissedar=auto Personel=22 Fiyat=22 → fixed=49% auto=51% */
       'col.c-sira{width:5%}col.c-pers{width:22%}col.c-fiyat{width:22%}',
@@ -3683,14 +3684,17 @@
       /* Print landscape: 2 sütun (wrap-l görünür, wrap-p gizli) */
       '@media print and (orientation:landscape){.wrap-p{display:none!important}.wrap-l{display:block!important}}'
     ].join('');
-    const sep2 = '&nbsp;&nbsp;&middot;&nbsp;&nbsp;';
+    const sep2 = '&nbsp;&middot;&nbsp;';
     /* Her kurban için HTML bloğu üret */
     const blocks = list.map(k => {
       kurbanEnsureSlots(k);
       const meta = HISSE_GRUP_META[k.hisse_grup_kodu] || {};
       const defF = k.hisse_fiyati != null && k.hisse_fiyati !== '' && !Number.isNaN(Number(k.hisse_fiyati)) ? Number(k.hisse_fiyati) : null;
-      const grupLabel2 = k.hisse_grup_kodu ? (meta.ad ? k.hisse_grup_kodu + ' ' + meta.ad : k.hisse_grup_kodu) : (meta.ad || '—');
-      let b = '<section class="kblock">';
+      const grupLabel2 = k.hisse_grup_kodu
+        ? (k.hisse_grup_kodu + (meta.aralik_kg ? ' (' + meta.aralik_kg + ')' : (meta.ad ? ' ' + meta.ad : '')))
+        : (meta.ad || '—');
+      const atanmis = (k.kupe_no != null && String(k.kupe_no).trim() !== '') && (k.canli_kg != null && String(k.canli_kg).trim() !== '');
+      let b = '<section class="kblock' + (atanmis ? ' atanmis' : '') + '">';
       b += '<h2>Sıra ' + esc(k.kesim_sirasi) + sep2 + 'Küpe: ' + esc(k.kupe_no || '—') + sep2 + 'Canlı kg: ' + (k.canli_kg != null && k.canli_kg !== '' ? fmtTry(k.canli_kg) : '—') + sep2 + esc(grupLabel2) + '</h2>';
       b += '<table><colgroup><col class="c-sira"><col><col class="c-pers"><col class="c-fiyat"></colgroup>';
       b += '<thead><tr><th class="c">Sıra</th><th>Hissedar</th><th>Personel</th><th class="c">Hisse fiyat</th></tr></thead><tbody>';
